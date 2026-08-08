@@ -1,0 +1,59 @@
+import {
+  isRouteErrorResponse,
+  Links,
+  Meta,
+  Outlet,
+  Scripts,
+  ScrollRestoration,
+} from "react-router";
+import type { Route } from "./+types/root";
+import "./styles/app.css";
+
+export const meta: Route.MetaFunction = () => [
+  { title: "RiverCheck | ポーカー会の結果・精算管理" },
+  {
+    name: "description",
+    content: "ポーカー会の開催、結果入力、順位計算、会場費精算をスマホで管理。",
+  },
+];
+
+export function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="ja">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <Meta />
+        <Links />
+      </head>
+      <body>
+        {children}
+        <ScrollRestoration />
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+
+export default function App() {
+  return <Outlet />;
+}
+
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  const status = isRouteErrorResponse(error) ? error.status : 500;
+  const message =
+    status === 404
+      ? "ページが見つかりません"
+      : "画面を表示できませんでした";
+
+  return (
+    <main className="error-page">
+      <p className="eyebrow">RIVER CHECK</p>
+      <h1>{status}</h1>
+      <p>{message}</p>
+      <a className="button button-primary" href="/">
+        トップへ戻る
+      </a>
+    </main>
+  );
+}

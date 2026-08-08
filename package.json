@@ -1,0 +1,42 @@
+{
+  "name": "rivercheck",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.22.0"
+  },
+  "scripts": {
+    "dev": "react-router dev",
+    "build": "react-router build",
+    "preview": "react-router build && vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "typecheck": "react-router typegen && tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate": "TMPDIR=${TMPDIR:-/tmp} tsx server/db/migrate.ts",
+    "db:seed": "TMPDIR=${TMPDIR:-/tmp} tsx server/db/seed.ts",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "isbot": "^5",
+    "pg": "^8.16.3",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router": "^8.3.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.29.1",
+    "@cloudflare/workers-types": "^5.20260804.1",
+    "@react-router/dev": "^8.3.0",
+    "@types/node": "^24.10.1",
+    "@types/pg": "^8.15.6",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "dotenv": "^17.2.3",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.3",
+    "vitest": "^4.0.18",
+    "wrangler": "^4.75.0"
+  }
+}

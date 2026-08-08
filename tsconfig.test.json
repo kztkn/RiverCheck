@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["domain/**/*.ts"],
+  "compilerOptions": {
+    "composite": true,
+    "types": ["node", "vitest/globals"],
+    "lib": ["ES2023"],
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
+  }
+}
