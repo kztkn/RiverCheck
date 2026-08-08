@@ -7,6 +7,11 @@ export interface GameSummary {
   status: GameStatus;
 }
 
+export interface GameListItem extends GameSummary {
+  participantCount: number;
+  winnerName: string | null;
+}
+
 export interface GameDetails extends GameSummary {
   groupId: string;
   initialChips: number;

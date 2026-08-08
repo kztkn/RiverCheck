@@ -21,7 +21,12 @@ import {
 } from "@server/services/participant-session.server";
 import { generateOpaqueToken, hashToken } from "@server/services/token.server";
 import { formatLineResult } from "@domain/result-sharing/format-line-result";
+import {
+  buildGamePhotoUrl,
+  getGameHighlight,
+} from "@server/services/game-highlight-service.server";
 import { FinalResults } from "../components/final-results";
+import { GameHighlight } from "../components/game-highlight";
 import type { Route } from "./+types/game-participant";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -47,6 +52,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     context.game.status === "finalized"
       ? await listResultRevisions(context.group.id, params.gameId)
       : [];
+  const highlight =
+    context.game.status === "finalized"
+      ? await getGameHighlight(context.group.id, params.gameId)
+      : null;
   return {
     group: { name: context.group.name, publicCode: context.group.publicCode },
     game: context.game,
@@ -54,6 +63,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     players,
     results,
     revisions,
+    highlight,
+    highlightPhotoUrl: buildGamePhotoUrl({
+      gameId: params.gameId,
+      groupCode: params.groupCode,
+      highlight,
+    }),
     lineText:
       results.length > 0
         ? formatLineResult(
@@ -205,12 +220,14 @@ export default function GameParticipant({
       <section className="participant-hero">
         <p className="eyebrow">JOIN THE TABLE</p>
         <h1>{loaderData.game.title}</h1>
-        <p>
-          {new Intl.DateTimeFormat("ja-JP", {
-            dateStyle: "long",
-            timeZone: "Asia/Tokyo",
-          }).format(new Date(loaderData.game.playedAt))}
-        </p>
+        {loaderData.game.status !== "finalized" ? (
+          <p>
+            {new Intl.DateTimeFormat("ja-JP", {
+              dateStyle: "long",
+              timeZone: "Asia/Tokyo",
+            }).format(new Date(loaderData.game.playedAt))}
+          </p>
+        ) : null}
       </section>
 
       {loaderData.notice === "joined" ? (
@@ -231,14 +248,22 @@ export default function GameParticipant({
       ) : null}
 
       {loaderData.game.status === "finalized" ? (
+        <>
         <FinalResults
           lineText={loaderData.lineText}
           initialChips={loaderData.game.initialChips}
+          playedAt={loaderData.game.playedAt}
           results={loaderData.results}
           revisions={loaderData.revisions}
           shareUrl={loaderData.shareUrl}
           showSharePanel={false}
         />
+        <GameHighlight
+          gameTitle={loaderData.game.title}
+          highlight={loaderData.highlight}
+          photoUrl={loaderData.highlightPhotoUrl}
+        />
+        </>
       ) : loaderData.game.status === "draft" ? (
         <section className="participant-panel waiting-panel">
           <span className="empty-icon" aria-hidden="true">

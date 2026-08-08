@@ -1,11 +1,12 @@
 import { Link } from "react-router";
 import { getGroupOverview } from "@server/services/group-service.server";
+import type { GameListItem } from "@shared-types/game";
 import type { Route } from "./+types/group-top";
 
 const statusLabels = {
   draft: "準備中",
   open: "受付中",
-  finalized: "確定済み",
+  finalized: "終了",
 } as const;
 
 export async function loader({ params }: Route.LoaderArgs) {
@@ -16,6 +17,8 @@ export async function loader({ params }: Route.LoaderArgs) {
 
 export default function GroupTop({ loaderData }: Route.ComponentProps) {
   const { group, games } = loaderData;
+  const activeGames = games.filter((game) => game.status !== "finalized");
+  const pastGames = games.filter((game) => game.status === "finalized");
 
   return (
     <main className="page-shell">
@@ -48,52 +51,20 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
         <span aria-hidden="true">→</span>
       </Link>
 
-      <section className="content-section" aria-labelledby="games-heading">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">GAMES</p>
-            <h2 id="games-heading">開催一覧</h2>
-          </div>
-          <span className="count-badge">{games.length}件</span>
-        </div>
+      <GameSection
+        eyebrow="OPEN GAMES"
+        emptyMessage="現在受付中の開催はありません。"
+        games={activeGames}
+        heading="受付中"
+      />
 
-        {games.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon" aria-hidden="true">
-              ♠
-            </div>
-            <h3>まだ開催はありません</h3>
-            <p>最初のポーカー会を作成すると、ここに表示されます。</p>
-          </div>
-        ) : (
-          <div className="game-list">
-            {games.map((game) => (
-              <article className="game-card" key={game.id}>
-                <Link className="game-card-main" to={`games/${game.id}`}>
-                  <span className={`status status-${game.status}`}>
-                    {statusLabels[game.status]}
-                  </span>
-                  <h3>{game.title}</h3>
-                  <time dateTime={game.playedAt}>
-                    {new Intl.DateTimeFormat("ja-JP", {
-                      dateStyle: "long",
-                      timeZone: "Asia/Tokyo",
-                    }).format(new Date(game.playedAt))}
-                  </time>
-                </Link>
-                <div className="game-card-actions">
-                  <Link className="card-action" to={`games/${game.id}`}>
-                    参加ページ
-                    <span className="card-arrow" aria-hidden="true">
-                      →
-                    </span>
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+      <GameSection
+        eyebrow="HISTORY"
+        emptyMessage="過去の開催はまだありません。"
+        games={pastGames}
+        heading="過去の開催"
+        isPast
+      />
 
       <footer className="site-footer">
         <span>RIVER CHECK</span>
@@ -101,4 +72,80 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
       </footer>
     </main>
   );
+}
+
+function GameSection({
+  eyebrow,
+  emptyMessage,
+  games,
+  heading,
+  isPast = false,
+}: {
+  eyebrow: string;
+  emptyMessage: string;
+  games: GameListItem[];
+  heading: string;
+  isPast?: boolean;
+}) {
+  const headingId = isPast ? "past-games-heading" : "active-games-heading";
+
+  return (
+    <section
+      className={`content-section game-history-section${isPast ? " is-past" : ""}`}
+      aria-labelledby={headingId}
+    >
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">{eyebrow}</p>
+          <h2 id={headingId}>{heading}</h2>
+        </div>
+        <span className="count-badge">{games.length}件</span>
+      </div>
+
+      {games.length === 0 ? (
+        <div className="game-history-empty">
+          <p>{emptyMessage}</p>
+        </div>
+      ) : (
+        <div className="game-list">
+          {games.map((game) => (
+            <article className="game-card" key={game.id}>
+              <Link className="game-card-main" to={`games/${game.id}`}>
+                {!isPast ? (
+                  <span className={`status status-${game.status}`}>
+                    {statusLabels[game.status]}
+                  </span>
+                ) : null}
+                <h3>{game.title}</h3>
+                <time dateTime={game.playedAt}>
+                  {formatGameDate(game.playedAt)}
+                </time>
+                {isPast ? (
+                  <span className="game-card-summary">
+                    <span>参加 {game.participantCount}人</span>
+                    <span>優勝 {game.winnerName ?? "—"}</span>
+                  </span>
+                ) : null}
+              </Link>
+              <div className="game-card-actions">
+                <Link className="card-action" to={`games/${game.id}`}>
+                  {isPast ? "結果を見る" : "参加ページ"}
+                  <span className="card-arrow" aria-hidden="true">
+                    →
+                  </span>
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function formatGameDate(playedAt: string): string {
+  return new Intl.DateTimeFormat("ja-JP", {
+    dateStyle: "long",
+    timeZone: "Asia/Tokyo",
+  }).format(new Date(playedAt));
 }

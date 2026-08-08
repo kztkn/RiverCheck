@@ -96,6 +96,15 @@ MVPではログイン機能やユーザーアカウントを設けない。
 6. 確定値を game_results に保存する
 7. gameを finalized にする
 
+### 3.5 グループTOPで開催を探す
+
+開催一覧は状態を混在させず、未確定の開催を上段「受付中」、finalizedの開催を下段「過去の開催」に分ける。各区分内は開催日の新しい順とする。
+
+- 受付中カードは状態と開催日を表示し、「参加ページ」へ進む
+- 過去カードは開催日、確定結果の参加人数、現在の1位プレイヤーを表示し、「結果を見る」へ進む
+- 過去カードの人数と優勝者は現在有効な`game_results`から取得し、訂正履歴を集計しない
+- 確定結果の見出し内にも開催日を表示し、参加者画面と主催者画面で共通化する
+
 ## 4. URL
 
 ### 参加者用
@@ -340,7 +349,7 @@ game_participants は参加者入力の現在値、game_results は現在公開�
 - 訂正履歴には入力変更だけでなく、それに伴って変わった全参加者の順位、BBスコア、会費負担額を訂正前→訂正後で表示する
 
 
-確定済みの主催者画面は、確定結果と共有欄のみを表示する。参加者用リンク、参加状況、精算設定、チップ検算は確定後には重複表示しない。
+確定済みの主催者画面は、確定結果と共有欄、開催ハイライトの表示・編集、結果訂正だけを表示する。参加者用リンク、参加状況、精算設定、チップ検算は確定後には重複表示しない。
 
 共有操作は主催者画面だけに表示し、参加者用URLでは確定結果の閲覧だけを提供する。共有文の見出しには開催名を使用する。対応端末ではWeb Share APIでLINE、SNS、メール等の共有先を選択でき、結果文と公開リンクを分離せず1つのテキストとして共有する。未対応環境では同じテキストをコピーする。参加者tokenがないブラウザでも、finalized後は共有URLから確定結果を参照できる。
 
@@ -358,6 +367,19 @@ game_participants は参加者入力の現在値、game_results は現在公開�
 1BB＝200チップ（初期20,000チップ＝100BB）
 ```
 
+### この日のハイライト
+
+- finalized後も主催者は、開催ごとにハイライト文1件と開催写真1枚を登録・変更できる
+- ハイライト文は最大1,000文字のプレーンテキストとし、Markdownや参加者コメントは扱わない
+- 写真だけ、文章だけでも登録でき、両方未登録なら参加者向けセクションを表示しない
+- 参加者は確定結果画面および過去開催詳細で閲覧だけできる
+- 写真はJPEG・PNG・WebPを受け付け、ブラウザで長辺1,800px以内のWebPへ縮小・圧縮する
+- サーバーでもcontent type、ファイルシグネチャ、圧縮後3MB上限を検証する
+- R2 bucketは非公開とし、現在DBで参照中のobjectだけをWorkerの公開結果用routeから配信する
+- PostgreSQLには画像本体ではなく、R2 object key、content type、byte size、uploaded_atを保存する
+- object keyは `groups/{groupId}/games/{gameId}/{uuid}.{ext}` とする
+- 写真の置換・開催から外す操作ではDB参照だけを更新し、参照されなくなったR2 objectは自動削除しない。必要に応じて運用で削除する
+
 ## 15. データモデル
 
 最低限次を持つ。
@@ -365,7 +387,7 @@ game_participants は参加者入力の現在値、game_results は現在公開�
 - groups: グループ、公開コード
 - players: 人そのもの
 - group_players: グループ所属
-- games: 開催設定と状態
+- games: 開催設定、状態、ハイライト文、開催写真のR2メタデータ
 - game_participants: 開催中の参加状態と入力値
 - game_results: 確定結果のスナップショット
 - game_result_revisions: 訂正番号、訂正日時、訂正前後の確定結果スナップショット
@@ -378,6 +400,7 @@ UUID、外部キー、一意制約、金額・チップの整数制約を使用�
 - React
 - React Router v8 Framework Mode
 - Cloudflare Workers
+- Cloudflare R2（非公開の開催写真保存）
 - PostgreSQL
 - node-postgres（pg）
 - Vitest
@@ -401,6 +424,7 @@ UUID、外部キー、一意制約、金額・チップの整数制約を使用�
 - validateChipTotal
 - calculateCostShares
 - calculatePlayerStats / addCumulativeNetBb
+- validateHighlightText / validateGamePhotoBytes / calculateScaledPhotoSize
 
 精算では100円固定、1〜3位の順位順、3位額の最低保証、4位以下の傾斜、合計一致、4人未満の拒否、丸め差額を確認する。
 

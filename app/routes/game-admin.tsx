@@ -34,8 +34,15 @@ import {
   type ResultCorrectionInput,
 } from "@server/services/finalization-service.server";
 import { formatLineResult } from "@domain/result-sharing/format-line-result";
+import {
+  buildGamePhotoUrl,
+  getGameHighlight,
+  saveGameHighlight,
+} from "@server/services/game-highlight-service.server";
 import { GameSettingsFields } from "../components/game-settings-fields";
 import { FinalResults } from "../components/final-results";
+import { GameHighlight } from "../components/game-highlight";
+import { GameHighlightEditor } from "../components/game-highlight-editor";
 import { ParticipantLinkQr } from "../components/participant-link-qr";
 import { ResultCorrectionPanel } from "../components/result-correction-panel";
 import type { Route } from "./+types/game-admin";
@@ -66,6 +73,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     authorized.game.status === "finalized"
       ? await listResultRevisions(authorized.group.id, params.gameId)
       : [];
+  const highlight =
+    authorized.game.status === "finalized"
+      ? await getGameHighlight(authorized.group.id, params.gameId)
+      : null;
 
   const payload = {
     group: {
@@ -80,6 +91,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     finalization: buildFinalizationState(authorized.game, participants),
     results,
     revisions,
+    highlight,
+    highlightPhotoUrl: buildGamePhotoUrl({
+      gameId: params.gameId,
+      groupCode: params.groupCode,
+      highlight,
+    }),
     lineText:
       results.length > 0
         ? formatLineResult(
@@ -152,6 +169,25 @@ export async function action({ request, params }: Route.ActionArgs) {
     return redirect(noticeUrl("corrected"));
   }
 
+  if (intent === "save-highlight") {
+    const photoEntry = formData.get("photo");
+    const photo =
+      photoEntry instanceof File && photoEntry.size > 0 ? photoEntry : null;
+    const result = await saveGameHighlight(
+      authorized.group.id,
+      params.gameId,
+      {
+        photo,
+        removePhoto: readString(formData, "removePhoto") === "yes",
+        text: readString(formData, "highlightText"),
+      },
+    );
+    if (!result.ok) {
+      return { ...result, intent: "save-highlight" as const };
+    }
+    return redirect(noticeUrl("highlight-saved"));
+  }
+
 
   const participantId = readString(formData, "participantId");
   if (!isUuid(participantId)) {
@@ -195,6 +231,12 @@ export default function GameAdmin({
     actionData?.ok === false &&
     "intent" in actionData &&
     actionData.intent === "correct-results"
+      ? actionData.error
+      : null;
+  const highlightError =
+    actionData?.ok === false &&
+    "intent" in actionData &&
+    actionData.intent === "save-highlight"
       ? actionData.error
       : null;
 
@@ -339,9 +381,22 @@ export default function GameAdmin({
           <FinalResults
             lineText={loaderData.lineText}
             initialChips={loaderData.game.initialChips}
+            playedAt={loaderData.game.playedAt}
             results={loaderData.results}
             revisions={loaderData.revisions}
             shareUrl={loaderData.participantUrl}
+          />
+          <GameHighlight
+            gameTitle={loaderData.game.title}
+            highlight={loaderData.highlight}
+            photoUrl={loaderData.highlightPhotoUrl}
+          />
+          <GameHighlightEditor
+            key={loaderData.highlight?.updatedAt ?? "empty"}
+            error={highlightError}
+            highlight={loaderData.highlight}
+            isSubmitting={isSubmitting}
+            photoUrl={loaderData.highlightPhotoUrl}
           />
           <ResultCorrectionPanel
             error={correctionError}
@@ -651,6 +706,7 @@ function statusLabel(status: "draft" | "open" | "finalized") {
 function noticeText(notice: string | null): string | null {
   if (notice === "finalized") return "結果を確定しました。";
   if (notice === "corrected") return "確定結果を訂正しました。";
+  if (notice === "highlight-saved") return "ハイライトを保存しました。";
   return null;
 }
 

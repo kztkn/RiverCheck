@@ -9,6 +9,7 @@ import { ResultRevisionHistory } from "./result-revision-history";
 export function FinalResults({
   lineText,
   initialChips,
+  playedAt,
   results,
   revisions,
   shareUrl,
@@ -16,6 +17,7 @@ export function FinalResults({
 }: {
   lineText: string;
   initialChips: number;
+  playedAt: string;
   results: GameResultSummary[];
   revisions: GameResultRevision[];
   shareUrl: string;
@@ -67,6 +69,9 @@ export function FinalResults({
         <div>
           <p className="eyebrow">FINAL RESULTS</p>
           <h2>確定結果</h2>
+          <time className="result-played-at" dateTime={playedAt}>
+            {formatPlayedAt(playedAt)}
+          </time>
         </div>
         <span className="count-badge">{results.length}人</span>
       </div>
@@ -165,6 +170,13 @@ function copyWithSelection(textArea: HTMLTextAreaElement | null): boolean {
   textArea.select();
   textArea.setSelectionRange(0, textArea.value.length);
   return document.execCommand("copy");
+}
+
+function formatPlayedAt(playedAt: string): string {
+  return new Intl.DateTimeFormat("ja-JP", {
+    dateStyle: "long",
+    timeZone: "Asia/Tokyo",
+  }).format(new Date(playedAt));
 }
 
 function formatNumber(value: number): string {

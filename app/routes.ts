@@ -9,6 +9,7 @@ export default [
   route("g/:groupCode/manage", "routes/group-manage.tsx"),
   route("g/:groupCode/players", "routes/players.tsx"),
   route("g/:groupCode/games/new", "routes/game-new.tsx"),
+  route("g/:groupCode/games/:gameId/photo", "routes/game-photo.ts"),
   route("g/:groupCode/games/:gameId", "routes/game-participant.tsx"),
   route("g/:groupCode/games/:gameId/admin", "routes/game-admin.tsx"),
 ] satisfies RouteConfig;

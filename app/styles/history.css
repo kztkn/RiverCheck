@@ -1,0 +1,58 @@
+.game-history-section {
+  padding-bottom: 56px;
+}
+
+.game-history-section.is-past {
+  padding-bottom: 80px;
+}
+
+.game-history-empty {
+  border: 1px dashed rgba(223, 236, 227, 0.18);
+  border-radius: 16px;
+  background: rgba(14, 30, 24, 0.45);
+  color: var(--muted);
+  padding: 22px;
+}
+
+.game-history-empty p {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.game-card-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 11px;
+}
+
+.game-card-summary > span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(19, 39, 31, 0.7);
+  color: #c5d2cb;
+  font-size: 0.7rem;
+  font-weight: 750;
+  padding: 5px 9px;
+}
+
+.result-played-at {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 639px) {
+  .game-history-section {
+    padding-bottom: 46px;
+  }
+
+  .game-history-section.is-past {
+    padding-bottom: 68px;
+  }
+
+  .game-card-summary {
+    gap: 5px;
+  }
+}

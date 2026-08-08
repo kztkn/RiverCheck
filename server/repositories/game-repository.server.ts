@@ -2,8 +2,8 @@ import { queryDatabase } from "@server/db/client.server";
 import type {
   CreateGameInput,
   GameDetails,
+  GameListItem,
   GameStatus,
-  GameSummary,
 } from "@shared-types/game";
 
 interface GameSummaryRow {
@@ -11,9 +11,15 @@ interface GameSummaryRow {
   title: string;
   played_at: Date;
   status: GameStatus;
+  participant_count: number;
+  winner_name: string | null;
 }
 
-interface GameDetailsRow extends GameSummaryRow {
+interface GameDetailsRow {
+  id: string;
+  title: string;
+  played_at: Date;
+  status: GameStatus;
   group_id: string;
   initial_chips: string;
   rebuy_chips: string;
@@ -26,13 +32,37 @@ interface GameDetailsRow extends GameSummaryRow {
 
 export async function listGamesForGroup(
   groupId: string,
-): Promise<GameSummary[]> {
+): Promise<GameListItem[]> {
   const result = await queryDatabase<GameSummaryRow>(
     `
-      SELECT id, title, played_at, status
-      FROM games
-      WHERE group_id = $1
-      ORDER BY played_at DESC, created_at DESC
+      SELECT
+        game.id,
+        game.title,
+        game.played_at,
+        game.status,
+        COALESCE(result_summary.participant_count, 0)::INTEGER
+          AS participant_count,
+        result_summary.winner_name
+      FROM games AS game
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(game_result.id)::INTEGER AS participant_count,
+          MAX(
+            CASE WHEN game_result.rank = 1
+              THEN COALESCE(
+                group_player.display_name_override,
+                player.display_name
+              )
+            END
+          ) AS winner_name
+        FROM game_results AS game_result
+        INNER JOIN group_players AS group_player
+          ON group_player.id = game_result.group_player_id
+        INNER JOIN players AS player ON player.id = group_player.player_id
+        WHERE game_result.game_id = game.id
+      ) AS result_summary ON TRUE
+      WHERE game.group_id = $1
+      ORDER BY game.played_at DESC, game.created_at DESC
       LIMIT 50
     `,
     [groupId],
@@ -43,6 +73,8 @@ export async function listGamesForGroup(
     title: row.title,
     playedAt: row.played_at.toISOString(),
     status: row.status,
+    participantCount: row.participant_count,
+    winnerName: row.winner_name,
   }));
 }
 

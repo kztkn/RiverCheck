@@ -1,0 +1,165 @@
+.game-highlight-panel,
+.game-highlight-editor {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(233, 186, 90, 0.25);
+  border-radius: 20px;
+  background: rgba(14, 30, 24, 0.82);
+  padding: clamp(20px, 5vw, 32px);
+}
+
+.game-highlight-panel h2,
+.game-highlight-editor h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 4vw, 1.8rem);
+  letter-spacing: -0.04em;
+}
+
+.game-highlight-photo,
+.highlight-photo-preview {
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #07120e;
+}
+
+.game-highlight-photo img,
+.highlight-photo-preview img {
+  display: block;
+  width: 100%;
+  max-height: 620px;
+  object-fit: contain;
+}
+
+.game-highlight-text {
+  margin: 0;
+  color: #dbe4df;
+  font-size: 0.9rem;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.game-highlight-editor {
+  border-color: rgba(57, 222, 141, 0.2);
+}
+
+.game-highlight-editor > div > p:last-child {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.7;
+}
+
+.game-highlight-editor form,
+.highlight-photo-field {
+  display: grid;
+  gap: 12px;
+}
+
+.game-highlight-editor form {
+  gap: 20px;
+}
+
+.game-highlight-editor textarea {
+  width: 100%;
+  min-height: 150px;
+  border: 1px solid rgba(223, 236, 227, 0.17);
+  border-radius: 12px;
+  background: #091711;
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.7;
+  padding: 14px;
+  resize: vertical;
+}
+
+.highlight-photo-preview {
+  max-width: 640px;
+}
+
+.highlight-photo-preview img {
+  max-height: 420px;
+}
+
+.highlight-photo-empty {
+  display: grid;
+  min-height: 130px;
+  place-items: center;
+  border: 1px dashed rgba(223, 236, 227, 0.2);
+  border-radius: 14px;
+  background: rgba(9, 23, 17, 0.7);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.highlight-file-picker {
+  position: relative;
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #13271f;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 0 16px;
+}
+
+.highlight-file-picker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 1px;
+  opacity: 0;
+}
+
+.highlight-photo-selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--green);
+  font-size: 0.75rem;
+}
+
+.highlight-photo-selection button,
+.highlight-photo-delete {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 750;
+  padding: 4px 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.highlight-photo-delete {
+  justify-self: start;
+  color: var(--red);
+}
+
+.highlight-save-error {
+  margin: 0;
+}
+
+@media (max-width: 639px) {
+  .game-highlight-photo,
+  .highlight-photo-preview {
+    margin-inline: -8px;
+    border-radius: 12px;
+  }
+
+  .highlight-photo-selection {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

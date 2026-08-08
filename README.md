@@ -2,7 +2,7 @@
 
 ポーカー会の開催、結果、順位、チップ総量、会費精算をスマートフォンから管理する Web アプリです。
 
-React Router v8 + Cloudflare Workers + PostgreSQLで、開催作成、共有URLからの自己参加、結果入力、チップ総量検算、順位・会費精算、結果確定、LINE用コピーまでのMVP主要フローを実装しています。
+React Router v8 + Cloudflare Workers + PostgreSQLで、開催作成、共有URLからの自己参加、結果入力、チップ総量検算、順位・会費精算、結果確定、個人戦績、開催ハイライトまでのMVP主要フローを実装しています。開催写真は非公開のCloudflare R2へ保存し、Worker経由で配信します。
 
 ## 必要な環境
 
@@ -32,6 +32,8 @@ npm run dev
 表示された Local URL を開きます。既定の参加者向けグループTOPは `/g/river-check`、主催者画面は `/g/river-check/manage` です。サンプル設定のローカル主催者PINは `246810` です。
 
 `.env` の `DATABASE_URL` は `:production` 付きのmigration / seedだけが使用します。ローカルアプリは `wrangler.jsonc` の `localConnectionString` からDocker PostgreSQLへ接続します。
+
+ローカルの開催写真はWranglerがR2 bindingをローカルエミュレーションし、`.wrangler/state`へ保存します。ローカル確認だけならCloudflare上のR2 bucket作成や認証情報は不要です。
 
 ## 環境変数
 
@@ -63,6 +65,35 @@ npm run db:seed:production      # .envの本番DBへseed
 本番では `DATABASE_URL` secret による直接接続、または `HYPERDRIVE` binding を利用できます。アプリは Hyperdrive がある場合にその connection string を優先します。Hyperdrive IDはbinding設定として `wrangler.jsonc` へ保存でき、Neonの接続URLとパスワードはCloudflare側から外へ出しません。
 
 主催者画面を公開する前に、Cloudflare WorkerのSecretへ `ORGANIZER_PIN` と `ORGANIZER_SESSION_SECRET` を設定してください。後者は `openssl rand -hex 32` 等で生成した推測困難な値を使います。認証成功後は署名付きHttpOnly Cookieを180日保持し、同じ端末での再入力を省略します。
+
+### 開催写真用R2
+
+本番デプロイ前に、Cloudflareアカウントで非公開bucketを1つ作成します。
+
+```bash
+npx wrangler r2 bucket create rivercheck-game-photos
+```
+
+`wrangler.jsonc` の `GAME_PHOTOS` bindingはこのbucket名へ設定済みです。R2の公開アクセス（`r2.dev`、Custom Domain）は有効にしません。画像は `/g/:groupCode/games/:gameId/photo` からWorkerが、現在DBで参照されているobjectだけを返します。
+
+本番DBへmigrationを適用してからデプロイします。
+
+```bash
+npm run db:migrate:production
+npm run deploy
+```
+
+写真の置換や「この開催から写真を外す」操作ではDB参照だけを更新し、旧R2 objectは自動削除しません。参照されなくなったobjectは必要に応じてR2側で運用削除します。
+
+### Rate Limiting
+
+Workers Rate Limiting bindingを使用し、同一IPからのPOSTを次の単位で制限します。
+
+- 主催者PIN入力: 5回/60秒
+- 主催者の変更操作: 30回/60秒
+- 参加者の参加・入力操作: 60回/60秒
+
+上限超過時はWorker入口で `429 Too Many Requests` を返し、React RouterやPostgreSQLへ処理を渡しません。bindingは `wrangler.jsonc` で構成され、別途namespace作成コマンドは不要です。ローカルでは `CF-Connecting-IP` がないため、すべて `local` キーとして計数されます。
 
 デプロイ前および git push 前には `npm run build` を成功させてください。
 

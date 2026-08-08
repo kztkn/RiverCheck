@@ -16,5 +16,37 @@
       "id": "6bfb9638ee31438bbbbd216c83921b21",
       "localConnectionString": "postgresql://postgres:postgres@localhost:5432/rivercheck"
     }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "GAME_PHOTOS",
+      "bucket_name": "rivercheck-game-photos"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "ORGANIZER_LOGIN_RATE_LIMITER",
+      "namespace_id": "78421001",
+      "simple": {
+        "limit": 5,
+        "period": 60
+      }
+    },
+    {
+      "name": "ADMIN_WRITE_RATE_LIMITER",
+      "namespace_id": "78421002",
+      "simple": {
+        "limit": 30,
+        "period": 60
+      }
+    },
+    {
+      "name": "PARTICIPANT_WRITE_RATE_LIMITER",
+      "namespace_id": "78421003",
+      "simple": {
+        "limit": 60,
+        "period": 60
+      }
+    }
   ]
 }

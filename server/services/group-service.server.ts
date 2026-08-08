@@ -1,11 +1,11 @@
 import { listGamesForGroup } from "@server/repositories/game-repository.server";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
-import type { GameSummary } from "@shared-types/game";
+import type { GameListItem } from "@shared-types/game";
 import type { GroupSummary } from "@shared-types/group";
 
 export interface GroupOverview {
   group: GroupSummary;
-  games: GameSummary[];
+  games: GameListItem[];
 }
 
 export async function getGroupOverview(

@@ -41,6 +41,20 @@ React Router が UI と HTTP 境界を担当する。MVP では別 REST API を�
 
 Workers はリクエストをまたいだネットワーク I/O の再利用を許可しないため、DB 問い合わせごとに新しい pg Client を作成して同じ処理内で閉じる。本番で Hyperdrive を利用する場合、PostgreSQL への接続プールは Hyperdrive が管理する。SQL は repository 内でプレースホルダーを使って実行する。
 
+## 開催ハイライトとCloudflare R2
+
+確定後の主催者画面のmultipart actionが `GameHighlightService` を呼び、文章を検証して写真をR2へ保存した後、`GameHighlightRepository` が `games` の文章と写真メタデータを更新する。画像本体はPostgreSQLへ保存しない。参加者向け結果画面はloaderで公開用メタデータを取得し、画像は専用resource routeからWorker経由で配信する。R2 bucket自体は公開しない。
+
+ブラウザはアップロード前にCanvasで長辺1,800px以内へ縮小し、WebPへ圧縮する。Worker側もcontent type、ファイルシグネチャ、3MB上限を検証する。object keyはgame単位のprefixとランダムUUIDで衝突を避ける。
+
+R2とPostgreSQLをまたぐ分散トランザクションは作らない。写真の置換・参照解除ではgamesの参照だけを更新し、旧objectやDB更新失敗時の未参照objectは残す。未参照objectはR2上で運用削除する。これにより、DB更新後に旧画像削除が失敗して表示まで壊れる経路を持たせない。
+
+## Worker入口のRate Limiting
+
+POSTリクエストはReact Routerへ渡す前にパスを分類し、Workers Rate Limiting bindingで同一IP単位の回数を確認する。主催者PIN入力、主催者変更操作、参加者の参加・入力操作でnamespaceと上限を分け、超過時はDB接続やmultipart解析前に429を返す。GETは通常の閲覧を妨げないため対象外とする。
+
+Rate Limiting APIは拠点単位かつ結果整合性が緩やかな防御であり、正確な利用回数の記録には使わない。強い主催者PIN、署名済みCookie、入力検証と組み合わせる多層防御として扱う。
+
 ## DB 設計上の判断
 
 - ID は外部公開や複数グループ対応を考慮して UUID とする
@@ -51,6 +65,7 @@ Workers はリクエストをまたいだネットワーク I/O の再利用を�
 - 同名プレイヤーは許可し、表示名ではなく UUID で識別する
 - トークンは 64 文字の SHA-256 hex として保存する
 - `games.rounding_unit` は既存スキーマとの互換用に残すが、DB制約とrepositoryで100固定にする
+- MVPのハイライトは1開催につき文章1件・写真1枚のためgamesへ直接持たせ、複数写真が必要になった時点で別テーブルへ移行する
 
 ## 参加者のブラウザ識別
 
