@@ -1,8 +1,8 @@
 # RiverCheck
 
-ポーカー会の開催、結果、順位、チップ総量、会場費精算をスマートフォンから管理する Web アプリです。
+ポーカー会の開催、結果、順位、チップ総量、会費精算をスマートフォンから管理する Web アプリです。
 
-React Router v8 + Cloudflare Workers + PostgreSQLで、開催作成、共有URLからの自己参加、結果入力、チップ総量検算、順位・会場費精算、結果確定、LINE用コピーまでのMVP主要フローを実装しています。
+React Router v8 + Cloudflare Workers + PostgreSQLで、開催作成、共有URLからの自己参加、結果入力、チップ総量検算、順位・会費精算、結果確定、LINE用コピーまでのMVP主要フローを実装しています。
 
 ## 必要な環境
 
@@ -27,9 +27,11 @@ npm run db:seed
 npm run dev
 ```
 
-表示された Local URL を開きます。既定の参加者向けグループTOPは `/g/river-check`、主催者画面は `/g/river-check/manage` です。MVPでは身内利用を前提に、主催者画面の認証は設けていません。
+`db:migrate` と `db:seed` は安全のためローカルDocker PostgreSQLを既定の接続先とする。`package.json` 内の固定ローカルURLを使うため、`.env` がNeon向けでも本番DBへ誤適用しない。
 
-ローカル PostgreSQL を使わず Neon 等へ接続する場合は、`.env` と `.dev.vars` の `DATABASE_URL` を同じ接続 URL に変更してください。
+表示された Local URL を開きます。既定の参加者向けグループTOPは `/g/river-check`、主催者画面は `/g/river-check/manage` です。サンプル設定のローカル主催者PINは `246810` です。
+
+`.env` の `DATABASE_URL` は `:production` 付きのmigration / seedだけが使用します。ローカルアプリは `wrangler.jsonc` の `localConnectionString` からDocker PostgreSQLへ接続します。
 
 ## 環境変数
 
@@ -38,6 +40,8 @@ npm run dev
 | `DATABASE_URL`   | migration / seed / Worker | PostgreSQL 接続 URL                           |
 | `MVP_GROUP_NAME` | seed                      | MVP グループ表示名                            |
 | `MVP_GROUP_CODE` | seed                      | 公開 URL 用コード。小文字・数字・ハイフンのみ |
+| `ORGANIZER_PIN` | Worker                    | 主催者画面へ入るPINまたは合言葉               |
+| `ORGANIZER_SESSION_SECRET` | Worker       | 主催者Cookie署名用の32文字以上のランダム値    |
 
 `.env` は CLI の migration / seed、`.dev.vars` はローカル Worker が読みます。秘密値を Git へ追加しないでください。
 
@@ -48,13 +52,17 @@ npm run dev          # ローカル開発サーバー
 npm run test         # domain unit test
 npm run typecheck    # Worker 型生成、route 型生成、TypeScript 検査
 npm run build        # Cloudflare Workers 向け production build
-npm run db:migrate   # 未適用 migration を順番に適用
-npm run db:seed      # MVP グループを作成または更新
+npm run db:migrate              # ローカルDocker DBへmigration
+npm run db:seed                 # ローカルDocker DBへseed
+npm run db:migrate:production   # .envの本番DBへmigration
+npm run db:seed:production      # .envの本番DBへseed
 ```
 
 ## Cloudflare / PostgreSQL
 
-本番では `DATABASE_URL` secret による直接接続、または `HYPERDRIVE` binding を利用できます。アプリは Hyperdrive がある場合にその connection string を優先します。`wrangler.jsonc` へ実際の binding ID や接続 URL を直接コミットせず、環境ごとの Cloudflare 設定で管理してください。
+本番では `DATABASE_URL` secret による直接接続、または `HYPERDRIVE` binding を利用できます。アプリは Hyperdrive がある場合にその connection string を優先します。Hyperdrive IDはbinding設定として `wrangler.jsonc` へ保存でき、Neonの接続URLとパスワードはCloudflare側から外へ出しません。
+
+主催者画面を公開する前に、Cloudflare WorkerのSecretへ `ORGANIZER_PIN` と `ORGANIZER_SESSION_SECRET` を設定してください。後者は `openssl rand -hex 32` 等で生成した推測困難な値を使います。認証成功後は署名付きHttpOnly Cookieを180日保持し、同じ端末での再入力を省略します。
 
 デプロイ前および git push 前には `npm run build` を成功させてください。
 

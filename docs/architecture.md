@@ -22,7 +22,7 @@ React Router が UI と HTTP 境界を担当する。MVP では別 REST API を�
 
 - `app/routes`: URL ごとの loader/action と画面
 - `app/components`, `app/features`: 再利用 UI と機能単位の UI（必要になった時点で追加）
-- `domain`: 点数、順位、チップ検算、会場費精算、共有文生成などの純粋関数
+- `domain`: 点数、順位、チップ検算、会費精算、共有文生成などの純粋関数
 - `server/services`: アプリケーションユースケース、入力検証、認可
 - `server/repositories`: PostgreSQL クエリ
 - `server/db`: 接続、migration runner、seed
@@ -35,6 +35,8 @@ React Router が UI と HTTP 境界を担当する。MVP では別 REST API を�
 
 ローカルでは `.dev.vars` の `DATABASE_URL` を `cloudflare:workers` の `env` から取得する。本番は同じ名前の secret、または Cloudflare Hyperdrive の `HYPERDRIVE.connectionString` を利用できる。Hyperdrive がある場合はそちらを優先する。
 
+`npm run dev` のHyperdrive bindingは `wrangler.jsonc` の `localConnectionString` でDocker PostgreSQLへ接続する。migrationとseedは無指定コマンドをローカルDB専用とし、Neonへ適用する場合だけ `:production` コマンドと `.env` を明示的に使用する。
+
 `wrangler.jsonc` は `nodejs_compat` を有効にし、`pg` が必要とする Node.js 互換 API を Workers 上で利用する。Worker は Smart Placement を有効にし、外部 PostgreSQL に近い場所で実行できる構成とする。
 
 Workers はリクエストをまたいだネットワーク I/O の再利用を許可しないため、DB 問い合わせごとに新しい pg Client を作成して同じ処理内で閉じる。本番で Hyperdrive を利用する場合、PostgreSQL への接続プールは Hyperdrive が管理する。SQL は repository 内でプレースホルダーを使って実行する。
@@ -44,7 +46,7 @@ Workers はリクエストをまたいだネットワーク I/O の再利用を�
 - ID は外部公開や複数グループ対応を考慮して UUID とする
 - 金額、チップ、点数は整数だけを扱い PostgreSQL `BIGINT` とする
 - 状態値は変更しやすい `TEXT + CHECK` とし、PostgreSQL enum へ固定しない
-- `game_participants` は編集中の現在値、`game_results` は確定履歴として分離する
+- `game_participants` は参加者入力の現在値、`game_results` は現在公開する確定結果、`game_result_revisions` は訂正前後の履歴として分離する
 - `game_results` は開催内でプレイヤーと順位を一意にし、確定スナップショットの重複を防ぐ
 - 同名プレイヤーは許可し、表示名ではなく UUID で識別する
 - トークンは 64 文字の SHA-256 hex として保存する
@@ -56,9 +58,11 @@ Workers はリクエストをまたいだネットワーク I/O の再利用を�
 
 既存のgame participantにtokenハッシュがある場合、別ブラウザからの再取得を拒否する。本人Cookieを利用できなくなった場合は、主催者が参加取消を行い、本人が参加し直す。参加取消ではその開催の入力済みremaining_chipsとrebuy_countも削除する。
 
-## 主催者導線
+## 主催者導線と認証
 
-MVPの主催者ホームは `/g/:groupCode/manage` とする。身内利用に限定するため認証処理、token query parameter、主催者Cookieは設けない。主催者ホームから開催作成、メンバー管理、各開催の管理画面へ移動する。参加者向け画面からも主催者画面へ戻れるようにする。
+主催者ホームは `/g/:groupCode/manage` とする。主催者ホーム、開催作成、メンバー管理、各開催管理のloader/actionは共通のサーバー認証を通し、未認証時は `/g/:groupCode/organizer-login` へ移動する。参加者向け画面からもこの認証入口を経由して主催者画面へ戻れる。
+
+PIN・合言葉と32文字以上の署名鍵はCloudflare Secretで受け取る。PIN照合はSHA-256ダイジェストを固定時間比較し、成功時は有効期限を含むpayloadへHMAC-SHA-256署名したセッションCookieを発行する。CookieはHttpOnly、SameSite=Lax、Path=/g/、有効期間180日とし、本番HTTPSではSecureも付与する。PINそのものはCookie、HTML、URL、DBへ保存しない。Secret未設定時はfail closedとし、管理画面を公開しない。
 
 ## 新規開催作成
 
@@ -71,6 +75,13 @@ MVPの主催者ホームは `/g/:groupCode/manage` とする。身内利用に�
 
 service が `pg` の client を取得して `BEGIN` し、gameと参加者行をロックする。全員の入力と4人以上の参加を確認し、domain関数で検算、点数、順位、負担額を計算する。差分がある場合は主催者の確認を必須にする。game_resultsへのINSERTとgameのfinalized更新を同一transactionで実行し、途中失敗時はrollbackする。
 
+## 確定後の結果訂正
+
+主催者routeは既存参加者全員の残りチップ・リバイ回数を配列で受け取り、serviceがgame、game_participants、game_resultsをロックする。対象参加者集合が確定時から変わっていないことを検証し、既存のdomain関数で全順位・会費を再計算する。
+
+repositoryは訂正前後のGameResultSummary配列をJSONBとしてgame_result_revisionsへ保存した後、game_participantsを更新し、順位一意制約との衝突を避けるためgame_resultsを同一トランザクション内で置換する。gameはfinalizedのまま、共有URLも維持する。履歴取得は参加者用公開routeでも許可し、入力、順位、BB、会費の差分を共通コンポーネントで表示する。
+
+
 ## 確定結果とLINE共有
 
-finalizedの開催ではgame_resultsを順位順に取得し、参加者用URLと主催者画面の共通コンポーネントで表示する。LINE用テキストはdomainの純粋関数で生成する。コピーはHTTPSまたはlocalhostではClipboard APIを優先し、同一LANのHTTPなど利用できない環境ではtextarea選択とcopy commandへフォールバックする。自動コピーが拒否された場合は選択状態にして手動コピーを案内する。
+finalizedの開催ではgame_resultsを順位順に取得し、参加者用URLと主催者画面の共通コンポーネントで表示する。順位判定とDB保存は整数scoreのまま維持し、表示時にgames.initial_chipsを100BBとしてBBスコアへ換算する。共有操作は主催者画面だけに表示する。LINE用テキストはdomainの純粋関数で生成する。コピーはHTTPSまたはlocalhostではClipboard APIを優先し、同一LANのHTTPなど利用できない環境ではtextarea選択とcopy commandへフォールバックする。自動コピーが拒否された場合は選択状態にして手動コピーを案内する。

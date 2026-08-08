@@ -29,19 +29,24 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
         </Link>
       </header>
 
-      <section className="hero-card">
+      <section className="hero-card group-hero-card">
         <div>
           <p className="eyebrow">YOUR POKER TABLE</p>
           <h1>{group.name}</h1>
           <p className="hero-copy">
-            チップも会場費も、最後のリバーまで迷わない。
-            開催を作って、みんなの結果をひとつにまとめます。
+            チップも会費も、最後のリバーまで迷わない。
+            みんなの結果をひとつにまとめます。
           </p>
         </div>
-        <Link className="button button-primary" to="manage">
-          主催者画面を開く
-        </Link>
       </section>
+
+      <Link className="stats-cta" to="stats">
+        <span>
+          <small>PLAYER STATS</small>
+          <strong>個人戦績を見る</strong>
+        </span>
+        <span aria-hidden="true">→</span>
+      </Link>
 
       <section className="content-section" aria-labelledby="games-heading">
         <div className="section-heading">

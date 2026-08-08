@@ -7,3 +7,11 @@ export interface GameResultSummary {
   rank: number;
   costShare: number;
 }
+
+export interface GameResultRevision {
+  id: string;
+  revisionNumber: number;
+  correctedAt: string;
+  beforeResults: GameResultSummary[];
+  afterResults: GameResultSummary[];
+}

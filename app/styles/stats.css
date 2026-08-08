@@ -1,0 +1,376 @@
+.stats-cta {
+  display: flex;
+  min-height: 104px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: -40px 0 68px;
+  border: 1px solid rgba(57, 222, 141, 0.32);
+  border-radius: 20px;
+  background:
+    linear-gradient(105deg, rgba(57, 222, 141, 0.14), transparent 70%),
+    rgba(14, 30, 24, 0.88);
+  padding: 22px clamp(22px, 5vw, 34px);
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.stats-cta:hover {
+  border-color: rgba(57, 222, 141, 0.58);
+  transform: translateY(-2px);
+}
+
+.stats-cta > span:first-child {
+  display: grid;
+  gap: 5px;
+}
+
+.stats-cta small {
+  color: var(--green);
+  font-size: 0.66rem;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+}
+
+.stats-cta strong {
+  font-size: clamp(1.2rem, 4vw, 1.65rem);
+  letter-spacing: -0.035em;
+}
+
+.stats-cta > span:last-child {
+  color: var(--green);
+  font-size: 2rem;
+}
+
+.stats-page {
+  width: min(100% - 32px, 960px);
+}
+
+.stats-intro {
+  padding: 58px 0 44px;
+}
+
+.stats-intro h1 {
+  margin-bottom: 12px;
+  font-size: clamp(2.5rem, 8vw, 4.8rem);
+  line-height: 1;
+  letter-spacing: -0.06em;
+}
+
+.stats-intro > p:last-child {
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
+.stats-player-intro {
+  padding-bottom: 30px;
+}
+
+.stats-sort {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #091711;
+  padding: 3px;
+}
+
+.stats-sort a {
+  min-width: 72px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 9px 12px;
+  text-align: center;
+}
+
+.stats-sort a.is-active {
+  background: rgba(57, 222, 141, 0.14);
+  color: var(--green);
+}
+
+.stats-ranking-list,
+.stats-game-list {
+  display: grid;
+  gap: 10px;
+}
+
+.stats-ranking-card {
+  display: grid;
+  grid-template-columns: 48px minmax(150px, 1fr) minmax(120px, auto) minmax(110px, auto) 24px;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(14, 30, 24, 0.78);
+  padding: 17px 18px;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.stats-ranking-card:hover,
+.stats-game-card:hover {
+  border-color: rgba(57, 222, 141, 0.36);
+  background: rgba(19, 39, 31, 0.94);
+  transform: translateY(-2px);
+}
+
+.stats-rank {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--green);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.stats-player-name,
+.stats-primary-value,
+.stats-secondary-value,
+.stats-game-title {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.stats-player-name strong,
+.stats-game-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-player-name small,
+.stats-primary-value small,
+.stats-secondary-value small,
+.stats-game-title small,
+.stats-game-date {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.stats-primary-value {
+  justify-items: end;
+}
+
+.stats-primary-value strong {
+  font-size: 1.05rem;
+  white-space: nowrap;
+}
+
+.stats-secondary-value {
+  justify-items: end;
+  white-space: nowrap;
+}
+
+.bb-positive {
+  color: var(--green) !important;
+}
+
+.bb-negative {
+  color: var(--red) !important;
+}
+
+.bb-neutral {
+  color: var(--ink) !important;
+}
+
+.stats-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.stats-kpi-card {
+  display: grid;
+  min-height: 98px;
+  align-content: space-between;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: rgba(14, 30, 24, 0.8);
+  padding: 16px;
+}
+
+.stats-kpi-card > span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.stats-kpi-card > strong {
+  font-size: clamp(1.05rem, 4vw, 1.35rem);
+  letter-spacing: -0.03em;
+}
+
+.stats-panel {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 58px;
+  border: 1px solid rgba(57, 222, 141, 0.18);
+  border-radius: 20px;
+  background: rgba(14, 30, 24, 0.82);
+  padding: clamp(18px, 4vw, 30px);
+}
+
+.stats-panel h2 {
+  margin: 0;
+  font-size: clamp(1.25rem, 4vw, 1.7rem);
+  letter-spacing: -0.04em;
+}
+
+.stats-chart {
+  width: 100%;
+  min-width: 0;
+  margin-left: -4px;
+}
+
+.stats-chart-tooltip {
+  display: grid;
+  max-width: min(250px, 72vw);
+  gap: 5px;
+  border: 1px solid rgba(57, 222, 141, 0.28);
+  border-radius: 12px;
+  background: rgba(8, 19, 15, 0.97);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.32);
+  padding: 12px;
+}
+
+.stats-chart-tooltip time {
+  color: var(--muted);
+  font-size: 0.66rem;
+}
+
+.stats-chart-tooltip > strong {
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+}
+
+.stats-chart-tooltip dl {
+  display: grid;
+  gap: 5px;
+  margin: 6px 0 0;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.stats-chart-tooltip dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  font-size: 0.72rem;
+}
+
+.stats-chart-tooltip dt {
+  color: var(--muted);
+}
+
+.stats-chart-tooltip dd {
+  margin: 0;
+  font-weight: 850;
+}
+
+.stats-history {
+  padding-bottom: 70px;
+}
+
+.stats-game-card {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr) auto 24px;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(14, 30, 24, 0.72);
+  padding: 15px 16px;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.stats-game-card > strong {
+  white-space: nowrap;
+}
+
+@media (min-width: 760px) {
+  .stats-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 639px) {
+  .stats-cta {
+    min-height: 90px;
+    margin-top: -44px;
+  }
+
+  .stats-heading {
+    align-items: center;
+  }
+
+  .stats-ranking-card {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 11px;
+    padding: 14px;
+  }
+
+  .stats-rank {
+    width: 36px;
+    height: 36px;
+  }
+
+  .stats-primary-value {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+
+  .stats-secondary-value {
+    grid-column: 2 / -1;
+    grid-row: 2;
+    justify-items: start;
+  }
+
+  .stats-ranking-card > .card-arrow {
+    display: none;
+  }
+
+  .stats-game-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+  }
+
+  .stats-game-date {
+    grid-column: 1 / -1;
+  }
+
+  .stats-game-card > .card-arrow {
+    display: none;
+  }
+}
+
+@media (max-width: 380px) {
+  .stats-page {
+    width: min(100% - 24px, 960px);
+  }
+
+  .stats-sort a {
+    min-width: 62px;
+    padding-inline: 8px;
+  }
+
+  .stats-ranking-card {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    padding-inline: 11px;
+  }
+}

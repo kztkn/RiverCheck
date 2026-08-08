@@ -32,6 +32,41 @@ describe("recommendTopCosts", () => {
     expect(result.shares.reduce((sum, share) => sum + share, 0)).toBe(11_400);
   });
 
+  it("4人のゆる傾斜では均等割寄りの中間配分にする", () => {
+    expect(recommendTopCosts(11_330, 4, "gentle")).toEqual({
+      firstPlaceCost: 2_300,
+      secondPlaceCost: 2_700,
+      thirdPlaceCost: 3_000,
+      settlementTotal: 11_400,
+      shares: [2_300, 2_700, 3_000, 3_400],
+    });
+  });
+
+  it("8人のゆる傾斜を1000円から1800円の範囲に収める", () => {
+    expect(recommendTopCosts(11_330, 8, "gentle")).toEqual({
+      firstPlaceCost: 1_000,
+      secondPlaceCost: 1_100,
+      thirdPlaceCost: 1_300,
+      settlementTotal: 11_400,
+      shares: [1_000, 1_100, 1_300, 1_400, 1_500, 1_600, 1_700, 1_800],
+    });
+  });
+
+  it("ゆる傾斜でも100円単位・順位順・合計一致を維持する", () => {
+    for (let participantCount = 4; participantCount <= 20; participantCount += 1) {
+      const result = recommendTopCosts(11_330, participantCount, "gentle");
+      expect(result.shares.every((share) => share % 100 === 0)).toBe(true);
+      expect(
+        result.shares.every(
+          (share, index) => index === 0 || share >= result.shares[index - 1]!,
+        ),
+      ).toBe(true);
+      expect(result.shares.reduce((sum, share) => sum + share, 0)).toBe(
+        result.settlementTotal,
+      );
+    }
+  });
+
   it("4人未満を拒否する", () => {
     expect(() => recommendTopCosts(11_330, 3)).toThrow(RangeError);
   });

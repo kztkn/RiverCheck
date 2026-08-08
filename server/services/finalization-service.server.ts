@@ -1,14 +1,20 @@
 import { withTransaction } from "@server/db/client.server";
 import {
   insertFinalResults,
+  insertResultRevision,
   lockGameForFinalization,
+  lockFinalResults,
   lockParticipantsForFinalization,
   markGameFinalized,
   saveCostSettingsForFinalization,
+  replaceFinalResults,
   toFinalizationParticipants,
+  touchGameAfterCorrection,
+  updateParticipantsForCorrection,
 } from "@server/repositories/finalization-repository.server";
 import { calculateFinalResults } from "@domain/finalization/calculate-final-results";
 import { validateChipTotal } from "@domain/chip-validation/validate-chip-total";
+import { buildResultRevisionChanges } from "@domain/result-revision/build-result-revision-changes";
 import type { CreateGameInput, GameDetails } from "@shared-types/game";
 import type { GameParticipantSummary } from "@shared-types/player";
 
@@ -23,13 +29,14 @@ export function buildFinalizationState(
     (participant) => participant.remainingChips !== null,
   );
   const chipValidation =
-    incompleteNames.length === 0 && participants.length > 0
+    participants.length > 0
       ? validateChipTotal({
           initialChips: game.initialChips,
           rebuyChips: game.rebuyChips,
-          reports: completeParticipants.map((participant) => ({
-            remainingChips: participant.remainingChips!,
-            rebuyCount: participant.rebuyCount,
+          reports: participants.map((participant) => ({
+            remainingChips: participant.remainingChips ?? 0,
+            rebuyCount:
+              participant.remainingChips === null ? 0 : participant.rebuyCount,
           })),
         })
       : null;
@@ -38,6 +45,7 @@ export function buildFinalizationState(
     participantCount: participants.length,
     submittedCount: completeParticipants.length,
     incompleteNames,
+    isProvisional: incompleteNames.length > 0,
     chipValidation,
     canFinalize:
       game.status === "open" &&
@@ -65,6 +73,12 @@ export async function finalizeGame(
     const rows = await lockParticipantsForFinalization(transaction, gameId);
     if (rows.length < 4) {
       return { ok: false, error: "結果確定には4人以上の参加者が必要です。" };
+    }
+    if (settings.previewParticipantCount !== rows.length) {
+      return {
+        ok: false,
+        error: `会費精算の人数（${settings.previewParticipantCount}人）と参加者（${rows.length}人）を一致させてください。`,
+      };
     }
     const participants = toFinalizationParticipants(rows);
     if (participants.some((participant) => participant === null)) {
@@ -113,6 +127,115 @@ export async function finalizeGame(
     await insertFinalResults(transaction, gameId, calculated.results);
     if (!(await markGameFinalized(transaction, groupId, gameId))) {
       throw new Error("game status changed during finalization");
+    }
+    return { ok: true };
+  });
+}
+
+export interface ResultCorrectionInput {
+  groupPlayerId: string;
+  remainingChips: number;
+  rebuyCount: number;
+}
+
+export async function correctFinalResults(
+  groupId: string,
+  gameId: string,
+  corrections: ResultCorrectionInput[],
+  differenceConfirmed: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  return withTransaction(async (transaction) => {
+    const game = await lockGameForFinalization(transaction, groupId, gameId);
+    if (!game) return { ok: false, error: "開催が見つかりません。" };
+    if (game.status !== "finalized") {
+      return {
+        ok: false,
+        error: "確定済みの開催だけ結果を訂正できます。",
+      };
+    }
+
+    if (
+      corrections.some(
+        (correction) =>
+          !Number.isSafeInteger(correction.remainingChips) ||
+          correction.remainingChips < 0 ||
+          !Number.isSafeInteger(correction.rebuyCount) ||
+          correction.rebuyCount < 0,
+      )
+    ) {
+      return {
+        ok: false,
+        error: "残りチップとリバイ回数は0以上の整数で入力してください。",
+      };
+    }
+
+    const rows = await lockParticipantsForFinalization(transaction, gameId);
+    const beforeResults = await lockFinalResults(transaction, gameId);
+    const correctionByPlayerId = new Map(
+      corrections.map((correction) => [
+        correction.groupPlayerId,
+        correction,
+      ]),
+    );
+    if (
+      rows.length < 4 ||
+      rows.length !== corrections.length ||
+      rows.length !== correctionByPlayerId.size ||
+      rows.length !== beforeResults.length ||
+      rows.some((row) => !correctionByPlayerId.has(row.group_player_id))
+    ) {
+      return {
+        ok: false,
+        error:
+          "確定時から参加者情報が変わっています。画面を更新して確認してください。",
+      };
+    }
+
+    const participants = rows.map((row) => {
+      const correction = correctionByPlayerId.get(row.group_player_id);
+      if (!correction) {
+        throw new Error("correction participant is missing");
+      }
+      return {
+        groupPlayerId: row.group_player_id,
+        displayName: row.display_name,
+        remainingChips: correction.remainingChips,
+        rebuyCount: correction.rebuyCount,
+      };
+    });
+
+    let calculated;
+    try {
+      calculated = calculateFinalResults(game, participants);
+    } catch {
+      return {
+        ok: false,
+        error: "入力内容から訂正結果を計算できません。",
+      };
+    }
+
+    if (
+      buildResultRevisionChanges(beforeResults, calculated.results).length === 0
+    ) {
+      return { ok: false, error: "変更された入力がありません。" };
+    }
+    if (!calculated.chipValidation.isValid && !differenceConfirmed) {
+      return {
+        ok: false,
+        error: "チップ差分を確認してから訂正してください。",
+      };
+    }
+
+    await insertResultRevision(
+      transaction,
+      gameId,
+      beforeResults,
+      calculated.results,
+    );
+    await updateParticipantsForCorrection(transaction, gameId, participants);
+    await replaceFinalResults(transaction, gameId, calculated.results);
+    if (!(await touchGameAfterCorrection(transaction, groupId, gameId))) {
+      throw new Error("game status changed during result correction");
     }
     return { ok: true };
   });

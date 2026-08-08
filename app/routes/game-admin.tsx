@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Form,
   Link,
   redirect,
+  useFetcher,
   useNavigation,
   useRevalidator,
 } from "react-router";
@@ -10,7 +11,10 @@ import {
   findGameForGroup,
 } from "@server/repositories/game-repository.server";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
-import { listFinalResults } from "@server/repositories/finalization-repository.server";
+import {
+  listFinalResults,
+  listResultRevisions,
+} from "@server/repositories/finalization-repository.server";
 import {
   findParticipantByTokenHash,
   listGameParticipants,
@@ -18,20 +22,25 @@ import {
 } from "@server/repositories/participant-repository.server";
 import { readParticipantToken } from "@server/services/participant-session.server";
 import { hashToken } from "@server/services/token.server";
+import { requireOrganizer } from "@server/services/organizer-auth.server";
 import {
   type GameSettingsFormValues,
   validateGameSettingsForm,
 } from "@server/services/game-service.server";
 import {
   buildFinalizationState,
+  correctFinalResults,
   finalizeGame,
+  type ResultCorrectionInput,
 } from "@server/services/finalization-service.server";
 import { formatLineResult } from "@domain/result-sharing/format-line-result";
 import { GameSettingsFields } from "../components/game-settings-fields";
 import { FinalResults } from "../components/final-results";
+import { ResultCorrectionPanel } from "../components/result-correction-panel";
 import type { Route } from "./+types/game-admin";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
+  await requireOrganizer(request, params.groupCode);
   const authorized = await requireGame(params.groupCode, params.gameId);
   const participantToken = readParticipantToken(request, params.gameId);
   const participantTokenHash = participantToken
@@ -41,16 +50,20 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     listGameParticipants(authorized.group.id, params.gameId),
     participantTokenHash
       ? findParticipantByTokenHash(
-          authorized.group.id,
-          params.gameId,
-          participantTokenHash,
-        )
+        authorized.group.id,
+        params.gameId,
+        participantTokenHash,
+      )
       : Promise.resolve(null),
   ]);
   const url = new URL(request.url);
   const results =
     authorized.game.status === "finalized"
       ? await listFinalResults(authorized.group.id, params.gameId)
+      : [];
+  const revisions =
+    authorized.game.status === "finalized"
+      ? await listResultRevisions(authorized.group.id, params.gameId)
       : [];
 
   const payload = {
@@ -65,9 +78,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       : null,
     finalization: buildFinalizationState(authorized.game, participants),
     results,
+    revisions,
     lineText:
       results.length > 0
-        ? formatLineResult(authorized.game.title, results)
+        ? formatLineResult(
+          authorized.game.title,
+          results,
+          authorized.game.initialChips,
+        )
         : "",
     participantUrl: `${url.origin}/g/${params.groupCode}/games/${params.gameId}`,
     notice: url.searchParams.get("notice"),
@@ -77,6 +95,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
+  await requireOrganizer(request, params.groupCode);
   const authorized = await requireGame(params.groupCode, params.gameId);
   const formData = await request.formData();
   const intent = readString(formData, "intent");
@@ -111,14 +130,47 @@ export async function action({ request, params }: Route.ActionArgs) {
     return redirect(noticeUrl("finalized"));
   }
 
+  if (intent === "correct-results") {
+    const corrections = readResultCorrections(formData);
+    if (!corrections) {
+      return {
+        ok: false as const,
+        intent: "correct-results" as const,
+        error: "残りチップとリバイ回数は0以上の整数で入力してください。",
+      };
+    }
+    const result = await correctFinalResults(
+      authorized.group.id,
+      params.gameId,
+      corrections,
+      readString(formData, "confirmDifference") === "yes",
+    );
+    if (!result.ok) {
+      return { ...result, intent: "correct-results" as const };
+    }
+    return redirect(noticeUrl("corrected"));
+  }
+
+
   const participantId = readString(formData, "participantId");
   if (!isUuid(participantId)) {
     throw new Response("Invalid participant", { status: 400 });
   }
 
   if (intent === "remove") {
-    await removeParticipant(authorized.group.id, params.gameId, participantId);
-    return redirect(noticeUrl("removed"));
+    const removed = await removeParticipant(
+      authorized.group.id,
+      params.gameId,
+      participantId,
+    );
+    return removed
+      ? { ok: true as const, intent: "remove" as const, participantId }
+      : {
+        ok: false as const,
+        intent: "remove" as const,
+        participantId,
+        error: "参加取消に失敗しました。画面を更新してお試しください。",
+      };
   }
 
   throw new Response("Unknown action", { status: 400 });
@@ -129,6 +181,7 @@ export default function GameAdmin({
   actionData,
 }: Route.ComponentProps) {
   const navigation = useNavigation();
+  const removalFetcher = useFetcher<typeof action>();
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
   const failedAction =
@@ -137,9 +190,85 @@ export default function GameAdmin({
     failedAction && "errors" in failedAction ? failedAction : null;
   const finalizeError =
     actionData?.ok === false && "error" in actionData ? actionData.error : null;
+  const correctionError =
+    actionData?.ok === false &&
+    "intent" in actionData &&
+    actionData.intent === "correct-results"
+      ? actionData.error
+      : null;
+
   const actionErrors = settingsAction?.errors ?? {};
   const values = failedAction?.values ?? gameToFormValues(loaderData.game);
+  const [settlementParticipantCount, setSettlementParticipantCount] = useState(
+    values.previewParticipantCount,
+  );
+  const [optimisticallyRemoved, setOptimisticallyRemoved] = useState<{
+    id: string;
+    displayName: string;
+  } | null>(null);
+  const [pendingRemoval, setPendingRemoval] = useState<{
+    id: string;
+    displayName: string;
+  } | null>(null);
+  const [toast, setToast] = useState<{
+    id: number;
+    message: string;
+    tone: "success" | "error";
+  } | null>(null);
+  const removalDialogRef = useRef<HTMLDialogElement>(null);
+  const participantLinkRef = useRef<HTMLInputElement>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
   const notice = noticeText(loaderData.notice);
+  const visibleParticipants = optimisticallyRemoved
+    ? loaderData.participants.filter(
+      (participant) => participant.id !== optimisticallyRemoved.id,
+    )
+    : loaderData.participants;
+
+  useEffect(() => {
+    setSettlementParticipantCount(values.previewParticipantCount);
+  }, [values.previewParticipantCount]);
+
+  useEffect(() => {
+    if (
+      removalFetcher.state !== "idle" ||
+      removalFetcher.data?.intent !== "remove"
+    ) {
+      return;
+    }
+    setOptimisticallyRemoved((removedParticipant) => {
+      setToast({
+        id: Date.now(),
+        message: removalFetcher.data!.ok
+          ? `${removedParticipant?.displayName ?? "参加者"}の参加を取り消しました。`
+          : removalFetcher.data!.error,
+        tone: removalFetcher.data!.ok ? "success" : "error",
+      });
+      return null;
+    });
+  }, [removalFetcher.data, removalFetcher.state]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timeoutId = window.setTimeout(() => setToast(null), 3_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [toast]);
+
+  useEffect(() => {
+    if (!linkCopied) return;
+    const timeoutId = window.setTimeout(() => setLinkCopied(false), 2_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [linkCopied]);
+
+  useEffect(() => {
+    const dialog = removalDialogRef.current;
+    if (!dialog) return;
+    if (pendingRemoval && !dialog.open) {
+      dialog.showModal();
+    } else if (!pendingRemoval && dialog.open) {
+      dialog.close();
+    }
+  }, [pendingRemoval]);
 
   useEffect(() => {
     if (loaderData.game.status === "finalized") return;
@@ -156,6 +285,25 @@ export default function GameAdmin({
       window.removeEventListener("focus", refresh);
     };
   }, [loaderData.game.status, revalidator]);
+
+  async function copyParticipantLink() {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(loaderData.participantUrl);
+      } else if (!copyInputValue(participantLinkRef.current)) {
+        throw new Error("copy command was rejected");
+      }
+      setLinkCopied(true);
+    } catch {
+      participantLinkRef.current?.focus();
+      participantLinkRef.current?.select();
+      setToast({
+        id: Date.now(),
+        message: "自動コピーできませんでした。リンクを長押ししてコピーしてください。",
+        tone: "error",
+      });
+    }
+  }
 
   return (
     <main className="page-shell form-page admin-page">
@@ -186,96 +334,119 @@ export default function GameAdmin({
       {notice ? <p className="success-notice">{notice}</p> : null}
 
       {loaderData.game.status === "finalized" ? (
-        <FinalResults
-          lineText={loaderData.lineText}
-          results={loaderData.results}
-          shareUrl={loaderData.participantUrl}
-        />
+        <>
+          <FinalResults
+            lineText={loaderData.lineText}
+            initialChips={loaderData.game.initialChips}
+            results={loaderData.results}
+            revisions={loaderData.revisions}
+            shareUrl={loaderData.participantUrl}
+          />
+          <ResultCorrectionPanel
+            error={correctionError}
+            game={loaderData.game}
+            isSubmitting={isSubmitting}
+            results={loaderData.results}
+          />
+        </>
       ) : (
         <>
           <section className="admin-share-panel">
-        <div>
-          <p className="eyebrow">PARTICIPANT LINK</p>
-          <h2>みんなに送るリンク</h2>
-          <p>
-            {loaderData.currentParticipant
-              ? `この端末は「${loaderData.currentParticipant.displayName}」として参加中です。`
-              : "参加者はこのリンクを開き、自分の名前を選ぶか新しく入力します。"}
-          </p>
-        </div>
-        <input
-          aria-label="参加者用URL"
-          readOnly
-          value={loaderData.participantUrl}
-        />
-        <Link
-          className="button button-secondary"
-          reloadDocument
-          to={loaderData.participantUrl}
-        >
-          {loaderData.currentParticipant
-            ? `${loaderData.currentParticipant.displayName}の入力画面を開く`
-            : "自分も参加する（参加者画面へ）"}
-        </Link>
+            <div>
+              <p className="eyebrow">PARTICIPANT LINK</p>
+              <h2>共有リンク</h2>
+              <p>このリンクを参加者に共有してください。</p>
+              {loaderData.currentParticipant ? (
+                <p>
+                  この端末は「{loaderData.currentParticipant.displayName}」として参加中です。
+                </p>
+              ) : null}
+            </div>
+            <div className="share-link-control">
+              <input
+                aria-label="参加者用URL"
+                onFocus={(event) => event.currentTarget.select()}
+                readOnly
+                ref={participantLinkRef}
+                value={loaderData.participantUrl}
+              />
+              <button
+                aria-label="共有リンクをコピー"
+                className="copy-icon-button"
+                onClick={copyParticipantLink}
+                title={linkCopied ? "コピーしました" : "リンクをコピー"}
+                type="button"
+              >
+                {linkCopied ? (
+                  <span aria-hidden="true" className="copy-check">
+                    ✓
+                  </span>
+                ) : (
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <rect height="13" rx="2" width="13" x="8" y="8" />
+                    <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            <Link
+              className="button button-secondary"
+              reloadDocument
+              to={loaderData.participantUrl}
+            >
+              {loaderData.currentParticipant
+                ? `${loaderData.currentParticipant.displayName} のチップ入力画面を開く`
+                : "自分も参加する（参加者画面へ）"}
+            </Link>
           </section>
 
           <section className="admin-participants">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">PARTICIPANTS</p>
-            <h2>参加状況</h2>
-          </div>
-          <span className="count-badge">
-            {loaderData.participants.length}人
-          </span>
-        </div>
-        {loaderData.participants.length === 0 ? (
-          <div className="mini-empty">
-            <p>まだ参加者はいません。参加者用リンクを共有してください。</p>
-          </div>
-        ) : (
-          <div className="participant-admin-list">
-            {loaderData.participants.map((participant) => (
-              <article className="participant-admin-row" key={participant.id}>
-                <div>
-                  <strong>{participant.displayName}</strong>
-                  <span>
-                    {participant.remainingChips === null
-                      ? "未入力"
-                      : `残り ${participant.remainingChips.toLocaleString("ja-JP")} / リバイ ${participant.rebuyCount}回`}
-                  </span>
-                </div>
-                {loaderData.game.status !== "finalized" ? (
-                  <Form className="participant-remove-form" method="post">
-                    <input name="intent" type="hidden" value="remove" />
-                    <input
-                      name="participantId"
-                      type="hidden"
-                      value={participant.id}
-                    />
-                    <button
-                      aria-label={`${participant.displayName}の参加を取り消す`}
-                      className="participant-remove-button"
-                      onClick={(event) => {
-                        if (
-                          !window.confirm(
-                            `${participant.displayName}の参加を取り消しますか？\n入力済みのチップとリバイ回数も削除されます。`,
-                          )
-                        ) {
-                          event.preventDefault();
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">PARTICIPANTS</p>
+                <h2>参加状況</h2>
+              </div>
+              <span className="count-badge">
+                {visibleParticipants.length}人
+              </span>
+            </div>
+            {visibleParticipants.length === 0 ? (
+              <div className="mini-empty">
+                <p>まだ参加者はいません。参加者用リンクを共有してください。</p>
+              </div>
+            ) : (
+              <div className="participant-admin-list">
+                {visibleParticipants.map((participant) => (
+                  <article className="participant-admin-row" key={participant.id}>
+                    <div>
+                      <strong>{participant.displayName}</strong>
+                      <span>
+                        {participant.remainingChips === null
+                          ? "未入力"
+                          : `残り ${participant.remainingChips.toLocaleString("ja-JP")} / リバイ ${participant.rebuyCount}回`}
+                      </span>
+                    </div>
+                    {loaderData.game.status !== "finalized" ? (
+                      <button
+                        aria-label={`${participant.displayName}の参加を取り消す`}
+                        className="participant-remove-button"
+                        disabled={removalFetcher.state !== "idle"}
+                        onClick={() =>
+                          setPendingRemoval({
+                            id: participant.id,
+                            displayName: participant.displayName,
+                          })
                         }
-                      }}
-                      title="参加を取り消す"
-                      type="submit"
-                    >
-                      <span aria-hidden="true">×</span>
-                    </button>
-                  </Form>
-                ) : null}
-              </article>
-            ))}
-          </div>
-        )}
+                        title="参加を取り消す"
+                        type="button"
+                      >
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
 
           <Form className="game-form" method="post" noValidate>
@@ -283,6 +454,7 @@ export default function GameAdmin({
             <GameSettingsFields
               actualParticipantCount={loaderData.participants.length}
               errors={actionErrors}
+              onParticipantCountChange={setSettlementParticipantCount}
               showCoreSettings={false}
               values={values}
             />
@@ -290,8 +462,78 @@ export default function GameAdmin({
               error={finalizeError}
               finalization={loaderData.finalization}
               isSubmitting={isSubmitting}
+              settlementParticipantCount={settlementParticipantCount}
             />
           </Form>
+          <dialog
+            aria-labelledby="removal-dialog-title"
+            className="app-dialog"
+            onCancel={() => setPendingRemoval(null)}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setPendingRemoval(null);
+              }
+            }}
+            onClose={() => setPendingRemoval(null)}
+            ref={removalDialogRef}
+          >
+            <div className="dialog-card">
+              <span aria-hidden="true" className="dialog-danger-icon">
+                ×
+              </span>
+              <div>
+                <p className="eyebrow">REMOVE PARTICIPANT</p>
+                <h2 id="removal-dialog-title">参加を取り消しますか？</h2>
+                <p>
+                  <strong>{pendingRemoval?.displayName}</strong>
+                  さんをこの会から削除します。入力済みのチップとリバイ回数も削除されます。
+                </p>
+              </div>
+              <removalFetcher.Form
+                className="dialog-actions"
+                method="post"
+                onSubmit={(event) => {
+                  if (!pendingRemoval) {
+                    event.preventDefault();
+                    return;
+                  }
+                  setOptimisticallyRemoved(pendingRemoval);
+                  setPendingRemoval(null);
+                }}
+              >
+                <input name="intent" type="hidden" value="remove" />
+                <input
+                  name="participantId"
+                  type="hidden"
+                  value={pendingRemoval?.id ?? ""}
+                />
+                <button
+                  autoFocus
+                  className="button button-secondary"
+                  onClick={() => setPendingRemoval(null)}
+                  type="button"
+                >
+                  キャンセル
+                </button>
+                <button className="button button-danger" type="submit">
+                  参加を取り消す
+                </button>
+              </removalFetcher.Form>
+            </div>
+          </dialog>
+          {toast ? (
+            <div
+              aria-live="polite"
+              className={`app-toast app-toast-${toast.tone}`}
+              key={toast.id}
+              role={toast.tone === "error" ? "alert" : "status"}
+            >
+              <span aria-hidden="true">
+                {toast.tone === "success" ? "✓" : "!"}
+              </span>
+              {toast.message}
+            </div>
+          ) : null}
         </>
       )}
     </main>
@@ -342,6 +584,49 @@ function readAdminCostSettingsForm(
   };
 }
 
+function readResultCorrections(
+  formData: FormData,
+): ResultCorrectionInput[] | null {
+  const groupPlayerIds = formData.getAll("groupPlayerId");
+  const remainingChipsValues = formData.getAll("remainingChips");
+  const rebuyCountValues = formData.getAll("rebuyCount");
+  if (
+    groupPlayerIds.length === 0 ||
+    groupPlayerIds.length !== remainingChipsValues.length ||
+    groupPlayerIds.length !== rebuyCountValues.length
+  ) {
+    return null;
+  }
+
+  const corrections: ResultCorrectionInput[] = [];
+  for (let index = 0; index < groupPlayerIds.length; index += 1) {
+    const groupPlayerId = groupPlayerIds[index];
+    const remainingChips = parseNonNegativeInteger(
+      remainingChipsValues[index],
+    );
+    const rebuyCount = parseNonNegativeInteger(rebuyCountValues[index]);
+    if (
+      typeof groupPlayerId !== "string" ||
+      !isUuid(groupPlayerId) ||
+      remainingChips === null ||
+      rebuyCount === null
+    ) {
+      return null;
+    }
+    corrections.push({ groupPlayerId, remainingChips, rebuyCount });
+  }
+  return corrections;
+}
+
+function parseNonNegativeInteger(
+  value: FormDataEntryValue | undefined,
+): number | null {
+  if (typeof value !== "string" || !/^\d+$/.test(value.trim())) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+
 function readString(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
@@ -363,7 +648,7 @@ function statusLabel(status: "draft" | "open" | "finalized") {
 
 function noticeText(notice: string | null): string | null {
   if (notice === "finalized") return "結果を確定しました。";
-  if (notice === "removed") return "参加を取り消しました。";
+  if (notice === "corrected") return "確定結果を訂正しました。";
   return null;
 }
 
@@ -371,31 +656,39 @@ function FinalizationPanel({
   error,
   finalization,
   isSubmitting,
+  settlementParticipantCount,
 }: {
   error: string | null;
   finalization: Route.ComponentProps["loaderData"]["finalization"];
   isSubmitting: boolean;
+  settlementParticipantCount: string;
 }) {
   const [differenceConfirmed, setDifferenceConfirmed] = useState(false);
   const currentDifference = finalization.chipValidation?.difference ?? null;
 
   useEffect(() => {
     setDifferenceConfirmed(false);
-  }, [currentDifference]);
+  }, [currentDifference, finalization.isProvisional]);
 
   const validation = finalization.chipValidation;
   const hasDifference = validation ? !validation.isValid : false;
+  const participantCountMatches =
+    Number(settlementParticipantCount) === finalization.participantCount;
+  const settlementParticipantCountLabel = /^\d+$/.test(
+    settlementParticipantCount,
+  )
+    ? `${settlementParticipantCount}人`
+    : "未入力";
 
   return (
     <section className="settlement-panel">
       <div className="section-heading">
         <div>
           <p className="eyebrow">CHIP CHECK</p>
-          <h2>チップ総量と結果確定</h2>
+          <h2 className="finalization-title">
+            <span>チップ検算と結果確定</span>
+          </h2>
         </div>
-        <span className="count-badge">
-          {finalization.submittedCount}/{finalization.participantCount}人入力
-        </span>
       </div>
 
       {validation ? (
@@ -421,15 +714,16 @@ function FinalizationPanel({
           {finalization.participantCount}人です。
         </p>
       ) : null}
-      {finalization.incompleteNames.length > 0 ? (
+      {finalization.isProvisional ? (
         <p className="warning-notice">
-          未入力：{finalization.incompleteNames.join("、")}
+          未入力：{finalization.incompleteNames.join("、")}。未入力分は残チップ0・
+          リバイ0回として暫定計算しています。
         </p>
       ) : null}
-      {validation?.isValid ? (
+      {validation?.isValid && !finalization.isProvisional ? (
         <p className="match-notice">チップ総量は一致しています。</p>
       ) : null}
-      {hasDifference ? (
+      {hasDifference && !finalization.isProvisional ? (
         <p className="warning-notice difference-warning">
           {validation!.difference > 0
             ? `${formatNumber(validation!.difference)}チップ不足しています。`
@@ -439,7 +733,7 @@ function FinalizationPanel({
       ) : null}
 
       <div className="finalize-form">
-        {hasDifference ? (
+        {hasDifference && !finalization.isProvisional ? (
           <label className="confirmation-check">
             <input
               checked={differenceConfirmed}
@@ -457,6 +751,12 @@ function FinalizationPanel({
             </span>
           </label>
         ) : null}
+        {!participantCountMatches ? (
+          <p className="warning-notice">
+            会費精算の人数（{settlementParticipantCountLabel}）と参加者（
+            {finalization.participantCount}人）を一致させてください。
+          </p>
+        ) : null}
         {error ? (
           <p className="error-notice finalize-error" role="alert">
             <span aria-hidden="true" className="finalize-error-icon">
@@ -469,6 +769,7 @@ function FinalizationPanel({
           className="button button-primary"
           disabled={
             !finalization.canFinalize ||
+            !participantCountMatches ||
             isSubmitting ||
             (hasDifference && !differenceConfirmed)
           }
@@ -491,4 +792,12 @@ function formatNumber(value: number): string {
 function formatSignedNumber(value: number): string {
   if (value === 0) return "0";
   return `${value > 0 ? "+" : "−"}${formatNumber(Math.abs(value))}`;
+}
+
+function copyInputValue(input: HTMLInputElement | null): boolean {
+  if (!input) return false;
+  input.focus();
+  input.select();
+  input.setSelectionRange(0, input.value.length);
+  return document.execCommand("copy");
 }

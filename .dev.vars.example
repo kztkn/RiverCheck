@@ -1,2 +1,3 @@
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rivercheck
-
+ORGANIZER_PIN=246810
+ORGANIZER_SESSION_SECRET=local-development-session-secret-change-me-32chars

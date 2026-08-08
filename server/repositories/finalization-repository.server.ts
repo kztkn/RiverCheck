@@ -7,7 +7,10 @@ import type {
   GameDetails,
   GameStatus,
 } from "@shared-types/game";
-import type { GameResultSummary } from "@shared-types/result";
+import type {
+  GameResultRevision,
+  GameResultSummary,
+} from "@shared-types/result";
 import type { FinalizationParticipant } from "@domain/finalization/calculate-final-results";
 
 interface GameRow {
@@ -40,6 +43,14 @@ interface ResultRow {
   score: string;
   rank: number;
   cost_share: string;
+}
+
+interface RevisionRow {
+  id: string;
+  revision_number: number;
+  corrected_at: Date;
+  before_results: GameResultSummary[];
+  after_results: GameResultSummary[];
 }
 
 export async function lockGameForFinalization(
@@ -219,5 +230,148 @@ function mapGame(row: GameRow): GameDetails {
     firstPlaceCost: Number(row.first_place_cost),
     secondPlaceCost: Number(row.second_place_cost),
     thirdPlaceCost: Number(row.third_place_cost),
+  };
+}
+
+export async function lockFinalResults(
+  transaction: DatabaseTransaction,
+  gameId: string,
+): Promise<GameResultSummary[]> {
+  const result = await transaction.query<ResultRow>(
+    `
+      SELECT game_result.group_player_id,
+             COALESCE(group_player.display_name_override, player.display_name) AS display_name,
+             game_result.remaining_chips, game_result.rebuy_count,
+             game_result.score, game_result.rank, game_result.cost_share
+      FROM game_results AS game_result
+      INNER JOIN group_players AS group_player
+        ON group_player.id = game_result.group_player_id
+      INNER JOIN players AS player ON player.id = group_player.player_id
+      WHERE game_result.game_id = $1
+      ORDER BY game_result.rank ASC
+      FOR UPDATE OF game_result
+    `,
+    [gameId],
+  );
+  return result.rows.map(mapResultRow);
+}
+
+export async function updateParticipantsForCorrection(
+  transaction: DatabaseTransaction,
+  gameId: string,
+  participants: FinalizationParticipant[],
+): Promise<void> {
+  for (const participant of participants) {
+    const result = await transaction.query(
+      `
+        UPDATE game_participants AS participant
+        SET remaining_chips = $3,
+            rebuy_count = $4,
+            status = 'submitted',
+            updated_at = NOW()
+        FROM games AS game
+        WHERE participant.game_id = $1
+          AND participant.group_player_id = $2
+          AND game.id = participant.game_id
+          AND game.status = 'finalized'
+      `,
+      [
+        gameId,
+        participant.groupPlayerId,
+        participant.remainingChips,
+        participant.rebuyCount,
+      ],
+    );
+    if (result.rowCount !== 1) {
+      throw new Error("participant changed during result correction");
+    }
+  }
+}
+
+export async function replaceFinalResults(
+  transaction: DatabaseTransaction,
+  gameId: string,
+  results: GameResultSummary[],
+): Promise<void> {
+  await transaction.query("DELETE FROM game_results WHERE game_id = $1", [
+    gameId,
+  ]);
+  await insertFinalResults(transaction, gameId, results);
+}
+
+export async function insertResultRevision(
+  transaction: DatabaseTransaction,
+  gameId: string,
+  beforeResults: GameResultSummary[],
+  afterResults: GameResultSummary[],
+): Promise<void> {
+  await transaction.query(
+    `
+      INSERT INTO game_result_revisions (
+        game_id, revision_number, before_results, after_results
+      )
+      SELECT $1,
+             COALESCE(MAX(revision_number), 0) + 1,
+             $2::jsonb,
+             $3::jsonb
+      FROM game_result_revisions
+      WHERE game_id = $1
+    `,
+    [gameId, JSON.stringify(beforeResults), JSON.stringify(afterResults)],
+  );
+}
+
+export async function touchGameAfterCorrection(
+  transaction: DatabaseTransaction,
+  groupId: string,
+  gameId: string,
+): Promise<boolean> {
+  const result = await transaction.query(
+    `
+      UPDATE games
+      SET updated_at = NOW()
+      WHERE id = $1 AND group_id = $2 AND status = 'finalized'
+    `,
+    [gameId, groupId],
+  );
+  return result.rowCount === 1;
+}
+
+export async function listResultRevisions(
+  groupId: string,
+  gameId: string,
+): Promise<GameResultRevision[]> {
+  const result = await queryDatabase<RevisionRow>(
+    `
+      SELECT revision.id,
+             revision.revision_number,
+             revision.corrected_at,
+             revision.before_results,
+             revision.after_results
+      FROM game_result_revisions AS revision
+      INNER JOIN games AS game ON game.id = revision.game_id
+      WHERE revision.game_id = $1 AND game.group_id = $2
+      ORDER BY revision.revision_number DESC
+    `,
+    [gameId, groupId],
+  );
+  return result.rows.map((row) => ({
+    id: row.id,
+    revisionNumber: row.revision_number,
+    correctedAt: row.corrected_at.toISOString(),
+    beforeResults: row.before_results,
+    afterResults: row.after_results,
+  }));
+}
+
+function mapResultRow(row: ResultRow): GameResultSummary {
+  return {
+    groupPlayerId: row.group_player_id,
+    displayName: row.display_name,
+    remainingChips: Number(row.remaining_chips),
+    rebuyCount: row.rebuy_count,
+    score: Number(row.score),
+    rank: row.rank,
+    costShare: Number(row.cost_share),
   };
 }

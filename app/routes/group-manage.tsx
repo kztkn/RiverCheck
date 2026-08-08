@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { getGroupOverview } from "@server/services/group-service.server";
+import { requireOrganizer } from "@server/services/organizer-auth.server";
 import type { Route } from "./+types/group-manage";
 
 const statusLabels = {
@@ -8,7 +9,8 @@ const statusLabels = {
   finalized: "確定済み",
 } as const;
 
-export async function loader({ params }: Route.LoaderArgs) {
+export async function loader({ request, params }: Route.LoaderArgs) {
+  await requireOrganizer(request, params.groupCode);
   const overview = await getGroupOverview(params.groupCode);
   if (!overview) throw new Response("Group not found", { status: 404 });
   return overview;
@@ -24,9 +26,20 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
           <span className="brand-mark">RC</span>
           <span>RiverCheck</span>
         </Link>
-        <Link className="text-link" to={`/g/${group.publicCode}`}>
-          参加者向け画面
-        </Link>
+        <div className="header-actions">
+          <Link className="text-link" to={`/g/${group.publicCode}`}>
+            参加者向け画面
+          </Link>
+          <form
+            action={`/g/${group.publicCode}/organizer-login`}
+            method="post"
+          >
+            <input name="intent" type="hidden" value="logout" />
+            <button className="text-button" type="submit">
+              ログアウト
+            </button>
+          </form>
+        </div>
       </header>
 
       <section className="hero-card organizer-hero">

@@ -4,10 +4,12 @@ import {
   readCreateGameForm,
 } from "@server/services/game-service.server";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
+import { requireOrganizer } from "@server/services/organizer-auth.server";
 import { GameSettingsFields } from "../components/game-settings-fields";
 import type { Route } from "./+types/game-new";
 
-export async function loader({ params }: Route.LoaderArgs) {
+export async function loader({ request, params }: Route.LoaderArgs) {
+  await requireOrganizer(request, params.groupCode);
   const group = await findGroupByPublicCode(params.groupCode);
   if (!group) throw new Response("Group not found", { status: 404 });
   return {
@@ -17,6 +19,7 @@ export async function loader({ params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
+  await requireOrganizer(request, params.groupCode);
   const values = readCreateGameForm(await request.formData());
   const result = await createGameForGroup(params.groupCode, values);
   if (!result.ok) return { errors: result.errors, values: result.values };

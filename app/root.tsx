@@ -8,12 +8,13 @@ import {
 } from "react-router";
 import type { Route } from "./+types/root";
 import "./styles/app.css";
+import "./styles/stats.css";
 
 export const meta: Route.MetaFunction = () => [
   { title: "RiverCheck | ポーカー会の結果・精算管理" },
   {
     name: "description",
-    content: "ポーカー会の開催、結果入力、順位計算、会場費精算をスマホで管理。",
+    content: "ポーカー会の開催、結果入力、順位計算、会費精算をスマホで管理。",
   },
 ];
 

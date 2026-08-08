@@ -97,7 +97,7 @@ export function validateGameSettingsForm(
     errors.playedAt = "有効な開催日を入力してください。";
   }
 
-  const initialChips = parseNonNegativeInteger(
+  const initialChips = parsePositiveInteger(
     values.initialChips,
     "initialChips",
     errors,
@@ -180,10 +180,10 @@ export function validateGameSettingsForm(
       const settlementTotal =
         Math.ceil(venueCost / COST_ROUNDING_UNIT) * COST_ROUNDING_UNIT;
       if (!Number.isSafeInteger(settlementTotal)) {
-        errors.venueCost = "会場費が大きすぎます。";
+        errors.venueCost = "会費が大きすぎます。";
       } else {
         errors.venueCost =
-          "この人数では精算総額が不足します。会場費か上位の負担額を調整してください。";
+          "この人数では精算総額が不足します。会費か上位の負担額を調整してください。";
       }
     }
   }

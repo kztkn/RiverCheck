@@ -3,6 +3,7 @@ import { calculateCostShares } from "@domain/cost-sharing/calculate-cost-shares"
 import {
   recommendTopCosts,
   recommendTopCostsForAttendance,
+  type RecommendationMode,
 } from "@domain/cost-sharing/recommend-top-costs";
 
 export interface GameSettingsValues {
@@ -21,6 +22,7 @@ type SettingsErrors = Partial<Record<keyof GameSettingsValues, string>>;
 interface GameSettingsFieldsProps {
   actualParticipantCount?: number;
   errors: SettingsErrors;
+  onParticipantCountChange?: (value: string) => void;
   showCoreSettings?: boolean;
   values: GameSettingsValues;
 }
@@ -28,6 +30,7 @@ interface GameSettingsFieldsProps {
 export function GameSettingsFields({
   actualParticipantCount = 0,
   errors,
+  onParticipantCountChange,
   showCoreSettings = true,
   values,
 }: GameSettingsFieldsProps) {
@@ -37,18 +40,25 @@ export function GameSettingsFields({
     secondPlaceCost: values.secondPlaceCost,
     thirdPlaceCost: values.thirdPlaceCost,
   }));
-  const [participantCount, setParticipantCount] = useState(
-    Math.max(4, Number(values.previewParticipantCount) || 4),
+  const [participantCountInput, setParticipantCountInput] = useState(
+    String(Math.max(4, Number(values.previewParticipantCount) || 4)),
   );
   const [recommendationNotice, setRecommendationNotice] = useState<
     string | null
   >(null);
 
   useEffect(() => {
-    setParticipantCount(
+    const value = String(
       Math.max(4, Number(values.previewParticipantCount) || 4),
     );
-  }, [values.previewParticipantCount]);
+    setParticipantCountInput(value);
+    onParticipantCountChange?.(value);
+  }, [onParticipantCountChange, values.previewParticipantCount]);
+
+  const participantCount = Math.max(
+    4,
+    Number(participantCountInput) || 4,
+  );
 
   const preview = useMemo(() => {
     try {
@@ -64,19 +74,20 @@ export function GameSettingsFields({
       return {
         result: null,
         error:
-          "設定不可です。1〜3位を100円単位かつ順位順の金額にし、4位以下へ3位額を保証できる会場費にしてください。",
+          "設定不可です。1〜3位を100円単位かつ順位順の金額にし、4位以下へ3位額を保証できる会費にしてください。",
       };
     }
   }, [costValues, participantCount]);
 
-  const recommendation = useMemo(() => {
+  const recommendationAvailable = useMemo(() => {
     try {
-      return recommendTopCosts(
+      recommendTopCosts(
         parsePreviewInteger(costValues.venueCost),
         participantCount,
       );
+      return true;
     } catch {
-      return null;
+      return false;
     }
   }, [costValues.venueCost, participantCount]);
 
@@ -85,18 +96,21 @@ export function GameSettingsFields({
     setCostValues((current) => ({ ...current, [name]: value }));
   }
 
-  function applyRecommendation() {
+  function applyRecommendation(mode: RecommendationMode) {
     let adjusted;
     try {
       adjusted = recommendTopCostsForAttendance(
         parsePreviewInteger(costValues.venueCost),
         participantCount,
         actualParticipantCount,
+        mode,
       );
     } catch {
       return;
     }
-    setParticipantCount(adjusted.participantCount);
+    const adjustedParticipantCount = String(adjusted.participantCount);
+    setParticipantCountInput(adjustedParticipantCount);
+    onParticipantCountChange?.(adjustedParticipantCount);
     setCostValues((current) => ({
       ...current,
       firstPlaceCost: String(adjusted.firstPlaceCost),
@@ -105,8 +119,8 @@ export function GameSettingsFields({
     }));
     setRecommendationNotice(
       adjusted.adjustedToAttendance
-        ? `参加状況${actualParticipantCount}人に合わせて計算しました。`
-        : `${adjusted.participantCount}人想定のおすすめ値を反映しました。`,
+        ? `参加状況${actualParticipantCount}人に合わせて${recommendationLabel(mode)}を反映しました。`
+        : `${adjusted.participantCount}人想定の${recommendationLabel(mode)}を反映しました。`,
     );
   }
 
@@ -147,6 +161,7 @@ export function GameSettingsFields({
               error={errors.initialChips}
               inputMode="numeric"
               label="初期チップ（100BB）"
+              min={1}
               name="initialChips"
               required
               type="number"
@@ -161,15 +176,16 @@ export function GameSettingsFields({
       <fieldset className="form-section">
         <legend>
           <span>03</span>
-          会場費の精算
+          会費の精算
         </legend>
         <Field
+          containerClassName="venue-cost-field"
           error={errors.venueCost}
           inputMode="numeric"
-          label="会場費"
+          label="会費"
           name="venueCost"
           onChange={(event) => setCost("venueCost", event.target.value)}
-          placeholder="5665"
+          placeholder="12000"
           required
           suffix="円"
           type="number"
@@ -182,7 +198,7 @@ export function GameSettingsFields({
           <Field
             error={errors.firstPlaceCost}
             inputMode="numeric"
-            label="🥇 1位"
+            label={<PlaceLabel rank={1} tone="gold" />}
             name="firstPlaceCost"
             onChange={(event) => setCost("firstPlaceCost", event.target.value)}
             required
@@ -193,7 +209,7 @@ export function GameSettingsFields({
           <Field
             error={errors.secondPlaceCost}
             inputMode="numeric"
-            label="🥈 2位"
+            label={<PlaceLabel rank={2} tone="silver" />}
             name="secondPlaceCost"
             onChange={(event) => setCost("secondPlaceCost", event.target.value)}
             required
@@ -204,7 +220,7 @@ export function GameSettingsFields({
           <Field
             error={errors.thirdPlaceCost}
             inputMode="numeric"
-            label="🥉 3位"
+            label={<PlaceLabel rank={3} tone="bronze" />}
             name="thirdPlaceCost"
             onChange={(event) => setCost("thirdPlaceCost", event.target.value)}
             required
@@ -220,58 +236,56 @@ export function GameSettingsFields({
               <p className="eyebrow">LIVE PREVIEW</p>
               <h2>順位別の負担額</h2>
             </div>
-            <label className="preview-count">
-              <span>想定人数</span>
-              <input
-                inputMode="numeric"
-                aria-invalid={Boolean(errors.previewParticipantCount)}
-                min={4}
-                name="previewParticipantCount"
-                onChange={(event) => {
-                  setRecommendationNotice(null);
-                  setParticipantCount(
-                    Math.max(4, Number(event.target.value) || 4),
-                  );
-                }}
-                type="number"
-                value={participantCount}
-              />
-              <span>人</span>
-            </label>
+            <Field
+              containerClassName="preview-count-field"
+              error={errors.previewParticipantCount}
+              inputMode="numeric"
+              label="人数"
+              min={4}
+              name="previewParticipantCount"
+              onChange={(event) => {
+                setRecommendationNotice(null);
+                setParticipantCountInput(event.target.value);
+                onParticipantCountChange?.(event.target.value);
+              }}
+              required
+              suffix="人"
+              type="number"
+              value={participantCountInput}
+            />
           </div>
 
-          {errors.previewParticipantCount ? (
-            <p className="preview-error">{errors.previewParticipantCount}</p>
-          ) : null}
-
-          {recommendation ? (
+          {recommendationAvailable ? (
             <div className="recommendation-card">
               <div>
                 <p className="recommendation-title">
-                  なだらか配分のおすすめ
+                  おすすめ配分をすぐ反映
                 </p>
                 <p>
-                  1位 {formatYen(recommendation.firstPlaceCost)}・2位{" "}
-                  {formatYen(recommendation.secondPlaceCost)}・3位{" "}
-                  {formatYen(recommendation.thirdPlaceCost)}
+                  標準は順位差をしっかり、ゆる傾斜は少人数・初心者向けです。
                 </p>
-                <small>
-                  この設定なら最下位は{" "}
-                  {formatYen(recommendation.shares.at(-1) ?? 0)}です。
-                </small>
                 {recommendationNotice ? (
                   <small className="recommendation-notice">
                     {recommendationNotice}
                   </small>
                 ) : null}
               </div>
-              <button
-                className="button button-small button-secondary"
-                onClick={applyRecommendation}
-                type="button"
-              >
-                おすすめ値を反映
-              </button>
+              <div className="recommendation-actions">
+                <button
+                  className="button button-small button-secondary"
+                  onClick={() => applyRecommendation("standard")}
+                  type="button"
+                >
+                  標準を反映
+                </button>
+                <button
+                  className="button button-small button-secondary"
+                  onClick={() => applyRecommendation("gentle")}
+                  type="button"
+                >
+                  ゆる傾斜を反映
+                </button>
+              </div>
             </div>
           ) : null}
 
@@ -313,13 +327,32 @@ export function GameSettingsFields({
 }
 
 interface FieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  containerClassName?: string;
   error?: string;
-  label: string;
+  label: React.ReactNode;
   name: string;
   suffix?: string;
 }
 
+function PlaceLabel({
+  rank,
+  tone,
+}: {
+  rank: number;
+  tone: "gold" | "silver" | "bronze";
+}) {
+  return (
+    <span aria-label={`${rank}位`} className="place-label">
+      <span aria-hidden="true" className={`place-rank place-rank-${tone}`}>
+        {rank}
+      </span>
+      <span aria-hidden="true">位</span>
+    </span>
+  );
+}
+
 export function Field({
+  containerClassName,
   error,
   label,
   name,
@@ -328,7 +361,10 @@ export function Field({
 }: FieldProps) {
   const errorId = `${name}-error`;
   return (
-    <label className="field" htmlFor={name}>
+    <label
+      className={`field${containerClassName ? ` ${containerClassName}` : ""}`}
+      htmlFor={name}
+    >
       <span className="field-label">{label}</span>
       <span className="input-wrap">
         <input
@@ -336,7 +372,10 @@ export function Field({
           aria-describedby={error ? errorId : undefined}
           aria-invalid={Boolean(error)}
           id={name}
-          min={inputProps.type === "number" ? 0 : undefined}
+          min={
+            inputProps.min ??
+            (inputProps.type === "number" ? 0 : undefined)
+          }
           name={name}
         />
         {suffix ? <span className="input-suffix">{suffix}</span> : null}
@@ -359,4 +398,8 @@ function parsePreviewInteger(value: string): number {
 
 function formatYen(value: number): string {
   return `${new Intl.NumberFormat("ja-JP").format(value)}円`;
+}
+
+function recommendationLabel(mode: RecommendationMode): string {
+  return mode === "gentle" ? "ゆる傾斜" : "標準傾斜";
 }

@@ -2,7 +2,10 @@ import { Form, Link, redirect, useNavigation } from "react-router";
 import { useState } from "react";
 import { findGameForGroup } from "@server/repositories/game-repository.server";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
-import { listFinalResults } from "@server/repositories/finalization-repository.server";
+import {
+  listFinalResults,
+  listResultRevisions,
+} from "@server/repositories/finalization-repository.server";
 import {
   claimRegisteredParticipant,
   findParticipantByTokenHash,
@@ -40,15 +43,24 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     context.game.status === "finalized"
       ? await listFinalResults(context.group.id, params.gameId)
       : [];
+  const revisions =
+    context.game.status === "finalized"
+      ? await listResultRevisions(context.group.id, params.gameId)
+      : [];
   return {
     group: { name: context.group.name, publicCode: context.group.publicCode },
     game: context.game,
     participant,
     players,
     results,
+    revisions,
     lineText:
       results.length > 0
-        ? formatLineResult(context.game.title, results)
+        ? formatLineResult(
+          context.game.title,
+          results,
+          context.game.initialChips,
+        )
         : "",
     shareUrl: `${url.origin}${url.pathname}`,
     notice: url.searchParams.get("notice"),
@@ -221,8 +233,11 @@ export default function GameParticipant({
       {loaderData.game.status === "finalized" ? (
         <FinalResults
           lineText={loaderData.lineText}
+          initialChips={loaderData.game.initialChips}
           results={loaderData.results}
+          revisions={loaderData.revisions}
           shareUrl={loaderData.shareUrl}
+          showSharePanel={false}
         />
       ) : loaderData.game.status === "draft" ? (
         <section className="participant-panel waiting-panel">
@@ -330,7 +345,7 @@ export default function GameParticipant({
             {loaderData.players.length === 0 ? (
               <p className="muted-copy">登録済みメンバーはまだいません。</p>
             ) : (
-              <div className="player-radio-list">
+              <div className="player-join-list">
                 {loaderData.players.map((player) => (
                   <Form
                     className="player-join-form"
@@ -359,13 +374,14 @@ export default function GameParticipant({
             )}
           </section>
 
-          <section className="participant-panel">
-            <p className="eyebrow">NEW PLAYER</p>
-            <h2>新しい名前で参加</h2>
-            <p className="muted-copy">
-              入力した名前は次回から登録済みメンバーとして選べます。
-            </p>
-            <Form className="join-choice-form" method="post" reloadDocument>
+          <section className="participant-panel new-player-panel">
+            <div>
+              <h2>一覧に名前がない方</h2>
+              <p className="muted-copy">
+                名前を追加して参加できます。次回から一覧に表示されます。
+              </p>
+            </div>
+            <Form className="new-player-form" method="post" reloadDocument>
               <input name="intent" type="hidden" value="join-new" />
               <label className="field">
                 <span className="field-label">表示名</span>

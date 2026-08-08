@@ -4,9 +4,11 @@ import {
   getPlayerManagement,
   readAddPlayerForm,
 } from "@server/services/player-service.server";
+import { requireOrganizer } from "@server/services/organizer-auth.server";
 import type { Route } from "./+types/players";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
+  await requireOrganizer(request, params.groupCode);
   const management = await getPlayerManagement(params.groupCode);
   if (!management) throw new Response("Group not found", { status: 404 });
 
@@ -17,6 +19,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
+  await requireOrganizer(request, params.groupCode);
   const values = readAddPlayerForm(await request.formData());
   const result = await addPlayerForGroup(params.groupCode, values);
   if (!result.ok) return result;
@@ -81,7 +84,7 @@ export default function Players({
                 id="displayName"
                 maxLength={40}
                 name="displayName"
-                placeholder="例：たろう"
+                placeholder="例：PKサンダー"
                 required
               />
             </span>
