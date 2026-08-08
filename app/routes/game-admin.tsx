@@ -36,6 +36,7 @@ import {
 import { formatLineResult } from "@domain/result-sharing/format-line-result";
 import { GameSettingsFields } from "../components/game-settings-fields";
 import { FinalResults } from "../components/final-results";
+import { ParticipantLinkQr } from "../components/participant-link-qr";
 import { ResultCorrectionPanel } from "../components/result-correction-panel";
 import type { Route } from "./+types/game-admin";
 
@@ -389,6 +390,7 @@ export default function GameAdmin({
                 )}
               </button>
             </div>
+            <ParticipantLinkQr url={loaderData.participantUrl} />
             <Link
               className="button button-secondary"
               reloadDocument

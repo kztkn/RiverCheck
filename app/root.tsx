@@ -8,6 +8,7 @@ import {
 } from "react-router";
 import type { Route } from "./+types/root";
 import "./styles/app.css";
+import "./styles/qr.css";
 import "./styles/stats.css";
 
 export const meta: Route.MetaFunction = () => [
