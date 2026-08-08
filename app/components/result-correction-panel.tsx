@@ -253,7 +253,7 @@ export function ResultCorrectionPanel({
             onClick={cancelEditing}
             type="button"
           >
-            キャンセル
+            ✕
           </button>
           <button
             className="button button-primary"

@@ -31,7 +31,7 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
           <h1>{group.name}</h1>
           <p className="hero-copy">
             チップも会費も戦績も<br />
-            みんなの結果をひとつにまとめます。
+            みんなの結果をひとつにまとめる
           </p>
         </div>
       </section>
@@ -39,7 +39,7 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
       <Link className="stats-cta" to="stats">
         <span>
           <small>PLAYER STATS</small>
-          <strong>個人戦績を見る</strong>
+          <strong>ランキングを見る</strong>
         </span>
         <span aria-hidden="true">→</span>
       </Link>

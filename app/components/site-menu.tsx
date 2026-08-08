@@ -55,7 +55,7 @@ export function GroupSiteMenu({
   return (
     <SiteMenu
       items={[
-        { label: "個人戦績", to: `${basePath}/stats` },
+        { label: "ランキング", to: `${basePath}/stats` },
         { label: "プロフィール設定", to: `${basePath}/profile` },
         { label: "主催者画面", reloadDocument: true, to: `${basePath}/manage` },
         ...(organizer

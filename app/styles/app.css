@@ -1527,8 +1527,8 @@ input[aria-invalid="true"] {
   border-radius: 12px;
   background: #091711;
   color: var(--ink);
-  font-size: 0.8rem;
-  line-height: 1.75;
+  font-size: 1rem;
+  line-height: 1.65;
   padding: 14px;
   resize: vertical;
 }
@@ -1554,12 +1554,6 @@ input[aria-invalid="true"] {
   .venue-cost-field .field-error,
   .field-grid-three .field-error {
     grid-column: 1 / -1;
-  }
-}
-
-@media (min-width: 640px) {
-  .share-actions {
-    grid-template-columns: 1.1fr 1fr;
   }
 }
 

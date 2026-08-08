@@ -17,19 +17,19 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     group: overview.group,
     profile: profile
       ? {
-          avatarUpdatedAt: profile.avatarUploadedAt,
-          displayName: profile.displayName,
-          groupPlayerId: profile.groupPlayerId,
-          profileMessage: profile.profileMessage,
-          updatedAt: profile.updatedAt,
-        }
+        avatarUpdatedAt: profile.avatarUploadedAt,
+        displayName: profile.displayName,
+        groupPlayerId: profile.groupPlayerId,
+        profileMessage: profile.profileMessage,
+        updatedAt: profile.updatedAt,
+      }
       : null,
     avatarUrl: profile
       ? buildPlayerAvatarUrl({
-          avatarUpdatedAt: profile.avatarUploadedAt,
-          groupCode: params.groupCode,
-          groupPlayerId: profile.groupPlayerId,
-        })
+        avatarUpdatedAt: profile.avatarUploadedAt,
+        groupCode: params.groupCode,
+        groupPlayerId: profile.groupPlayerId,
+      })
       : null,
     saved: url.searchParams.has("saved"),
   };
@@ -79,7 +79,7 @@ export default function PlayerProfileRoute({
       <section className="form-intro profile-intro">
         <p className="eyebrow">YOUR PROFILE</p>
         <h1>プレイヤー設定</h1>
-        <p>名前・アイコン・一言は、RiverCheck内のあなた自身に紐付きます。</p>
+        <p>名前・アイコン・ひとことは、RiverCheck内のあなた自身に紐付きます。</p>
       </section>
 
       {loaderData.saved ? (
@@ -99,10 +99,10 @@ export default function PlayerProfileRoute({
       ) : (
         <section className="participant-panel profile-unlinked">
           <span className="empty-icon" aria-hidden="true">♠</span>
-          <h2>本人確認が必要です</h2>
-          <p>主催者から届いた本人用リンクを、この端末で一度開いてください。</p>
+          <h2>この機能を利用するには本人確認が必要です</h2>
+          <p>主催者へ問い合わせて本人用リンクを受け取り、この端末で一度開いてください。</p>
           <Link className="button button-secondary" to={`/g/${loaderData.group.publicCode}`}>
-            グループトップへ戻る
+            トップへ戻る
           </Link>
         </section>
       )}

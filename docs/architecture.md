@@ -75,7 +75,7 @@ Rate Limiting APIは拠点単位かつ結果整合性が緩やかな防御であ
 
 ## プレイヤープロフィールと本人端末
 
-プロフィールは`players`へ1件だけ持ち、`group_players`はグループ所属を表す。ユーザーネームの変更は過去結果や個人戦績を含む全所属先へ反映する。アイコン本体は開催写真と同じ非公開R2 bucketへ`players/{playerId}/{uuid}.{ext}`で保存し、DBには現在参照するobject keyとメタデータだけを保存する。配信routeはgroupPlayerIdが指定グループに所属することを確認してからR2 objectを返す。
+プロフィールは`players`へ1件だけ持ち、`group_players`はグループ所属を表す。ユーザーネームの変更は過去結果やランキングを含む全所属先へ反映する。アイコン本体は開催写真と同じ非公開R2 bucketへ`players/{playerId}/{uuid}.{ext}`で保存し、DBには現在参照するobject keyとメタデータだけを保存する。配信routeはgroupPlayerIdが指定グループに所属することを確認してからR2 objectを返す。
 
 本人端末tokenは32バイトの暗号学的乱数とし、DBの`player_profile_sessions`にはSHA-256ハッシュだけを保存する。平文tokenはPath=/のHttpOnly、SameSite=Lax、1年有効のCookieへ保持し、本番HTTPSではSecureを付ける。新規playerは参加と同時にsessionを作成する。
 

@@ -25,8 +25,7 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
 
       <section className="stats-intro">
         <p className="eyebrow">PLAYER STATS</p>
-        <h1>個人戦績</h1>
-        <p>{group.name}の確定済み結果から集計しています。</p>
+        <h1>ランキング</h1>
       </section>
 
       <section className="content-section" aria-labelledby="ranking-heading">

@@ -25,7 +25,7 @@ export function FinalResults({
 }) {
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const [shareState, setShareState] = useState<
-    "idle" | "shared" | "copied" | "fallback-copied" | "failed"
+    "idle" | "shared" | "fallback-copied" | "failed"
   >("idle");
   const shareText = `${lineText}\n\n結果を見る\n${shareUrl}`;
   const settlementTotal = results.reduce(
@@ -33,14 +33,14 @@ export function FinalResults({
     0,
   );
 
-  async function copyResult(nextState: "copied" | "fallback-copied") {
+  async function copyResultFallback() {
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(shareText);
       } else if (!copyWithSelection(textAreaRef.current)) {
         throw new Error("copy command was rejected");
       }
-      setShareState(nextState);
+      setShareState("fallback-copied");
     } catch {
       textAreaRef.current?.focus();
       textAreaRef.current?.select();
@@ -50,7 +50,7 @@ export function FinalResults({
 
   async function handleShare() {
     if (!navigator.share) {
-      await copyResult("fallback-copied");
+      await copyResultFallback();
       return;
     }
 
@@ -59,7 +59,7 @@ export function FinalResults({
       setShareState("shared");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
-      await copyResult("fallback-copied");
+      await copyResultFallback();
     }
   }
 
@@ -132,24 +132,15 @@ export function FinalResults({
             >
               共有先を選ぶ
             </button>
-            <button
-              className="button button-secondary"
-              onClick={() => copyResult("copied")}
-              type="button"
-            >
-              {shareState === "copied" ? "コピーしました" : "結果文とリンクをコピー"}
-            </button>
           </div>
           <p aria-live="polite" className="share-status">
             {shareState === "shared"
               ? "共有画面を開きました。"
-              : shareState === "copied"
-                ? "LINEやSNSを開いて貼り付けてください。"
-                : shareState === "fallback-copied"
-                  ? "このブラウザでは共有画面を開けないため、結果文とリンクをコピーしました。"
-                  : shareState === "failed"
-                    ? "自動コピーできないため、選択されたテキストを長押しでコピーしてください。"
-                    : ""}
+              : shareState === "fallback-copied"
+                ? "このブラウザでは共有画面を開けないため、結果文とリンクをコピーしました。"
+                : shareState === "failed"
+                  ? "自動コピーできないため、選択されたテキストを長押しでコピーしてください。"
+                  : ""}
           </p>
         </div>
       ) : null}
