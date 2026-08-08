@@ -1,4 +1,5 @@
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
+import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
 import {
   insertPlayerForGroup,
   listGroupPlayers,
@@ -56,8 +57,10 @@ export async function addPlayerForGroup(
 
   if (!displayName) {
     errors.displayName = "表示名を入力してください。";
-  } else if (Array.from(displayName).length > 40) {
-    errors.displayName = "表示名は40文字以内で入力してください。";
+  } else if (
+    Array.from(displayName).length > PLAYER_DISPLAY_NAME_MAX_LENGTH
+  ) {
+    errors.displayName = `表示名は${PLAYER_DISPLAY_NAME_MAX_LENGTH}文字以内で入力してください。`;
   }
 
   if (Object.keys(errors).length > 0) {

@@ -5,6 +5,16 @@ import { defineConfig } from "vite";
 const isTypeGeneration = process.argv.includes("typegen");
 
 export default defineConfig({
+  build: {
+    license: {
+      fileName: "oss-licenses.md",
+    },
+    rolldownOptions: {
+      output: {
+        postBanner: "/* Bundled OSS licenses: /oss-licenses.md */",
+      },
+    },
+  },
   plugins: [
     ...(isTypeGeneration
       ? []

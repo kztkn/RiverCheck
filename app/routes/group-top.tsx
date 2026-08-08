@@ -1,25 +1,19 @@
 import { Link } from "react-router";
+import { GroupSiteHeader } from "~/components/site-menu";
 import { getGroupOverview } from "@server/services/group-service.server";
-import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
 import type { GameListItem } from "@shared-types/game";
 import type { Route } from "./+types/group-top";
 
 const statusLabels = {
   draft: "準備中",
-  open: "受付中",
+  open: "開催中",
   finalized: "終了",
 } as const;
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-  const [overview, profileOverview] = await Promise.all([
-    getGroupOverview(params.groupCode),
-    getAuthenticatedPlayerProfile(request, params.groupCode),
-  ]);
+export async function loader({ params }: Route.LoaderArgs) {
+  const overview = await getGroupOverview(params.groupCode);
   if (!overview) throw new Response("Group not found", { status: 404 });
-  return {
-    ...overview,
-    hasPlayerProfile: Boolean(profileOverview?.profile),
-  };
+  return overview;
 }
 
 export default function GroupTop({ loaderData }: Route.ComponentProps) {
@@ -29,27 +23,14 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
 
   return (
     <main className="page-shell">
-      <header className="site-header">
-        <Link className="brand" to={`/g/${group.publicCode}`}>
-          <span className="brand-mark">RC</span>
-          <span>RiverCheck</span>
-        </Link>
-        <div className="header-actions">
-          {loaderData.hasPlayerProfile ? (
-            <Link className="text-link" to="profile">プレイヤー設定</Link>
-          ) : null}
-          <Link className="text-link" to="manage">
-            主催者画面
-          </Link>
-        </div>
-      </header>
+      <GroupSiteHeader groupCode={group.publicCode} />
 
       <section className="hero-card group-hero-card">
         <div>
           <p className="eyebrow">YOUR POKER TABLE</p>
           <h1>{group.name}</h1>
           <p className="hero-copy">
-            チップも会費も、最後のリバーまで迷わない。
+            チップも会費も戦績も<br />
             みんなの結果をひとつにまとめます。
           </p>
         </div>
@@ -65,9 +46,9 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
 
       <GameSection
         eyebrow="OPEN GAMES"
-        emptyMessage="現在受付中の開催はありません。"
+        emptyMessage="現在開催中の会はありません。"
         games={activeGames}
-        heading="受付中"
+        heading="開催中"
       />
 
       <GameSection
@@ -77,11 +58,6 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
         heading="過去の開催"
         isPast
       />
-
-      <footer className="site-footer">
-        <span>RIVER CHECK</span>
-        <span>Play fair. Settle clean.</span>
-      </footer>
     </main>
   );
 }
@@ -140,12 +116,7 @@ function GameSection({
                 ) : null}
               </Link>
               <div className="game-card-actions">
-                <Link className="card-action" to={`games/${game.id}`}>
-                  {isPast ? "結果を見る" : "参加ページ"}
-                  <span className="card-arrow" aria-hidden="true">
-                    →
-                  </span>
-                </Link>
+                <Link className="card-action" to={`games/${game.id}`}></Link>
               </div>
             </article>
           ))}

@@ -1,3 +1,4 @@
+import { GroupSiteHeader } from "~/components/site-menu";
 import { Form, Link, redirect, useNavigation } from "react-router";
 import {
   createGameForGroup,
@@ -51,18 +52,7 @@ export default function NewGame({
 
   return (
     <main className="page-shell form-page">
-      <header className="site-header">
-        <Link className="brand" to={`/g/${loaderData.group.publicCode}/manage`}>
-          <span className="brand-mark">RC</span>
-          <span>RiverCheck</span>
-        </Link>
-        <Link
-          className="text-link"
-          to={`/g/${loaderData.group.publicCode}/manage`}
-        >
-          ← 主催者画面
-        </Link>
-      </header>
+      <GroupSiteHeader groupCode={loaderData.group.publicCode} organizer />
 
       <section className="form-intro">
         <p className="eyebrow">NEW GAME</p>

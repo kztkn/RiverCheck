@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  margin: -40px 0 68px;
+  margin: 0 0 68px;
   border: 1px solid rgba(57, 222, 141, 0.32);
   border-radius: 20px;
   background:
@@ -312,7 +312,7 @@
 @media (max-width: 639px) {
   .stats-cta {
     min-height: 90px;
-    margin-top: -44px;
+    margin-bottom: 52px;
   }
 
   .stats-heading {

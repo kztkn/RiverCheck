@@ -26,7 +26,7 @@ import {
 } from "@server/storage/player-avatar-storage.server";
 import type { GroupSummary } from "@shared-types/group";
 
-const CLAIM_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
+const CLAIM_MAX_AGE_MS = 24 * 60 * 60 * 1_000;
 const SESSION_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1_000;
 
 export interface ProfileClaimOverview {

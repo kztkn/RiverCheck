@@ -1,4 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  GAME_TITLE_MAX_LENGTH,
+  GAME_TITLE_RECOMMENDED_LENGTH,
+} from "@domain/game/game-title";
 import { calculateCostShares } from "@domain/cost-sharing/calculate-cost-shares";
 import {
   recommendTopCosts,
@@ -137,10 +141,14 @@ export function GameSettingsFields({
               defaultValue={values.title}
               error={errors.title}
               label="開催名"
+              maxLength={GAME_TITLE_MAX_LENGTH}
               name="title"
               placeholder="例：8月のポーカー会"
               required
             />
+            <p className="field-hint">
+              {GAME_TITLE_RECOMMENDED_LENGTH}文字程度がおすすめ（最大{GAME_TITLE_MAX_LENGTH}文字）
+            </p>
             <Field
               defaultValue={values.playedAt}
               error={errors.playedAt}

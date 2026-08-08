@@ -1,4 +1,5 @@
-import { Form, Link, redirect, useNavigation } from "react-router";
+import { GroupSiteHeader } from "~/components/site-menu";
+import { Form, redirect, useNavigation } from "react-router";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import {
   clearOrganizerSessionCookie,
@@ -71,15 +72,7 @@ export default function OrganizerLogin({
 
   return (
     <main className="page-shell auth-page">
-      <header className="site-header">
-        <Link className="brand" to={`/g/${loaderData.group.publicCode}`}>
-          <span className="brand-mark">RC</span>
-          <span>RiverCheck</span>
-        </Link>
-        <Link className="text-link" to={`/g/${loaderData.group.publicCode}`}>
-          参加者向け画面
-        </Link>
-      </header>
+      <GroupSiteHeader groupCode={loaderData.group.publicCode} />
 
       <section className="participant-panel auth-panel">
         <div>

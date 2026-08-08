@@ -151,6 +151,7 @@ export function PlayerProfileEditor({
           name="displayName"
           required
         />
+        <span className="field-hint">最大{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字</span>
         {errors.displayName ? (
           <span className="field-error">{errors.displayName}</span>
         ) : null}

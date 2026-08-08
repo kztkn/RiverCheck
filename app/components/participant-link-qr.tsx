@@ -1,7 +1,19 @@
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
-export function ParticipantLinkQr({ url }: { url: string }) {
+export function ParticipantLinkQr({
+  description = "読み取ると、この会の参加者画面が直接開きます。",
+  panelId = "participant-link-qr",
+  panelTitle = "参加する端末で読み取ってください",
+  qrTitle = "参加者用リンクのQRコード",
+  url,
+}: {
+  description?: string;
+  panelId?: string;
+  panelTitle?: string;
+  qrTitle?: string;
+  url: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const hostname = new URL(url).hostname;
   const isLoopback = hostname === "localhost" || hostname === "127.0.0.1";
@@ -9,7 +21,7 @@ export function ParticipantLinkQr({ url }: { url: string }) {
   return (
     <div className="participant-qr">
       <button
-        aria-controls="participant-link-qr"
+        aria-controls={panelId}
         aria-expanded={isOpen}
         className="button button-secondary participant-qr-toggle"
         onClick={() => setIsOpen((current) => !current)}
@@ -20,7 +32,7 @@ export function ParticipantLinkQr({ url }: { url: string }) {
       </button>
 
       {isOpen ? (
-        <div className="participant-qr-panel" id="participant-link-qr">
+        <div className="participant-qr-panel" id={panelId}>
           <div className="participant-qr-code">
             <QRCodeSVG
               bgColor="#ffffff"
@@ -28,13 +40,13 @@ export function ParticipantLinkQr({ url }: { url: string }) {
               level="M"
               marginSize={4}
               size={240}
-              title="参加者用リンクのQRコード"
+              title={qrTitle}
               value={url}
             />
           </div>
           <div className="participant-qr-copy">
-            <strong>参加する端末で読み取ってください</strong>
-            <p>読み取ると、この会の参加者画面が直接開きます。</p>
+            <strong>{panelTitle}</strong>
+            <p>{description}</p>
             {isLoopback ? (
               <p className="participant-qr-warning" role="note">
                 localhostは別端末から開けません。スマホで試す場合は、PCのLAN

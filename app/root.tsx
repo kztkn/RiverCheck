@@ -7,12 +7,30 @@ import {
   ScrollRestoration,
 } from "react-router";
 import type { Route } from "./+types/root";
+import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
 import "./styles/app.css";
 import "./styles/highlight.css";
 import "./styles/history.css";
 import "./styles/qr.css";
 import "./styles/profile.css";
 import "./styles/stats.css";
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const pathname = new URL(request.url).pathname;
+  const groupCodeMatch = /^\/g\/([^/]+)/u.exec(pathname);
+  if (!groupCodeMatch?.[1]) return { authenticatedPlayerName: null };
+
+  let groupCode: string;
+  try {
+    groupCode = decodeURIComponent(groupCodeMatch[1]);
+  } catch {
+    return { authenticatedPlayerName: null };
+  }
+  const overview = await getAuthenticatedPlayerProfile(request, groupCode);
+  return {
+    authenticatedPlayerName: overview?.profile?.displayName ?? null,
+  };
+}
 
 export const meta: Route.MetaFunction = () => [
   { title: "RiverCheck | ポーカー会の結果・精算管理" },
@@ -33,6 +51,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+        <footer className="site-footer global-site-footer">
+          <span>RIVER CHECK</span>
+          <a href="/oss-licenses.md">OSSライセンス</a>
+        </footer>
         <ScrollRestoration />
         <Scripts />
       </body>

@@ -68,7 +68,6 @@ export function FinalResults({
       <div className="section-heading">
         <div>
           <p className="eyebrow">FINAL RESULTS</p>
-          <h2>確定結果</h2>
           <time className="result-played-at" dateTime={playedAt}>
             {formatPlayedAt(playedAt)}
           </time>

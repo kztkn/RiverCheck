@@ -1,5 +1,7 @@
+import { GroupSiteHeader } from "~/components/site-menu";
 import { useRef, useState } from "react";
-import { Form, Link, redirect, useNavigation } from "react-router";
+import { Form, redirect, useNavigation } from "react-router";
+import { ParticipantLinkQr } from "~/components/participant-link-qr";
 import { PlayerAvatar } from "~/components/player-avatar";
 import {
   addPlayerForGroup,
@@ -8,6 +10,7 @@ import {
 } from "@server/services/player-service.server";
 import { issueProfileClaimLink } from "@server/services/player-profile-service.server";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
+import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
 import { requireOrganizer } from "@server/services/organizer-auth.server";
 import type { Route } from "./+types/players";
 
@@ -100,15 +103,7 @@ export default function Players({
 
   return (
     <main className="page-shell form-page">
-      <header className="site-header">
-        <Link className="brand" to={`/g/${loaderData.group.publicCode}/manage`}>
-          <span className="brand-mark">RC</span>
-          <span>RiverCheck</span>
-        </Link>
-        <Link className="text-link" to={`/g/${loaderData.group.publicCode}/manage`}>
-          ← 主催者画面
-        </Link>
-      </header>
+      <GroupSiteHeader groupCode={loaderData.group.publicCode} organizer />
 
       <section className="form-intro">
         <p className="eyebrow">MEMBERS</p>
@@ -125,7 +120,7 @@ export default function Players({
           <div>
             <p className="eyebrow">PERSONAL LINK</p>
             <h2 id="claim-share-heading">{claimResult.displayName}さんの本人用リンク</h2>
-            <p>本人へ個別に送ってください。リンクは1回使うか、再発行すると無効になります。</p>
+            <p>本人へ個別に送ってください。24時間以内に1回使うか、再発行すると無効になります。</p>
           </div>
           <div className="profile-claim-link-row">
             <input readOnly ref={claimInputRef} value={claimResult.claimUrl} />
@@ -142,6 +137,13 @@ export default function Players({
             </button>
           </div>
           <small>{copied ? "コピーしました" : `有効期限：${formatExpiry(claimResult.expiresAt)}`}</small>
+          <ParticipantLinkQr
+            description="読み取ると、本人確認画面が直接開きます。"
+            panelId="profile-claim-link-qr"
+            panelTitle={`${claimResult.displayName}さんの端末で読み取ってください`}
+            qrTitle={`${claimResult.displayName}さんの本人用リンクのQRコード`}
+            url={claimResult.claimUrl}
+          />
         </section>
       ) : null}
       {claimError ? <p className="error-notice" role="alert">{claimError}</p> : null}
@@ -164,12 +166,13 @@ export default function Players({
                 aria-invalid={Boolean(errors.displayName)}
                 defaultValue={displayName}
                 id="displayName"
-                maxLength={40}
+                maxLength={PLAYER_DISPLAY_NAME_MAX_LENGTH}
                 name="displayName"
                 placeholder="例：PKサンダー"
                 required
               />
             </span>
+            <span className="field-hint">最大{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字</span>
             {errors.displayName ? (
               <span className="field-error" id="displayName-error">{errors.displayName}</span>
             ) : null}
@@ -204,19 +207,21 @@ export default function Players({
                     <strong>{player.displayName}</strong>
                     <small>{player.hasProfileAccess ? "本人端末 設定済み" : "本人端末 未設定"}</small>
                   </span>
-                  <Form method="post">
+                  <Form className="profile-claim-issue-form" method="post">
                     <input name="intent" type="hidden" value="issue-profile-claim" />
                     <input name="groupPlayerId" type="hidden" value={player.id} />
                     <button
-                      className="button button-small button-secondary"
+                      aria-label={`${player.displayName}さんの本人用リンクを${player.hasProfileAccess ? "再発行" : "発行"}`}
+                      className="profile-claim-issue-button"
                       disabled={isSubmitting}
+                      title={player.hasProfileAccess ? "本人用リンクを再発行" : "本人用リンクを発行"}
                       type="submit"
                     >
                       {isSubmitting &&
                       submittingIntent === "issue-profile-claim" &&
                       navigation.formData?.get("groupPlayerId") === player.id
-                        ? "発行中…"
-                        : player.hasProfileAccess ? "リンクを再発行" : "本人用リンク"}
+                        ? <span aria-hidden="true" className="profile-claim-issue-loading">…</span>
+                        : <ProfileClaimLinkIcon />}
                     </button>
                   </Form>
                 </li>
@@ -226,6 +231,15 @@ export default function Players({
         </section>
       </div>
     </main>
+  );
+}
+
+function ProfileClaimLinkIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M10 13a5 5 0 0 0 7.1.1l2-2A5 5 0 0 0 12 4l-1.1 1.1" />
+      <path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1" />
+    </svg>
   );
 }
 

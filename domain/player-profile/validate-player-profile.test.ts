@@ -21,6 +21,16 @@ describe("validatePlayerProfile", () => {
     });
   });
 
+  it("11文字以上の名前を拒否する", () => {
+    const result = validatePlayerProfile({
+      displayName: "あ".repeat(11),
+      profileMessage: "",
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.displayName).toBe("ユーザーネームは10文字以内で入力してください。");
+  });
+
   it("空の一言はnullにする", () => {
     const result = validatePlayerProfile({
       displayName: "kazuto",

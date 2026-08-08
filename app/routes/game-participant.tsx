@@ -1,6 +1,9 @@
 import { Form, Link, redirect, useNavigation } from "react-router";
 import { useState } from "react";
-import { findGameForGroup } from "@server/repositories/game-repository.server";
+import {
+  findGameForGroup,
+  listGamesForGroup,
+} from "@server/repositories/game-repository.server";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import {
   listFinalResults,
@@ -21,28 +24,24 @@ import {
 } from "@server/services/participant-session.server";
 import { generateOpaqueToken, hashToken } from "@server/services/token.server";
 import { formatLineResult } from "@domain/result-sharing/format-line-result";
+import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
 import {
   buildGamePhotoUrl,
   getGameHighlight,
 } from "@server/services/game-highlight-service.server";
 import { FinalResults } from "../components/final-results";
 import { PlayerAvatar } from "../components/player-avatar";
-import {
-  createNewPlayerProfileSessionCredentials,
-  getAuthenticatedPlayerProfile,
-} from "@server/services/player-profile-service.server";
+import { createNewPlayerProfileSessionCredentials } from "@server/services/player-profile-service.server";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { createPlayerProfileCookie } from "@server/services/player-profile-session.server";
 import { GameHighlight } from "../components/game-highlight";
+import { GroupSiteHeader } from "~/components/site-menu";
+import type { GameListItem } from "@shared-types/game";
 import type { Route } from "./+types/game-participant";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const context = await requireGame(params.groupCode, params.gameId);
   const url = new URL(request.url);
-  const profileOverview = await getAuthenticatedPlayerProfile(
-    request,
-    params.groupCode,
-  );
   const token = readParticipantToken(request, params.gameId);
   const participant = token
     ? await findParticipantByTokenHash(
@@ -67,6 +66,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     context.game.status === "finalized"
       ? await getGameHighlight(context.group.id, params.gameId)
       : null;
+  const finalizedGames =
+    context.game.status === "finalized"
+      ? (await listGamesForGroup(context.group.id)).filter(
+        (game) => game.status === "finalized",
+      )
+      : [];
   return {
     group: { name: context.group.name, publicCode: context.group.publicCode },
     game: context.game,
@@ -88,7 +93,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         groupPlayerId: player.id,
       }),
     })),
-    hasPlayerProfile: Boolean(profileOverview?.profile),
     results,
     revisions,
     highlight,
@@ -106,6 +110,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         )
         : "",
     shareUrl: `${url.origin}${url.pathname}`,
+    pastGameNavigation: buildPastGameNavigation(finalizedGames, params.gameId),
     notice: url.searchParams.get("notice"),
   };
 }
@@ -143,8 +148,13 @@ export async function action({ request, params }: Route.ActionArgs) {
       }
     } else {
       const displayName = readString(formData, "displayName").trim();
-      if (!displayName || Array.from(displayName).length > 40) {
-        return { error: "名前を1〜40文字で入力してください。" };
+      if (
+        !displayName ||
+        Array.from(displayName).length > PLAYER_DISPLAY_NAME_MAX_LENGTH
+      ) {
+        return {
+          error: `名前を1〜${PLAYER_DISPLAY_NAME_MAX_LENGTH}文字で入力してください。`,
+        };
       }
       const profileSession =
         await createNewPlayerProfileSessionCredentials();
@@ -242,29 +252,14 @@ export default function GameParticipant({
 
   return (
     <main className="page-shell participant-page">
-      <header className="site-header">
-        <Link className="brand" to={`/g/${loaderData.group.publicCode}`}>
-          <span className="brand-mark">RC</span>
-          <span>RiverCheck</span>
-        </Link>
-        <div className="header-actions">
-          {loaderData.hasPlayerProfile ? (
-            <Link className="text-link" to={`/g/${loaderData.group.publicCode}/profile`}>
-              プレイヤー設定
-            </Link>
-          ) : null}
-          <Link className="text-link" reloadDocument to="admin">
-            主催者画面へ
-          </Link>
+      <GroupSiteHeader
+        groupCode={loaderData.group.publicCode}
+        status={loaderData.game.status !== "finalized" ? (
           <span className={`status status-${loaderData.game.status}`}>
-            {loaderData.game.status === "open"
-              ? "受付中"
-              : loaderData.game.status === "draft"
-                ? "準備中"
-                : "確定済み"}
+            {loaderData.game.status === "open" ? "受付中" : "準備中"}
           </span>
-        </div>
-      </header>
+        ) : null}
+      />
 
       <section className="participant-hero">
         <p className="eyebrow">JOIN THE TABLE</p>
@@ -278,6 +273,13 @@ export default function GameParticipant({
           </p>
         ) : null}
       </section>
+
+      {loaderData.game.status === "finalized" && loaderData.pastGameNavigation ? (
+        <PastGameNavigation
+          groupCode={loaderData.group.publicCode}
+          navigation={loaderData.pastGameNavigation}
+        />
+      ) : null}
 
       {loaderData.notice === "joined" ? (
         <p className="success-notice">
@@ -467,11 +469,12 @@ export default function GameParticipant({
               <label className="field">
                 <span className="field-label">表示名</span>
                 <input
-                  maxLength={40}
+                  maxLength={PLAYER_DISPLAY_NAME_MAX_LENGTH}
                   name="displayName"
                   placeholder="例：PKサンダー"
                   required
                 />
+                <span className="field-hint">最大{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字</span>
               </label>
               <button
                 className="button button-secondary"
@@ -494,6 +497,72 @@ async function requireGame(groupCode: string, gameId: string) {
   const game = await findGameForGroup(group.id, gameId);
   if (!game) throw new Response("Game not found", { status: 404 });
   return { group, game };
+}
+
+function PastGameNavigation({
+  groupCode,
+  navigation,
+}: {
+  groupCode: string;
+  navigation: NonNullable<ReturnType<typeof buildPastGameNavigation>>;
+}) {
+  return (
+    <nav aria-label="過去の開催を移動" className="past-game-navigation">
+      {navigation.previousGame ? (
+        <Link
+          aria-label={`前の開催：${navigation.previousGame.title}`}
+          className="past-game-navigation-button"
+          title={`前の開催：${navigation.previousGame.title}`}
+          to={`/g/${groupCode}/games/${navigation.previousGame.id}`}
+        >
+          <NavigationArrow direction="left" />
+        </Link>
+      ) : (
+        <span aria-hidden="true" className="past-game-navigation-button is-disabled">
+          <NavigationArrow direction="left" />
+        </span>
+      )}
+      <span className="past-game-navigation-position">
+        <small>PAST GAMES</small>
+        <strong>
+          過去の開催 {navigation.currentPosition} / {navigation.total}
+        </strong>
+      </span>
+      {navigation.nextGame ? (
+        <Link
+          aria-label={`次の開催：${navigation.nextGame.title}`}
+          className="past-game-navigation-button"
+          title={`次の開催：${navigation.nextGame.title}`}
+          to={`/g/${groupCode}/games/${navigation.nextGame.id}`}
+        >
+          <NavigationArrow direction="right" />
+        </Link>
+      ) : (
+        <span aria-hidden="true" className="past-game-navigation-button is-disabled">
+          <NavigationArrow direction="right" />
+        </span>
+      )}
+    </nav>
+  );
+}
+
+function NavigationArrow({ direction }: { direction: "left" | "right" }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d={direction === "left" ? "m15 18-6-6 6-6" : "m9 18 6-6-6-6"} />
+    </svg>
+  );
+}
+
+function buildPastGameNavigation(games: GameListItem[], currentGameId: string) {
+  const currentIndex = games.findIndex((game) => game.id === currentGameId);
+  if (currentIndex < 0) return null;
+  return {
+    currentPosition: games.length - currentIndex,
+    nextGame: games[currentIndex - 1] ?? null,
+    previousGame: games[currentIndex + 1] ?? null,
+    total: games.length,
+  };
 }
 
 function readString(formData: FormData, name: string): string {

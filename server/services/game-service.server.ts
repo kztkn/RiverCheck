@@ -1,4 +1,8 @@
 import { insertGame } from "@server/repositories/game-repository.server";
+import {
+  countGameTitleCharacters,
+  GAME_TITLE_MAX_LENGTH,
+} from "@domain/game/game-title";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import type { CreateGameInput } from "@shared-types/game";
 import {
@@ -90,7 +94,11 @@ export function validateGameSettingsForm(
   const errors: GameSettingsFormErrors = {};
   const title = values.title.trim();
 
-  if (!title) errors.title = "開催名を入力してください。";
+  if (!title) {
+    errors.title = "開催名を入力してください。";
+  } else if (countGameTitleCharacters(title) > GAME_TITLE_MAX_LENGTH) {
+    errors.title = `開催名は${GAME_TITLE_MAX_LENGTH}文字以内で入力してください。`;
+  }
 
   const playedAt = parseTokyoDate(values.playedAt);
   if (!playedAt) {

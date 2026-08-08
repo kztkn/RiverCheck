@@ -1,3 +1,4 @@
+import { GroupSiteHeader } from "~/components/site-menu";
 import { Link, redirect, useNavigation } from "react-router";
 import { PlayerProfileEditor } from "~/components/player-profile-editor";
 import {
@@ -73,15 +74,7 @@ export default function PlayerProfileRoute({
 
   return (
     <main className="page-shell profile-page">
-      <header className="site-header">
-        <Link className="brand" to={`/g/${loaderData.group.publicCode}`}>
-          <span className="brand-mark">RC</span>
-          <span>RiverCheck</span>
-        </Link>
-        <Link className="text-link" to={`/g/${loaderData.group.publicCode}`}>
-          ← グループトップ
-        </Link>
-      </header>
+      <GroupSiteHeader groupCode={loaderData.group.publicCode} />
 
       <section className="form-intro profile-intro">
         <p className="eyebrow">YOUR PROFILE</p>

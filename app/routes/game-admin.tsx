@@ -1,3 +1,4 @@
+import { GroupSiteHeader } from "~/components/site-menu";
 import { useEffect, useRef, useState } from "react";
 import {
   Form,
@@ -350,26 +351,17 @@ export default function GameAdmin({
 
   return (
     <main className="page-shell form-page admin-page">
-      <header className="site-header">
-        <Link className="brand" to={`/g/${loaderData.group.publicCode}/manage`}>
-          <span className="brand-mark">RC</span>
-          <span>RiverCheck</span>
-        </Link>
-        <Link
-          className="text-link"
-          to={`/g/${loaderData.group.publicCode}/manage`}
-        >
-          ← 主催者画面
-        </Link>
-      </header>
+      <GroupSiteHeader groupCode={loaderData.group.publicCode} organizer />
 
       <section className="form-intro setup-intro">
         <p className="eyebrow">ORGANIZER</p>
         <div className="title-with-status">
           <h1>{loaderData.game.title}</h1>
-          <span className={`status status-${loaderData.game.status}`}>
-            {statusLabel(loaderData.game.status)}
-          </span>
+          {loaderData.game.status !== "finalized" ? (
+            <span className={`status status-${loaderData.game.status}`}>
+              {statusLabel(loaderData.game.status)}
+            </span>
+          ) : null}
         </div>
         <p>この専用URLから、条件・受付・参加者をまとめて管理できます。</p>
       </section>

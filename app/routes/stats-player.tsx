@@ -1,3 +1,4 @@
+import { GroupSiteHeader } from "~/components/site-menu";
 import { Link } from "react-router";
 import { PlayerPerformanceChart } from "~/components/player-performance-chart";
 import { PlayerAvatar } from "~/components/player-avatar";
@@ -22,15 +23,7 @@ export default function StatsPlayer({ loaderData }: Route.ComponentProps) {
 
   return (
     <main className="page-shell stats-page">
-      <header className="site-header">
-        <Link className="brand" to={`/g/${group.publicCode}`}>
-          <span className="brand-mark">RC</span>
-          <span>RiverCheck</span>
-        </Link>
-        <Link className="text-link" to={`/g/${group.publicCode}/stats`}>
-          ← ランキング
-        </Link>
-      </header>
+      <GroupSiteHeader groupCode={group.publicCode} />
 
       <section className="stats-intro stats-player-intro">
         <div className="stats-profile-identity">
@@ -46,7 +39,9 @@ export default function StatsPlayer({ loaderData }: Route.ComponentProps) {
           <div>
             <p className="eyebrow">PLAYER PROFILE</p>
             <h1>{summary.displayName}</h1>
-            <p>{summary.profileMessage ?? `${group.name}での確定済み戦績`}</p>
+            {summary.profileMessage ? (
+              <p className="stats-profile-message">{summary.profileMessage}</p>
+            ) : null}
           </div>
         </div>
       </section>

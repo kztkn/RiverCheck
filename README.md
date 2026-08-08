@@ -53,7 +53,8 @@ npm run dev
 npm run dev          # ローカル開発サーバー
 npm run test         # domain unit test
 npm run typecheck    # Worker 型生成、route 型生成、TypeScript 検査
-npm run build        # Cloudflare Workers 向け production build
+npm run build        # OSSライセンス検査 + Cloudflare Workers向けproduction build
+npm run license:check # 本番依存のOSSライセンス許可リスト検査
 npm run db:migrate              # ローカルDocker DBへmigration
 npm run db:seed                 # ローカルDocker DBへseed
 npm run db:migrate:production   # .envの本番DBへmigration
@@ -97,9 +98,20 @@ Workers Rate Limiting bindingを使用し、同一IPからのPOSTを次の単位
 
 ### プレイヤープロフィール
 
-`players` にユーザーネーム、一言、アイコンメタデータを1件だけ保持し、グループごとには分けません。新しい名前で参加した端末は自動的に本人プロフィールへ紐付きます。事前登録済みメンバーは、主催者がメンバー管理から発行する7日間有効・1回限りの本人用リンクを本人へ個別共有します。本人確認後はランダムtokenのSHA-256ハッシュだけをDBへ保存し、平文tokenはHttpOnly Cookieへ1年間保持します。
+`players` にユーザーネーム、一言、アイコンメタデータを1件だけ保持し、グループごとには分けません。新しい名前で参加した端末は自動的に本人プロフィールへ紐付きます。事前登録済みメンバーは、主催者がメンバー管理から発行する24時間有効・1回限りの本人用リンクを本人へ個別共有します。本人確認後はランダムtokenのSHA-256ハッシュだけをDBへ保存し、平文tokenはHttpOnly Cookieへ1年間保持します。
 
 アイコンはブラウザで512px正方形へ縮小し、WebPを優先します。WebP canvas変換に対応しないSafari等ではJPEGへ自動フォールバックします。Worker側でもJPEG・PNG・WebPのcontent type、シグネチャ、1MB上限を検証します。
+
+## OSSライセンス
+
+本番ビルドの前に `npm run license:check` が実行され、`scripts/check-production-licenses.mjs` の許可リストにない本番依存、またはライセンス不明の依存がある場合はビルドを停止します。新しいライセンスを許可リストへ追加するときは、利用・配布条件を確認してから更新してください。
+
+Viteの `build.license` により、実際に各bundleへ含まれた依存の名称、バージョン、著作権表示、ライセンス全文を次へ自動生成します。
+
+- ブラウザ配信用: `build/client/oss-licenses.md`
+- Worker配信用: `build/server/oss-licenses.md`
+
+Cloudflareは `build/client` を静的assetとして配信するため、公開後は `/oss-licenses.md` でブラウザ向け一覧を閲覧できます。全画面共通フッターからも同じURLへリンクします。JavaScript以外の画像、フォント、投稿コンテンツの利用条件はこの自動生成の対象外なので、追加時に個別確認します。
 
 デプロイ前および git push 前には `npm run build` を成功させてください。
 

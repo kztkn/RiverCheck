@@ -3,7 +3,7 @@ import {
   type GamePhotoContentType,
 } from "../highlight/validate-game-highlight";
 
-export const PLAYER_DISPLAY_NAME_MAX_LENGTH = 40;
+export const PLAYER_DISPLAY_NAME_MAX_LENGTH = 10;
 export const PLAYER_PROFILE_MESSAGE_MAX_LENGTH = 160;
 export const PLAYER_AVATAR_MAX_BYTES = 1024 * 1024;
 export const PLAYER_AVATAR_SIZE = 512;

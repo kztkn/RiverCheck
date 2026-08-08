@@ -1,3 +1,4 @@
+import { GroupSiteHeader } from "~/components/site-menu";
 import { Form, Link, redirect, useNavigation } from "react-router";
 import {
   claimPlayerProfile,
@@ -36,12 +37,7 @@ export default function PlayerProfileClaim({
 
   return (
     <main className="page-shell auth-page profile-claim-page">
-      <header className="site-header">
-        <Link className="brand" to={`/g/${loaderData.group.publicCode}`}>
-          <span className="brand-mark">RC</span>
-          <span>RiverCheck</span>
-        </Link>
-      </header>
+      <GroupSiteHeader groupCode={loaderData.group.publicCode} />
       <section className="participant-panel auth-panel profile-claim-card">
         <div>
           <p className="eyebrow">PLAYER ACCESS</p>

@@ -1,3 +1,4 @@
+import { GroupSiteHeader } from "~/components/site-menu";
 import { Link } from "react-router";
 import { PlayerAvatar } from "~/components/player-avatar";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
@@ -20,15 +21,7 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
 
   return (
     <main className="page-shell stats-page">
-      <header className="site-header">
-        <Link className="brand" to={`/g/${group.publicCode}`}>
-          <span className="brand-mark">RC</span>
-          <span>RiverCheck</span>
-        </Link>
-        <Link className="text-link" to={`/g/${group.publicCode}`}>
-          ← グループトップ
-        </Link>
-      </header>
+      <GroupSiteHeader groupCode={group.publicCode} />
 
       <section className="stats-intro">
         <p className="eyebrow">PLAYER STATS</p>

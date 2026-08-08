@@ -1,3 +1,4 @@
+import { GroupSiteHeader } from "~/components/site-menu";
 import { Link } from "react-router";
 import { getGroupOverview } from "@server/services/group-service.server";
 import { requireOrganizer } from "@server/services/organizer-auth.server";
@@ -21,26 +22,7 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
 
   return (
     <main className="page-shell">
-      <header className="site-header">
-        <Link className="brand" to={`/g/${group.publicCode}/manage`}>
-          <span className="brand-mark">RC</span>
-          <span>RiverCheck</span>
-        </Link>
-        <div className="header-actions">
-          <Link className="text-link" to={`/g/${group.publicCode}`}>
-            参加者向け画面
-          </Link>
-          <form
-            action={`/g/${group.publicCode}/organizer-login`}
-            method="post"
-          >
-            <input name="intent" type="hidden" value="logout" />
-            <button className="text-button" type="submit">
-              ログアウト
-            </button>
-          </form>
-        </div>
-      </header>
+      <GroupSiteHeader groupCode={group.publicCode} organizer />
 
       <section className="hero-card organizer-hero">
         <div>
@@ -108,19 +90,9 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
                 </Link>
                 <div className="game-card-actions">
                   <Link
-                    className="button button-small button-secondary"
-                    to={`/g/${group.publicCode}/games/${game.id}`}
-                  >
-                    参加ページ
-                  </Link>
-                  <Link
                     className="card-action"
                     to={`/g/${group.publicCode}/games/${game.id}/admin`}
                   >
-                    管理する
-                    <span className="card-arrow" aria-hidden="true">
-                      →
-                    </span>
                   </Link>
                 </div>
               </article>
