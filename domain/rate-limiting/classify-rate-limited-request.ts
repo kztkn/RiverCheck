@@ -13,7 +13,7 @@ const ADMIN_WRITE_PATTERN = new RegExp(
   "u",
 );
 const PARTICIPANT_WRITE_PATTERN = new RegExp(
-  String.raw`^${GROUP_PATH}/games/[^/]+/?$`,
+  String.raw`^${GROUP_PATH}/(?:games/[^/]+|profile(?:/claim/[^/]+)?)/?$`,
   "u",
 );
 

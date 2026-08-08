@@ -45,7 +45,7 @@ Workers はリクエストをまたいだネットワーク I/O の再利用を�
 
 確定後の主催者画面のmultipart actionが `GameHighlightService` を呼び、文章を検証して写真をR2へ保存した後、`GameHighlightRepository` が `games` の文章と写真メタデータを更新する。画像本体はPostgreSQLへ保存しない。参加者向け結果画面はloaderで公開用メタデータを取得し、画像は専用resource routeからWorker経由で配信する。R2 bucket自体は公開しない。
 
-ブラウザはアップロード前にCanvasで長辺1,800px以内へ縮小し、WebPへ圧縮する。Worker側もcontent type、ファイルシグネチャ、3MB上限を検証する。object keyはgame単位のprefixとランダムUUIDで衝突を避ける。
+ブラウザはアップロード前にCanvasで長辺1,800px以内へ縮小し、WebPを優先して圧縮する。WebP canvas変換が利用できないブラウザはJPEGへ自動フォールバックする。Worker側もcontent type、ファイルシグネチャ、3MB上限を検証する。object keyはgame単位のprefixとランダムUUIDで衝突を避ける。
 
 R2とPostgreSQLをまたぐ分散トランザクションは作らない。写真の置換・参照解除ではgamesの参照だけを更新し、旧objectやDB更新失敗時の未参照objectは残す。未参照objectはR2上で運用削除する。これにより、DB更新後に旧画像削除が失敗して表示まで壊れる経路を持たせない。
 
@@ -72,6 +72,16 @@ Rate Limiting APIは拠点単位かつ結果整合性が緩やかな防御であ
 参加時に32バイトの暗号学的乱数からtokenを生成し、DBにはSHA-256ハッシュだけを保存する。平文tokenは開催URL配下だけへ送信される `HttpOnly`、`SameSite=Lax` のCookieに保持し、HTML、URL、ログ、DBには出さない。Cookie名はgame UUIDごとに分け、同じブラウザが複数開催へ参加できるようにする。本番HTTPSでは `Secure` も付与する。
 
 既存のgame participantにtokenハッシュがある場合、別ブラウザからの再取得を拒否する。本人Cookieを利用できなくなった場合は、主催者が参加取消を行い、本人が参加し直す。参加取消ではその開催の入力済みremaining_chipsとrebuy_countも削除する。
+
+## プレイヤープロフィールと本人端末
+
+プロフィールは`players`へ1件だけ持ち、`group_players`はグループ所属を表す。ユーザーネームの変更は過去結果や個人戦績を含む全所属先へ反映する。アイコン本体は開催写真と同じ非公開R2 bucketへ`players/{playerId}/{uuid}.{ext}`で保存し、DBには現在参照するobject keyとメタデータだけを保存する。配信routeはgroupPlayerIdが指定グループに所属することを確認してからR2 objectを返す。
+
+本人端末tokenは32バイトの暗号学的乱数とし、DBの`player_profile_sessions`にはSHA-256ハッシュだけを保存する。平文tokenはPath=/のHttpOnly、SameSite=Lax、1年有効のCookieへ保持し、本番HTTPSではSecureを付ける。新規playerは参加と同時にsessionを作成する。
+
+事前登録済みplayerは主催者が発行する本人用リンクで初回claimする。URLの平文tokenは7日間有効で、GET表示では消費せず、本人の確認POSTをトランザクションでロックして1回だけ消費する。再発行時は未使用の旧claimを無効化する。既存sessionは別端末追加を妨げないため維持する。
+
+アイコンはブラウザで中央を512px正方形へ縮小し、WebP優先・非対応時JPEGで1MB以内へ圧縮する。Workerでもシグネチャと上限を再検証する。R2とDBの分散トランザクションは作らず、置換後の旧objectは運用削除する。
 
 ## 主催者導線と認証
 

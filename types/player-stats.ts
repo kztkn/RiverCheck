@@ -8,6 +8,7 @@ export interface PlayerStatsRankingRow {
   wins: number;
   totalNetBb: number;
   averageNetBb: number;
+  avatarUpdatedAt: string | null;
 }
 
 export interface PlayerGameStat {
@@ -23,6 +24,8 @@ export interface PlayerGameStat {
 export interface PlayerStatsSummary {
   groupPlayerId: string;
   displayName: string;
+  profileMessage: string | null;
+  avatarUpdatedAt: string | null;
   gamesPlayed: number;
   wins: number;
   winRate: number;

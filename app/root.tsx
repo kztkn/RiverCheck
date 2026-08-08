@@ -11,6 +11,7 @@ import "./styles/app.css";
 import "./styles/highlight.css";
 import "./styles/history.css";
 import "./styles/qr.css";
+import "./styles/profile.css";
 import "./styles/stats.css";
 
 export const meta: Route.MetaFunction = () => [

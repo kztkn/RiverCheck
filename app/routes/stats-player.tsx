@@ -1,5 +1,7 @@
 import { Link } from "react-router";
 import { PlayerPerformanceChart } from "~/components/player-performance-chart";
+import { PlayerAvatar } from "~/components/player-avatar";
+import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { formatSignedBbValue } from "@domain/score/bb-score";
 import { getPlayerStatsDetail } from "@server/services/player-stats-service.server";
 import type { Route } from "./+types/stats-player";
@@ -31,9 +33,22 @@ export default function StatsPlayer({ loaderData }: Route.ComponentProps) {
       </header>
 
       <section className="stats-intro stats-player-intro">
-        <p className="eyebrow">PLAYER PROFILE</p>
-        <h1>{summary.displayName}</h1>
-        <p>{group.name}での確定済み戦績</p>
+        <div className="stats-profile-identity">
+          <PlayerAvatar
+            avatarUrl={buildPlayerAvatarUrl({
+              avatarUpdatedAt: summary.avatarUpdatedAt,
+              groupCode: group.publicCode,
+              groupPlayerId: summary.groupPlayerId,
+            })}
+            className="player-avatar-large"
+            displayName={summary.displayName}
+          />
+          <div>
+            <p className="eyebrow">PLAYER PROFILE</p>
+            <h1>{summary.displayName}</h1>
+            <p>{summary.profileMessage ?? `${group.name}での確定済み戦績`}</p>
+          </div>
+        </div>
       </section>
 
       <section className="stats-kpi-grid" aria-label="戦績サマリー">

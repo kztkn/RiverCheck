@@ -2,6 +2,18 @@ export interface GroupPlayerSummary {
   id: string;
   displayName: string;
   isActive: boolean;
+  profileMessage: string | null;
+  avatarUpdatedAt: string | null;
+  hasProfileAccess: boolean;
+}
+
+export interface PlayerProfile {
+  playerId: string;
+  groupPlayerId: string;
+  displayName: string;
+  profileMessage: string | null;
+  avatarUpdatedAt: string | null;
+  updatedAt: string;
 }
 
 export interface GameParticipantSummary {
@@ -12,10 +24,12 @@ export interface GameParticipantSummary {
   remainingChips: number | null;
   rebuyCount: number;
   deviceLocked: boolean;
+  avatarUpdatedAt: string | null;
 }
 
 export interface RegisteredPlayerOption {
   id: string;
   displayName: string;
   deviceLocked: boolean;
+  avatarUpdatedAt: string | null;
 }

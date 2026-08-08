@@ -26,12 +26,23 @@ import {
   getGameHighlight,
 } from "@server/services/game-highlight-service.server";
 import { FinalResults } from "../components/final-results";
+import { PlayerAvatar } from "../components/player-avatar";
+import {
+  createNewPlayerProfileSessionCredentials,
+  getAuthenticatedPlayerProfile,
+} from "@server/services/player-profile-service.server";
+import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
+import { createPlayerProfileCookie } from "@server/services/player-profile-session.server";
 import { GameHighlight } from "../components/game-highlight";
 import type { Route } from "./+types/game-participant";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const context = await requireGame(params.groupCode, params.gameId);
   const url = new URL(request.url);
+  const profileOverview = await getAuthenticatedPlayerProfile(
+    request,
+    params.groupCode,
+  );
   const token = readParticipantToken(request, params.gameId);
   const participant = token
     ? await findParticipantByTokenHash(
@@ -59,8 +70,25 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return {
     group: { name: context.group.name, publicCode: context.group.publicCode },
     game: context.game,
-    participant,
-    players,
+    participant: participant
+      ? {
+          ...participant,
+          avatarUrl: buildPlayerAvatarUrl({
+            avatarUpdatedAt: participant.avatarUpdatedAt,
+            groupCode: params.groupCode,
+            groupPlayerId: participant.groupPlayerId,
+          }),
+        }
+      : null,
+    players: players.map((player) => ({
+      ...player,
+      avatarUrl: buildPlayerAvatarUrl({
+        avatarUpdatedAt: player.avatarUpdatedAt,
+        groupCode: params.groupCode,
+        groupPlayerId: player.id,
+      }),
+    })),
+    hasPlayerProfile: Boolean(profileOverview?.profile),
     results,
     revisions,
     highlight,
@@ -96,6 +124,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     const token = generateOpaqueToken();
     const tokenHash = await hashToken(token);
     let joined = false;
+    let profileSessionToken: string | null = null;
 
     if (intent === "join-existing") {
       const groupPlayerId = readString(formData, "groupPlayerId");
@@ -114,29 +143,44 @@ export async function action({ request, params }: Route.ActionArgs) {
       }
     } else {
       const displayName = readString(formData, "displayName").trim();
-      if (!displayName || displayName.length > 60) {
-        return { error: "名前を1〜60文字で入力してください。" };
+      if (!displayName || Array.from(displayName).length > 40) {
+        return { error: "名前を1〜40文字で入力してください。" };
       }
-      joined = await joinNewParticipant(
+      const profileSession =
+        await createNewPlayerProfileSessionCredentials();
+      const newPlayer = await joinNewParticipant(
         context.group.id,
         params.gameId,
         displayName,
         tokenHash,
+        profileSession.tokenHash,
+        profileSession.expiresAt,
       );
+      joined = newPlayer !== null;
+      if (newPlayer) profileSessionToken = profileSession.token;
       if (!joined)
         return { error: "参加できませんでした。画面を更新してください。" };
     }
 
+    const headers = new Headers();
+    headers.append(
+      "Set-Cookie",
+      createParticipantCookie(
+        request,
+        params.groupCode,
+        params.gameId,
+        token,
+      ),
+    );
+    if (profileSessionToken) {
+      headers.append(
+        "Set-Cookie",
+        createPlayerProfileCookie(request, profileSessionToken),
+      );
+    }
     return redirect(`${participantUrl}?notice=joined`, {
       status: 303,
-      headers: {
-        "Set-Cookie": createParticipantCookie(
-          request,
-          params.groupCode,
-          params.gameId,
-          token,
-        ),
-      },
+      headers,
     });
   }
 
@@ -204,6 +248,11 @@ export default function GameParticipant({
           <span>RiverCheck</span>
         </Link>
         <div className="header-actions">
+          {loaderData.hasPlayerProfile ? (
+            <Link className="text-link" to={`/g/${loaderData.group.publicCode}/profile`}>
+              プレイヤー設定
+            </Link>
+          ) : null}
           <Link className="text-link" reloadDocument to="admin">
             主催者画面へ
           </Link>
@@ -275,7 +324,10 @@ export default function GameParticipant({
       ) : loaderData.participant ? (
         <section className="participant-panel">
           <div className="participant-identity">
-            <span className="member-avatar">YOU</span>
+            <PlayerAvatar
+              avatarUrl={loaderData.participant.avatarUrl}
+              displayName={loaderData.participant.displayName}
+            />
             <div>
               <p>参加中</p>
               <h2>{loaderData.participant.displayName}</h2>
@@ -390,6 +442,10 @@ export default function GameParticipant({
                       disabled={player.deviceLocked || isSubmitting}
                       type="submit"
                     >
+                      <PlayerAvatar
+                        avatarUrl={player.avatarUrl}
+                        displayName={player.displayName}
+                      />
                       <span>{player.displayName}</span>
                       <small>{player.deviceLocked ? "使用中" : "参加"}</small>
                     </button>
@@ -411,7 +467,7 @@ export default function GameParticipant({
               <label className="field">
                 <span className="field-label">表示名</span>
                 <input
-                  maxLength={60}
+                  maxLength={40}
                   name="displayName"
                   placeholder="例：PKサンダー"
                   required

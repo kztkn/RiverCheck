@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { getGroupOverview } from "@server/services/group-service.server";
+import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
 import type { GameListItem } from "@shared-types/game";
 import type { Route } from "./+types/group-top";
 
@@ -9,10 +10,16 @@ const statusLabels = {
   finalized: "終了",
 } as const;
 
-export async function loader({ params }: Route.LoaderArgs) {
-  const overview = await getGroupOverview(params.groupCode);
+export async function loader({ request, params }: Route.LoaderArgs) {
+  const [overview, profileOverview] = await Promise.all([
+    getGroupOverview(params.groupCode),
+    getAuthenticatedPlayerProfile(request, params.groupCode),
+  ]);
   if (!overview) throw new Response("Group not found", { status: 404 });
-  return overview;
+  return {
+    ...overview,
+    hasPlayerProfile: Boolean(profileOverview?.profile),
+  };
 }
 
 export default function GroupTop({ loaderData }: Route.ComponentProps) {
@@ -27,9 +34,14 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
           <span className="brand-mark">RC</span>
           <span>RiverCheck</span>
         </Link>
-        <Link className="text-link" to="manage">
-          主催者画面
-        </Link>
+        <div className="header-actions">
+          {loaderData.hasPlayerProfile ? (
+            <Link className="text-link" to="profile">プレイヤー設定</Link>
+          ) : null}
+          <Link className="text-link" to="manage">
+            主催者画面
+          </Link>
+        </div>
       </header>
 
       <section className="hero-card group-hero-card">

@@ -12,12 +12,14 @@ interface ParticipantRow {
   remaining_chips: string | null;
   rebuy_count: number;
   device_locked: boolean;
+  avatar_uploaded_at: Date | null;
 }
 
 interface PlayerOptionRow {
   id: string;
   display_name: string;
   device_locked: boolean;
+  avatar_uploaded_at: Date | null;
 }
 
 export async function listRegisteredPlayersForGame(
@@ -28,8 +30,9 @@ export async function listRegisteredPlayersForGame(
     `
       SELECT
         group_player.id,
-        COALESCE(group_player.display_name_override, player.display_name) AS display_name,
-        participant.participant_token_hash IS NOT NULL AS device_locked
+        player.display_name,
+        participant.participant_token_hash IS NOT NULL AS device_locked,
+        player.avatar_uploaded_at
       FROM group_players AS group_player
       INNER JOIN players AS player ON player.id = group_player.player_id
       LEFT JOIN game_participants AS participant
@@ -61,6 +64,7 @@ export async function listRegisteredPlayersForGame(
     id: row.id,
     displayName: row.display_name,
     deviceLocked: row.device_locked,
+    avatarUpdatedAt: row.avatar_uploaded_at?.toISOString() ?? null,
   }));
 }
 
@@ -73,11 +77,12 @@ export async function listGameParticipants(
       SELECT
         participant.id,
         participant.group_player_id,
-        COALESCE(group_player.display_name_override, player.display_name) AS display_name,
+        player.display_name,
         participant.status,
         participant.remaining_chips,
         participant.rebuy_count,
-        participant.participant_token_hash IS NOT NULL AS device_locked
+        participant.participant_token_hash IS NOT NULL AS device_locked,
+        player.avatar_uploaded_at
       FROM game_participants AS participant
       INNER JOIN games AS game ON game.id = participant.game_id
       INNER JOIN group_players AS group_player
@@ -102,11 +107,12 @@ export async function findParticipantByTokenHash(
       SELECT
         participant.id,
         participant.group_player_id,
-        COALESCE(group_player.display_name_override, player.display_name) AS display_name,
+        player.display_name,
         participant.status,
         participant.remaining_chips,
         participant.rebuy_count,
-        TRUE AS device_locked
+        TRUE AS device_locked,
+        player.avatar_uploaded_at
       FROM game_participants AS participant
       INNER JOIN games AS game ON game.id = participant.game_id
       INNER JOIN group_players AS group_player
@@ -162,8 +168,10 @@ export async function joinNewParticipant(
   gameId: string,
   displayName: string,
   tokenHash: string,
-): Promise<boolean> {
-  const result = await queryDatabase<{ id: string }>(
+  profileSessionTokenHash: string,
+  profileSessionExpiresAt: string,
+): Promise<{ playerId: string; groupPlayerId: string } | null> {
+  const result = await queryDatabase<{ player_id: string; group_player_id: string }>(
     `
       WITH target_game AS (
         SELECT id, group_id
@@ -180,20 +188,43 @@ export async function joinNewParticipant(
         SELECT target_game.group_id, new_player.id
         FROM target_game CROSS JOIN new_player
         RETURNING id
+      ),
+      new_profile_session AS (
+        INSERT INTO player_profile_sessions (player_id, token_hash, expires_at)
+        SELECT new_player.id, $5, $6
+        FROM new_player
+        RETURNING player_id
+      ),
+      new_participant AS (
+        INSERT INTO game_participants (
+          game_id,
+          group_player_id,
+          participant_token_hash
+        )
+        SELECT target_game.id, new_group_player.id, $4
+        FROM target_game CROSS JOIN new_group_player
+        RETURNING group_player_id
       )
-      INSERT INTO game_participants (
-        game_id,
-        group_player_id,
-        participant_token_hash
-      )
-      SELECT target_game.id, new_group_player.id, $4
-      FROM target_game CROSS JOIN new_group_player
-      RETURNING id
+      SELECT new_player.id AS player_id, new_group_player.id AS group_player_id
+      FROM new_player
+      CROSS JOIN new_group_player
+      CROSS JOIN new_profile_session
+      CROSS JOIN new_participant
     `,
-    [gameId, groupId, displayName, tokenHash],
+    [
+      gameId,
+      groupId,
+      displayName,
+      tokenHash,
+      profileSessionTokenHash,
+      profileSessionExpiresAt,
+    ],
   );
 
-  return result.rowCount === 1;
+  const row = result.rows[0];
+  return row
+    ? { playerId: row.player_id, groupPlayerId: row.group_player_id }
+    : null;
 }
 
 export async function updateParticipantInput(
@@ -280,5 +311,6 @@ function mapParticipant(row: ParticipantRow): GameParticipantSummary {
       row.remaining_chips === null ? null : Number(row.remaining_chips),
     rebuyCount: row.rebuy_count,
     deviceLocked: row.device_locked,
+    avatarUpdatedAt: row.avatar_uploaded_at?.toISOString() ?? null,
   };
 }

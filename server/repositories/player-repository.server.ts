@@ -5,6 +5,9 @@ interface GroupPlayerRow {
   id: string;
   display_name: string;
   is_active: boolean;
+  profile_message: string | null;
+  avatar_uploaded_at: Date | null;
+  has_profile_access: boolean;
 }
 
 export async function listGroupPlayers(
@@ -14,8 +17,17 @@ export async function listGroupPlayers(
     `
       SELECT
         group_player.id,
-        COALESCE(group_player.display_name_override, player.display_name) AS display_name,
-        group_player.is_active
+        player.display_name,
+        group_player.is_active,
+        player.profile_message,
+        player.avatar_uploaded_at,
+        EXISTS (
+          SELECT 1
+          FROM player_profile_sessions AS profile_session
+          WHERE profile_session.player_id = player.id
+            AND profile_session.revoked_at IS NULL
+            AND profile_session.expires_at > NOW()
+        ) AS has_profile_access
       FROM group_players AS group_player
       INNER JOIN players AS player ON player.id = group_player.player_id
       WHERE group_player.group_id = $1
@@ -56,5 +68,8 @@ function mapGroupPlayer(row: GroupPlayerRow): GroupPlayerSummary {
     id: row.id,
     displayName: row.display_name,
     isActive: row.is_active,
+    profileMessage: row.profile_message,
+    avatarUpdatedAt: row.avatar_uploaded_at?.toISOString() ?? null,
+    hasProfileAccess: row.has_profile_access,
   };
 }

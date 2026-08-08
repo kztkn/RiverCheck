@@ -4,6 +4,7 @@ import {
   GAME_PHOTO_MAX_BYTES,
   isAllowedGamePhotoType,
 } from "@domain/highlight/validate-game-highlight";
+import { encodeCanvasImage } from "./canvas-image-encoding";
 
 const RAW_PHOTO_MAX_BYTES = 25 * 1024 * 1024;
 const TARGET_LONG_EDGES = [1800, 1600, 1400] as const;
@@ -33,11 +34,11 @@ export async function compressGamePhoto(file: File): Promise<File> {
       context.drawImage(image.source, 0, 0, dimensions.width, dimensions.height);
 
       for (const quality of WEBP_QUALITIES) {
-        const blob = await canvasToWebp(canvas, quality);
+        const blob = await encodeCanvasImage(canvas, quality);
         if (blob.size <= GAME_PHOTO_MAX_BYTES) {
-          return new File([blob], buildWebpName(file.name), {
+          return new File([blob], buildCompressedName(file.name, blob.type), {
             lastModified: Date.now(),
-            type: "image/webp",
+            type: blob.type,
           });
         }
       }
@@ -59,13 +60,18 @@ async function loadImage(file: File): Promise<{
   width: number;
 }> {
   if ("createImageBitmap" in window) {
-    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-    return {
-      dispose: () => bitmap.close(),
-      height: bitmap.height,
-      source: bitmap,
-      width: bitmap.width,
-    };
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+      return {
+        dispose: () => bitmap.close(),
+        height: bitmap.height,
+        source: bitmap,
+        width: bitmap.width,
+      };
+    } catch {
+      // Some Safari versions expose createImageBitmap but reject this option.
+      // Fall through to the broadly supported HTMLImageElement path.
+    }
   }
 
   const objectUrl = URL.createObjectURL(file);
@@ -85,23 +91,8 @@ async function loadImage(file: File): Promise<{
   };
 }
 
-function canvasToWebp(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (!blob || blob.type !== "image/webp") {
-          reject(new Error("このブラウザではWebPへ変換できません。"));
-          return;
-        }
-        resolve(blob);
-      },
-      "image/webp",
-      quality,
-    );
-  });
-}
-
-function buildWebpName(originalName: string): string {
+function buildCompressedName(originalName: string, type: string): string {
   const baseName = originalName.replace(/\.[^.]*$/u, "").trim();
-  return `${baseName || "game-photo"}.webp`;
+  const extension = type === "image/webp" ? "webp" : "jpg";
+  return `${baseName || "game-photo"}.${extension}`;
 }

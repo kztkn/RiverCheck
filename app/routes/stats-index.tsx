@@ -1,4 +1,6 @@
 import { Link } from "react-router";
+import { PlayerAvatar } from "~/components/player-avatar";
+import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { formatSignedBbValue } from "@domain/score/bb-score";
 import {
   getPlayerStatsRanking,
@@ -76,9 +78,19 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
                   to={player.groupPlayerId}
                 >
                   <span className="stats-rank">{player.rank}</span>
-                  <span className="stats-player-name">
-                    <strong>{player.displayName}</strong>
-                    <small>{player.gamesPlayed}回参加・1位 {player.wins}回</small>
+                  <span className="stats-player-identity">
+                    <PlayerAvatar
+                      avatarUrl={buildPlayerAvatarUrl({
+                        avatarUpdatedAt: player.avatarUpdatedAt,
+                        groupCode: group.publicCode,
+                        groupPlayerId: player.groupPlayerId,
+                      })}
+                      displayName={player.displayName}
+                    />
+                    <span className="stats-player-name">
+                      <strong>{player.displayName}</strong>
+                      <small>{player.gamesPlayed}回参加・1位 {player.wins}回</small>
+                    </span>
                   </span>
                   <span className="stats-primary-value">
                     <small>{sort === "average" ? "平均損益" : "累計損益"}</small>

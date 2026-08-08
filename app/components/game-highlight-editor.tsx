@@ -135,7 +135,8 @@ export function GameHighlightEditor({
           {selectedPhoto ? (
             <div className="highlight-photo-selection">
               <span>
-                WebP・{formatBytes(selectedPhoto.size)}へ圧縮しました
+                {selectedPhoto.type === "image/webp" ? "WebP" : "JPEG"}・
+                {formatBytes(selectedPhoto.size)}へ圧縮しました
               </span>
               <button onClick={cancelSelectedPhoto} type="button">
                 選択を取り消す
@@ -152,7 +153,7 @@ export function GameHighlightEditor({
           ) : null}
 
           <p className="field-hint">
-            JPEG・PNG・WebP。長辺1,800px、WebPへ自動圧縮します。圧縮後上限
+            JPEG・PNG・WebP。長辺1,800px、WebP優先（非対応時はJPEG）で自動圧縮します。圧縮後上限
             {formatBytes(GAME_PHOTO_MAX_BYTES)}。
           </p>
           {photoError ? <p className="field-error">{photoError}</p> : null}

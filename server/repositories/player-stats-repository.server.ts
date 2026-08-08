@@ -13,11 +13,14 @@ interface RankingRow {
   total_net_bb: string;
   average_net_bb: string;
   invalid_initial_chips_count: number;
+  avatar_uploaded_at: Date | null;
 }
 
 interface PlayerIdentityRow {
   group_player_id: string;
   display_name: string;
+  profile_message: string | null;
+  avatar_uploaded_at: Date | null;
 }
 
 interface PlayerGameStatRow {
@@ -33,6 +36,8 @@ interface PlayerGameStatRow {
 export interface PlayerStatsIdentity {
   groupPlayerId: string;
   displayName: string;
+  profileMessage: string | null;
+  avatarUpdatedAt: string | null;
 }
 
 export interface FinalizedPlayerGameStat {
@@ -75,8 +80,8 @@ export async function listPlayerStatsRanking(
       player_aggregates AS (
         SELECT
           group_player.id AS group_player_id,
-          COALESCE(group_player.display_name_override, player.display_name)
-            AS display_name,
+          player.display_name,
+          player.avatar_uploaded_at,
           COUNT(finalized_result.game_id)::INTEGER AS games_played,
           COUNT(finalized_result.game_id)
             FILTER (WHERE finalized_result.rank = 1)::INTEGER AS wins,
@@ -90,7 +95,7 @@ export async function listPlayerStatsRanking(
         LEFT JOIN finalized_results AS finalized_result
           ON finalized_result.group_player_id = group_player.id
         WHERE group_player.group_id = $1
-        GROUP BY group_player.id, display_name
+        GROUP BY group_player.id, player.display_name, player.avatar_uploaded_at
       ),
       ranked_players AS (
         SELECT
@@ -106,7 +111,8 @@ export async function listPlayerStatsRanking(
         wins,
         total_net_bb,
         average_net_bb,
-        invalid_initial_chips_count
+        invalid_initial_chips_count,
+        avatar_uploaded_at
       FROM ranked_players
       ORDER BY leaderboard_rank ASC, display_name ASC
     `,
@@ -128,6 +134,7 @@ export async function listPlayerStatsRanking(
     wins: row.wins,
     totalNetBb: Number(row.total_net_bb),
     averageNetBb: Number(row.average_net_bb),
+    avatarUpdatedAt: row.avatar_uploaded_at?.toISOString() ?? null,
   }));
 }
 
@@ -139,8 +146,9 @@ export async function findPlayerStatsIdentity(
     `
       SELECT
         group_player.id AS group_player_id,
-        COALESCE(group_player.display_name_override, player.display_name)
-          AS display_name
+        player.display_name,
+        player.profile_message,
+        player.avatar_uploaded_at
       FROM group_players AS group_player
       INNER JOIN players AS player ON player.id = group_player.player_id
       WHERE group_player.group_id = $1 AND group_player.id = $2
@@ -152,6 +160,8 @@ export async function findPlayerStatsIdentity(
     ? {
         groupPlayerId: row.group_player_id,
         displayName: row.display_name,
+        profileMessage: row.profile_message,
+        avatarUpdatedAt: row.avatar_uploaded_at?.toISOString() ?? null,
       }
     : null;
 }

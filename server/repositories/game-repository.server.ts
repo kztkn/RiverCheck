@@ -49,10 +49,7 @@ export async function listGamesForGroup(
           COUNT(game_result.id)::INTEGER AS participant_count,
           MAX(
             CASE WHEN game_result.rank = 1
-              THEN COALESCE(
-                group_player.display_name_override,
-                player.display_name
-              )
+              THEN player.display_name
             END
           ) AS winner_name
         FROM game_results AS game_result

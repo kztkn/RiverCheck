@@ -80,7 +80,7 @@ export async function lockParticipantsForFinalization(
   const result = await transaction.query<ParticipantRow>(
     `
       SELECT participant.group_player_id,
-             COALESCE(group_player.display_name_override, player.display_name) AS display_name,
+             player.display_name AS display_name,
              participant.remaining_chips,
              participant.rebuy_count
       FROM game_participants AS participant
@@ -177,7 +177,7 @@ export async function listFinalResults(
   const result = await queryDatabase<ResultRow>(
     `
       SELECT game_result.group_player_id,
-             COALESCE(group_player.display_name_override, player.display_name) AS display_name,
+             player.display_name AS display_name,
              game_result.remaining_chips, game_result.rebuy_count,
              game_result.score, game_result.rank, game_result.cost_share
       FROM game_results AS game_result
@@ -240,7 +240,7 @@ export async function lockFinalResults(
   const result = await transaction.query<ResultRow>(
     `
       SELECT game_result.group_player_id,
-             COALESCE(group_player.display_name_override, player.display_name) AS display_name,
+             player.display_name AS display_name,
              game_result.remaining_chips, game_result.rebuy_count,
              game_result.score, game_result.rank, game_result.cost_share
       FROM game_results AS game_result
