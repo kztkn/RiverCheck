@@ -8,6 +8,7 @@ import {
 } from "react-router";
 import type { Route } from "./+types/root";
 import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
+import { extractGroupCode } from "@domain/routing/extract-group-code";
 import "./styles/app.css";
 import "./styles/highlight.css";
 import "./styles/history.css";
@@ -16,16 +17,9 @@ import "./styles/profile.css";
 import "./styles/stats.css";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const pathname = new URL(request.url).pathname;
-  const groupCodeMatch = /^\/g\/([^/]+)/u.exec(pathname);
-  if (!groupCodeMatch?.[1]) return { authenticatedPlayerName: null };
+  const groupCode = extractGroupCode(new URL(request.url).pathname);
+  if (!groupCode) return { authenticatedPlayerName: null };
 
-  let groupCode: string;
-  try {
-    groupCode = decodeURIComponent(groupCodeMatch[1]);
-  } catch {
-    return { authenticatedPlayerName: null };
-  }
   const overview = await getAuthenticatedPlayerProfile(request, groupCode);
   return {
     authenticatedPlayerName: overview?.profile?.displayName ?? null,

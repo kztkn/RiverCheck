@@ -76,8 +76,7 @@ export default function OrganizerLogin({
 
       <section className="participant-panel auth-panel">
         <div>
-          <p className="eyebrow">ORGANIZER ACCESS</p>
-          <h1>主催者画面を開く</h1>
+          <h1>ORGANIZER ACCESS</h1>
           <p className="muted-copy">
             {loaderData.group.name} の主催者PINまたは合言葉を入力してください。
             この端末では次回から入力を省略できます。

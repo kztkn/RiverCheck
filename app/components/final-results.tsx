@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { Link } from "react-router";
+import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import { formatBbScore, formatChipsPerBb } from "@domain/score/bb-score";
 import type {
   GameResultRevision,
@@ -8,6 +10,7 @@ import { ResultRevisionHistory } from "./result-revision-history";
 
 export function FinalResults({
   lineText,
+  editUrl,
   initialChips,
   playedAt,
   results,
@@ -16,6 +19,7 @@ export function FinalResults({
   showSharePanel = true,
 }: {
   lineText: string;
+  editUrl?: string;
   initialChips: number;
   playedAt: string;
   results: GameResultSummary[];
@@ -23,7 +27,6 @@ export function FinalResults({
   shareUrl: string;
   showSharePanel?: boolean;
 }) {
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const [shareState, setShareState] = useState<
     "idle" | "shared" | "fallback-copied" | "failed"
   >("idle");
@@ -37,13 +40,11 @@ export function FinalResults({
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(shareText);
-      } else if (!copyWithSelection(textAreaRef.current)) {
+      } else if (!copyWithTemporaryTextarea(shareText)) {
         throw new Error("copy command was rejected");
       }
       setShareState("fallback-copied");
     } catch {
-      textAreaRef.current?.focus();
-      textAreaRef.current?.select();
       setShareState("failed");
     }
   }
@@ -72,13 +73,45 @@ export function FinalResults({
             {formatPlayedAt(playedAt)}
           </time>
         </div>
-        <span className="count-badge">{results.length}人</span>
+        <div className="result-heading-actions">
+          <span className="count-badge">{results.length}人</span>
+          {showSharePanel ? (
+            <button
+              aria-label="結果を共有"
+              className="result-action-button"
+              onClick={handleShare}
+              title="Share Results"
+              type="button"
+            >
+              <ShareIcon />
+            </button>
+          ) : null}
+          {editUrl ? (
+            <Link
+              aria-label="開催情報と結果を編集"
+              className="result-action-button"
+              title="Edit Game"
+              to={editUrl}
+            >
+              <EditIcon />
+            </Link>
+          ) : null}
+        </div>
       </div>
+      {showSharePanel && shareState !== "idle" ? (
+        <p aria-live="polite" className="result-action-status">
+          {shareState === "shared"
+            ? "共有画面を開きました。"
+            : shareState === "fallback-copied"
+              ? "結果文とリンクをコピーしました。"
+              : "このブラウザでは共有またはコピーを利用できません。"}
+        </p>
+      ) : null}
       <div className="result-list">
         {results.map((result) => (
           <article className="result-row" key={result.groupPlayerId}>
             <span className={`rank-badge rank-${result.rank}`}>
-              {result.rank}位
+              {formatOrdinal(result.rank)}
             </span>
             <div className="result-player">
               <strong>{result.displayName}</strong>
@@ -110,40 +143,6 @@ export function FinalResults({
         initialChips={initialChips}
         revisions={revisions}
       />
-      {showSharePanel ? (
-        <div className="line-share-panel">
-          <div>
-            <p className="eyebrow">SHARE RESULTS</p>
-            <h3>結果を共有</h3>
-            <p>共有先からLINEやSNSを選べます。結果を見るリンクも一緒に送られます。</p>
-          </div>
-          <textarea
-            aria-label="共有用結果テキスト"
-            readOnly
-            ref={textAreaRef}
-            rows={Math.min(14, results.length + 8)}
-            value={shareText}
-          />
-          <div className="share-actions">
-            <button
-              className="button button-primary"
-              onClick={handleShare}
-              type="button"
-            >
-              共有先を選ぶ
-            </button>
-          </div>
-          <p aria-live="polite" className="share-status">
-            {shareState === "shared"
-              ? "共有画面を開きました。"
-              : shareState === "fallback-copied"
-                ? "このブラウザでは共有画面を開けないため、結果文とリンクをコピーしました。"
-                : shareState === "failed"
-                  ? "自動コピーできないため、選択されたテキストを長押しでコピーしてください。"
-                  : ""}
-          </p>
-        </div>
-      ) : null}
     </section>
   );
 }
@@ -154,12 +153,37 @@ function scoreTone(score: number): "positive" | "negative" | "neutral" {
   return "neutral";
 }
 
-function copyWithSelection(textArea: HTMLTextAreaElement | null): boolean {
-  if (!textArea) return false;
+function copyWithTemporaryTextarea(text: string): boolean {
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.readOnly = true;
+  textArea.style.position = "fixed";
+  textArea.style.inset = "0 auto auto -9999px";
+  textArea.style.fontSize = "16px";
+  document.body.appendChild(textArea);
   textArea.focus();
   textArea.select();
-  textArea.setSelectionRange(0, textArea.value.length);
-  return document.execCommand("copy");
+  const copied = document.execCommand("copy");
+  textArea.remove();
+  return copied;
+}
+
+function ShareIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M12 16V3m0 0L7.5 7.5M12 3l4.5 4.5" />
+      <path d="M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="m4 20 4.2-1 10.6-10.6a2.1 2.1 0 0 0-3-3L5.2 16 4 20Z" />
+      <path d="m14.5 6.7 2.8 2.8" />
+    </svg>
+  );
 }
 
 function formatPlayedAt(playedAt: string): string {

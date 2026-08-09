@@ -79,8 +79,7 @@ export function GameHighlightEditor({
   return (
     <section className="game-highlight-editor" aria-labelledby="highlight-editor-heading">
       <div>
-        <p className="eyebrow">EDIT TABLE STORY</p>
-        <h2 id="highlight-editor-heading">ハイライトを編集</h2>
+        <h2 id="highlight-editor-heading">TABLE STORY</h2>
         <p>主催者だけが編集できます。保存後は参加者の結果画面にも表示されます。</p>
       </div>
 

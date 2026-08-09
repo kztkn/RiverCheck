@@ -1,4 +1,5 @@
 import { formatBbScore } from "@domain/score/bb-score";
+import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import { buildResultRevisionChanges } from "@domain/result-revision/build-result-revision-changes";
 import type { GameResultRevision } from "@shared-types/result";
 
@@ -18,8 +19,7 @@ export function ResultRevisionHistory({
     >
       <div className="revision-heading">
         <div>
-          <p className="eyebrow">CORRECTION HISTORY</p>
-          <h3 id="result-revisions-heading">訂正履歴</h3>
+          <h3 id="result-revisions-heading">CORRECTION HISTORY</h3>
         </div>
         <span className="revision-status">訂正済み</span>
       </div>
@@ -82,8 +82,8 @@ export function ResultRevisionHistory({
                       ) : null}
                       {change.before.rank !== change.after.rank ? (
                         <ChangeValue
-                          after={`${change.after.rank}位`}
-                          before={`${change.before.rank}位`}
+                          after={formatOrdinal(change.after.rank)}
+                          before={formatOrdinal(change.before.rank)}
                           label="順位"
                         />
                       ) : null}

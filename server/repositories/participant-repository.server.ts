@@ -129,6 +129,38 @@ export async function findParticipantByTokenHash(
   return row ? mapParticipant(row) : null;
 }
 
+export async function findParticipantByGroupPlayerId(
+  groupId: string,
+  gameId: string,
+  groupPlayerId: string,
+): Promise<GameParticipantSummary | null> {
+  const result = await queryDatabase<ParticipantRow>(
+    `
+      SELECT
+        participant.id,
+        participant.group_player_id,
+        player.display_name,
+        participant.status,
+        participant.remaining_chips,
+        participant.rebuy_count,
+        participant.participant_token_hash IS NOT NULL AS device_locked,
+        player.avatar_uploaded_at
+      FROM game_participants AS participant
+      INNER JOIN games AS game ON game.id = participant.game_id
+      INNER JOIN group_players AS group_player
+        ON group_player.id = participant.group_player_id
+      INNER JOIN players AS player ON player.id = group_player.player_id
+      WHERE game.id = $1
+        AND game.group_id = $2
+        AND participant.group_player_id = $3
+    `,
+    [gameId, groupId, groupPlayerId],
+  );
+
+  const row = result.rows[0];
+  return row ? mapParticipant(row) : null;
+}
+
 export async function claimRegisteredParticipant(
   groupId: string,
   gameId: string,
@@ -155,6 +187,37 @@ export async function claimRegisteredParticipant(
       SET participant_token_hash = EXCLUDED.participant_token_hash,
           updated_at = NOW()
       WHERE game_participants.participant_token_hash IS NULL
+      RETURNING id
+    `,
+    [gameId, groupId, groupPlayerId, tokenHash],
+  );
+
+  return result.rowCount === 1;
+}
+
+export async function joinAuthenticatedParticipant(
+  groupId: string,
+  gameId: string,
+  groupPlayerId: string,
+  tokenHash: string,
+): Promise<boolean> {
+  const result = await queryDatabase<{ id: string }>(
+    `
+      INSERT INTO game_participants (
+        game_id,
+        group_player_id,
+        participant_token_hash
+      )
+      SELECT game.id, group_player.id, $4
+      FROM games AS game
+      INNER JOIN group_players AS group_player
+        ON group_player.group_id = game.group_id
+      WHERE game.id = $1
+        AND game.group_id = $2
+        AND game.status = 'open'
+        AND group_player.id = $3
+        AND group_player.is_active = TRUE
+      ON CONFLICT (game_id, group_player_id) DO NOTHING
       RETURNING id
     `,
     [gameId, groupId, groupPlayerId, tokenHash],
@@ -257,6 +320,36 @@ export async function updateParticipantInput(
   return result.rowCount === 1;
 }
 
+export async function updateParticipantInputByGroupPlayerId(
+  groupId: string,
+  gameId: string,
+  groupPlayerId: string,
+  remainingChips: number,
+  rebuyCount: number,
+): Promise<boolean> {
+  const result = await queryDatabase<{ id: string }>(
+    `
+      UPDATE game_participants AS participant
+      SET
+        remaining_chips = $4,
+        rebuy_count = $5,
+        status = 'submitted',
+        submitted_at = NOW(),
+        updated_at = NOW()
+      FROM games AS game
+      WHERE participant.game_id = game.id
+        AND game.id = $1
+        AND game.group_id = $2
+        AND game.status = 'open'
+        AND participant.group_player_id = $3
+      RETURNING participant.id
+    `,
+    [gameId, groupId, groupPlayerId, remainingChips, rebuyCount],
+  );
+
+  return result.rowCount === 1;
+}
+
 export async function leaveGame(
   groupId: string,
   gameId: string,
@@ -274,6 +367,28 @@ export async function leaveGame(
       RETURNING participant.id
     `,
     [gameId, groupId, tokenHash],
+  );
+
+  return result.rowCount === 1;
+}
+
+export async function leaveGameByGroupPlayerId(
+  groupId: string,
+  gameId: string,
+  groupPlayerId: string,
+): Promise<boolean> {
+  const result = await queryDatabase<{ id: string }>(
+    `
+      DELETE FROM game_participants AS participant
+      USING games AS game
+      WHERE participant.game_id = game.id
+        AND game.id = $1
+        AND game.group_id = $2
+        AND game.status = 'open'
+        AND participant.group_player_id = $3
+      RETURNING participant.id
+    `,
+    [gameId, groupId, groupPlayerId],
   );
 
   return result.rowCount === 1;

@@ -4,6 +4,7 @@ import {
   GAME_TITLE_RECOMMENDED_LENGTH,
 } from "@domain/game/game-title";
 import { calculateCostShares } from "@domain/cost-sharing/calculate-cost-shares";
+import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import {
   recommendTopCosts,
   recommendTopCostsForAttendance,
@@ -241,8 +242,7 @@ export function GameSettingsFields({
         <section className="cost-preview" aria-live="polite">
           <div className="cost-preview-heading">
             <div>
-              <p className="eyebrow">LIVE PREVIEW</p>
-              <h2>順位別の負担額</h2>
+              <h2>COST PREVIEW</h2>
             </div>
             <Field
               containerClassName="preview-count-field"
@@ -302,7 +302,7 @@ export function GameSettingsFields({
               <div className="share-grid">
                 {preview.result.shares.map((share, index) => (
                   <div className="share-item" key={index}>
-                    <span>{index + 1}位</span>
+                    <span>{formatOrdinal(index + 1)}</span>
                     <strong>{formatYen(share)}</strong>
                   </div>
                 ))}
@@ -350,11 +350,10 @@ function PlaceLabel({
   tone: "gold" | "silver" | "bronze";
 }) {
   return (
-    <span aria-label={`${rank}位`} className="place-label">
-      <span aria-hidden="true" className={`place-rank place-rank-${tone}`}>
-        {rank}
+    <span className="place-label">
+      <span className={`place-rank place-rank-${tone}`}>
+        {formatOrdinal(rank)}
       </span>
-      <span aria-hidden="true">位</span>
     </span>
   );
 }

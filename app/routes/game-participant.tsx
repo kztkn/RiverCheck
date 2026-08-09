@@ -1,5 +1,11 @@
-import { Form, Link, redirect, useNavigation } from "react-router";
-import { useState } from "react";
+import {
+  Form,
+  Link,
+  redirect,
+  useNavigation,
+  useRevalidator,
+} from "react-router";
+import { useEffect, useState } from "react";
 import {
   findGameForGroup,
   listGamesForGroup,
@@ -11,11 +17,15 @@ import {
 } from "@server/repositories/finalization-repository.server";
 import {
   claimRegisteredParticipant,
+  findParticipantByGroupPlayerId,
   findParticipantByTokenHash,
+  joinAuthenticatedParticipant,
   joinNewParticipant,
   leaveGame,
+  leaveGameByGroupPlayerId,
   listRegisteredPlayersForGame,
   updateParticipantInput,
+  updateParticipantInputByGroupPlayerId,
 } from "@server/repositories/participant-repository.server";
 import {
   clearParticipantCookie,
@@ -31,25 +41,61 @@ import {
 } from "@server/services/game-highlight-service.server";
 import { FinalResults } from "../components/final-results";
 import { PlayerAvatar } from "../components/player-avatar";
-import { createNewPlayerProfileSessionCredentials } from "@server/services/player-profile-service.server";
+import {
+  createNewPlayerProfileSessionCredentials,
+  getAuthenticatedPlayerProfile,
+} from "@server/services/player-profile-service.server";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { createPlayerProfileCookie } from "@server/services/player-profile-session.server";
 import { GameHighlight } from "../components/game-highlight";
 import { GroupSiteHeader } from "~/components/site-menu";
+import { isOrganizerAuthenticated } from "@server/services/organizer-auth.server";
 import type { GameListItem } from "@shared-types/game";
 import type { Route } from "./+types/game-participant";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const context = await requireGame(params.groupCode, params.gameId);
+  const [isOrganizer, profileOverview] = await Promise.all([
+    isOrganizerAuthenticated(request),
+    context.game.status === "open"
+      ? getAuthenticatedPlayerProfile(request, params.groupCode)
+      : Promise.resolve(null),
+  ]);
   const url = new URL(request.url);
   const token = readParticipantToken(request, params.gameId);
-  const participant = token
+  const participantByToken = token
     ? await findParticipantByTokenHash(
+        context.group.id,
+        params.gameId,
+        await hashToken(token),
+      )
+    : null;
+  let participant =
+    participantByToken ??
+    (profileOverview?.profile
+      ? await findParticipantByGroupPlayerId(
+          context.group.id,
+          params.gameId,
+          profileOverview.profile.groupPlayerId,
+        )
+      : null);
+  if (
+    !participant &&
+    context.game.status === "open" &&
+    profileOverview?.profile
+  ) {
+    await joinAuthenticatedParticipant(
       context.group.id,
       params.gameId,
-      await hashToken(token),
-    )
-    : null;
+      profileOverview.profile.groupPlayerId,
+      await hashToken(generateOpaqueToken()),
+    );
+    participant = await findParticipantByGroupPlayerId(
+      context.group.id,
+      params.gameId,
+      profileOverview.profile.groupPlayerId,
+    );
+  }
   const players =
     context.game.status === "open" && !participant
       ? await listRegisteredPlayersForGame(context.group.id, params.gameId)
@@ -75,6 +121,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return {
     group: { name: context.group.name, publicCode: context.group.publicCode },
     game: context.game,
+    isOrganizer,
     participant: participant
       ? {
           ...participant,
@@ -195,9 +242,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   const token = readParticipantToken(request, params.gameId);
-  if (!token)
-    return { error: "参加情報を確認できません。もう一度参加してください。" };
-  const tokenHash = await hashToken(token);
+  const tokenHash = token ? await hashToken(token) : null;
 
   if (intent === "save-input") {
     const remainingChips = parseNonNegativeInteger(
@@ -211,13 +256,30 @@ export async function action({ request, params }: Route.ActionArgs) {
         error: "残りチップとリバイ回数は0以上の整数で入力してください。",
       };
     }
-    const updated = await updateParticipantInput(
-      context.group.id,
-      params.gameId,
-      tokenHash,
-      remainingChips,
-      rebuyCount,
-    );
+    let updated = tokenHash
+      ? await updateParticipantInput(
+          context.group.id,
+          params.gameId,
+          tokenHash,
+          remainingChips,
+          rebuyCount,
+        )
+      : false;
+    if (!updated) {
+      const groupPlayerId = await getAuthenticatedGroupPlayerId(
+        request,
+        params.groupCode,
+      );
+      updated = groupPlayerId
+        ? await updateParticipantInputByGroupPlayerId(
+            context.group.id,
+            params.gameId,
+            groupPlayerId,
+            remainingChips,
+            rebuyCount,
+          )
+        : false;
+    }
     if (!updated)
       return {
         error: "入力を保存できませんでした。受付状況を確認してください。",
@@ -226,7 +288,25 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   if (intent === "leave") {
-    await leaveGame(context.group.id, params.gameId, tokenHash);
+    let removed = tokenHash
+      ? await leaveGame(context.group.id, params.gameId, tokenHash)
+      : false;
+    if (!removed) {
+      const groupPlayerId = await getAuthenticatedGroupPlayerId(
+        request,
+        params.groupCode,
+      );
+      removed = groupPlayerId
+        ? await leaveGameByGroupPlayerId(
+            context.group.id,
+            params.gameId,
+            groupPlayerId,
+          )
+        : false;
+    }
+    if (!removed) {
+      return { error: "参加情報を確認できません。画面を更新してください。" };
+    }
     return redirect(`${participantUrl}?notice=left`, {
       status: 303,
       headers: {
@@ -247,13 +327,28 @@ export default function GameParticipant({
   actionData,
 }: Route.ComponentProps) {
   const navigation = useNavigation();
+  const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
   const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    if (loaderData.game.status !== "open") return;
+    const refresh = () => {
+      if (revalidator.state === "idle") void revalidator.revalidate();
+    };
+    window.addEventListener("pageshow", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.removeEventListener("pageshow", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [loaderData.game.status, revalidator]);
 
   return (
     <main className="page-shell participant-page">
       <GroupSiteHeader
         groupCode={loaderData.group.publicCode}
+        organizer={loaderData.isOrganizer}
         status={loaderData.game.status !== "finalized" ? (
           <span className={`status status-${loaderData.game.status}`}>
             {loaderData.game.status === "open" ? "受付中" : "準備中"}
@@ -294,6 +389,15 @@ export default function GameParticipant({
       {loaderData.notice === "left" ? (
         <p className="success-notice">参加を取り消しました。</p>
       ) : null}
+      {loaderData.notice === "finalized" ? (
+        <p className="success-notice">結果を確定しました。</p>
+      ) : null}
+      {loaderData.notice === "corrected" ? (
+        <p className="success-notice">開催情報と結果を更新しました。</p>
+      ) : null}
+      {loaderData.notice === "highlight-saved" ? (
+        <p className="success-notice">ハイライトを保存しました。</p>
+      ) : null}
       {actionData?.error ? (
         <p className="error-notice">{actionData.error}</p>
       ) : null}
@@ -302,12 +406,17 @@ export default function GameParticipant({
         <>
         <FinalResults
           lineText={loaderData.lineText}
+          editUrl={
+            loaderData.isOrganizer
+              ? "/g/" + loaderData.group.publicCode + "/games/" + loaderData.game.id + "/admin/edit"
+              : undefined
+          }
           initialChips={loaderData.game.initialChips}
           playedAt={loaderData.game.playedAt}
           results={loaderData.results}
           revisions={loaderData.revisions}
           shareUrl={loaderData.shareUrl}
-          showSharePanel={false}
+          showSharePanel={loaderData.isOrganizer}
         />
         <GameHighlight
           gameTitle={loaderData.game.title}
@@ -339,8 +448,7 @@ export default function GameParticipant({
           {loaderData.participant.status === "submitted" && !isEditing ? (
             <section className="submitted-input" aria-label="保存済みの結果">
               <div>
-                <p className="eyebrow">SUBMITTED</p>
-                <h3>入力済みです</h3>
+                <h3>SUBMITTED</h3>
                 <p>主催者が結果を確定するまでは修正できます。</p>
               </div>
               <div className="submitted-input-values">
@@ -376,7 +484,10 @@ export default function GameParticipant({
               <label className="field">
                 <span className="field-label">残りチップ</span>
                 <input
-                  defaultValue={loaderData.participant.remainingChips ?? ""}
+                  defaultValue={
+                    loaderData.participant.remainingChips ??
+                    loaderData.game.initialChips
+                  }
                   inputMode="numeric"
                   min={0}
                   name="remainingChips"
@@ -416,8 +527,7 @@ export default function GameParticipant({
       ) : (
         <div className="join-grid">
           <section className="participant-panel">
-            <p className="eyebrow">REGISTERED</p>
-            <h2>登録済みの名前から参加</h2>
+            <h2>REGISTERED PLAYERS</h2>
             <p className="muted-copy">
               過去の確定済み開催によく参加している人から表示しています。
             </p>
@@ -508,41 +618,86 @@ function PastGameNavigation({
 }) {
   return (
     <nav aria-label="過去の開催を移動" className="past-game-navigation">
-      {navigation.previousGame ? (
-        <Link
-          aria-label={`前の開催：${navigation.previousGame.title}`}
-          className="past-game-navigation-button"
-          title={`前の開催：${navigation.previousGame.title}`}
-          to={`/g/${groupCode}/games/${navigation.previousGame.id}`}
-        >
-          <NavigationArrow direction="left" />
-        </Link>
-      ) : (
-        <span aria-hidden="true" className="past-game-navigation-button is-disabled">
-          <NavigationArrow direction="left" />
-        </span>
-      )}
-      <span className="past-game-navigation-position">
-        <small>PAST GAMES</small>
-        <strong>
-          過去の開催 {navigation.currentPosition} / {navigation.total}
-        </strong>
+      <PastGameNavigationItem
+        direction="newer"
+        game={navigation.nextGame}
+        groupCode={groupCode}
+        position={navigation.currentPosition + 1}
+      />
+      <span
+        aria-current="page"
+        className="past-game-navigation-item is-current"
+      >
+        <SuitIcon position={navigation.currentPosition} />
+        <time dateTime={navigation.currentGame.playedAt}>
+          {formatNavigationDate(navigation.currentGame.playedAt)}
+        </time>
       </span>
-      {navigation.nextGame ? (
-        <Link
-          aria-label={`次の開催：${navigation.nextGame.title}`}
-          className="past-game-navigation-button"
-          title={`次の開催：${navigation.nextGame.title}`}
-          to={`/g/${groupCode}/games/${navigation.nextGame.id}`}
-        >
-          <NavigationArrow direction="right" />
-        </Link>
-      ) : (
-        <span aria-hidden="true" className="past-game-navigation-button is-disabled">
-          <NavigationArrow direction="right" />
-        </span>
-      )}
+      <PastGameNavigationItem
+        direction="older"
+        game={navigation.previousGame}
+        groupCode={groupCode}
+        position={navigation.currentPosition - 1}
+      />
     </nav>
+  );
+}
+
+function PastGameNavigationItem({
+  direction,
+  game,
+  groupCode,
+  position,
+}: {
+  direction: "newer" | "older";
+  game: GameListItem | null;
+  groupCode: string;
+  position: number;
+}) {
+  const isNewer = direction === "newer";
+  const positionClass = isNewer ? "previous" : "next";
+  const arrow = <NavigationArrow direction={isNewer ? "left" : "right"} />;
+  if (!game) {
+    return (
+      <span
+        aria-hidden="true"
+        className={`past-game-navigation-item is-${positionClass} is-disabled`}
+      >
+        {arrow}
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      aria-label={`${isNewer ? "新しい" : "古い"}開催：${game.title} ${formatNavigationDate(game.playedAt)}`}
+      className={`past-game-navigation-item is-${positionClass}`}
+      title={game.title}
+      to={`/g/${groupCode}/games/${game.id}`}
+    >
+      {isNewer ? arrow : null}
+      <SuitIcon position={position} />
+      <time dateTime={game.playedAt}>{formatNavigationDate(game.playedAt)}</time>
+      {!isNewer ? arrow : null}
+    </Link>
+  );
+}
+
+function SuitIcon({ position }: { position: number }) {
+  const suits = [
+    { symbol: "♠", tone: "spade" },
+    { symbol: "♥", tone: "heart" },
+    { symbol: "♦", tone: "diamond" },
+    { symbol: "♣", tone: "club" },
+  ] as const;
+  const suit = suits[((position - 1) % suits.length + suits.length) % suits.length]!;
+  return (
+    <span
+      aria-hidden="true"
+      className={`past-game-suit past-game-suit-${suit.tone}`}
+    >
+      {suit.symbol}
+    </span>
   );
 }
 
@@ -556,13 +711,30 @@ function NavigationArrow({ direction }: { direction: "left" | "right" }) {
 
 function buildPastGameNavigation(games: GameListItem[], currentGameId: string) {
   const currentIndex = games.findIndex((game) => game.id === currentGameId);
-  if (currentIndex < 0) return null;
+  const currentGame = games[currentIndex];
+  if (currentIndex < 0 || !currentGame) return null;
   return {
+    currentGame,
     currentPosition: games.length - currentIndex,
     nextGame: games[currentIndex - 1] ?? null,
     previousGame: games[currentIndex + 1] ?? null,
-    total: games.length,
   };
+}
+
+function formatNavigationDate(playedAt: string): string {
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    timeZone: "Asia/Tokyo",
+  }).format(new Date(playedAt));
+}
+
+async function getAuthenticatedGroupPlayerId(
+  request: Request,
+  groupCode: string,
+): Promise<string | null> {
+  const overview = await getAuthenticatedPlayerProfile(request, groupCode);
+  return overview?.profile?.groupPlayerId ?? null;
 }
 
 function readString(formData: FormData, name: string): string {

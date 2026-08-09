@@ -29,15 +29,21 @@ export function GroupSiteHeader({
       </Link>
       <div className="header-actions">
         {status}
-        {authenticatedPlayerName ? (
-          <span
-            aria-label={`ログイン中：${authenticatedPlayerName}`}
-            className="header-player-name"
-            title={`ログイン中：${authenticatedPlayerName}`}
-          >
-            {authenticatedPlayerName}
-          </span>
-        ) : null}
+        <span
+          aria-label={
+            authenticatedPlayerName
+              ? `ログイン中：${authenticatedPlayerName}`
+              : "未認証：ゲスト"
+          }
+          className={`header-player-name${authenticatedPlayerName ? "" : " is-guest"}`}
+          title={
+            authenticatedPlayerName
+              ? `ログイン中：${authenticatedPlayerName}`
+              : "プロフィール未認証"
+          }
+        >
+          {authenticatedPlayerName ?? "<ゲスト>"}
+        </span>
         <GroupSiteMenu groupCode={groupCode} organizer={organizer} />
       </div>
     </header>

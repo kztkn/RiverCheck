@@ -13,10 +13,6 @@ import {
 } from "@server/repositories/game-repository.server";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import {
-  listFinalResults,
-  listResultRevisions,
-} from "@server/repositories/finalization-repository.server";
-import {
   findParticipantByTokenHash,
   listGameParticipants,
   removeParticipant,
@@ -30,27 +26,20 @@ import {
 } from "@server/services/game-service.server";
 import {
   buildFinalizationState,
-  correctFinalResults,
   finalizeGame,
-  type ResultCorrectionInput,
 } from "@server/services/finalization-service.server";
-import { formatLineResult } from "@domain/result-sharing/format-line-result";
-import {
-  buildGamePhotoUrl,
-  getGameHighlight,
-  saveGameHighlight,
-} from "@server/services/game-highlight-service.server";
 import { GameSettingsFields } from "../components/game-settings-fields";
-import { FinalResults } from "../components/final-results";
-import { GameHighlight } from "../components/game-highlight";
-import { GameHighlightEditor } from "../components/game-highlight-editor";
 import { ParticipantLinkQr } from "../components/participant-link-qr";
-import { ResultCorrectionPanel } from "../components/result-correction-panel";
 import type { Route } from "./+types/game-admin";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   await requireOrganizer(request, params.groupCode);
   const authorized = await requireGame(params.groupCode, params.gameId);
+  if (authorized.game.status === "finalized") {
+    throw redirect(
+      "/g/" + params.groupCode + "/games/" + params.gameId,
+    );
+  }
   const participantToken = readParticipantToken(request, params.gameId);
   const participantTokenHash = participantToken
     ? await hashToken(participantToken)
@@ -66,19 +55,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       : Promise.resolve(null),
   ]);
   const url = new URL(request.url);
-  const results =
-    authorized.game.status === "finalized"
-      ? await listFinalResults(authorized.group.id, params.gameId)
-      : [];
-  const revisions =
-    authorized.game.status === "finalized"
-      ? await listResultRevisions(authorized.group.id, params.gameId)
-      : [];
-  const highlight =
-    authorized.game.status === "finalized"
-      ? await getGameHighlight(authorized.group.id, params.gameId)
-      : null;
-
   const payload = {
     group: {
       name: authorized.group.name,
@@ -90,22 +66,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       ? { displayName: currentParticipant.displayName }
       : null,
     finalization: buildFinalizationState(authorized.game, participants),
-    results,
-    revisions,
-    highlight,
-    highlightPhotoUrl: buildGamePhotoUrl({
-      gameId: params.gameId,
-      groupCode: params.groupCode,
-      highlight,
-    }),
-    lineText:
-      results.length > 0
-        ? formatLineResult(
-          authorized.game.title,
-          results,
-          authorized.game.initialChips,
-        )
-        : "",
     participantUrl: `${url.origin}/g/${params.groupCode}/games/${params.gameId}`,
     notice: url.searchParams.get("notice"),
   };
@@ -118,8 +78,6 @@ export async function action({ request, params }: Route.ActionArgs) {
   const authorized = await requireGame(params.groupCode, params.gameId);
   const formData = await request.formData();
   const intent = readString(formData, "intent");
-  const returnUrl = `/g/${params.groupCode}/games/${params.gameId}/admin`;
-  const noticeUrl = (notice: string) => `${returnUrl}?notice=${notice}`;
 
   if (intent === "finalize") {
     const values = readAdminCostSettingsForm(formData, authorized.game);
@@ -146,49 +104,10 @@ export async function action({ request, params }: Route.ActionArgs) {
       readString(formData, "confirmDifference") === "yes",
     );
     if (!result.ok) return { ...result, values };
-    return redirect(noticeUrl("finalized"));
-  }
-
-  if (intent === "correct-results") {
-    const corrections = readResultCorrections(formData);
-    if (!corrections) {
-      return {
-        ok: false as const,
-        intent: "correct-results" as const,
-        error: "残りチップとリバイ回数は0以上の整数で入力してください。",
-      };
-    }
-    const result = await correctFinalResults(
-      authorized.group.id,
-      params.gameId,
-      corrections,
-      readString(formData, "confirmDifference") === "yes",
+    return redirect(
+      "/g/" + params.groupCode + "/games/" + params.gameId + "?notice=finalized",
     );
-    if (!result.ok) {
-      return { ...result, intent: "correct-results" as const };
-    }
-    return redirect(noticeUrl("corrected"));
   }
-
-  if (intent === "save-highlight") {
-    const photoEntry = formData.get("photo");
-    const photo =
-      photoEntry instanceof File && photoEntry.size > 0 ? photoEntry : null;
-    const result = await saveGameHighlight(
-      authorized.group.id,
-      params.gameId,
-      {
-        photo,
-        removePhoto: readString(formData, "removePhoto") === "yes",
-        text: readString(formData, "highlightText"),
-      },
-    );
-    if (!result.ok) {
-      return { ...result, intent: "save-highlight" as const };
-    }
-    return redirect(noticeUrl("highlight-saved"));
-  }
-
 
   const participantId = readString(formData, "participantId");
   if (!isUuid(participantId)) {
@@ -228,19 +147,6 @@ export default function GameAdmin({
     failedAction && "errors" in failedAction ? failedAction : null;
   const finalizeError =
     actionData?.ok === false && "error" in actionData ? actionData.error : null;
-  const correctionError =
-    actionData?.ok === false &&
-    "intent" in actionData &&
-    actionData.intent === "correct-results"
-      ? actionData.error
-      : null;
-  const highlightError =
-    actionData?.ok === false &&
-    "intent" in actionData &&
-    actionData.intent === "save-highlight"
-      ? actionData.error
-      : null;
-
   const actionErrors = settingsAction?.errors ?? {};
   const values = failedAction?.values ?? gameToFormValues(loaderData.game);
   const [settlementParticipantCount, setSettlementParticipantCount] = useState(
@@ -368,41 +274,10 @@ export default function GameAdmin({
 
       {notice ? <p className="success-notice">{notice}</p> : null}
 
-      {loaderData.game.status === "finalized" ? (
-        <>
-          <FinalResults
-            lineText={loaderData.lineText}
-            initialChips={loaderData.game.initialChips}
-            playedAt={loaderData.game.playedAt}
-            results={loaderData.results}
-            revisions={loaderData.revisions}
-            shareUrl={loaderData.participantUrl}
-          />
-          <GameHighlight
-            gameTitle={loaderData.game.title}
-            highlight={loaderData.highlight}
-            photoUrl={loaderData.highlightPhotoUrl}
-          />
-          <GameHighlightEditor
-            key={loaderData.highlight?.updatedAt ?? "empty"}
-            error={highlightError}
-            highlight={loaderData.highlight}
-            isSubmitting={isSubmitting}
-            photoUrl={loaderData.highlightPhotoUrl}
-          />
-          <ResultCorrectionPanel
-            error={correctionError}
-            game={loaderData.game}
-            isSubmitting={isSubmitting}
-            results={loaderData.results}
-          />
-        </>
-      ) : (
-        <>
+      <>
           <section className="admin-share-panel">
             <div>
-              <p className="eyebrow">PARTICIPANT LINK</p>
-              <h2>共有リンク</h2>
+              <h2>PARTICIPANT LINK</h2>
               <p>このリンクを参加者に共有してください。</p>
               {loaderData.currentParticipant ? (
                 <p>
@@ -452,8 +327,7 @@ export default function GameAdmin({
           <section className="admin-participants">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">PARTICIPANTS</p>
-                <h2>参加状況</h2>
+                <h2>PARTICIPANTS</h2>
               </div>
               <span className="count-badge">
                 {visibleParticipants.length}人
@@ -583,8 +457,7 @@ export default function GameAdmin({
               {toast.message}
             </div>
           ) : null}
-        </>
-      )}
+      </>
     </main>
   );
 }
@@ -632,49 +505,6 @@ function readAdminCostSettingsForm(
     ),
   };
 }
-
-function readResultCorrections(
-  formData: FormData,
-): ResultCorrectionInput[] | null {
-  const groupPlayerIds = formData.getAll("groupPlayerId");
-  const remainingChipsValues = formData.getAll("remainingChips");
-  const rebuyCountValues = formData.getAll("rebuyCount");
-  if (
-    groupPlayerIds.length === 0 ||
-    groupPlayerIds.length !== remainingChipsValues.length ||
-    groupPlayerIds.length !== rebuyCountValues.length
-  ) {
-    return null;
-  }
-
-  const corrections: ResultCorrectionInput[] = [];
-  for (let index = 0; index < groupPlayerIds.length; index += 1) {
-    const groupPlayerId = groupPlayerIds[index];
-    const remainingChips = parseNonNegativeInteger(
-      remainingChipsValues[index],
-    );
-    const rebuyCount = parseNonNegativeInteger(rebuyCountValues[index]);
-    if (
-      typeof groupPlayerId !== "string" ||
-      !isUuid(groupPlayerId) ||
-      remainingChips === null ||
-      rebuyCount === null
-    ) {
-      return null;
-    }
-    corrections.push({ groupPlayerId, remainingChips, rebuyCount });
-  }
-  return corrections;
-}
-
-function parseNonNegativeInteger(
-  value: FormDataEntryValue | undefined,
-): number | null {
-  if (typeof value !== "string" || !/^\d+$/.test(value.trim())) return null;
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) ? parsed : null;
-}
-
 
 function readString(formData: FormData, name: string): string {
   const value = formData.get(name);

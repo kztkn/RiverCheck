@@ -9,8 +9,8 @@ import {
   saveCostSettingsForFinalization,
   replaceFinalResults,
   toFinalizationParticipants,
-  touchGameAfterCorrection,
   updateParticipantsForCorrection,
+  updateFinalizedGameIdentity,
 } from "@server/repositories/finalization-repository.server";
 import { calculateFinalResults } from "@domain/finalization/calculate-final-results";
 import { validateChipTotal } from "@domain/chip-validation/validate-chip-total";
@@ -138,10 +138,11 @@ export interface ResultCorrectionInput {
   rebuyCount: number;
 }
 
-export async function correctFinalResults(
+export async function updateFinalizedGame(
   groupId: string,
   gameId: string,
   corrections: ResultCorrectionInput[],
+  identity: { title: string; playedAt: string },
   differenceConfirmed: boolean,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   return withTransaction(async (transaction) => {
@@ -214,27 +215,44 @@ export async function correctFinalResults(
       };
     }
 
-    if (
-      buildResultRevisionChanges(beforeResults, calculated.results).length === 0
-    ) {
+    const resultChanges = buildResultRevisionChanges(
+      beforeResults,
+      calculated.results,
+    );
+    const identityChanged =
+      game.title !== identity.title || game.playedAt !== identity.playedAt;
+    if (resultChanges.length === 0 && !identityChanged) {
       return { ok: false, error: "変更された入力がありません。" };
     }
-    if (!calculated.chipValidation.isValid && !differenceConfirmed) {
+    if (
+      resultChanges.length > 0 &&
+      !calculated.chipValidation.isValid &&
+      !differenceConfirmed
+    ) {
       return {
         ok: false,
         error: "チップ差分を確認してから訂正してください。",
       };
     }
 
-    await insertResultRevision(
-      transaction,
-      gameId,
-      beforeResults,
-      calculated.results,
-    );
-    await updateParticipantsForCorrection(transaction, gameId, participants);
-    await replaceFinalResults(transaction, gameId, calculated.results);
-    if (!(await touchGameAfterCorrection(transaction, groupId, gameId))) {
+    if (resultChanges.length > 0) {
+      await insertResultRevision(
+        transaction,
+        gameId,
+        beforeResults,
+        calculated.results,
+      );
+      await updateParticipantsForCorrection(transaction, gameId, participants);
+      await replaceFinalResults(transaction, gameId, calculated.results);
+    }
+    if (
+      !(await updateFinalizedGameIdentity(
+        transaction,
+        groupId,
+        gameId,
+        identity,
+      ))
+    ) {
       throw new Error("game status changed during result correction");
     }
     return { ok: true };

@@ -25,6 +25,15 @@ export interface GameSettingsFormValues {
   previewParticipantCount: string;
 }
 
+export interface GameIdentityFormValues {
+  title: string;
+  playedAt: string;
+}
+
+export type GameIdentityFormErrors = Partial<
+  Record<keyof GameIdentityFormValues, string>
+>;
+
 export type CreateGameFormValues = GameSettingsFormValues;
 
 export type GameSettingsFormErrors = Partial<
@@ -42,6 +51,15 @@ export type CreateGameResult =
 
 export function readCreateGameForm(formData: FormData): CreateGameFormValues {
   return readGameSettingsForm(formData);
+}
+
+export function readGameIdentityForm(
+  formData: FormData,
+): GameIdentityFormValues {
+  return {
+    title: readString(formData, "title"),
+    playedAt: readString(formData, "playedAt"),
+  };
 }
 
 export function readGameSettingsForm(
@@ -83,6 +101,30 @@ export async function createGameForGroup(
 
   const gameId = await insertGame(group.id, validation.input);
   return { ok: true, gameId };
+}
+
+export function validateGameIdentityForm(values: GameIdentityFormValues):
+  | { ok: true; input: { title: string; playedAt: string } }
+  | { ok: false; errors: GameIdentityFormErrors } {
+  const errors: GameIdentityFormErrors = {};
+  const title = values.title.trim();
+
+  if (!title) {
+    errors.title = "開催名を入力してください。";
+  } else if (countGameTitleCharacters(title) > GAME_TITLE_MAX_LENGTH) {
+    errors.title = `開催名は${GAME_TITLE_MAX_LENGTH}文字以内で入力してください。`;
+  }
+
+  const playedAt = parseTokyoDate(values.playedAt);
+  if (!playedAt) {
+    errors.playedAt = "有効な開催日を入力してください。";
+  }
+
+  if (Object.keys(errors).length > 0 || !playedAt) {
+    return { ok: false, errors };
+  }
+
+  return { ok: true, input: { title, playedAt } };
 }
 
 export function validateGameSettingsForm(

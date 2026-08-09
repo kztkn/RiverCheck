@@ -106,8 +106,7 @@ export default function Players({
       <GroupSiteHeader groupCode={loaderData.group.publicCode} organizer />
 
       <section className="form-intro">
-        <p className="eyebrow">MEMBERS</p>
-        <h1>メンバー管理</h1>
+        <h1>MEMBERS</h1>
         <p>メンバー登録と、本人がプロフィールを編集するためのリンクを管理します。</p>
       </section>
 
@@ -153,8 +152,7 @@ export default function Players({
           <input name="intent" type="hidden" value="add-player" />
           <div className="section-heading compact-heading">
             <div>
-              <p className="eyebrow">ADD MEMBER</p>
-              <h2>新しいメンバー</h2>
+              <h2>ADD MEMBER</h2>
             </div>
           </div>
 

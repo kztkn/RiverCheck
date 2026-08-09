@@ -26,8 +26,7 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
 
       <section className="hero-card organizer-hero">
         <div>
-          <p className="eyebrow">ORGANIZER HOME</p>
-          <h1>主催者画面</h1>
+          <h1>ORGANIZER HOME</h1>
           <p className="hero-copy">
             {group.name} の開催作成、参加状況、結果をここから管理します。
           </p>

@@ -4,6 +4,7 @@ import { PlayerPerformanceChart } from "~/components/player-performance-chart";
 import { PlayerAvatar } from "~/components/player-avatar";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { formatSignedBbValue } from "@domain/score/bb-score";
+import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import { getPlayerStatsDetail } from "@server/services/player-stats-service.server";
 import type { Route } from "./+types/stats-player";
 
@@ -52,7 +53,7 @@ export default function StatsPlayer({ loaderData }: Route.ComponentProps) {
         <Kpi label="優勝率" value={formatPercent(summary.winRate)} />
         <Kpi
           label="平均順位"
-          value={summary.gamesPlayed === 0 ? "—" : `${formatDecimal(summary.averageRank)}位`}
+          value={summary.gamesPlayed === 0 ? "—" : formatDecimal(summary.averageRank)}
         />
         <Kpi label="累計損益" tone={getBbToneClass(summary.totalNetBb)} value={formatSignedBbValue(summary.totalNetBb)} />
         <Kpi label="平均損益" tone={getBbToneClass(summary.averageNetBb)} value={formatSignedBbValue(summary.averageNetBb)} />
@@ -96,7 +97,7 @@ export default function StatsPlayer({ loaderData }: Route.ComponentProps) {
                 <span className="stats-game-date">{formatGameDate(game.playedAt)}</span>
                 <span className="stats-game-title">
                   <strong>{game.gameTitle}</strong>
-                  <small>{game.rank}位・リバイ {game.rebuyCount}回</small>
+                  <small>{formatOrdinal(game.rank)}・リバイ {game.rebuyCount}回</small>
                 </span>
                 <strong className={getBbToneClass(game.netBb)}>
                   {formatSignedBbValue(game.netBb)}

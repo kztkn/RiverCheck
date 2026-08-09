@@ -55,8 +55,7 @@ export default function NewGame({
       <GroupSiteHeader groupCode={loaderData.group.publicCode} organizer />
 
       <section className="form-intro">
-        <p className="eyebrow">NEW GAME</p>
-        <h1>新しい会を作成</h1>
+        <h1>NEW GAME</h1>
         <p>{loaderData.group.name} の開催条件を設定します。</p>
       </section>
 

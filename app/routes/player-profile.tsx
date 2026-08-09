@@ -77,8 +77,7 @@ export default function PlayerProfileRoute({
       <GroupSiteHeader groupCode={loaderData.group.publicCode} />
 
       <section className="form-intro profile-intro">
-        <p className="eyebrow">YOUR PROFILE</p>
-        <h1>プレイヤー設定</h1>
+        <h1>PLAYER PROFILE</h1>
         <p>名前・アイコン・ひとことは、RiverCheck内のあなた自身に紐付きます。</p>
       </section>
 

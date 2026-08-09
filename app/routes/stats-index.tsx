@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { PlayerAvatar } from "~/components/player-avatar";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { formatSignedBbValue } from "@domain/score/bb-score";
+import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import {
   getPlayerStatsRanking,
   parsePlayerStatsSort,
@@ -24,15 +25,13 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
       <GroupSiteHeader groupCode={group.publicCode} />
 
       <section className="stats-intro">
-        <p className="eyebrow">PLAYER STATS</p>
-        <h1>ランキング</h1>
+        <h1>PLAYER STATS</h1>
       </section>
 
       <section className="content-section" aria-labelledby="ranking-heading">
         <div className="section-heading stats-heading">
           <div>
-            <p className="eyebrow">RANKING</p>
-            <h2 id="ranking-heading">ランキング</h2>
+            <h2 id="ranking-heading">RANKING</h2>
           </div>
           <div className="stats-sort" aria-label="ランキングの並び順">
             <Link
@@ -69,7 +68,7 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
                   key={player.groupPlayerId}
                   to={player.groupPlayerId}
                 >
-                  <span className="stats-rank">{player.rank}</span>
+                  <span className="stats-rank">{formatOrdinal(player.rank)}</span>
                   <span className="stats-player-identity">
                     <PlayerAvatar
                       avatarUrl={buildPlayerAvatarUrl({
@@ -81,7 +80,7 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
                     />
                     <span className="stats-player-name">
                       <strong>{player.displayName}</strong>
-                      <small>{player.gamesPlayed}回参加・1位 {player.wins}回</small>
+                      <small>{player.gamesPlayed}回参加・1st × {player.wins}</small>
                     </span>
                   </span>
                   <span className="stats-primary-value">

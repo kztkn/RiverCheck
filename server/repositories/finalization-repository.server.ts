@@ -321,18 +321,23 @@ export async function insertResultRevision(
   );
 }
 
-export async function touchGameAfterCorrection(
+export async function updateFinalizedGameIdentity(
   transaction: DatabaseTransaction,
   groupId: string,
   gameId: string,
+  identity: { title: string; playedAt: string },
 ): Promise<boolean> {
   const result = await transaction.query(
     `
       UPDATE games
-      SET updated_at = NOW()
-      WHERE id = $1 AND group_id = $2 AND status = 'finalized'
+      SET title = $3,
+          played_at = $4,
+          updated_at = NOW()
+      WHERE id = $1
+        AND group_id = $2
+        AND status = 'finalized'
     `,
-    [gameId, groupId],
+    [gameId, groupId, identity.title, identity.playedAt],
   );
   return result.rowCount === 1;
 }

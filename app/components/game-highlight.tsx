@@ -14,8 +14,7 @@ export function GameHighlight({
   return (
     <section className="game-highlight-panel" aria-labelledby="highlight-heading">
       <div>
-        <p className="eyebrow">TABLE STORY</p>
-        <h2 id="highlight-heading">この日のハイライト</h2>
+        <h2 id="highlight-heading">TABLE STORY</h2>
       </div>
       {photoUrl ? (
         <figure className="game-highlight-photo">
