@@ -63,6 +63,27 @@ export async function insertPlayerForGroup(
   return id;
 }
 
+export async function updatePlayerDisplayNameForGroup(
+  groupId: string,
+  groupPlayerId: string,
+  displayName: string,
+): Promise<boolean> {
+  const result = await queryDatabase(
+    `
+      UPDATE players AS player
+      SET display_name = $3,
+          updated_at = NOW()
+      FROM group_players AS group_player
+      WHERE group_player.group_id = $1
+        AND group_player.id = $2
+        AND group_player.player_id = player.id
+      RETURNING player.id
+    `,
+    [groupId, groupPlayerId, displayName],
+  );
+  return result.rowCount === 1;
+}
+
 function mapGroupPlayer(row: GroupPlayerRow): GroupPlayerSummary {
   return {
     id: row.id,

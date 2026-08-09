@@ -1,51 +1,142 @@
 import { GroupSiteHeader } from "~/components/site-menu";
-import { Link } from "react-router";
+import { Link, redirect, useNavigation } from "react-router";
+import { PlayerProfileEditor } from "~/components/player-profile-editor";
 import { PlayerPerformanceChart } from "~/components/player-performance-chart";
 import { PlayerAvatar } from "~/components/player-avatar";
+import { FavoriteHandDisplay } from "~/components/playing-card";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { formatSignedBbValue } from "@domain/score/bb-score";
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import { getPlayerStatsDetail } from "@server/services/player-stats-service.server";
+import { getAuthenticatedPlayerProfile, savePlayerProfile } from "@server/services/player-profile-service.server";
 import type { Route } from "./+types/stats-player";
 
-export async function loader({ params }: Route.LoaderArgs) {
-  const overview = await getPlayerStatsDetail(
-    params.groupCode,
-    params.groupPlayerId,
-  );
+export async function loader({ request, params }: Route.LoaderArgs) {
+  const [overview, authenticated] = await Promise.all([
+    getPlayerStatsDetail(params.groupCode, params.groupPlayerId),
+    getAuthenticatedPlayerProfile(request, params.groupCode),
+  ]);
   if (!overview) throw new Response("Player not found", { status: 404 });
-  return overview;
+  return {
+    ...overview,
+    canEditProfile:
+      authenticated?.profile?.groupPlayerId === params.groupPlayerId,
+    profileSaved: new URL(request.url).searchParams.has("profileSaved"),
+    profileEditorOpen:
+      new URL(request.url).searchParams.get("editProfile") === "1",
+  };
 }
 
-export default function StatsPlayer({ loaderData }: Route.ComponentProps) {
+export async function action({ request, params }: Route.ActionArgs) {
+  const authenticated = await getAuthenticatedPlayerProfile(request, params.groupCode);
+  if (!authenticated?.profile || authenticated.profile.groupPlayerId !== params.groupPlayerId) {
+    throw new Response("Forbidden", { status: 403 });
+  }
+  const formData = await request.formData();
+  if (readString(formData, "intent") !== "save-profile") {
+    throw new Response("Bad Request", { status: 400 });
+  }
+  const avatarEntry = formData.get("avatar");
+  const avatar = avatarEntry instanceof File && avatarEntry.size > 0 ? avatarEntry : null;
+  const result = await savePlayerProfile(authenticated.profile, {
+    avatar,
+    removeAvatar: readString(formData, "removeAvatar") === "yes",
+    values: {
+      displayName: authenticated.profile.displayName,
+      profileMessage: readString(formData, "profileMessage"),
+      favoriteCard1: readString(formData, "favoriteCard1"),
+      favoriteCard2: readString(formData, "favoriteCard2"),
+    },
+  });
+  return result.ok
+    ? redirect(`/g/${params.groupCode}/stats/${params.groupPlayerId}?profileSaved=1`, { status: 303 })
+    : result;
+}
+
+export default function StatsPlayer({ loaderData, actionData }: Route.ComponentProps) {
   const { group, playerStats } = loaderData;
   const { summary, games } = playerStats;
   const recentGames = [...games].reverse();
+  const navigation = useNavigation();
+  const profileSaveFailure = actionData?.ok === false ? actionData : null;
+  const isSavingProfile =
+    navigation.state === "submitting" &&
+    navigation.formData?.get("intent") === "save-profile";
+  const profilePath = `/g/${group.publicCode}/stats/${summary.groupPlayerId}`;
+  const avatarUrl = buildPlayerAvatarUrl({
+    avatarUpdatedAt: summary.avatarUpdatedAt,
+    groupCode: group.publicCode,
+    groupPlayerId: summary.groupPlayerId,
+  });
 
   return (
     <main className="page-shell stats-page">
       <GroupSiteHeader groupCode={group.publicCode} />
 
-      <section className="stats-intro stats-player-intro">
-        <div className="stats-profile-identity">
+      <section className="stats-intro stats-player-intro" id="profile-summary">
+        <div className="stats-profile-topline">
           <PlayerAvatar
-            avatarUrl={buildPlayerAvatarUrl({
-              avatarUpdatedAt: summary.avatarUpdatedAt,
-              groupCode: group.publicCode,
-              groupPlayerId: summary.groupPlayerId,
-            })}
+            avatarUrl={avatarUrl}
             className="player-avatar-large"
             displayName={summary.displayName}
           />
-          <div>
-            <p className="eyebrow">PLAYER PROFILE</p>
-            <h1>{summary.displayName}</h1>
-            {summary.profileMessage ? (
-              <p className="stats-profile-message">{summary.profileMessage}</p>
-            ) : null}
-          </div>
+          {loaderData.canEditProfile ? (
+            <Link
+              className="stats-profile-edit-button"
+              to={`${profilePath}?editProfile=1`}
+            >
+              プロフィールを編集
+            </Link>
+          ) : null}
         </div>
+        <div className="stats-profile-copy">
+          <p className="eyebrow">PLAYER PROFILE</p>
+          <h1>{summary.displayName}</h1>
+          {summary.profileMessage ? (
+            <p className="stats-profile-message">{summary.profileMessage}</p>
+          ) : null}
+        </div>
+        {summary.favoriteCard1 && summary.favoriteCard2 ? (
+          <div className="stats-favorite-hand">
+            <span className="eyebrow">MY HAND</span>
+            <FavoriteHandDisplay
+              card1={summary.favoriteCard1}
+              card2={summary.favoriteCard2}
+            />
+          </div>
+        ) : null}
       </section>
+
+      {loaderData.profileSaved ? (
+        <p className="success-notice" role="status">プロフィールを保存しました。</p>
+      ) : null}
+
+      {loaderData.canEditProfile ? (
+        <section
+          aria-label="プロフィールを編集"
+          aria-modal="true"
+          className={`profile-edit-modal${loaderData.profileEditorOpen || profileSaveFailure ? " is-open" : ""}`}
+          role="dialog"
+        >
+          <a aria-label="プロフィール編集を閉じる" className="profile-edit-modal-backdrop" href={profilePath} />
+          <div className="profile-edit-modal-card">
+            <PlayerProfileEditor
+              avatarUrl={avatarUrl}
+              error={profileSaveFailure?.error ?? null}
+              errors={profileSaveFailure?.errors ?? {}}
+              isSubmitting={isSavingProfile}
+              modalCloseHref={profilePath}
+              profile={{
+                displayName: summary.displayName,
+                favoriteCard1: summary.favoriteCard1,
+                favoriteCard2: summary.favoriteCard2,
+                profileMessage: summary.profileMessage,
+              }}
+              values={profileSaveFailure?.values ?? null}
+            />
+          </div>
+        </section>
+      ) : null}
 
       <section className="stats-kpi-grid" aria-label="戦績サマリー">
         <Kpi label="参加回数" value={`${summary.gamesPlayed}回`} />
@@ -134,4 +225,9 @@ function formatGameDate(isoDate: string): string {
 
 function getBbToneClass(value: number): string {
   return value > 0 ? "bb-positive" : value < 0 ? "bb-negative" : "bb-neutral";
+}
+
+function readString(formData: FormData, name: string): string {
+  const value = formData.get(name);
+  return typeof value === "string" ? value : "";
 }

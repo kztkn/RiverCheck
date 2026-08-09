@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Form, Link } from "react-router";
 import { calculateFinalResults } from "@domain/finalization/calculate-final-results";
-import { GAME_TITLE_MAX_LENGTH } from "@domain/game/game-title";
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import { formatBbScore } from "@domain/score/bb-score";
 import type { GameDetails } from "@shared-types/game";
@@ -13,24 +12,21 @@ interface CorrectionValue {
 }
 
 export function ResultCorrectionPanel({
+  actionUrl,
   cancelUrl,
   error,
   game,
-  identityErrors,
-  identityValues: initialIdentityValues,
   isSubmitting,
   results,
 }: {
+  actionUrl: string;
   cancelUrl: string;
   error: string | null;
   game: GameDetails;
-  identityErrors: { title?: string; playedAt?: string };
-  identityValues: { title: string; playedAt: string };
   isSubmitting: boolean;
   results: GameResultSummary[];
 }) {
   const [values, setValues] = useState(() => initialValues(results));
-  const [identityValues, setIdentityValues] = useState(initialIdentityValues);
   const [differenceConfirmed, setDifferenceConfirmed] = useState(false);
 
   const preview = useMemo(() => {
@@ -64,18 +60,14 @@ export function ResultCorrectionPanel({
       value?.rebuyCount !== String(result.rebuyCount)
     );
   });
-  const hasIdentityChanges =
-    identityValues.title.trim() !== game.title ||
-    identityValues.playedAt !== toDateInputValue(game.playedAt);
-  const hasChanges = hasResultChanges || hasIdentityChanges;
+  const hasChanges = hasResultChanges;
   const chipDifference = preview.calculated?.chipValidation.difference ?? 0;
   const hasChipDifference = chipDifference !== 0;
   const canSubmit =
-    Boolean(preview.calculated) &&
     hasChanges &&
-    (!hasResultChanges || !hasChipDifference || differenceConfirmed) &&
-    identityValues.title.trim().length > 0 &&
-    identityValues.playedAt.length > 0 &&
+    (!hasResultChanges ||
+      (Boolean(preview.calculated) &&
+        (!hasChipDifference || differenceConfirmed))) &&
     !isSubmitting;
 
   function updateValue(
@@ -97,61 +89,24 @@ export function ResultCorrectionPanel({
     <section className="result-correction-panel">
       <div className="section-heading">
         <div>
-          <h2>GAME DETAILS</h2>
+          <h2>PLAYER RESULTS</h2>
         </div>
       </div>
       <p className="correction-intro">
-        開催情報と結果を修正できます。結果の変更内容は参加者にも訂正履歴として表示されます。
+        残りチップとリバイ回数を訂正します。変更内容は参加者にも訂正履歴として表示されます。
       </p>
 
-      <Form className="correction-form" method="post" noValidate>
+      <Form
+        action={actionUrl}
+        className="correction-form"
+        method="post"
+        noValidate
+        reloadDocument
+      >
         <input name="intent" type="hidden" value="correct-results" />
+        <input name="title" type="hidden" value={game.title} />
+        <input name="playedAt" type="hidden" value={toDateInputValue(game.playedAt)} />
 
-        <fieldset className="correction-game-details">
-          <legend>GAME INFO</legend>
-          <label className="field">
-            <span className="field-label">開催名</span>
-            <input
-              aria-invalid={identityErrors.title ? true : undefined}
-              maxLength={GAME_TITLE_MAX_LENGTH}
-              name="title"
-              onChange={(event) =>
-                setIdentityValues((current) => ({
-                  ...current,
-                  title: event.currentTarget.value,
-                }))
-              }
-              required
-              value={identityValues.title}
-            />
-            {identityErrors.title ? (
-              <span className="field-error">{identityErrors.title}</span>
-            ) : null}
-          </label>
-          <label className="field">
-            <span className="field-label">開催日</span>
-            <input
-              aria-invalid={identityErrors.playedAt ? true : undefined}
-              name="playedAt"
-              onChange={(event) =>
-                setIdentityValues((current) => ({
-                  ...current,
-                  playedAt: event.currentTarget.value,
-                }))
-              }
-              required
-              type="date"
-              value={identityValues.playedAt}
-            />
-            {identityErrors.playedAt ? (
-              <span className="field-error">{identityErrors.playedAt}</span>
-            ) : null}
-          </label>
-        </fieldset>
-
-        <div className="correction-subheading">
-          <h3>PLAYER RESULTS</h3>
-        </div>
         <div className="correction-input-list">
           {results.map((result) => {
             const value = values[result.groupPlayerId]!;
@@ -241,7 +196,7 @@ export function ResultCorrectionPanel({
           )}
         </div>
 
-        {hasChipDifference ? (
+        {hasResultChanges && hasChipDifference ? (
           <label className="confirmation-box difference-warning">
             <input
               checked={differenceConfirmed}
@@ -282,7 +237,7 @@ export function ResultCorrectionPanel({
             disabled={!canSubmit}
             type="submit"
           >
-            {isSubmitting ? "保存中…" : "Save Changes"}
+            {isSubmitting ? "保存中…" : "Save"}
           </button>
         </div>
       </Form>

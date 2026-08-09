@@ -1,6 +1,9 @@
 import { GroupSiteHeader } from "~/components/site-menu";
-import { Link } from "react-router";
+import { Link, redirect, useNavigation } from "react-router";
+import { PayPayLinkEditor } from "~/components/paypay-link-editor";
 import { getGroupOverview } from "@server/services/group-service.server";
+import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
+import { saveGroupPayPayRecipientLink } from "@server/services/group-paypay-service.server";
 import { requireOrganizer } from "@server/services/organizer-auth.server";
 import type { Route } from "./+types/group-manage";
 
@@ -14,11 +17,42 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   await requireOrganizer(request, params.groupCode);
   const overview = await getGroupOverview(params.groupCode);
   if (!overview) throw new Response("Group not found", { status: 404 });
-  return overview;
+  return {
+    ...overview,
+    notice: new URL(request.url).searchParams.get("notice"),
+  };
 }
 
-export default function GroupManage({ loaderData }: Route.ComponentProps) {
+export async function action({ request, params }: Route.ActionArgs) {
+  await requireOrganizer(request, params.groupCode);
+  const group = await findGroupByPublicCode(params.groupCode);
+  if (!group) throw new Response("Group not found", { status: 404 });
+  const formData = await request.formData();
+  if (readString(formData, "intent") !== "save-paypay-link") {
+    throw new Response("Unknown action", { status: 400 });
+  }
+  const result = await saveGroupPayPayRecipientLink(
+    group.id,
+    readString(formData, "payPayRecipientLink"),
+  );
+  return result.ok
+    ? redirect(`/g/${params.groupCode}/manage?notice=paypay-saved`, {
+        status: 303,
+      })
+    : { ...result, intent: "save-paypay-link" as const };
+}
+
+export default function GroupManage({ loaderData, actionData }: Route.ComponentProps) {
   const { group, games } = loaderData;
+  const navigation = useNavigation();
+  const payPayAction =
+    actionData?.ok === false && actionData.intent === "save-paypay-link"
+      ? actionData
+      : null;
+  const manageUrl = `/g/${group.publicCode}/manage`;
+  const isPayPaySubmitting =
+    navigation.state === "submitting" &&
+    navigation.formData?.get("intent") === "save-paypay-link";
 
   return (
     <main className="page-shell">
@@ -48,6 +82,20 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
         </div>
       </section>
 
+      {loaderData.notice === "paypay-saved" ? (
+        <p className="success-notice">PayPay受取リンクを保存しました。</p>
+      ) : null}
+
+      <PayPayLinkEditor
+        actionUrl={manageUrl}
+        cancelUrl={manageUrl}
+        error={payPayAction?.error ?? null}
+        isSubmitting={isPayPaySubmitting}
+        link={group.payPayRecipientLink}
+        registeredAt={group.payPayLinkRegisteredAt}
+        value={payPayAction?.value ?? null}
+      />
+
       <section
         className="content-section"
         aria-labelledby="manage-games-heading"
@@ -74,7 +122,11 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
               <article className="game-card" key={game.id}>
                 <Link
                   className="game-card-main"
-                  to={`/g/${group.publicCode}/games/${game.id}/admin`}
+                  to={
+                    game.status === "finalized"
+                      ? `/g/${group.publicCode}/games/${game.id}/admin/edit`
+                      : `/g/${group.publicCode}/games/${game.id}/admin`
+                  }
                 >
                   <span className={`status status-${game.status}`}>
                     {statusLabels[game.status]}
@@ -90,7 +142,11 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
                 <div className="game-card-actions">
                   <Link
                     className="card-action"
-                    to={`/g/${group.publicCode}/games/${game.id}/admin`}
+                    to={
+                      game.status === "finalized"
+                        ? `/g/${group.publicCode}/games/${game.id}/admin/edit`
+                        : `/g/${group.publicCode}/games/${game.id}/admin`
+                    }
                   >
                   </Link>
                 </div>
@@ -101,4 +157,9 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
       </section>
     </main>
   );
+}
+
+function readString(formData: FormData, name: string): string {
+  const value = formData.get(name);
+  return typeof value === "string" ? value : "";
 }

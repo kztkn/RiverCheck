@@ -38,8 +38,8 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
 
       <Link className="stats-cta" to="stats">
         <span>
-          <small>PLAYER STATS</small>
-          <strong>ランキングを見る</strong>
+          <small>RANKING</small>
+          <strong>ランキング</strong>
         </span>
         <span aria-hidden="true">→</span>
       </Link>

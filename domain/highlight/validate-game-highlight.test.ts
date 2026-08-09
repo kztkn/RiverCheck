@@ -11,14 +11,14 @@ describe("validateHighlightText", () => {
     expect(validateHighlightText("  \n ")).toEqual({ ok: true, text: null });
   });
 
-  it("前後空白を除去し1000文字を超える文章を拒否する", () => {
+  it("前後空白を除去し300文字を超える文章を拒否する", () => {
     expect(validateHighlightText("  ナイスハンド  ")).toEqual({
       ok: true,
       text: "ナイスハンド",
     });
-    expect(validateHighlightText("あ".repeat(1001))).toEqual({
+    expect(validateHighlightText("あ".repeat(301))).toEqual({
       ok: false,
-      error: "ハイライトは1000文字以内で入力してください。",
+      error: "ハイライトは300文字以内で入力してください。",
     });
   });
 });

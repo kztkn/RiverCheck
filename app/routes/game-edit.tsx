@@ -1,6 +1,7 @@
 import { redirect, useNavigation } from "react-router";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { GameHighlightEditor } from "~/components/game-highlight-editor";
+import { GameIdentityEditor } from "~/components/game-identity-editor";
 import { ResultCorrectionPanel } from "~/components/result-correction-panel";
 import { findGameForGroup } from "@server/repositories/game-repository.server";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
@@ -56,6 +57,55 @@ export async function action({ request, params }: Route.ActionArgs) {
   const intent = readString(formData, "intent");
   const resultUrl = `/g/${params.groupCode}/games/${params.gameId}`;
 
+  if (intent === "save-game-identity") {
+    const identityValues = readGameIdentityForm(formData);
+    const identityValidation = validateGameIdentityForm(identityValues);
+    if (!identityValidation.ok) {
+      return {
+        ok: false as const,
+        intent: "save-game-identity" as const,
+        error: "開催情報を確認してください。",
+        identityErrors: identityValidation.errors,
+        identityValues,
+      };
+    }
+
+    const currentResults = await listFinalResults(context.group.id, params.gameId);
+    const corrections = currentResults.map((result) => ({
+      groupPlayerId: result.groupPlayerId,
+      remainingChips: result.remainingChips,
+      rebuyCount: result.rebuyCount,
+    }));
+    try {
+      const result = await updateFinalizedGame(
+        context.group.id,
+        params.gameId,
+        corrections,
+        identityValidation.input,
+        false,
+      );
+      if (!result.ok) {
+        return {
+          ...result,
+          intent: "save-game-identity" as const,
+          identityErrors: {},
+          identityValues,
+        };
+      }
+    } catch (error) {
+      console.error("Failed to update game identity", error);
+      return {
+        ok: false as const,
+        intent: "save-game-identity" as const,
+        error:
+          "開催情報を保存できませんでした。画面を更新してもう一度お試しください。",
+        identityErrors: {},
+        identityValues,
+      };
+    }
+    return redirect(`${resultUrl}?notice=corrected`, { status: 303 });
+  }
+
   if (intent === "save-highlight") {
     const photoEntry = formData.get("photo");
     const photo =
@@ -98,13 +148,26 @@ export async function action({ request, params }: Route.ActionArgs) {
     };
   }
 
-  const result = await updateFinalizedGame(
-    context.group.id,
-    params.gameId,
-    corrections,
-    identityValidation.input,
-    readString(formData, "confirmDifference") === "yes",
-  );
+  let result: Awaited<ReturnType<typeof updateFinalizedGame>>;
+  try {
+    result = await updateFinalizedGame(
+      context.group.id,
+      params.gameId,
+      corrections,
+      identityValidation.input,
+      readString(formData, "confirmDifference") === "yes",
+    );
+  } catch (error) {
+    console.error("Failed to update finalized game", error);
+    return {
+      ok: false as const,
+      intent: "correct-results" as const,
+      error:
+        "開催情報を保存できませんでした。画面を更新してもう一度お試しください。",
+      identityErrors: {},
+      identityValues,
+    };
+  }
   if (!result.ok) {
     return {
       ...result,
@@ -130,7 +193,12 @@ export default function GameEdit({
     actionData?.ok === false && actionData.intent === "save-highlight"
       ? actionData.error
       : null;
+  const identityAction =
+    actionData?.ok === false && actionData.intent === "save-game-identity"
+      ? actionData
+      : null;
   const resultUrl = `/g/${loaderData.group.publicCode}/games/${loaderData.game.id}`;
+  const editUrl = `${resultUrl}/admin/edit`;
 
   return (
     <main className="page-shell form-page edit-game-page">
@@ -142,27 +210,37 @@ export default function GameEdit({
         <p>確定状態を保ったまま、開催情報と結果を修正できます。</p>
       </section>
 
-      <ResultCorrectionPanel
-        cancelUrl={resultUrl}
-        error={correctionAction?.error ?? null}
-        game={loaderData.game}
-        identityErrors={correctionAction?.identityErrors ?? {}}
-        identityValues={
-          correctionAction?.identityValues ?? {
-            title: loaderData.game.title,
-            playedAt: toDateInputValue(loaderData.game.playedAt),
-          }
-        }
-        isSubmitting={isSubmitting}
-        results={loaderData.results}
-      />
-
       <GameHighlightEditor
+        actionUrl={editUrl}
+        cancelUrl={resultUrl}
         key={loaderData.highlight?.updatedAt ?? "empty"}
         error={highlightError}
         highlight={loaderData.highlight}
         isSubmitting={isSubmitting}
         photoUrl={loaderData.highlightPhotoUrl}
+      />
+
+      <GameIdentityEditor
+        actionUrl={editUrl}
+        cancelUrl={resultUrl}
+        error={identityAction?.error ?? null}
+        errors={identityAction?.identityErrors ?? {}}
+        isSubmitting={isSubmitting}
+        values={
+          identityAction?.identityValues ?? {
+            title: loaderData.game.title,
+            playedAt: toDateInputValue(loaderData.game.playedAt),
+          }
+        }
+      />
+
+      <ResultCorrectionPanel
+        actionUrl={editUrl}
+        cancelUrl={resultUrl}
+        error={correctionAction?.error ?? null}
+        game={loaderData.game}
+        isSubmitting={isSubmitting}
+        results={loaderData.results}
       />
     </main>
   );

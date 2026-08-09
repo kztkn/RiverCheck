@@ -64,7 +64,60 @@
 }
 
 .stats-player-intro {
+  display: grid;
+  gap: 18px;
   padding-bottom: 30px;
+}
+
+.stats-profile-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.stats-profile-edit-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(57, 222, 141, 0.32);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 850;
+  padding: 9px 16px;
+  white-space: nowrap;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.stats-profile-edit-button:hover,
+.stats-profile-edit-button:focus-visible {
+  border-color: rgba(57, 222, 141, 0.58);
+  background: rgba(57, 222, 141, 0.1);
+}
+
+.stats-profile-edit-button:active {
+  transform: translateY(1px);
+}
+
+.stats-profile-copy {
+  min-width: 0;
+}
+
+.stats-profile-copy h1 {
+  max-width: 100%;
+  margin: 5px 0 10px;
+  overflow: hidden;
+  font-size: clamp(1.7rem, 8vw, 2.55rem);
+  letter-spacing: -0.055em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-profile-copy p {
+  margin: 0;
 }
 
 .stats-sort {

@@ -9,6 +9,8 @@ interface ProfileRow {
   group_player_id: string;
   display_name: string;
   profile_message: string | null;
+  favorite_hand_card_1: string | null;
+  favorite_hand_card_2: string | null;
   avatar_object_key: string | null;
   avatar_content_type: GamePhotoContentType | null;
   avatar_byte_size: number | null;
@@ -29,6 +31,8 @@ export interface PlayerProfileRecord {
   groupPlayerId: string;
   displayName: string;
   profileMessage: string | null;
+  favoriteCard1: string | null;
+  favoriteCard2: string | null;
   avatarObjectKey: string | null;
   avatarContentType: GamePhotoContentType | null;
   avatarByteSize: number | null;
@@ -55,6 +59,8 @@ export async function findPlayerProfileBySession(
         group_player.id AS group_player_id,
         player.display_name,
         player.profile_message,
+        player.favorite_hand_card_1,
+        player.favorite_hand_card_2,
         player.avatar_object_key,
         player.avatar_content_type,
         player.avatar_byte_size,
@@ -71,6 +77,52 @@ export async function findPlayerProfileBySession(
       LIMIT 1
     `,
     [tokenHash, groupId],
+  );
+  return result.rows[0] ? mapProfile(result.rows[0]) : null;
+}
+
+export async function createPlayerProfileSession(
+  groupId: string,
+  groupPlayerId: string,
+  tokenHash: string,
+  expiresAt: string,
+): Promise<PlayerProfileRecord | null> {
+  const result = await queryDatabase<ProfileRow>(
+    `
+      WITH selected_player AS (
+        SELECT player.id
+        FROM group_players AS group_player
+        INNER JOIN players AS player ON player.id = group_player.player_id
+        WHERE group_player.group_id = $1
+          AND group_player.id = $2
+          AND group_player.is_active = TRUE
+      ),
+      created_session AS (
+        INSERT INTO player_profile_sessions (player_id, token_hash, expires_at)
+        SELECT selected_player.id, $3, $4
+        FROM selected_player
+        RETURNING player_id
+      )
+      SELECT
+        player.id AS player_id,
+        group_player.id AS group_player_id,
+        player.display_name,
+        player.profile_message,
+        player.favorite_hand_card_1,
+        player.favorite_hand_card_2,
+        player.avatar_object_key,
+        player.avatar_content_type,
+        player.avatar_byte_size,
+        player.avatar_uploaded_at,
+        player.updated_at
+      FROM created_session
+      INNER JOIN players AS player ON player.id = created_session.player_id
+      INNER JOIN group_players AS group_player
+        ON group_player.player_id = player.id
+       AND group_player.group_id = $1
+       AND group_player.id = $2
+    `,
+    [groupId, groupPlayerId, tokenHash, expiresAt],
   );
   return result.rows[0] ? mapProfile(result.rows[0]) : null;
 }
@@ -205,6 +257,8 @@ export async function consumePlayerProfileClaim(
           group_player.id AS group_player_id,
           player.display_name,
           player.profile_message,
+          player.favorite_hand_card_1,
+          player.favorite_hand_card_2,
           player.avatar_object_key,
           player.avatar_content_type,
           player.avatar_byte_size,
@@ -228,6 +282,8 @@ export async function savePlayerProfileRecord(
   input: {
     displayName: string;
     profileMessage: string | null;
+    favoriteCard1: string | null;
+    favoriteCard2: string | null;
     avatarObjectKey: string | null;
     avatarContentType: GamePhotoContentType | null;
     avatarByteSize: number | null;
@@ -240,18 +296,22 @@ export async function savePlayerProfileRecord(
       UPDATE players
       SET display_name = $2,
           profile_message = $3,
-          avatar_object_key = $4,
-          avatar_content_type = $5,
-          avatar_byte_size = $6,
-          avatar_uploaded_at = $7,
+          favorite_hand_card_1 = $4,
+          favorite_hand_card_2 = $5,
+          avatar_object_key = $6,
+          avatar_content_type = $7,
+          avatar_byte_size = $8,
+          avatar_uploaded_at = $9,
           updated_at = NOW()
       WHERE id = $1
-        AND avatar_object_key IS NOT DISTINCT FROM $8
+        AND avatar_object_key IS NOT DISTINCT FROM $10
     `,
     [
       playerId,
       input.displayName,
       input.profileMessage,
+      input.favoriteCard1,
+      input.favoriteCard2,
       input.avatarObjectKey,
       input.avatarContentType,
       input.avatarByteSize,
@@ -296,6 +356,8 @@ function mapProfile(row: ProfileRow): PlayerProfileRecord {
     groupPlayerId: row.group_player_id,
     displayName: row.display_name,
     profileMessage: row.profile_message,
+    favoriteCard1: row.favorite_hand_card_1,
+    favoriteCard2: row.favorite_hand_card_2,
     avatarObjectKey: row.avatar_object_key,
     avatarContentType: row.avatar_content_type,
     avatarByteSize: row.avatar_byte_size,

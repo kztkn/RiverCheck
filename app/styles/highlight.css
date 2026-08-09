@@ -151,6 +151,12 @@
   margin: 0;
 }
 
+.highlight-editor-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+  gap: 10px;
+}
+
 @media (max-width: 639px) {
   .game-highlight-photo,
   .highlight-photo-preview {

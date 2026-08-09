@@ -9,14 +9,18 @@ describe("validatePlayerProfile", () => {
   it("名前と一言を整形する", () => {
     expect(
       validatePlayerProfile({
-        displayName: "  PKサンダー  ",
+        displayName: "  プレイヤー  ",
         profileMessage: "  リバーまで諦めない  ",
+        favoriteCard1: " as ",
+        favoriteCard2: "kh",
       }),
     ).toEqual({
       ok: true,
       values: {
-        displayName: "PKサンダー",
+        displayName: "プレイヤー",
         profileMessage: "リバーまで諦めない",
+        favoriteCard1: "AS",
+        favoriteCard2: "KH",
       },
     });
   });
@@ -25,6 +29,8 @@ describe("validatePlayerProfile", () => {
     const result = validatePlayerProfile({
       displayName: "あ".repeat(11),
       profileMessage: "",
+      favoriteCard1: "",
+      favoriteCard2: "",
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -35,6 +41,8 @@ describe("validatePlayerProfile", () => {
     const result = validatePlayerProfile({
       displayName: "kazuto",
       profileMessage: "  ",
+      favoriteCard1: "",
+      favoriteCard2: "",
     });
     expect(result).toMatchObject({
       ok: true,
@@ -46,11 +54,49 @@ describe("validatePlayerProfile", () => {
     const result = validatePlayerProfile({
       displayName: " ",
       profileMessage: "あ".repeat(161),
+      favoriteCard1: "",
+      favoriteCard2: "",
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.errors.displayName).toBeTruthy();
     expect(result.errors.profileMessage).toBeTruthy();
+  });
+
+  it("片方だけのマイハンドを拒否する", () => {
+    const result = validatePlayerProfile({
+      displayName: "kazuto",
+      profileMessage: "",
+      favoriteCard1: "AS",
+      favoriteCard2: "",
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.favoriteCard1).toBe("マイハンドは2枚選んでください。");
+  });
+
+  it("同一カード2枚を拒否する", () => {
+    const result = validatePlayerProfile({
+      displayName: "kazuto",
+      profileMessage: "",
+      favoriteCard1: "AS",
+      favoriteCard2: "AS",
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.favoriteCard1).toBe("同じカードを2枚選ぶことはできません。");
+  });
+
+  it("不正なカードコードを拒否する", () => {
+    const result = validatePlayerProfile({
+      displayName: "kazuto",
+      profileMessage: "",
+      favoriteCard1: "1S",
+      favoriteCard2: "KH",
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.favoriteCard1).toBe("マイハンドを選び直してください。");
   });
 });
 

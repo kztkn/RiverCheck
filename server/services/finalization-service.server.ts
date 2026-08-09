@@ -14,7 +14,10 @@ import {
 } from "@server/repositories/finalization-repository.server";
 import { calculateFinalResults } from "@domain/finalization/calculate-final-results";
 import { validateChipTotal } from "@domain/chip-validation/validate-chip-total";
-import { buildResultRevisionChanges } from "@domain/result-revision/build-result-revision-changes";
+import {
+  buildResultRevisionChanges,
+  hasResultInputChanges,
+} from "@domain/result-revision/build-result-revision-changes";
 import type { CreateGameInput, GameDetails } from "@shared-types/game";
 import type { GameParticipantSummary } from "@shared-types/player";
 
@@ -170,7 +173,6 @@ export async function updateFinalizedGame(
       };
     }
 
-    const rows = await lockParticipantsForFinalization(transaction, gameId);
     const beforeResults = await lockFinalResults(transaction, gameId);
     const correctionByPlayerId = new Map(
       corrections.map((correction) => [
@@ -179,9 +181,46 @@ export async function updateFinalizedGame(
       ]),
     );
     if (
-      rows.length < 4 ||
-      rows.length !== corrections.length ||
-      rows.length !== correctionByPlayerId.size ||
+      beforeResults.length < 4 ||
+      beforeResults.length !== corrections.length ||
+      beforeResults.length !== correctionByPlayerId.size ||
+      beforeResults.some(
+        (result) => !correctionByPlayerId.has(result.groupPlayerId),
+      )
+    ) {
+      return {
+        ok: false,
+        error:
+          "確定時から参加者情報が変わっています。画面を更新して確認してください。",
+      };
+    }
+
+    const identityChanged =
+      game.title !== identity.title || game.playedAt !== identity.playedAt;
+    const resultInputsChanged = hasResultInputChanges(
+      beforeResults,
+      corrections,
+    );
+    if (!resultInputsChanged && !identityChanged) {
+      return { ok: false, error: "変更された入力がありません。" };
+    }
+
+    if (!resultInputsChanged) {
+      if (
+        !(await updateFinalizedGameIdentity(
+          transaction,
+          groupId,
+          gameId,
+          identity,
+        ))
+      ) {
+        throw new Error("game status changed during identity update");
+      }
+      return { ok: true };
+    }
+
+    const rows = await lockParticipantsForFinalization(transaction, gameId);
+    if (
       rows.length !== beforeResults.length ||
       rows.some((row) => !correctionByPlayerId.has(row.group_player_id))
     ) {
@@ -219,33 +258,27 @@ export async function updateFinalizedGame(
       beforeResults,
       calculated.results,
     );
-    const identityChanged =
-      game.title !== identity.title || game.playedAt !== identity.playedAt;
-    if (resultChanges.length === 0 && !identityChanged) {
+    if (resultChanges.length === 0) {
       return { ok: false, error: "変更された入力がありません。" };
     }
-    if (
-      resultChanges.length > 0 &&
-      !calculated.chipValidation.isValid &&
-      !differenceConfirmed
-    ) {
+    if (!calculated.chipValidation.isValid && !differenceConfirmed) {
       return {
         ok: false,
         error: "チップ差分を確認してから訂正してください。",
       };
     }
 
-    if (resultChanges.length > 0) {
-      await insertResultRevision(
-        transaction,
-        gameId,
-        beforeResults,
-        calculated.results,
-      );
-      await updateParticipantsForCorrection(transaction, gameId, participants);
-      await replaceFinalResults(transaction, gameId, calculated.results);
-    }
+    await insertResultRevision(
+      transaction,
+      gameId,
+      beforeResults,
+      calculated.results,
+    );
+    await updateParticipantsForCorrection(transaction, gameId, participants);
+    await replaceFinalResults(transaction, gameId, calculated.results);
+
     if (
+      identityChanged &&
       !(await updateFinalizedGameIdentity(
         transaction,
         groupId,

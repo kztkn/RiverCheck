@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Form, useSubmit } from "react-router";
+import { Form, Link, useSubmit } from "react-router";
 import { PlayerAvatar } from "./player-avatar";
+import { FavoriteHandPicker } from "./favorite-hand-picker";
 import { compressPlayerAvatar } from "~/utils/compress-player-avatar";
 import {
-  PLAYER_AVATAR_MAX_BYTES,
-  PLAYER_DISPLAY_NAME_MAX_LENGTH,
   PLAYER_PROFILE_MESSAGE_MAX_LENGTH,
 } from "@domain/player-profile/validate-player-profile";
 
@@ -14,17 +13,25 @@ export function PlayerProfileEditor({
   errors,
   isSubmitting,
   profile,
+  modalCloseHref,
   values,
 }: {
   avatarUrl: string | null;
   error: string | null;
-  errors: { displayName?: string; profileMessage?: string };
+  errors: { favoriteCard1?: string; profileMessage?: string };
   isSubmitting: boolean;
   profile: {
     displayName: string;
+    favoriteCard1: string | null;
+    favoriteCard2: string | null;
     profileMessage: string | null;
   };
-  values: { displayName: string; profileMessage: string } | null;
+  modalCloseHref?: string;
+  values: {
+    favoriteCard1: string;
+    favoriteCard2: string;
+    profileMessage: string;
+  } | null;
 }) {
   const submit = useSubmit();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -33,6 +40,12 @@ export function PlayerProfileEditor({
   const [removeAvatar, setRemoveAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [favoriteCard1, setFavoriteCard1] = useState(
+    values?.favoriteCard1 ?? profile.favoriteCard1 ?? "",
+  );
+  const [favoriteCard2, setFavoriteCard2] = useState(
+    values?.favoriteCard2 ?? profile.favoriteCard2 ?? "",
+  );
 
   useEffect(() => {
     if (!selectedAvatar) {
@@ -77,7 +90,7 @@ export function PlayerProfileEditor({
     : removeAvatar
       ? null
       : avatarUrl;
-  const displayName = values?.displayName ?? profile.displayName;
+  const displayName = profile.displayName;
 
   return (
     <Form
@@ -88,6 +101,29 @@ export function PlayerProfileEditor({
       onSubmit={handleSubmit}
     >
       <input name="removeAvatar" type="hidden" value={removeAvatar ? "yes" : "no"} />
+      <input name="intent" type="hidden" value="save-profile" />
+      <input name="favoriteCard1" type="hidden" value={favoriteCard1} />
+      <input name="favoriteCard2" type="hidden" value={favoriteCard2} />
+
+      {modalCloseHref ? (
+        <header className="profile-editor-modal-bar">
+          <Link
+            aria-label="プロフィール編集を閉じる"
+            className="profile-editor-modal-close"
+            to={modalCloseHref}
+          >
+            <span aria-hidden="true">×</span>
+          </Link>
+          <h2>プロフィールを編集</h2>
+          <button
+            className="profile-editor-modal-save"
+            disabled={isSubmitting || isProcessing || Boolean(avatarError)}
+            type="submit"
+          >
+            {isProcessing ? "処理中" : isSubmitting ? "保存中" : "保存"}
+          </button>
+        </header>
+      ) : null}
 
       <section className="profile-avatar-field" aria-labelledby="profile-avatar-heading">
         <div className="profile-avatar-preview">
@@ -134,28 +170,8 @@ export function PlayerProfileEditor({
             </button>
           ) : null}
         </div>
-        <p className="field-hint">
-          JPEG・PNG・WebP。512×512px、圧縮後上限
-          {Math.round(PLAYER_AVATAR_MAX_BYTES / 1024 / 1024)}MB。
-        </p>
         {avatarError ? <p className="field-error">{avatarError}</p> : null}
       </section>
-
-      <label className="field" htmlFor="profileDisplayName">
-        <span className="field-label">ユーザーネーム</span>
-        <input
-          aria-invalid={Boolean(errors.displayName)}
-          defaultValue={displayName}
-          id="profileDisplayName"
-          maxLength={PLAYER_DISPLAY_NAME_MAX_LENGTH}
-          name="displayName"
-          required
-        />
-        <span className="field-hint">最大{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字</span>
-        {errors.displayName ? (
-          <span className="field-error">{errors.displayName}</span>
-        ) : null}
-      </label>
 
       <label className="field" htmlFor="profileMessage">
         <span className="field-label">一言メッセージ</span>
@@ -174,14 +190,29 @@ export function PlayerProfileEditor({
         ) : null}
       </label>
 
+      <FavoriteHandPicker
+        card1={favoriteCard1}
+        card2={favoriteCard2}
+        disabled={isSubmitting || isProcessing}
+        error={errors.favoriteCard1}
+        onChange={(card1, card2) => {
+          setFavoriteCard1(card1);
+          setFavoriteCard2(card2);
+        }}
+      />
+
       {error ? <p className="error-notice" role="alert">{error}</p> : null}
-      <button
-        className="button button-primary"
-        disabled={isSubmitting || isProcessing || Boolean(avatarError)}
-        type="submit"
-      >
-        {isProcessing ? "画像を処理中…" : isSubmitting ? "保存中…" : "プロフィールを保存"}
-      </button>
+      {!modalCloseHref ? (
+        <div className="profile-editor-actions">
+          <button
+            className="button button-primary"
+            disabled={isSubmitting || isProcessing || Boolean(avatarError)}
+            type="submit"
+          >
+            {isProcessing ? "画像を処理中…" : isSubmitting ? "保存中…" : "保存"}
+          </button>
+        </div>
+      ) : null}
     </Form>
   );
 }

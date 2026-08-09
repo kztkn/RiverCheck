@@ -12,6 +12,8 @@ export interface PlayerProfile {
   groupPlayerId: string;
   displayName: string;
   profileMessage: string | null;
+  favoriteCard1: string | null;
+  favoriteCard2: string | null;
   avatarUpdatedAt: string | null;
   updatedAt: string;
 }

@@ -1,4 +1,4 @@
-export const HIGHLIGHT_TEXT_MAX_LENGTH = 1000;
+export const HIGHLIGHT_TEXT_MAX_LENGTH = 300;
 export const GAME_PHOTO_MAX_BYTES = 3 * 1024 * 1024;
 export const GAME_PHOTO_MAX_LONG_EDGE = 1800;
 

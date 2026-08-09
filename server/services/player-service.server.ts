@@ -3,6 +3,7 @@ import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-
 import {
   insertPlayerForGroup,
   listGroupPlayers,
+  updatePlayerDisplayNameForGroup,
 } from "@server/repositories/player-repository.server";
 import type { GroupSummary } from "@shared-types/group";
 import type { GroupPlayerSummary } from "@shared-types/player";
@@ -26,6 +27,14 @@ export type AddPlayerResult =
       values: AddPlayerFormValues;
     };
 
+export type RenamePlayerResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      value: string;
+  };
+
 export async function getPlayerManagement(
   publicCode: string,
 ): Promise<PlayerManagement | null> {
@@ -33,11 +42,7 @@ export async function getPlayerManagement(
   if (!group) return null;
 
   return {
-    group: {
-      id: group.id,
-      name: group.name,
-      publicCode: group.publicCode,
-    },
+    group,
     players: await listGroupPlayers(group.id),
   };
 }
@@ -82,6 +87,49 @@ export async function addPlayerForGroup(
 
   const groupPlayerId = await insertPlayerForGroup(group.id, displayName);
   return { ok: true, groupPlayerId };
+}
+
+export async function renamePlayerForGroup(
+  publicCode: string,
+  groupPlayerId: string,
+  rawDisplayName: string,
+): Promise<RenamePlayerResult> {
+  const displayName = rawDisplayName.trim();
+  if (!displayName) {
+    return {
+      ok: false,
+      error: "表示名を入力してください。",
+      value: rawDisplayName,
+    };
+  }
+  if (Array.from(displayName).length > PLAYER_DISPLAY_NAME_MAX_LENGTH) {
+    return {
+      ok: false,
+      error: `表示名は${PLAYER_DISPLAY_NAME_MAX_LENGTH}文字以内で入力してください。`,
+      value: rawDisplayName,
+    };
+  }
+
+  const group = await findGroupByPublicCode(publicCode);
+  if (!group) {
+    return {
+      ok: false,
+      error: "グループが見つかりません。",
+      value: rawDisplayName,
+    };
+  }
+  const updated = await updatePlayerDisplayNameForGroup(
+    group.id,
+    groupPlayerId,
+    displayName,
+  );
+  return updated
+    ? { ok: true }
+    : {
+        ok: false,
+        error: "メンバーを確認できません。画面を更新してください。",
+        value: rawDisplayName,
+      };
 }
 
 function readString(formData: FormData, name: string): string {

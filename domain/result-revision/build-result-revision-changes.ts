@@ -8,6 +8,12 @@ export interface RevisionResult {
   costShare: number;
 }
 
+export interface ResultCorrectionInput {
+  groupPlayerId: string;
+  remainingChips: number;
+  rebuyCount: number;
+}
+
 export interface ResultRevisionChange {
   groupPlayerId: string;
   displayName: string;
@@ -37,6 +43,25 @@ export function buildResultRevisionChanges(
   }
 
   return changes;
+}
+
+export function hasResultInputChanges(
+  beforeResults: RevisionResult[],
+  corrections: ResultCorrectionInput[],
+): boolean {
+  if (beforeResults.length !== corrections.length) return true;
+  const correctionByPlayerId = new Map(
+    corrections.map((correction) => [correction.groupPlayerId, correction]),
+  );
+  if (correctionByPlayerId.size !== corrections.length) return true;
+  return beforeResults.some((before) => {
+    const correction = correctionByPlayerId.get(before.groupPlayerId);
+    return (
+      !correction ||
+      correction.remainingChips !== before.remainingChips ||
+      correction.rebuyCount !== before.rebuyCount
+    );
+  });
 }
 
 function hasResultChanged(

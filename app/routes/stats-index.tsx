@@ -25,7 +25,7 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
       <GroupSiteHeader groupCode={group.publicCode} />
 
       <section className="stats-intro">
-        <h1>PLAYER STATS</h1>
+        <h1>RANKING</h1>
       </section>
 
       <section className="content-section" aria-labelledby="ranking-heading">
@@ -80,7 +80,7 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
                     />
                     <span className="stats-player-name">
                       <strong>{player.displayName}</strong>
-                      <small>{player.gamesPlayed}回参加・1st × {player.wins}</small>
+                      <small>{player.gamesPlayed}回参加・優勝{player.wins}回</small>
                     </span>
                   </span>
                   <span className="stats-primary-value">

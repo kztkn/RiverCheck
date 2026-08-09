@@ -25,6 +25,8 @@ export interface PlayerStatsSummary {
   groupPlayerId: string;
   displayName: string;
   profileMessage: string | null;
+  favoriteCard1: string | null;
+  favoriteCard2: string | null;
   avatarUpdatedAt: string | null;
   gamesPlayed: number;
   wins: number;

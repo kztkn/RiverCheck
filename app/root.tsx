@@ -8,7 +8,9 @@ import {
 } from "react-router";
 import type { Route } from "./+types/root";
 import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
+import { isOrganizerAuthenticated } from "@server/services/organizer-auth.server";
 import { extractGroupCode } from "@domain/routing/extract-group-code";
+import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import "./styles/app.css";
 import "./styles/highlight.css";
 import "./styles/history.css";
@@ -18,11 +20,31 @@ import "./styles/stats.css";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const groupCode = extractGroupCode(new URL(request.url).pathname);
-  if (!groupCode) return { authenticatedPlayerName: null };
+  if (!groupCode) {
+    return {
+      authenticatedPlayerAvatarUrl: null,
+      authenticatedPlayerGroupPlayerId: null,
+      authenticatedPlayerName: null,
+      isOrganizer: false,
+    };
+  }
 
-  const overview = await getAuthenticatedPlayerProfile(request, groupCode);
+  const [overview, isOrganizer] = await Promise.all([
+    getAuthenticatedPlayerProfile(request, groupCode),
+    isOrganizerAuthenticated(request),
+  ]);
+  const profile = overview?.profile ?? null;
   return {
-    authenticatedPlayerName: overview?.profile?.displayName ?? null,
+    authenticatedPlayerAvatarUrl: profile
+      ? buildPlayerAvatarUrl({
+          avatarUpdatedAt: profile.avatarUploadedAt,
+          groupCode,
+          groupPlayerId: profile.groupPlayerId,
+        })
+      : null,
+    authenticatedPlayerGroupPlayerId: profile?.groupPlayerId ?? null,
+    authenticatedPlayerName: profile?.displayName ?? null,
+    isOrganizer,
   };
 }
 
@@ -45,10 +67,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
-        <footer className="site-footer global-site-footer">
-          <span>RIVER CHECK</span>
-          <a href="/oss-licenses.md">OSSライセンス</a>
-        </footer>
         <ScrollRestoration />
         <Scripts />
       </body>

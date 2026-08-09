@@ -16,11 +16,7 @@ export async function getGroupOverview(
 
   const games = await listGamesForGroup(group.id);
   return {
-    group: {
-      id: group.id,
-      name: group.name,
-      publicCode: group.publicCode,
-    },
+    group,
     games,
   };
 }

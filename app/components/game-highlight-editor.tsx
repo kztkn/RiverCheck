@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Form, useSubmit } from "react-router";
+import { Form, Link, useSubmit } from "react-router";
 import { compressGamePhoto } from "~/utils/compress-game-photo";
 import {
   GAME_PHOTO_MAX_BYTES,
@@ -8,11 +8,15 @@ import {
 import type { GameHighlight } from "@shared-types/highlight";
 
 export function GameHighlightEditor({
+  actionUrl,
+  cancelUrl,
   error,
   highlight,
   isSubmitting,
   photoUrl,
 }: {
+  actionUrl: string;
+  cancelUrl: string;
   error: string | null;
   highlight: GameHighlight | null;
   isSubmitting: boolean;
@@ -67,7 +71,11 @@ export function GameHighlightEditor({
     const formData = new FormData(event.currentTarget);
     formData.delete("photo");
     if (selectedPhoto) formData.set("photo", selectedPhoto);
-    void submit(formData, { encType: "multipart/form-data", method: "post" });
+    void submit(formData, {
+      action: actionUrl,
+      encType: "multipart/form-data",
+      method: "post",
+    });
   }
 
   const visiblePhotoUrl = selectedPhoto
@@ -84,6 +92,7 @@ export function GameHighlightEditor({
       </div>
 
       <Form
+        action={actionUrl}
         encType="multipart/form-data"
         method="post"
         noValidate
@@ -164,17 +173,22 @@ export function GameHighlightEditor({
           </p>
         ) : null}
 
-        <button
-          className="button button-primary"
-          disabled={isSubmitting || isProcessingPhoto || Boolean(photoError)}
-          type="submit"
-        >
-          {isProcessingPhoto
-            ? "写真を処理中…"
-            : isSubmitting
-              ? "保存中…"
-              : "ハイライトを保存"}
-        </button>
+        <div className="highlight-editor-actions">
+          <Link className="button button-secondary" to={cancelUrl}>
+            Cancel
+          </Link>
+          <button
+            className="button button-primary"
+            disabled={isSubmitting || isProcessingPhoto || Boolean(photoError)}
+            type="submit"
+          >
+            {isProcessingPhoto
+              ? "写真を処理中…"
+              : isSubmitting
+                ? "保存中…"
+                : "Save"}
+          </button>
+        </div>
       </Form>
     </section>
   );

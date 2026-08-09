@@ -1,6 +1,7 @@
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import {
   consumePlayerProfileClaim,
+  createPlayerProfileSession,
   findPlayerAvatarRecord,
   findPlayerProfileBySession,
   findValidPlayerProfileClaim,
@@ -111,6 +112,34 @@ export async function createNewPlayerProfileSessionCredentials(): Promise<{
   };
 }
 
+export async function selectPlayerProfile(
+  publicCode: string,
+  groupPlayerId: string,
+): Promise<
+  | { ok: true; profile: PlayerProfileRecord; sessionToken: string }
+  | { ok: false; error: string }
+> {
+  const group = await findGroupByPublicCode(publicCode);
+  if (!group) return { ok: false, error: "グループが見つかりません。" };
+  const credentials = await createNewPlayerProfileSessionCredentials();
+  const profile = await createPlayerProfileSession(
+    group.id,
+    groupPlayerId,
+    credentials.tokenHash,
+    credentials.expiresAt,
+  );
+  return profile
+    ? {
+        ok: true,
+        profile,
+        sessionToken: credentials.token,
+      }
+    : {
+        ok: false,
+        error: "選択したプレイヤーを確認できません。画面を更新してください。",
+      };
+}
+
 export async function getAuthenticatedPlayerProfile(
   request: Request,
   publicCode: string,
@@ -140,7 +169,10 @@ export async function savePlayerProfile(
       values: PlayerProfileFormValues;
     }
 > {
-  const validated = validatePlayerProfile(input.values);
+  const validated = validatePlayerProfile({
+    ...input.values,
+    displayName: current.displayName,
+  });
   if (!validated.ok) return validated;
 
   let uploadedAvatar: StoredPlayerAvatar | null = null;
@@ -178,8 +210,10 @@ export async function savePlayerProfile(
   const nextAvatar = uploadedAvatar ??
     (clearCurrentAvatar ? null : currentAvatar(current));
   const saved = await savePlayerProfileRecord(current.playerId, {
-    displayName: validated.values.displayName,
+    displayName: current.displayName,
     profileMessage: validated.values.profileMessage,
+    favoriteCard1: validated.values.favoriteCard1,
+    favoriteCard2: validated.values.favoriteCard2,
     avatarObjectKey: nextAvatar?.objectKey ?? null,
     avatarContentType: nextAvatar?.contentType ?? null,
     avatarByteSize: nextAvatar?.byteSize ?? null,

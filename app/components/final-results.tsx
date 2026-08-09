@@ -9,19 +9,23 @@ import type {
 import { ResultRevisionHistory } from "./result-revision-history";
 
 export function FinalResults({
+  groupCode,
   lineText,
   editUrl,
   initialChips,
   playedAt,
+  payPay,
   results,
   revisions,
   shareUrl,
   showSharePanel = true,
 }: {
+  groupCode: string;
   lineText: string;
   editUrl?: string;
   initialChips: number;
   playedAt: string;
+  payPay: { link: string; paymentAmount: number | null } | null;
   results: GameResultSummary[];
   revisions: GameResultRevision[];
   shareUrl: string;
@@ -30,6 +34,8 @@ export function FinalResults({
   const [shareState, setShareState] = useState<
     "idle" | "shared" | "fallback-copied" | "failed"
   >("idle");
+  const [payPayModalOpen, setPayPayModalOpen] = useState(false);
+  const [payPayCopyError, setPayPayCopyError] = useState<string | null>(null);
   const shareText = `${lineText}\n\n結果を見る\n${shareUrl}`;
   const settlementTotal = results.reduce(
     (total, result) => total + result.costShare,
@@ -62,6 +68,33 @@ export function FinalResults({
       if (error instanceof DOMException && error.name === "AbortError") return;
       await copyResultFallback();
     }
+  }
+
+  async function handleOpenPayPay() {
+    if (!payPay) return;
+    if (payPay.paymentAmount !== null) {
+      try {
+        const amount = String(payPay.paymentAmount);
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(amount);
+        } else if (!copyWithTemporaryTextarea(amount)) {
+          throw new Error("copy command was rejected");
+        }
+      } catch {
+        setPayPayCopyError(
+          "金額をコピーできませんでした。ブラウザの設定を確認して、もう一度お試しください。",
+        );
+        return;
+      }
+    }
+
+    const opened = window.open(payPay.link, "_blank");
+    if (opened) {
+      opened.opener = null;
+    } else {
+      window.location.assign(payPay.link);
+    }
+    setPayPayModalOpen(false);
   }
 
   return (
@@ -109,7 +142,12 @@ export function FinalResults({
       ) : null}
       <div className="result-list">
         {results.map((result) => (
-          <article className="result-row" key={result.groupPlayerId}>
+          <Link
+            aria-label={`${result.displayName}の戦績を見る`}
+            className={`result-row result-row-rank-${result.rank}`}
+            key={result.groupPlayerId}
+            to={`/g/${groupCode}/stats/${result.groupPlayerId}`}
+          >
             <span className={`rank-badge rank-${result.rank}`}>
               {formatOrdinal(result.rank)}
             </span>
@@ -128,21 +166,98 @@ export function FinalResults({
             <strong className="result-cost">
               {formatNumber(result.costShare)}円
             </strong>
-          </article>
+          </Link>
         ))}
       </div>
-      <div className="result-total">
-        <span>トータル</span>
-        <strong>{formatNumber(settlementTotal)}円</strong>
+      <div className="result-settlement-footer">
+        {payPay ? (
+          <button
+            className="paypay-payment-button"
+            onClick={() => {
+              setPayPayCopyError(null);
+              setPayPayModalOpen(true);
+            }}
+            type="button"
+          >
+            <span aria-hidden="true">P</span>
+            PayPayで支払う
+          </button>
+        ) : <span />}
+        <div className="result-total-summary">
+          <div className="result-total">
+            <span>トータル</span>
+            <strong>{formatNumber(settlementTotal)}円</strong>
+          </div>
+          <p className="bb-basis">
+            1BB = {formatChipsPerBb(initialChips)}チップ
+          </p>
+        </div>
       </div>
-
-      <p className="bb-basis">
-        1BB = {formatChipsPerBb(initialChips)}チップ
-      </p>
       <ResultRevisionHistory
         initialChips={initialChips}
         revisions={revisions}
       />
+
+      {payPay && payPayModalOpen ? (
+        <section
+          aria-label="PayPayで支払う"
+          aria-modal="true"
+          className="paypay-payment-modal"
+          role="dialog"
+        >
+          <button
+            aria-label="PayPay支払いを閉じる"
+            className="paypay-payment-modal-backdrop"
+            onClick={() => setPayPayModalOpen(false)}
+            type="button"
+          />
+          <div className="paypay-payment-modal-card">
+            <div>
+              <p className="eyebrow">PAYPAY</p>
+              <h2>PayPayで支払う</h2>
+            </div>
+            {payPay.paymentAmount !== null ? (
+              <div className="paypay-payment-amount">
+                <span>あなたの支払額</span>
+                <strong>{formatNumber(payPay.paymentAmount)}円</strong>
+              </div>
+            ) : null}
+            <p className="paypay-payment-copy">
+              {payPay.paymentAmount !== null ? (
+                <>
+                  PayPayを開く際に{formatNumber(payPay.paymentAmount)}円を
+                  クリップボードへコピーします。<br />
+                  PayPay側で金額を貼り付けてください。
+                </>
+              ) : (
+                <>
+                  この結果からあなたの支払額を特定できませんでした。<br />
+                  結果画面で支払額を確認し、PayPayで金額を入力してください。
+                </>
+              )}
+            </p>
+            {payPayCopyError ? (
+              <p className="error-notice" role="alert">{payPayCopyError}</p>
+            ) : null}
+            <div className="paypay-payment-modal-actions">
+              <button
+                className="button button-secondary"
+                onClick={() => setPayPayModalOpen(false)}
+                type="button"
+              >
+                キャンセル
+              </button>
+              <button
+                className="button paypay-open-button"
+                onClick={() => void handleOpenPayPay()}
+                type="button"
+              >
+                PayPayを開く
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
     </section>
   );
 }

@@ -23,6 +23,7 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
+    "@tabler/icons-react": "^3.46.0",
     "isbot": "^5",
     "pg": "^8.16.3",
     "qrcode.react": "^4.2.0",

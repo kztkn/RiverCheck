@@ -20,6 +20,8 @@ interface PlayerIdentityRow {
   group_player_id: string;
   display_name: string;
   profile_message: string | null;
+  favorite_hand_card_1: string | null;
+  favorite_hand_card_2: string | null;
   avatar_uploaded_at: Date | null;
 }
 
@@ -37,6 +39,8 @@ export interface PlayerStatsIdentity {
   groupPlayerId: string;
   displayName: string;
   profileMessage: string | null;
+  favoriteCard1: string | null;
+  favoriteCard2: string | null;
   avatarUpdatedAt: string | null;
 }
 
@@ -148,6 +152,8 @@ export async function findPlayerStatsIdentity(
         group_player.id AS group_player_id,
         player.display_name,
         player.profile_message,
+        player.favorite_hand_card_1,
+        player.favorite_hand_card_2,
         player.avatar_uploaded_at
       FROM group_players AS group_player
       INNER JOIN players AS player ON player.id = group_player.player_id
@@ -161,6 +167,8 @@ export async function findPlayerStatsIdentity(
         groupPlayerId: row.group_player_id,
         displayName: row.display_name,
         profileMessage: row.profile_message,
+        favoriteCard1: row.favorite_hand_card_1,
+        favoriteCard2: row.favorite_hand_card_2,
         avatarUpdatedAt: row.avatar_uploaded_at?.toISOString() ?? null,
       }
     : null;
