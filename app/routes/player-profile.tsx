@@ -14,6 +14,7 @@ import {
 import { createPlayerProfileCookie } from "@server/services/player-profile-session.server";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
+import { getPlayerAchievementCollection } from "@server/services/achievement-service.server";
 import type { Route } from "./+types/player-profile";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -21,6 +22,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!overview) throw new Response("Group not found", { status: 404 });
   const url = new URL(request.url);
   const profile = overview.profile;
+  const achievements = profile
+    ? await getPlayerAchievementCollection(overview.group.id, profile.groupPlayerId)
+    : null;
   const management = profile
     ? null
     : await getPlayerManagement(params.groupCode);
@@ -32,11 +36,22 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         displayName: profile.displayName,
         favoriteCard1: profile.favoriteCard1,
         favoriteCard2: profile.favoriteCard2,
+        equippedAchievementId: profile.equippedAchievementId,
         groupPlayerId: profile.groupPlayerId,
         profileMessage: profile.profileMessage,
         updatedAt: profile.updatedAt,
       }
       : null,
+    achievements: (achievements?.items ?? [])
+      .filter((achievement) => achievement.isUnlocked)
+      .map((achievement) => ({
+        id: achievement.id,
+        code: achievement.code,
+        name: achievement.name,
+        description: achievement.description,
+        iconKey: achievement.iconKey,
+        category: achievement.category,
+      })),
     avatarUrl: profile
       ? buildPlayerAvatarUrl({
         avatarUpdatedAt: profile.avatarUploadedAt,
@@ -118,6 +133,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       ok: false as const,
       intent: "save-profile" as const,
       error: "先にこの端末で使うプレイヤーを選んでください。",
+      equippedAchievementId: null,
       values: {
         displayName: "",
         favoriteCard1: "",
@@ -139,6 +155,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   };
   const result = await savePlayerProfile(overview.profile, {
     avatar,
+    equippedAchievementId: readNullableString(formData, "equippedAchievementId"),
     removeAvatar: readString(formData, "removeAvatar") === "yes",
     values,
   });
@@ -170,6 +187,7 @@ export default function PlayerProfileRoute({
       {loaderData.profile ? (
         <>
           <PlayerProfileEditor
+            achievements={loaderData.achievements}
             avatarUrl={loaderData.avatarUrl}
             error={actionData?.ok === false &&
               actionData.intent === "save-profile" &&
@@ -187,7 +205,12 @@ export default function PlayerProfileRoute({
             values={actionData?.ok === false &&
               actionData.intent === "save-profile" &&
               "values" in actionData
-              ? actionData.values
+              ? {
+                  ...actionData.values,
+                  equippedAchievementId: "equippedAchievementId" in actionData
+                    ? actionData.equippedAchievementId
+                    : null,
+                }
               : null}
           />
         </>
@@ -266,6 +289,11 @@ export default function PlayerProfileRoute({
 function readString(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
+}
+
+function readNullableString(formData: FormData, name: string): string | null {
+  const value = readString(formData, name).trim();
+  return value === "" ? null : value;
 }
 
 function isUuid(value: string): boolean {

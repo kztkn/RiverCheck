@@ -3,12 +3,16 @@ import { Form, Link, useSubmit } from "react-router";
 import { PlayerAvatar } from "./player-avatar";
 import { FavoriteHandPicker } from "./favorite-hand-picker";
 import { compressPlayerAvatar } from "~/utils/compress-player-avatar";
+import { IconCheck, IconEyeOff } from "@tabler/icons-react";
+import { AchievementIcon } from "./achievement-icon";
+import type { AchievementSummary } from "@shared-types/achievement";
 import {
   PLAYER_PROFILE_MESSAGE_MAX_LENGTH,
 } from "@domain/player-profile/validate-player-profile";
 
 export function PlayerProfileEditor({
   avatarUrl,
+  achievements,
   error,
   errors,
   isSubmitting,
@@ -17,6 +21,7 @@ export function PlayerProfileEditor({
   values,
 }: {
   avatarUrl: string | null;
+  achievements: AchievementSummary[];
   error: string | null;
   errors: { favoriteCard1?: string; profileMessage?: string };
   isSubmitting: boolean;
@@ -25,12 +30,14 @@ export function PlayerProfileEditor({
     favoriteCard1: string | null;
     favoriteCard2: string | null;
     profileMessage: string | null;
+    equippedAchievementId: string | null;
   };
   modalCloseHref?: string;
   values: {
     favoriteCard1: string;
     favoriteCard2: string;
     profileMessage: string;
+    equippedAchievementId: string | null;
   } | null;
 }) {
   const submit = useSubmit();
@@ -45,6 +52,9 @@ export function PlayerProfileEditor({
   );
   const [favoriteCard2, setFavoriteCard2] = useState(
     values?.favoriteCard2 ?? profile.favoriteCard2 ?? "",
+  );
+  const [equippedAchievementId, setEquippedAchievementId] = useState(
+    values?.equippedAchievementId ?? profile.equippedAchievementId ?? "",
   );
 
   useEffect(() => {
@@ -104,6 +114,11 @@ export function PlayerProfileEditor({
       <input name="intent" type="hidden" value="save-profile" />
       <input name="favoriteCard1" type="hidden" value={favoriteCard1} />
       <input name="favoriteCard2" type="hidden" value={favoriteCard2} />
+      <input
+        name="equippedAchievementId"
+        type="hidden"
+        value={equippedAchievementId}
+      />
 
       {modalCloseHref ? (
         <header className="profile-editor-modal-bar">
@@ -200,6 +215,58 @@ export function PlayerProfileEditor({
           setFavoriteCard2(card2);
         }}
       />
+
+      <section className="achievement-selector" aria-labelledby="achievement-selector-heading">
+        <div className="achievement-selector-heading">
+          <div>
+            <h2 id="achievement-selector-heading">表示する実績</h2>
+            <p>獲得済みから1つだけ、プロフィールの称号として表示できます。</p>
+          </div>
+        </div>
+        <div className="achievement-selector-list" role="radiogroup" aria-label="表示する実績">
+          <button
+            aria-checked={equippedAchievementId === ""}
+            className={`achievement-option${equippedAchievementId === "" ? " is-selected" : ""}`}
+            disabled={isSubmitting || isProcessing}
+            onClick={() => setEquippedAchievementId("")}
+            role="radio"
+            type="button"
+          >
+            <span className="achievement-option-icon"><IconEyeOff aria-hidden="true" /></span>
+            <span className="achievement-option-copy">
+              <strong>表示しない</strong>
+              <small>称号を外す</small>
+            </span>
+            {equippedAchievementId === "" ? <IconCheck className="achievement-option-check" aria-hidden="true" /> : null}
+          </button>
+          {achievements.map((achievement) => {
+            const selected = equippedAchievementId === achievement.id;
+            return (
+              <button
+                aria-checked={selected}
+                className={`achievement-option${selected ? " is-selected" : ""}`}
+                disabled={isSubmitting || isProcessing}
+                key={achievement.id}
+                onClick={() => setEquippedAchievementId(achievement.id)}
+                role="radio"
+                type="button"
+              >
+                <span className="achievement-option-icon">
+                  <AchievementIcon iconKey={achievement.iconKey} />
+                </span>
+                <span className="achievement-option-copy">
+                  <strong>{achievement.name}</strong>
+                  <small>{achievement.description}</small>
+                </span>
+                {selected ? <IconCheck className="achievement-option-check" aria-hidden="true" /> : null}
+              </button>
+            );
+          })}
+        </div>
+        {achievements.length === 0 ? (
+          <p className="achievement-selector-empty">開催結果が確定すると、獲得した実績を選べます。</p>
+        ) : null}
+      </section>
 
       {error ? <p className="error-notice" role="alert">{error}</p> : null}
       {!modalCloseHref ? (

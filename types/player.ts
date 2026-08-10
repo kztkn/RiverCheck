@@ -14,6 +14,7 @@ export interface PlayerProfile {
   profileMessage: string | null;
   favoriteCard1: string | null;
   favoriteCard2: string | null;
+  equippedAchievementId: string | null;
   avatarUpdatedAt: string | null;
   updatedAt: string;
 }

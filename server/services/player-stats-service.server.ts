@@ -14,6 +14,8 @@ import type {
   PlayerStatsRankingRow,
   PlayerStatsSort,
 } from "@shared-types/player-stats";
+import type { PlayerAchievementCollection } from "@shared-types/achievement";
+import { getPlayerAchievementCollection } from "@server/services/achievement-service.server";
 
 export interface PlayerStatsRankingOverview {
   group: GroupSummary;
@@ -23,11 +25,23 @@ export interface PlayerStatsRankingOverview {
 
 export interface PlayerStatsDetailOverview {
   group: GroupSummary;
+  achievements: PlayerAchievementCollection;
   playerStats: PlayerStatsDetail;
 }
 
 export function parsePlayerStatsSort(value: string | null): PlayerStatsSort {
-  return value === "average" ? "average" : "total";
+  const sorts: PlayerStatsSort[] = [
+    "total",
+    "average",
+    "max-win",
+    "max-loss",
+    "recent",
+    "top-three",
+    "rank-rate",
+  ];
+  return sorts.includes(value as PlayerStatsSort)
+    ? value as PlayerStatsSort
+    : "total";
 }
 
 export async function getPlayerStatsRanking(
@@ -54,15 +68,16 @@ export async function getPlayerStatsDetail(
   const identity = await findPlayerStatsIdentity(group.id, groupPlayerId);
   if (!identity) return null;
 
-  const finalizedGames = await listFinalizedPlayerGameStats(
-    group.id,
-    groupPlayerId,
-  );
+  const [finalizedGames, achievements] = await Promise.all([
+    listFinalizedPlayerGameStats(group.id, groupPlayerId),
+    getPlayerAchievementCollection(group.id, groupPlayerId),
+  ]);
   const aggregate = calculatePlayerStats(finalizedGames);
   const gamesWithCumulative = addCumulativeNetBb(finalizedGames);
 
   return {
     group,
+    achievements,
     playerStats: {
       summary: {
         ...identity,

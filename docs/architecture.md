@@ -99,6 +99,12 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 
 アイコンはブラウザで中央を512px正方形へ縮小し、WebP優先・非対応時JPEGで1MB以内へ圧縮する。Workerでもシグネチャと上限を再検証する。R2とDBの分散トランザクションは作らず、置換後の旧objectは運用削除する。
 
+実績マスタは`achievements`、永久獲得履歴は`player_achievements`、装備中の1件は`group_players.equipped_achievement_id`へ分離する。プロフィール編集routeはCookie認証済みの`groupPlayerId`だけをserviceへ渡し、serviceとrepositoryの両方で同じ所属の獲得済み実績かを検証する。プロフィール本体と装備実績は1つのPostgreSQLトランザクションで保存する。未獲得hidden実績の名称・説明はserviceで伏せてloaderデータへ含めない。
+
+ランキング取得では`group_players.equipped_achievement_id`を直接公開せず、同じ`group_player`の`player_achievements`を経由して実績マスタを結合する。装備中かつ獲得済みと確認できた1件だけをランキングrowへ含め、共通のAchievementBadgeをcompact表示で再利用する。
+
+ランキング指標はPlayerStatsRepositoryの確定結果CTEで集約する。開催参加人数は`game_id`単位のwindow count、最近の3参加は`group_player_id`単位のrow numberで求める。sort値はserviceの許可リストと固定のSQL ORDER BY対応表からだけ選び、リクエスト値をSQLへ直接埋め込まない。
+
 ## 主催者導線と認証
 
 主催者ホームは `/g/:groupCode/manage` とする。ホーム上部はメンバー管理とグループ設定への導線に絞り、開催作成は開催管理セクション内の操作として配置する。`/g/:groupCode/settings` はPayPay受取リンクなど開催をまたぐ共通設定を扱い、設定が増えても各開催管理へ混在させない。
@@ -116,13 +122,15 @@ PIN・合言葉と32文字以上の署名鍵はCloudflare Secretで受け取る�
 
 ## finalize
 
-service が `pg` の client を取得して `BEGIN` し、gameと参加者行をロックする。全員の入力と4人以上の参加を確認し、domain関数で検算、点数、順位、負担額を計算する。差分がある場合は主催者の確認を必須にする。game_resultsへのINSERTとgameのfinalized更新を同一transactionで実行し、途中失敗時はrollbackする。
+service が `pg` の client を取得して `BEGIN` し、gameと参加者行をロックする。全員の入力と4人以上の参加を確認し、domain関数で検算、点数、順位、負担額を計算する。差分がある場合は主催者の確認を必須にする。game_resultsへのINSERT、gameのfinalized更新、確定済み履歴からの新規実績付与を同一transactionで実行し、途中失敗時はrollbackする。
 
 ## 確定後の結果訂正
 
 主催者routeは既存参加者全員の残りチップ・リバイ回数を配列で受け取り、serviceがgame、game_participants、game_resultsをロックする。対象参加者集合が確定時から変わっていないことを検証し、既存のdomain関数で全順位・会費を再計算する。
 
 repositoryは訂正前後のGameResultSummary配列をJSONBとしてgame_result_revisionsへ保存した後、game_participantsを更新し、順位一意制約との衝突を避けるためgame_resultsを同一トランザクション内で置換する。gameはfinalizedのまま、共有URLも維持する。履歴取得は参加者用公開routeでも許可し、入力、順位、BB、会費の差分を共通コンポーネントで表示する。
+
+結果置換後は同じトランザクション内でAchievementServiceが現在の確定済み履歴を再評価し、未獲得分だけを`ON CONFLICT DO NOTHING`で追加する。既存の獲得行は削除しない。導入時の既存確定結果はmigrationで一度だけ同じ条件によりバックフィルし、個人ページのloaderは実績を読み取るだけで書込みを行わない。
 
 
 ## 確定結果とLINE共有

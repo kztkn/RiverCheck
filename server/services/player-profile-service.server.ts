@@ -26,6 +26,10 @@ import {
   type StoredPlayerAvatar,
 } from "@server/storage/player-avatar-storage.server";
 import type { GroupSummary } from "@shared-types/group";
+import { canEquipAchievement } from "@domain/achievement/can-equip-achievement";
+import {
+  getUnlockedPlayerAchievementIds,
+} from "@server/services/achievement-service.server";
 
 const CLAIM_MAX_AGE_MS = 24 * 60 * 60 * 1_000;
 const SESSION_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1_000;
@@ -157,6 +161,7 @@ export async function savePlayerProfile(
   current: PlayerProfileRecord,
   input: {
     avatar: File | null;
+    equippedAchievementId: string | null;
     removeAvatar: boolean;
     values: PlayerProfileFormValues;
   },
@@ -166,6 +171,7 @@ export async function savePlayerProfile(
       ok: false;
       error?: string;
       errors?: Partial<Record<keyof PlayerProfileFormValues, string>>;
+      equippedAchievementId: string | null;
       values: PlayerProfileFormValues;
     }
 > {
@@ -173,7 +179,29 @@ export async function savePlayerProfile(
     ...input.values,
     displayName: current.displayName,
   });
-  if (!validated.ok) return validated;
+  if (!validated.ok) {
+    return {
+      ...validated,
+      equippedAchievementId: input.equippedAchievementId,
+    };
+  }
+
+  const unlockedAchievementIds = await getUnlockedPlayerAchievementIds(
+    current.groupPlayerId,
+  );
+  if (
+    !canEquipAchievement(
+      input.equippedAchievementId,
+      unlockedAchievementIds,
+    )
+  ) {
+    return {
+      ok: false,
+      error: "獲得済みの実績だけをプロフィールに表示できます。",
+      equippedAchievementId: input.equippedAchievementId,
+      values: input.values,
+    };
+  }
 
   let uploadedAvatar: StoredPlayerAvatar | null = null;
   if (input.avatar) {
@@ -184,7 +212,12 @@ export async function savePlayerProfile(
       size: input.avatar.size,
     });
     if (!avatarValidation.ok) {
-      return { ok: false, error: avatarValidation.error, values: input.values };
+      return {
+        ok: false,
+        error: avatarValidation.error,
+        equippedAchievementId: input.equippedAchievementId,
+        values: input.values,
+      };
     }
     try {
       uploadedAvatar = await putPlayerAvatar({
@@ -201,6 +234,7 @@ export async function savePlayerProfile(
       return {
         ok: false,
         error: "アイコンを保存できませんでした。時間をおいて再度お試しください。",
+        equippedAchievementId: input.equippedAchievementId,
         values: input.values,
       };
     }
@@ -209,22 +243,30 @@ export async function savePlayerProfile(
   const clearCurrentAvatar = input.removeAvatar || uploadedAvatar !== null;
   const nextAvatar = uploadedAvatar ??
     (clearCurrentAvatar ? null : currentAvatar(current));
-  const saved = await savePlayerProfileRecord(current.playerId, {
-    displayName: current.displayName,
-    profileMessage: validated.values.profileMessage,
-    favoriteCard1: validated.values.favoriteCard1,
-    favoriteCard2: validated.values.favoriteCard2,
-    avatarObjectKey: nextAvatar?.objectKey ?? null,
-    avatarContentType: nextAvatar?.contentType ?? null,
-    avatarByteSize: nextAvatar?.byteSize ?? null,
-    avatarUploadedAt: nextAvatar?.uploadedAt ?? null,
-    expectedAvatarObjectKey: current.avatarObjectKey,
-  });
-  return saved
+  const saved = await savePlayerProfileRecord(
+    current.playerId,
+    current.groupPlayerId,
+    {
+      displayName: current.displayName,
+      profileMessage: validated.values.profileMessage,
+      favoriteCard1: validated.values.favoriteCard1,
+      favoriteCard2: validated.values.favoriteCard2,
+      avatarObjectKey: nextAvatar?.objectKey ?? null,
+      avatarContentType: nextAvatar?.contentType ?? null,
+      avatarByteSize: nextAvatar?.byteSize ?? null,
+      avatarUploadedAt: nextAvatar?.uploadedAt ?? null,
+      expectedAvatarObjectKey: current.avatarObjectKey,
+      equippedAchievementId: input.equippedAchievementId,
+    },
+  );
+  return saved === "saved"
     ? { ok: true }
     : {
         ok: false,
-        error: "別の画面でプロフィールが更新されました。再読み込みしてください。",
+        error: saved === "achievement-unavailable"
+          ? "獲得済みの実績だけをプロフィールに表示できます。"
+          : "別の画面でプロフィールが更新されました。再読み込みしてください。",
+        equippedAchievementId: input.equippedAchievementId,
         values: input.values,
       };
 }

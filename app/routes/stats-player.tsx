@@ -4,6 +4,8 @@ import { PlayerProfileEditor } from "~/components/player-profile-editor";
 import { PlayerPerformanceChart } from "~/components/player-performance-chart";
 import { PlayerAvatar } from "~/components/player-avatar";
 import { FavoriteHandDisplay } from "~/components/playing-card";
+import { AchievementBadge } from "~/components/achievement-badge";
+import { PlayerAchievementCollectionView } from "~/components/player-achievement-collection";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { formatSignedBbValue } from "@domain/score/bb-score";
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
@@ -40,6 +42,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   const avatar = avatarEntry instanceof File && avatarEntry.size > 0 ? avatarEntry : null;
   const result = await savePlayerProfile(authenticated.profile, {
     avatar,
+    equippedAchievementId: readNullableString(formData, "equippedAchievementId"),
     removeAvatar: readString(formData, "removeAvatar") === "yes",
     values: {
       displayName: authenticated.profile.displayName,
@@ -54,7 +57,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function StatsPlayer({ loaderData, actionData }: Route.ComponentProps) {
-  const { group, playerStats } = loaderData;
+  const { achievements, group, playerStats } = loaderData;
   const { summary, games } = playerStats;
   const recentGames = [...games].reverse();
   const navigation = useNavigation();
@@ -92,6 +95,9 @@ export default function StatsPlayer({ loaderData, actionData }: Route.ComponentP
         <div className="stats-profile-copy">
           <p className="eyebrow">PLAYER PROFILE</p>
           <h1>{summary.displayName}</h1>
+          {achievements.equippedAchievement ? (
+            <AchievementBadge achievement={achievements.equippedAchievement} />
+          ) : null}
           {summary.profileMessage ? (
             <p className="stats-profile-message">{summary.profileMessage}</p>
           ) : null}
@@ -121,6 +127,16 @@ export default function StatsPlayer({ loaderData, actionData }: Route.ComponentP
           <a aria-label="プロフィール編集を閉じる" className="profile-edit-modal-backdrop" href={profilePath} />
           <div className="profile-edit-modal-card">
             <PlayerProfileEditor
+              achievements={achievements.items
+                .filter((achievement) => achievement.isUnlocked)
+                .map((achievement) => ({
+                  id: achievement.id,
+                  code: achievement.code,
+                  name: achievement.name,
+                  description: achievement.description,
+                  iconKey: achievement.iconKey,
+                  category: achievement.category,
+                }))}
               avatarUrl={avatarUrl}
               error={profileSaveFailure?.error ?? null}
               errors={profileSaveFailure?.errors ?? {}}
@@ -131,8 +147,14 @@ export default function StatsPlayer({ loaderData, actionData }: Route.ComponentP
                 favoriteCard1: summary.favoriteCard1,
                 favoriteCard2: summary.favoriteCard2,
                 profileMessage: summary.profileMessage,
+                equippedAchievementId: achievements.equippedAchievement?.id ?? null,
               }}
-              values={profileSaveFailure?.values ?? null}
+              values={profileSaveFailure
+                ? {
+                    ...profileSaveFailure.values,
+                    equippedAchievementId: profileSaveFailure.equippedAchievementId,
+                  }
+                : null}
             />
           </div>
         </section>
@@ -151,6 +173,11 @@ export default function StatsPlayer({ loaderData, actionData }: Route.ComponentP
         <Kpi label="最大勝ち" tone={getBbToneClass(summary.maxWinBb)} value={formatSignedBbValue(summary.maxWinBb)} />
         <Kpi label="最大負け" tone={getBbToneClass(summary.maxLossBb)} value={formatSignedBbValue(summary.maxLossBb)} />
       </section>
+
+      <PlayerAchievementCollectionView
+        collection={achievements}
+        groupCode={group.publicCode}
+      />
 
       <section className="stats-panel" aria-labelledby="chart-heading">
         <div className="section-heading compact-heading">
@@ -230,4 +257,9 @@ function getBbToneClass(value: number): string {
 function readString(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
+}
+
+function readNullableString(formData: FormData, name: string): string | null {
+  const value = readString(formData, name).trim();
+  return value === "" ? null : value;
 }

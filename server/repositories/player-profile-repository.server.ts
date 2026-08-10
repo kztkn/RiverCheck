@@ -11,6 +11,7 @@ interface ProfileRow {
   profile_message: string | null;
   favorite_hand_card_1: string | null;
   favorite_hand_card_2: string | null;
+  equipped_achievement_id: string | null;
   avatar_object_key: string | null;
   avatar_content_type: GamePhotoContentType | null;
   avatar_byte_size: number | null;
@@ -33,6 +34,7 @@ export interface PlayerProfileRecord {
   profileMessage: string | null;
   favoriteCard1: string | null;
   favoriteCard2: string | null;
+  equippedAchievementId: string | null;
   avatarObjectKey: string | null;
   avatarContentType: GamePhotoContentType | null;
   avatarByteSize: number | null;
@@ -61,6 +63,7 @@ export async function findPlayerProfileBySession(
         player.profile_message,
         player.favorite_hand_card_1,
         player.favorite_hand_card_2,
+        group_player.equipped_achievement_id,
         player.avatar_object_key,
         player.avatar_content_type,
         player.avatar_byte_size,
@@ -110,6 +113,7 @@ export async function createPlayerProfileSession(
         player.profile_message,
         player.favorite_hand_card_1,
         player.favorite_hand_card_2,
+        group_player.equipped_achievement_id,
         player.avatar_object_key,
         player.avatar_content_type,
         player.avatar_byte_size,
@@ -259,6 +263,7 @@ export async function consumePlayerProfileClaim(
           player.profile_message,
           player.favorite_hand_card_1,
           player.favorite_hand_card_2,
+          group_player.equipped_achievement_id,
           player.avatar_object_key,
           player.avatar_content_type,
           player.avatar_byte_size,
@@ -279,6 +284,7 @@ export async function consumePlayerProfileClaim(
 
 export async function savePlayerProfileRecord(
   playerId: string,
+  groupPlayerId: string,
   input: {
     displayName: string;
     profileMessage: string | null;
@@ -289,37 +295,71 @@ export async function savePlayerProfileRecord(
     avatarByteSize: number | null;
     avatarUploadedAt: string | null;
     expectedAvatarObjectKey: string | null;
+    equippedAchievementId: string | null;
   },
-): Promise<boolean> {
-  const result = await queryDatabase(
-    `
-      UPDATE players
-      SET display_name = $2,
-          profile_message = $3,
-          favorite_hand_card_1 = $4,
-          favorite_hand_card_2 = $5,
-          avatar_object_key = $6,
-          avatar_content_type = $7,
-          avatar_byte_size = $8,
-          avatar_uploaded_at = $9,
-          updated_at = NOW()
-      WHERE id = $1
-        AND avatar_object_key IS NOT DISTINCT FROM $10
-    `,
-    [
-      playerId,
-      input.displayName,
-      input.profileMessage,
-      input.favoriteCard1,
-      input.favoriteCard2,
-      input.avatarObjectKey,
-      input.avatarContentType,
-      input.avatarByteSize,
-      input.avatarUploadedAt,
-      input.expectedAvatarObjectKey,
-    ],
-  );
-  return result.rowCount === 1;
+): Promise<"saved" | "conflict" | "achievement-unavailable"> {
+  return withTransaction(async (transaction) => {
+    const target = await transaction.query<{ id: string }>(
+      `
+        SELECT group_player.id
+        FROM group_players AS group_player
+        WHERE group_player.id = $2
+          AND group_player.player_id = $1
+          AND (
+            $3::UUID IS NULL
+            OR EXISTS (
+              SELECT 1
+              FROM player_achievements AS player_achievement
+              WHERE player_achievement.group_player_id = group_player.id
+                AND player_achievement.achievement_id = $3
+            )
+          )
+        FOR UPDATE OF group_player
+      `,
+      [playerId, groupPlayerId, input.equippedAchievementId],
+    );
+    if (!target.rows[0]) return "achievement-unavailable";
+
+    const profileUpdate = await transaction.query(
+      `
+        UPDATE players
+        SET display_name = $2,
+            profile_message = $3,
+            favorite_hand_card_1 = $4,
+            favorite_hand_card_2 = $5,
+            avatar_object_key = $6,
+            avatar_content_type = $7,
+            avatar_byte_size = $8,
+            avatar_uploaded_at = $9,
+            updated_at = NOW()
+        WHERE id = $1
+          AND avatar_object_key IS NOT DISTINCT FROM $10
+      `,
+      [
+        playerId,
+        input.displayName,
+        input.profileMessage,
+        input.favoriteCard1,
+        input.favoriteCard2,
+        input.avatarObjectKey,
+        input.avatarContentType,
+        input.avatarByteSize,
+        input.avatarUploadedAt,
+        input.expectedAvatarObjectKey,
+      ],
+    );
+    if (profileUpdate.rowCount !== 1) return "conflict";
+
+    await transaction.query(
+      `
+        UPDATE group_players
+        SET equipped_achievement_id = $2
+        WHERE id = $1
+      `,
+      [groupPlayerId, input.equippedAchievementId],
+    );
+    return "saved";
+  });
 }
 
 export async function findPlayerAvatarRecord(
@@ -358,6 +398,7 @@ function mapProfile(row: ProfileRow): PlayerProfileRecord {
     profileMessage: row.profile_message,
     favoriteCard1: row.favorite_hand_card_1,
     favoriteCard2: row.favorite_hand_card_2,
+    equippedAchievementId: row.equipped_achievement_id,
     avatarObjectKey: row.avatar_object_key,
     avatarContentType: row.avatar_content_type,
     avatarByteSize: row.avatar_byte_size,

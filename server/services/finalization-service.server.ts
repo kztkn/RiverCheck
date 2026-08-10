@@ -20,6 +20,7 @@ import {
 } from "@domain/result-revision/build-result-revision-changes";
 import type { CreateGameInput, GameDetails } from "@shared-types/game";
 import type { GameParticipantSummary } from "@shared-types/player";
+import { awardAchievementsForPlayers } from "@server/services/achievement-service.server";
 
 export function buildFinalizationState(
   game: GameDetails,
@@ -131,6 +132,11 @@ export async function finalizeGame(
     if (!(await markGameFinalized(transaction, groupId, gameId))) {
       throw new Error("game status changed during finalization");
     }
+    await awardAchievementsForPlayers(
+      transaction,
+      groupId,
+      calculated.results.map((result) => result.groupPlayerId),
+    );
     return { ok: true };
   });
 }
@@ -216,6 +222,11 @@ export async function updateFinalizedGame(
       ) {
         throw new Error("game status changed during identity update");
       }
+      await awardAchievementsForPlayers(
+        transaction,
+        groupId,
+        beforeResults.map((result) => result.groupPlayerId),
+      );
       return { ok: true };
     }
 
@@ -288,6 +299,11 @@ export async function updateFinalizedGame(
     ) {
       throw new Error("game status changed during result correction");
     }
+    await awardAchievementsForPlayers(
+      transaction,
+      groupId,
+      calculated.results.map((result) => result.groupPlayerId),
+    );
     return { ok: true };
   });
 }

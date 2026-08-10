@@ -2803,6 +2803,21 @@ input[aria-invalid="true"] {
   font-size: 1.15rem;
 }
 
+.about-install-steps {
+  display: grid;
+  gap: 8px;
+  margin: 2px 0;
+  color: var(--ink);
+  font-size: 0.86rem;
+  line-height: 1.65;
+  padding-left: 1.5rem;
+}
+
+.about-install-steps li::marker {
+  color: var(--green);
+  font-weight: 850;
+}
+
 .about-meta-link {
   display: flex;
   justify-content: space-between;

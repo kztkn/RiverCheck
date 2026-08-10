@@ -46,8 +46,15 @@ export default function About({ loaderData }: Route.ComponentProps) {
           <p className="eyebrow">HOME SCREEN</p>
           <h2>ホーム画面からすぐ開く</h2>
         </div>
+        <p>iPhoneではSafariでRiverCheckを開き、次の順に操作します。</p>
+        <ol className="about-install-steps">
+          <li>画面下の共有ボタンをタップ</li>
+          <li>「ホーム画面に追加」をタップ</li>
+          <li>「Webアプリとして開く」をオン</li>
+          <li>右上の「追加」をタップ</li>
+        </ol>
         <p>
-          スマートフォンのブラウザメニューから「ホーム画面に追加」すると、通常のアプリに近い感覚でRiverCheckを開けます。
+          追加後は、ホーム画面のRCアイコンからRiverCheckをアプリのように開けます。「ホーム画面に追加」が見つからない場合は、共有メニュー下部の「アクションを編集」から追加できます。
         </p>
       </section>
 

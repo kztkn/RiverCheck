@@ -121,17 +121,23 @@
 }
 
 .stats-sort {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  overflow: hidden;
+  display: flex;
+  max-width: 100%;
+  overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: 11px;
   background: #091711;
+  scrollbar-width: none;
   padding: 3px;
+}
+
+.stats-sort::-webkit-scrollbar {
+  display: none;
 }
 
 .stats-sort a {
   min-width: 72px;
+  flex: 0 0 auto;
   border-radius: 8px;
   color: var(--muted);
   font-size: 0.75rem;
@@ -153,7 +159,7 @@
 
 .stats-ranking-card {
   display: grid;
-  grid-template-columns: 48px minmax(150px, 1fr) minmax(120px, auto) minmax(110px, auto) 24px;
+  grid-template-columns: 48px minmax(150px, 1fr) minmax(120px, auto) 24px;
   align-items: center;
   gap: 16px;
   border: 1px solid var(--line);
@@ -188,7 +194,6 @@
 
 .stats-player-name,
 .stats-primary-value,
-.stats-secondary-value,
 .stats-game-title {
   display: grid;
   min-width: 0;
@@ -204,7 +209,6 @@
 
 .stats-player-name small,
 .stats-primary-value small,
-.stats-secondary-value small,
 .stats-game-title small,
 .stats-game-date {
   color: var(--muted);
@@ -217,11 +221,6 @@
 
 .stats-primary-value strong {
   font-size: 1.05rem;
-  white-space: nowrap;
-}
-
-.stats-secondary-value {
-  justify-items: end;
   white-space: nowrap;
 }
 
@@ -388,12 +387,6 @@
     grid-row: 1 / span 2;
   }
 
-  .stats-secondary-value {
-    grid-column: 2 / -1;
-    grid-row: 2;
-    justify-items: start;
-  }
-
   .stats-ranking-card > .card-arrow {
     display: none;
   }
@@ -426,4 +419,124 @@
     grid-template-columns: 36px minmax(0, 1fr) auto;
     padding-inline: 11px;
   }
+}
+
+.achievement-collection {
+  margin: 42px 0 58px;
+}
+
+.achievement-collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 11px;
+}
+
+.achievement-card {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: start;
+  gap: 13px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(14, 30, 24, 0.72);
+  padding: 15px;
+}
+
+.achievement-card.is-unlocked {
+  border-color: rgba(221, 181, 86, 0.3);
+  background: linear-gradient(120deg, rgba(221, 181, 86, 0.08), rgba(14, 30, 24, 0.78) 58%);
+}
+
+.achievement-card.is-locked {
+  opacity: 0.62;
+}
+
+.achievement-card-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 1px solid rgba(221, 181, 86, 0.26);
+  border-radius: 14px;
+  background: rgba(221, 181, 86, 0.08);
+  color: #f1d88f;
+}
+
+.achievement-card.is-locked .achievement-card-icon {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--muted);
+}
+
+.achievement-card-icon svg {
+  width: 25px;
+  height: 25px;
+}
+
+.achievement-card-copy {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.achievement-card-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.achievement-card-title > strong {
+  overflow: hidden;
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.achievement-card-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.achievement-equipped-label {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+  border-radius: 999px;
+  background: rgba(57, 222, 141, 0.13);
+  color: var(--green);
+  font-size: 0.6rem;
+  font-weight: 850;
+  padding: 4px 7px;
+}
+
+.achievement-equipped-label svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 3;
+}
+
+.achievement-earned-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 9px;
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.achievement-earned-meta a {
+  color: var(--green);
+  font-weight: 750;
+}
+
+.achievement-locked-label {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 750;
 }

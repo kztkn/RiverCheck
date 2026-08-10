@@ -30,7 +30,7 @@ docs/ideas/player-achievements.md を読んで、未決事項を確認してか�
 
 | ファイル | 内容 | ステータス |
 | --- | --- | --- |
-| [player-achievements.md](./player-achievements.md) | 戦績条件で永久取得し、本人が1つ装備する称号機能 | 方針合意・未実装 |
+| [player-achievements.md](./player-achievements.md) | 戦績条件で永久取得し、本人が1つ装備する称号機能 | 実装済み |
 | [daily-hand-bonus.md](./daily-hand-bonus.md) | 参加時の本日のハンド、一致写真、結果への+300BBボーナス | アイデア・要件確認待ち |
 | [game-likes-and-yearly-highlights.md](./game-likes-and-yearly-highlights.md) | 過去開催の赤いハート、送受信集計、称号・年間表彰への活用 | アイデア・要件確認待ち |
 | [settlement-collection-management.md](./settlement-collection-management.md) | 主催者限定の会費回収チェック、未回収開催の色表示 | 方針合意・未実装 |
