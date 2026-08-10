@@ -2,7 +2,6 @@ import { GroupSiteHeader } from "~/components/site-menu";
 import { Form, redirect, useNavigation } from "react-router";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import {
-  clearOrganizerSessionCookie,
   createOrganizerSessionCookie,
   isOrganizerAuthConfigured,
   isOrganizerAuthenticated,
@@ -31,12 +30,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
 export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
-  const intent = readString(formData, "intent");
-  if (intent === "logout") {
-    return redirect(`/g/${params.groupCode}`, {
-      headers: { "Set-Cookie": clearOrganizerSessionCookie(request) },
-    });
-  }
 
   const returnTo = safeOrganizerReturnTo(
     readString(formData, "returnTo"),

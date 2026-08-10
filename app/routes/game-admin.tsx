@@ -269,194 +269,194 @@ export default function GameAdmin({
             </span>
           ) : null}
         </div>
-        <p>この専用URLから、条件・受付・参加者をまとめて管理できます。</p>
+        <p>条件・受付・参加者をまとめて管理できます。</p>
       </section>
 
       {notice ? <p className="success-notice">{notice}</p> : null}
 
       <>
-          <section className="admin-share-panel">
+        <section className="admin-share-panel">
+          <div>
+            <h2>PARTICIPANT LINK</h2>
+            <p>このリンクを参加者に共有してください。</p>
+            {loaderData.currentParticipant ? (
+              <p>
+                この端末は「{loaderData.currentParticipant.displayName}」として参加中です。
+              </p>
+            ) : null}
+          </div>
+          <div className="share-link-control">
+            <input
+              aria-label="参加者用URL"
+              onFocus={(event) => event.currentTarget.select()}
+              readOnly
+              ref={participantLinkRef}
+              value={loaderData.participantUrl}
+            />
+            <button
+              aria-label="共有リンクをコピー"
+              className="copy-icon-button"
+              onClick={copyParticipantLink}
+              title={linkCopied ? "コピーしました" : "リンクをコピー"}
+              type="button"
+            >
+              {linkCopied ? (
+                <span aria-hidden="true" className="copy-check">
+                  ✓
+                </span>
+              ) : (
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <rect height="13" rx="2" width="13" x="8" y="8" />
+                  <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
+                </svg>
+              )}
+            </button>
+          </div>
+          <ParticipantLinkQr url={loaderData.participantUrl} />
+          <Link
+            className="button button-secondary"
+            reloadDocument
+            to={loaderData.participantUrl}
+          >
+            {loaderData.currentParticipant
+              ? `${loaderData.currentParticipant.displayName} のチップ入力画面を開く`
+              : "自分も参加する（参加者画面へ）"}
+          </Link>
+        </section>
+
+        <section className="admin-participants">
+          <div className="section-heading">
             <div>
-              <h2>PARTICIPANT LINK</h2>
-              <p>このリンクを参加者に共有してください。</p>
-              {loaderData.currentParticipant ? (
-                <p>
-                  この端末は「{loaderData.currentParticipant.displayName}」として参加中です。
-                </p>
-              ) : null}
+              <h2>PARTICIPANTS</h2>
             </div>
-            <div className="share-link-control">
+            <span className="count-badge">
+              {visibleParticipants.length}人
+            </span>
+          </div>
+          {visibleParticipants.length === 0 ? (
+            <div className="mini-empty">
+              <p>まだ参加者はいません。参加者用リンクを共有してください。</p>
+            </div>
+          ) : (
+            <div className="participant-admin-list">
+              {visibleParticipants.map((participant) => (
+                <article className="participant-admin-row" key={participant.id}>
+                  <div>
+                    <strong>{participant.displayName}</strong>
+                    <span>
+                      {participant.remainingChips === null
+                        ? "未入力"
+                        : `残り ${participant.remainingChips.toLocaleString("ja-JP")} / リバイ ${participant.rebuyCount}回`}
+                    </span>
+                  </div>
+                  {loaderData.game.status !== "finalized" ? (
+                    <button
+                      aria-label={`${participant.displayName}の参加を取り消す`}
+                      className="participant-remove-button"
+                      disabled={removalFetcher.state !== "idle"}
+                      onClick={() =>
+                        setPendingRemoval({
+                          id: participant.id,
+                          displayName: participant.displayName,
+                        })
+                      }
+                      title="参加を取り消す"
+                      type="button"
+                    >
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <Form className="game-form" method="post" noValidate>
+          <input name="intent" type="hidden" value="finalize" />
+          <GameSettingsFields
+            actualParticipantCount={loaderData.participants.length}
+            errors={actionErrors}
+            onParticipantCountChange={setSettlementParticipantCount}
+            showCoreSettings={false}
+            values={values}
+          />
+          <FinalizationPanel
+            error={finalizeError}
+            finalization={loaderData.finalization}
+            isSubmitting={isSubmitting}
+            settlementParticipantCount={settlementParticipantCount}
+          />
+        </Form>
+        <dialog
+          aria-labelledby="removal-dialog-title"
+          className="app-dialog"
+          onCancel={() => setPendingRemoval(null)}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setPendingRemoval(null);
+            }
+          }}
+          onClose={() => setPendingRemoval(null)}
+          ref={removalDialogRef}
+        >
+          <div className="dialog-card">
+            <span aria-hidden="true" className="dialog-danger-icon">
+              ×
+            </span>
+            <div>
+              <p className="eyebrow">REMOVE PARTICIPANT</p>
+              <h2 id="removal-dialog-title">参加を取り消しますか？</h2>
+              <p>
+                <strong>{pendingRemoval?.displayName}</strong>
+                さんをこの会から削除します。入力済みのチップとリバイ回数も削除されます。
+              </p>
+            </div>
+            <removalFetcher.Form
+              className="dialog-actions"
+              method="post"
+              onSubmit={(event) => {
+                if (!pendingRemoval) {
+                  event.preventDefault();
+                  return;
+                }
+                setOptimisticallyRemoved(pendingRemoval);
+                setPendingRemoval(null);
+              }}
+            >
+              <input name="intent" type="hidden" value="remove" />
               <input
-                aria-label="参加者用URL"
-                onFocus={(event) => event.currentTarget.select()}
-                readOnly
-                ref={participantLinkRef}
-                value={loaderData.participantUrl}
+                name="participantId"
+                type="hidden"
+                value={pendingRemoval?.id ?? ""}
               />
               <button
-                aria-label="共有リンクをコピー"
-                className="copy-icon-button"
-                onClick={copyParticipantLink}
-                title={linkCopied ? "コピーしました" : "リンクをコピー"}
+                autoFocus
+                className="button button-secondary"
+                onClick={() => setPendingRemoval(null)}
                 type="button"
               >
-                {linkCopied ? (
-                  <span aria-hidden="true" className="copy-check">
-                    ✓
-                  </span>
-                ) : (
-                  <svg aria-hidden="true" viewBox="0 0 24 24">
-                    <rect height="13" rx="2" width="13" x="8" y="8" />
-                    <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
-                  </svg>
-                )}
+                キャンセル
               </button>
-            </div>
-            <ParticipantLinkQr url={loaderData.participantUrl} />
-            <Link
-              className="button button-secondary"
-              reloadDocument
-              to={loaderData.participantUrl}
-            >
-              {loaderData.currentParticipant
-                ? `${loaderData.currentParticipant.displayName} のチップ入力画面を開く`
-                : "自分も参加する（参加者画面へ）"}
-            </Link>
-          </section>
-
-          <section className="admin-participants">
-            <div className="section-heading">
-              <div>
-                <h2>PARTICIPANTS</h2>
-              </div>
-              <span className="count-badge">
-                {visibleParticipants.length}人
-              </span>
-            </div>
-            {visibleParticipants.length === 0 ? (
-              <div className="mini-empty">
-                <p>まだ参加者はいません。参加者用リンクを共有してください。</p>
-              </div>
-            ) : (
-              <div className="participant-admin-list">
-                {visibleParticipants.map((participant) => (
-                  <article className="participant-admin-row" key={participant.id}>
-                    <div>
-                      <strong>{participant.displayName}</strong>
-                      <span>
-                        {participant.remainingChips === null
-                          ? "未入力"
-                          : `残り ${participant.remainingChips.toLocaleString("ja-JP")} / リバイ ${participant.rebuyCount}回`}
-                      </span>
-                    </div>
-                    {loaderData.game.status !== "finalized" ? (
-                      <button
-                        aria-label={`${participant.displayName}の参加を取り消す`}
-                        className="participant-remove-button"
-                        disabled={removalFetcher.state !== "idle"}
-                        onClick={() =>
-                          setPendingRemoval({
-                            id: participant.id,
-                            displayName: participant.displayName,
-                          })
-                        }
-                        title="参加を取り消す"
-                        type="button"
-                      >
-                        <span aria-hidden="true">×</span>
-                      </button>
-                    ) : null}
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <Form className="game-form" method="post" noValidate>
-            <input name="intent" type="hidden" value="finalize" />
-            <GameSettingsFields
-              actualParticipantCount={loaderData.participants.length}
-              errors={actionErrors}
-              onParticipantCountChange={setSettlementParticipantCount}
-              showCoreSettings={false}
-              values={values}
-            />
-            <FinalizationPanel
-              error={finalizeError}
-              finalization={loaderData.finalization}
-              isSubmitting={isSubmitting}
-              settlementParticipantCount={settlementParticipantCount}
-            />
-          </Form>
-          <dialog
-            aria-labelledby="removal-dialog-title"
-            className="app-dialog"
-            onCancel={() => setPendingRemoval(null)}
-            onClick={(event) => {
-              if (event.target === event.currentTarget) {
-                setPendingRemoval(null);
-              }
-            }}
-            onClose={() => setPendingRemoval(null)}
-            ref={removalDialogRef}
+              <button className="button button-danger" type="submit">
+                参加を取り消す
+              </button>
+            </removalFetcher.Form>
+          </div>
+        </dialog>
+        {toast ? (
+          <div
+            aria-live="polite"
+            className={`app-toast app-toast-${toast.tone}`}
+            key={toast.id}
+            role={toast.tone === "error" ? "alert" : "status"}
           >
-            <div className="dialog-card">
-              <span aria-hidden="true" className="dialog-danger-icon">
-                ×
-              </span>
-              <div>
-                <p className="eyebrow">REMOVE PARTICIPANT</p>
-                <h2 id="removal-dialog-title">参加を取り消しますか？</h2>
-                <p>
-                  <strong>{pendingRemoval?.displayName}</strong>
-                  さんをこの会から削除します。入力済みのチップとリバイ回数も削除されます。
-                </p>
-              </div>
-              <removalFetcher.Form
-                className="dialog-actions"
-                method="post"
-                onSubmit={(event) => {
-                  if (!pendingRemoval) {
-                    event.preventDefault();
-                    return;
-                  }
-                  setOptimisticallyRemoved(pendingRemoval);
-                  setPendingRemoval(null);
-                }}
-              >
-                <input name="intent" type="hidden" value="remove" />
-                <input
-                  name="participantId"
-                  type="hidden"
-                  value={pendingRemoval?.id ?? ""}
-                />
-                <button
-                  autoFocus
-                  className="button button-secondary"
-                  onClick={() => setPendingRemoval(null)}
-                  type="button"
-                >
-                  キャンセル
-                </button>
-                <button className="button button-danger" type="submit">
-                  参加を取り消す
-                </button>
-              </removalFetcher.Form>
-            </div>
-          </dialog>
-          {toast ? (
-            <div
-              aria-live="polite"
-              className={`app-toast app-toast-${toast.tone}`}
-              key={toast.id}
-              role={toast.tone === "error" ? "alert" : "status"}
-            >
-              <span aria-hidden="true">
-                {toast.tone === "success" ? "✓" : "!"}
-              </span>
-              {toast.message}
-            </div>
-          ) : null}
+            <span aria-hidden="true">
+              {toast.tone === "success" ? "✓" : "!"}
+            </span>
+            {toast.message}
+          </div>
+        ) : null}
       </>
     </main>
   );

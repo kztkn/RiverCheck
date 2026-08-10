@@ -55,11 +55,21 @@ npm run test         # domain unit test
 npm run typecheck    # Worker 型生成、route 型生成、TypeScript 検査
 npm run build        # OSSライセンス検査 + Cloudflare Workers向けproduction build
 npm run license:check # 本番依存のOSSライセンス許可リスト検査
+npm run pwa:icons    # PWA用PNGアイコンを再生成
+npm run pwa:build    # build/clientへService Workerを生成
 npm run db:migrate              # ローカルDocker DBへmigration
 npm run db:seed                 # ローカルDocker DBへseed
 npm run db:migrate:production   # .envの本番DBへmigration
 npm run db:seed:production      # .envの本番DBへseed
 ```
+
+## PWA
+
+production buildでは、Web App Manifest、通常・maskable・Apple用アイコン、オフライン案内とService Workerを`build/client`へ出力します。Service Workerはビルド済みJS/CSSの内容からversionを自動生成するため、通常の画面や機能追加でPWA設定を更新する必要はありません。
+
+Service WorkerがCache Storageへ保存するのは、PWAの公開アセットと利用済みの`/assets/`配下だけです。HTML、React Routerの`.data`、参加状況、結果、プロフィール、POST responseは保存しません。オフライン時の参加・入力は行わず、接続案内を表示します。新しいversionは自動検出しますが、入力途中の強制再読込を避けるため、利用者が通知の「更新する」を押したときだけ切り替えます。
+
+`npm run dev`では既存Service Workerとの混線を避けるため登録しません。PWA確認は`npm run build`後のpreviewまたは本番HTTPSで行い、ブラウザのApplication/Storage画面で過去のlocalhost用Service Workerがあれば解除してください。
 
 ## Cloudflare / PostgreSQL
 

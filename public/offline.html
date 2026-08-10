@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#08130f" />
+    <title>オフライン | RiverCheck</title>
+    <style>
+      :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+      * { box-sizing: border-box; }
+      body {
+        display: grid;
+        min-width: 320px;
+        min-height: 100vh;
+        place-items: center;
+        margin: 0;
+        padding: 24px;
+        background: radial-gradient(circle at 80% 0, #143b2b, transparent 35rem), #08130f;
+        color: #f7f3e8;
+      }
+      main {
+        width: min(100%, 480px);
+        border: 1px solid rgba(57, 222, 141, .24);
+        border-radius: 24px;
+        background: rgba(14, 30, 24, .92);
+        padding: 36px 28px;
+        text-align: center;
+      }
+      img { width: 72px; height: 72px; border-radius: 18px; }
+      h1 { margin: 22px 0 12px; font-size: 1.5rem; }
+      p { margin: 0; color: #9db0a6; line-height: 1.8; }
+      button {
+        min-height: 48px;
+        margin-top: 26px;
+        border: 0;
+        border-radius: 12px;
+        background: #39de8d;
+        color: #062616;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 800;
+        padding: 0 22px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icons/icon-192.png" alt="" />
+      <h1>ネットワークに接続できません</h1>
+      <p>参加状況や結果を最新の状態で表示するため、接続を確認してからもう一度お試しください。</p>
+      <button type="button" onclick="location.reload()">再読み込み</button>
+    </main>
+  </body>
+</html>

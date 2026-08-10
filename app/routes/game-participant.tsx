@@ -44,6 +44,7 @@ import {
   getAuthenticatedPlayerProfile,
   selectPlayerProfile,
 } from "@server/services/player-profile-service.server";
+import { joinSelfParticipant } from "@server/services/participant-service.server";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { createPlayerProfileCookie } from "@server/services/player-profile-session.server";
 import { GameHighlight } from "../components/game-highlight";
@@ -62,30 +63,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     getAuthenticatedPlayerProfile(request, params.groupCode),
   ]);
   const url = new URL(request.url);
-  let participant = profileOverview?.profile
+  const participant = profileOverview?.profile
     ? await findParticipantByGroupPlayerId(
       context.group.id,
       params.gameId,
       profileOverview.profile.groupPlayerId,
     )
     : null;
-  if (
-    !participant &&
-    context.game.status === "open" &&
-    profileOverview?.profile
-  ) {
-    await joinAuthenticatedParticipant(
-      context.group.id,
-      params.gameId,
-      profileOverview.profile.groupPlayerId,
-      await hashToken(generateOpaqueToken()),
-    );
-    participant = await findParticipantByGroupPlayerId(
-      context.group.id,
-      params.gameId,
-      profileOverview.profile.groupPlayerId,
-    );
-  }
   const players =
     context.game.status === "open" && !participant
       ? await listRegisteredPlayersForGame(context.group.id, params.gameId)
@@ -116,8 +100,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     : null;
   const payPayPaymentAmount =
     context.game.status === "finalized" &&
-    payPayRecipientLink &&
-    profileOverview?.profile
+      payPayRecipientLink &&
+      profileOverview?.profile
       ? await findGamePaymentAmountForPlayer(
         context.group.id,
         params.gameId,
@@ -128,6 +112,17 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     group: { name: context.group.name, publicCode: context.group.publicCode },
     game: context.game,
     isOrganizer,
+    authenticatedPlayer: profileOverview?.profile
+      ? {
+        avatarUrl: buildPlayerAvatarUrl({
+          avatarUpdatedAt: profileOverview.profile.avatarUploadedAt,
+          groupCode: params.groupCode,
+          groupPlayerId: profileOverview.profile.groupPlayerId,
+        }),
+        displayName: profileOverview.profile.displayName,
+        groupPlayerId: profileOverview.profile.groupPlayerId,
+      }
+      : null,
     participant: participant
       ? {
         ...participant,
@@ -162,7 +157,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
           context.game.initialChips,
         )
         : "",
-    shareUrl: `${url.origin}${url.pathname}`,
+    shareUrl: `${url.origin}/g/${params.groupCode}/games/${params.gameId}`,
     pastGameNavigation: buildPastGameNavigation(finalizedGames, params.gameId),
     payPay: payPayRecipientLink
       ? { link: payPayRecipientLink, paymentAmount: payPayPaymentAmount }
@@ -176,6 +171,19 @@ export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const intent = readString(formData, "intent");
   const participantUrl = `/g/${params.groupCode}/games/${params.gameId}`;
+
+  if (intent === "join-self") {
+    if (context.game.status !== "open") {
+      return { error: "現在は参加を受け付けていません。" };
+    }
+    const joined = await joinSelfParticipant(request, {
+      gameId: params.gameId,
+      groupCode: params.groupCode,
+      groupId: context.group.id,
+    });
+    if (!joined.ok) return { error: joined.error };
+    return redirect(`${participantUrl}?notice=joined`, { status: 303 });
+  }
 
   if (intent === "join-existing" || intent === "join-new") {
     if (context.game.status !== "open") {
@@ -361,11 +369,6 @@ export default function GameParticipant({
       <GroupSiteHeader
         groupCode={loaderData.group.publicCode}
         organizer={loaderData.isOrganizer}
-        status={loaderData.game.status !== "finalized" ? (
-          <span className={`status status-${loaderData.game.status}`}>
-            {loaderData.game.status === "open" ? "受付中" : "準備中"}
-          </span>
-        ) : null}
       />
 
       <section className="participant-hero">
@@ -395,7 +398,7 @@ export default function GameParticipant({
       ) : null}
       {loaderData.notice === "saved" ? (
         <p className="success-notice">
-          結果を保存しました。確定までは何度でも変更できます。
+          保存しました。結果確定までは変更可能です。
         </p>
       ) : null}
       {loaderData.notice === "left" ? (
@@ -540,71 +543,98 @@ export default function GameParticipant({
         </section>
       ) : (
         <div className="join-grid">
-          <section className="participant-panel">
-            {loaderData.players.length === 0 ? (
-              <p className="muted-copy">登録済みメンバーはまだいません。</p>
-            ) : (
-              <div className="player-join-list">
-                {loaderData.players.map((player) => (
-                  <Form
-                    className="player-join-form"
-                    key={player.id}
-                    method="post"
-                    reloadDocument
-                  >
-                    <input name="intent" type="hidden" value="join-existing" />
-                    <input
-                      name="groupPlayerId"
-                      type="hidden"
-                      value={player.id}
-                    />
-                    <button
-                      aria-label={`${player.displayName}として参加`}
-                      className="player-join-button"
-                      disabled={isSubmitting}
-                      type="submit"
-                    >
-                      <PlayerAvatar
-                        avatarUrl={player.avatarUrl}
-                        displayName={player.displayName}
-                      />
-                      <span>{player.displayName}</span>
-                      <small>参加</small>
-                    </button>
-                  </Form>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="participant-panel new-player-panel">
-            <div>
-              <h2>一覧に名前がない方</h2>
-              <p className="muted-copy">
-                名前を追加して参加できます。次回から一覧に表示されます。
-              </p>
-            </div>
-            <Form className="new-player-form" method="post" reloadDocument>
-              <input name="intent" type="hidden" value="join-new" />
-              <label className="field">
-                <span className="field-label">表示名</span>
-                <input
-                  maxLength={PLAYER_DISPLAY_NAME_MAX_LENGTH}
-                  name="displayName"
-                  placeholder="例：プレイヤー"
-                  required
+          {loaderData.authenticatedPlayer ? (
+            <section className="participant-panel">
+              <div className="participant-identity">
+                <PlayerAvatar
+                  avatarUrl={loaderData.authenticatedPlayer.avatarUrl}
+                  displayName={loaderData.authenticatedPlayer.displayName}
                 />
-                <span className="field-hint">最大{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字</span>
-              </label>
-              <button
-                className="button button-secondary"
-                disabled={isSubmitting}
-                type="submit"
-              >
-                この名前で参加
-              </button>
-            </Form>
-          </section>
+                <div>
+                  <p>本人プロフィール</p>
+                  <h2>{loaderData.authenticatedPlayer.displayName}</h2>
+                </div>
+              </div>
+              <Form method="post" reloadDocument>
+                <input name="intent" type="hidden" value="join-self" />
+                <button
+                  className="button button-primary"
+                  disabled={isSubmitting}
+                  type="submit"
+                >
+                  {loaderData.authenticatedPlayer.displayName}として登録する
+                </button>
+              </Form>
+            </section>
+          ) : (
+            <>
+              <section className="participant-panel">
+                {loaderData.players.length === 0 ? (
+                  <p className="muted-copy">登録済みメンバーはまだいません。</p>
+                ) : (
+                  <div className="player-join-list">
+                    {loaderData.players.map((player) => (
+                      <Form
+                        className="player-join-form"
+                        key={player.id}
+                        method="post"
+                        reloadDocument
+                      >
+                        <input name="intent" type="hidden" value="join-existing" />
+                        <input
+                          name="groupPlayerId"
+                          type="hidden"
+                          value={player.id}
+                        />
+                        <button
+                          aria-label={`${player.displayName}として参加`}
+                          className="player-join-button"
+                          disabled={isSubmitting}
+                          type="submit"
+                        >
+                          <PlayerAvatar
+                            avatarUrl={player.avatarUrl}
+                            displayName={player.displayName}
+                          />
+                          <span>{player.displayName}</span>
+                          <small>参加</small>
+                        </button>
+                      </Form>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="participant-panel new-player-panel">
+                <div>
+                  <h2>一覧に名前がない方</h2>
+                  <p className="muted-copy">
+                    名前を追加して参加できます。次回から一覧に表示されます。
+                  </p>
+                </div>
+                <Form className="new-player-form" method="post" reloadDocument>
+                  <input name="intent" type="hidden" value="join-new" />
+                  <label className="field">
+                    <span className="field-label">表示名</span>
+                    <input
+                      maxLength={PLAYER_DISPLAY_NAME_MAX_LENGTH}
+                      name="displayName"
+                      placeholder="例：プレイヤー"
+                      required
+                    />
+                    <span className="field-hint">最大{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字</span>
+                  </label>
+                  <button
+                    className="button button-secondary"
+                    disabled={isSubmitting}
+                    type="submit"
+                  >
+                    この名前で参加
+                  </button>
+                </Form>
+              </section>
+            </>
+          )}
         </div>
       )}
     </main>

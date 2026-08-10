@@ -1,9 +1,11 @@
 import { GroupSiteHeader } from "~/components/site-menu";
-import { Link, redirect, useNavigation } from "react-router";
-import { PayPayLinkEditor } from "~/components/paypay-link-editor";
+import {
+  IconPlus,
+  IconSettings,
+  IconUsers,
+} from "@tabler/icons-react";
+import { Link } from "react-router";
 import { getGroupOverview } from "@server/services/group-service.server";
-import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
-import { saveGroupPayPayRecipientLink } from "@server/services/group-paypay-service.server";
 import { requireOrganizer } from "@server/services/organizer-auth.server";
 import type { Route } from "./+types/group-manage";
 
@@ -17,42 +19,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   await requireOrganizer(request, params.groupCode);
   const overview = await getGroupOverview(params.groupCode);
   if (!overview) throw new Response("Group not found", { status: 404 });
-  return {
-    ...overview,
-    notice: new URL(request.url).searchParams.get("notice"),
-  };
+  return overview;
 }
 
-export async function action({ request, params }: Route.ActionArgs) {
-  await requireOrganizer(request, params.groupCode);
-  const group = await findGroupByPublicCode(params.groupCode);
-  if (!group) throw new Response("Group not found", { status: 404 });
-  const formData = await request.formData();
-  if (readString(formData, "intent") !== "save-paypay-link") {
-    throw new Response("Unknown action", { status: 400 });
-  }
-  const result = await saveGroupPayPayRecipientLink(
-    group.id,
-    readString(formData, "payPayRecipientLink"),
-  );
-  return result.ok
-    ? redirect(`/g/${params.groupCode}/manage?notice=paypay-saved`, {
-        status: 303,
-      })
-    : { ...result, intent: "save-paypay-link" as const };
-}
-
-export default function GroupManage({ loaderData, actionData }: Route.ComponentProps) {
+export default function GroupManage({ loaderData }: Route.ComponentProps) {
   const { group, games } = loaderData;
-  const navigation = useNavigation();
-  const payPayAction =
-    actionData?.ok === false && actionData.intent === "save-paypay-link"
-      ? actionData
-      : null;
-  const manageUrl = `/g/${group.publicCode}/manage`;
-  const isPayPaySubmitting =
-    navigation.state === "submitting" &&
-    navigation.formData?.get("intent") === "save-paypay-link";
 
   return (
     <main className="page-shell">
@@ -67,34 +38,21 @@ export default function GroupManage({ loaderData, actionData }: Route.ComponentP
         </div>
         <div className="hero-actions">
           <Link
-            className="button button-secondary"
+            className="button button-secondary organizer-nav-button"
             to={`/g/${group.publicCode}/players`}
           >
+            <IconUsers aria-hidden="true" stroke={1.8} />
             メンバー管理
           </Link>
           <Link
-            className="button button-primary"
-            to={`/g/${group.publicCode}/games/new`}
+            className="button button-secondary organizer-nav-button"
+            to={`/g/${group.publicCode}/settings`}
           >
-            <span aria-hidden="true">＋</span>
-            新しい会を作成
+            <IconSettings aria-hidden="true" stroke={1.8} />
+            グループ設定
           </Link>
         </div>
       </section>
-
-      {loaderData.notice === "paypay-saved" ? (
-        <p className="success-notice">PayPay受取リンクを保存しました。</p>
-      ) : null}
-
-      <PayPayLinkEditor
-        actionUrl={manageUrl}
-        cancelUrl={manageUrl}
-        error={payPayAction?.error ?? null}
-        isSubmitting={isPayPaySubmitting}
-        link={group.payPayRecipientLink}
-        registeredAt={group.payPayLinkRegisteredAt}
-        value={payPayAction?.value ?? null}
-      />
 
       <section
         className="content-section"
@@ -105,7 +63,16 @@ export default function GroupManage({ loaderData, actionData }: Route.ComponentP
             <p className="eyebrow">MANAGE GAMES</p>
             <h2 id="manage-games-heading">開催管理</h2>
           </div>
-          <span className="count-badge">{games.length}件</span>
+          <div className="section-heading-actions">
+            <span className="count-badge">{games.length}件</span>
+            <Link
+              className="button button-primary button-small"
+              to={`/g/${group.publicCode}/games/new`}
+            >
+              <IconPlus aria-hidden="true" stroke={2} />
+              新しい会
+            </Link>
+          </div>
         </div>
 
         {games.length === 0 ? (
@@ -114,7 +81,7 @@ export default function GroupManage({ loaderData, actionData }: Route.ComponentP
               ♠
             </div>
             <h3>まだ開催はありません</h3>
-            <p>「新しい会を作成」から最初の開催を作ってください。</p>
+            <p>「新しい会」から最初の開催を作ってください。</p>
           </div>
         ) : (
           <div className="game-list">
@@ -157,9 +124,4 @@ export default function GroupManage({ loaderData, actionData }: Route.ComponentP
       </section>
     </main>
   );
-}
-
-function readString(formData: FormData, name: string): string {
-  const value = formData.get(name);
-  return typeof value === "string" ? value : "";
 }

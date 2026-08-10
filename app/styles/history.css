@@ -19,6 +19,10 @@
   font-size: 0.82rem;
 }
 
+.game-history-empty-action {
+  margin-top: 16px;
+}
+
 .game-card-summary {
   display: flex;
   flex-wrap: wrap;

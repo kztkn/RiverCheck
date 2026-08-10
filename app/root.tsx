@@ -6,6 +6,8 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
+import { AppErrorPage } from "~/components/error-page";
+import { PwaUpdateNotice } from "~/components/pwa-update-notice";
 import type { Route } from "./+types/root";
 import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
 import { isOrganizerAuthenticated } from "@server/services/organizer-auth.server";
@@ -54,6 +56,17 @@ export const meta: Route.MetaFunction = () => [
     name: "description",
     content: "ポーカー会の開催、結果入力、順位計算、会費精算をスマホで管理。",
   },
+  { name: "theme-color", content: "#08130f" },
+  { name: "mobile-web-app-capable", content: "yes" },
+  { name: "apple-mobile-web-app-capable", content: "yes" },
+  { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+  { name: "apple-mobile-web-app-title", content: "RiverCheck" },
+];
+
+export const links: Route.LinksFunction = () => [
+  { rel: "manifest", href: "/manifest.webmanifest" },
+  { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+  { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -67,6 +80,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+        <PwaUpdateNotice />
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -80,19 +94,5 @@ export default function App() {
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   const status = isRouteErrorResponse(error) ? error.status : 500;
-  const message =
-    status === 404
-      ? "ページが見つかりません"
-      : "画面を表示できませんでした";
-
-  return (
-    <main className="error-page">
-      <p className="eyebrow">RIVER CHECK</p>
-      <h1>{status}</h1>
-      <p>{message}</p>
-      <a className="button button-primary" href="/">
-        トップへ戻る
-      </a>
-    </main>
-  );
+  return <AppErrorPage status={status} />;
 }

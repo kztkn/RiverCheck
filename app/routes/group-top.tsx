@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, useRouteLoaderData } from "react-router";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { getGroupOverview } from "@server/services/group-service.server";
 import type { GameListItem } from "@shared-types/game";
@@ -6,7 +6,7 @@ import type { Route } from "./+types/group-top";
 
 const statusLabels = {
   draft: "準備中",
-  open: "開催中",
+  open: "受付中",
   finalized: "終了",
 } as const;
 
@@ -18,6 +18,11 @@ export async function loader({ params }: Route.LoaderArgs) {
 
 export default function GroupTop({ loaderData }: Route.ComponentProps) {
   const { group, games } = loaderData;
+  const rootData = useRouteLoaderData("root") as
+    | { isOrganizer: boolean }
+    | undefined;
+  const isOrganizer = rootData?.isOrganizer ?? false;
+
   const activeGames = games.filter((game) => game.status !== "finalized");
   const pastGames = games.filter((game) => game.status === "finalized");
 
@@ -46,9 +51,10 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
 
       <GameSection
         eyebrow="OPEN GAMES"
-        emptyMessage="現在開催中の会はありません。"
+        emptyMessage="現在受付中の会はありません。"
         games={activeGames}
-        heading="開催中"
+        heading="受付中"
+        isOrganizer={isOrganizer}
       />
 
       <GameSection
@@ -68,14 +74,21 @@ function GameSection({
   games,
   heading,
   isPast = false,
+  isOrganizer = false,
 }: {
   eyebrow: string;
   emptyMessage: string;
   games: GameListItem[];
   heading: string;
   isPast?: boolean;
+  isOrganizer?: boolean;
 }) {
   const headingId = isPast ? "past-games-heading" : "active-games-heading";
+  const createGameUrl = getCreateGameUrl(
+    games.length,
+    isOrganizer,
+    isPast,
+  );
 
   return (
     <section
@@ -93,12 +106,23 @@ function GameSection({
       {games.length === 0 ? (
         <div className="game-history-empty">
           <p>{emptyMessage}</p>
+          {createGameUrl ? (
+            <Link
+              className="button button-primary game-history-empty-action"
+              to={createGameUrl}
+            >
+              新しい会を作成
+            </Link>
+          ) : null}
         </div>
       ) : (
         <div className="game-list">
           {games.map((game) => (
             <article className="game-card" key={game.id}>
-              <Link className="game-card-main" to={`games/${game.id}`}>
+              <Link
+                className="game-card-main"
+                to={buildGameUrl(game, isOrganizer, isPast)}
+              >
                 {!isPast ? (
                   <span className={`status status-${game.status}`}>
                     {statusLabels[game.status]}
@@ -116,7 +140,10 @@ function GameSection({
                 ) : null}
               </Link>
               <div className="game-card-actions">
-                <Link className="card-action" to={`games/${game.id}`}></Link>
+                <Link
+                  className="card-action"
+                  to={buildGameUrl(game, isOrganizer, isPast)}
+                ></Link>
               </div>
             </article>
           ))}
@@ -131,4 +158,23 @@ function formatGameDate(playedAt: string): string {
     dateStyle: "long",
     timeZone: "Asia/Tokyo",
   }).format(new Date(playedAt));
+}
+
+export function getCreateGameUrl(
+  gameCount: number,
+  isOrganizer: boolean,
+  isPast: boolean,
+): string | null {
+  return gameCount === 0 && isOrganizer && !isPast
+    ? "games/new"
+    : null;
+}
+
+export function buildGameUrl(
+  game: GameListItem,
+  isOrganizer: boolean,
+  isPast: boolean,
+) {
+  const suffix = isOrganizer && !isPast ? "/admin" : "";
+  return `games/${game.id}${suffix}`;
 }

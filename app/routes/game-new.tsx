@@ -63,12 +63,6 @@ export default function NewGame({
         <GameSettingsFields errors={errors} values={values} />
 
         <div className="form-actions">
-          <Link
-            className="button button-secondary"
-            to={`/g/${loaderData.group.publicCode}/manage`}
-          >
-            キャンセル
-          </Link>
           <button
             className="button button-primary"
             disabled={isSubmitting}
@@ -76,6 +70,12 @@ export default function NewGame({
           >
             {isSubmitting ? "作成中…" : "開催を作成"}
           </button>
+          <Link
+            className="button button-secondary"
+            to={`/g/${loaderData.group.publicCode}/manage`}
+          >
+            キャンセル
+          </Link>
         </div>
       </Form>
     </main>

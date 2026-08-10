@@ -112,9 +112,9 @@ export function GroupSiteMenu({
         },
       ]}
       organizerLogoutAction={
-        organizer ? `${basePath}/organizer-login` : undefined
+        organizer ? `${basePath}/organizer-logout` : undefined
       }
-      accountLogoutAction={hasPlayer ? `${basePath}/profile` : undefined}
+      accountLogoutAction={hasPlayer ? `${basePath}/logout` : undefined}
     />
   );
 }

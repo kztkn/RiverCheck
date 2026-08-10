@@ -31,6 +31,14 @@ React Router が UI と HTTP 境界を担当する。MVP では別 REST API を�
 - `workers`: Cloudflare Worker entry point
 - `docs`: 要件、構成、業務ルール、TODO
 
+## PWAとクライアントキャッシュ
+
+Web App Manifestは`id`、`start_url`、`scope`を`/`で固定し、通常・maskable・Apple用アイコンを提供する。production build後にNode.jsスクリプトがクライアントJS/CSSの内容からversionを生成し、Service Workerテンプレートへ注入する。新しいrouteやchunkはversionへ自動反映し、機能追加ごとのキャッシュ一覧更新を不要にする。
+
+Service Workerはオフライン案内、manifest、PWAアイコンを事前キャッシュし、`/assets/`のハッシュ付き静的ファイルは利用時だけCache Firstで保存する。React RouterのSSR HTML、`.data`、R2配信画像、認証・参加・結果・精算・プロフィールresponse、POSTは傍受・保存しない。navigationはNetwork Onlyとし、通信失敗時だけ静的なオフライン案内を返す。これにより別利用者の情報や古い参加・精算状態を端末キャッシュから表示しない。
+
+Service Workerの新versionはwaiting状態で通知し、利用者が更新操作を選んだ場合だけ`skipWaiting`して再読込する。結果入力中の自動更新は行わない。開発時はService Workerを登録せず、production buildまたは本番HTTPSで検証する。
+
 ## Cloudflare Workers と PostgreSQL
 
 ローカルでは `.dev.vars` の `DATABASE_URL` を `cloudflare:workers` の `env` から取得する。本番は同じ名前の secret、または Cloudflare Hyperdrive の `HYPERDRIVE.connectionString` を利用できる。Hyperdrive がある場合はそちらを優先する。
@@ -55,6 +63,12 @@ POSTリクエストはReact Routerへ渡す前にパスを分類し、Workers Ra
 
 Rate Limiting APIは拠点単位かつ結果整合性が緩やかな防御であり、正確な利用回数の記録には使わない。強い主催者PIN、署名済みCookie、入力検証と組み合わせる多層防御として扱う。
 
+## エラー画面とログアウト
+
+React Router内で発生した画面表示エラーはrootのErrorBoundaryで共通エラー画面にする。加えて、ブラウザの通常遷移に対してWorker入口やフレームワークがHTMLではない400以上のresponseを返した場合は、DBに依存しない`/error` routeを内部描画し、元のHTTP statusを保ったHTML responseへ置き換える。resource responseとデータ通信は変換しない。共通画面の描画にも失敗した場合はWorker内の最小HTMLを最後のフォールバックとする。
+
+プレイヤーと主催者のログアウトはそれぞれ専用のPOST routeでCookie削除と303 redirectだけを行う。プロフィールroute、ログインroute、DB照会、FormData解析、書き込み用Rate Limitingから切り離し、一時的なDB障害や操作集中時にもログアウトできる構成とする。
+
 ## DB 設計上の判断
 
 - ID は外部公開や複数グループ対応を考慮して UUID とする
@@ -71,6 +85,8 @@ Rate Limiting APIは拠点単位かつ結果整合性が緩やかな防御であ
 
 参加時に32バイトの暗号学的乱数からtokenを生成し、DBにはSHA-256ハッシュだけを保存する。平文tokenは開催URL配下だけへ送信される `HttpOnly`、`SameSite=Lax` のCookieに保持し、HTML、URL、ログ、DBには出さない。Cookie名はgame UUIDごとに分け、同じブラウザが複数開催へ参加できるようにする。本番HTTPSでは `Secure` も付与する。
 
+参加者routeのloaderは開催、プロフィール、参加状態などの参照だけを行い、参加登録を含むDB更新を行わない。プロフィール認証済みの本人参加は`intent=join-self`のPOST actionからserviceを呼び、serviceがプロフィールsessionとgroup playerをサーバー側で再検証してから参加登録する。登録はgameとgroup playerの有効性・受付中状態をSQLでも確認し、`game_participants(game_id, group_player_id)`の一意制約と競合時の既存行確認によって二重送信を冪等に扱う。成功後は参加者URLへ303 redirectする。
+
 既存のgame participantにtokenハッシュがある場合、別ブラウザからの再取得を拒否する。本人Cookieを利用できなくなった場合は、主催者が参加取消を行い、本人が参加し直す。参加取消ではその開催の入力済みremaining_chipsとrebuy_countも削除する。
 
 ## プレイヤープロフィールと本人端末
@@ -85,7 +101,9 @@ Rate Limiting APIは拠点単位かつ結果整合性が緩やかな防御であ
 
 ## 主催者導線と認証
 
-主催者ホームは `/g/:groupCode/manage` とする。主催者ホーム、開催作成、メンバー管理、各開催管理のloader/actionは共通のサーバー認証を通し、未認証時は `/g/:groupCode/organizer-login` へ移動する。参加者向け画面からもこの認証入口を経由して主催者画面へ戻れる。
+主催者ホームは `/g/:groupCode/manage` とする。ホーム上部はメンバー管理とグループ設定への導線に絞り、開催作成は開催管理セクション内の操作として配置する。`/g/:groupCode/settings` はPayPay受取リンクなど開催をまたぐ共通設定を扱い、設定が増えても各開催管理へ混在させない。
+
+主催者ホーム、開催作成、メンバー管理、グループ設定、各開催管理のloader/actionは共通のサーバー認証を通し、未認証時は `/g/:groupCode/organizer-login` へ移動する。グループ設定の更新はserviceで入力検証・保存し、Workersの主催者変更用Rate Limiting対象となるPOST actionからだけ実行する。参加者向け画面からもこの認証入口を経由して主催者画面へ戻れる。
 
 PIN・合言葉と32文字以上の署名鍵はCloudflare Secretで受け取る。PIN照合はSHA-256ダイジェストを固定時間比較し、成功時は有効期限を含むpayloadへHMAC-SHA-256署名したセッションCookieを発行する。CookieはHttpOnly、SameSite=Lax、Path=/g/、有効期間180日とし、本番HTTPSではSecureも付与する。PINそのものはCookie、HTML、URL、DBへ保存しない。Secret未設定時はfail closedとし、管理画面を公開しない。
 

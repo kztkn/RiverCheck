@@ -11,10 +11,7 @@ import {
   addPlayerForGroup,
   getPlayerManagement,
 } from "@server/services/player-service.server";
-import {
-  clearPlayerProfileCookie,
-  createPlayerProfileCookie,
-} from "@server/services/player-profile-session.server";
+import { createPlayerProfileCookie } from "@server/services/player-profile-session.server";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
 import type { Route } from "./+types/player-profile";
@@ -66,15 +63,6 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (!overview) throw new Response("Group not found", { status: 404 });
   const formData = await request.formData();
   const intent = readString(formData, "intent");
-
-  if (intent === "logout-player") {
-    return redirect(`/g/${params.groupCode}`, {
-      status: 303,
-      headers: {
-        "Set-Cookie": clearPlayerProfileCookie(request),
-      },
-    });
-  }
 
   if (intent === "select-existing") {
     const groupPlayerId = readString(formData, "groupPlayerId");
@@ -249,7 +237,7 @@ export default function PlayerProfileRoute({
             <Form className="new-player-form" method="post" noValidate>
               <input name="intent" type="hidden" value="create-player" />
               <label className="field">
-                <span className="field-label">表示名</span>
+                <span className="field-label">表示名（{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字以内）</span>
                 <input
                   defaultValue={actionData?.ok === false &&
                     actionData.intent === "create-player" &&
@@ -260,9 +248,6 @@ export default function PlayerProfileRoute({
                   name="displayName"
                   required
                 />
-                <span className="field-hint">
-                  最大{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字。変更は主催者へ依頼してください。
-                </span>
               </label>
               {actionData?.ok === false && actionData.intent === "create-player"
                 ? <p className="error-notice" role="alert">{actionData.error}</p>

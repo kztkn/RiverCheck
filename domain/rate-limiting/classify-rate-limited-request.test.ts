@@ -22,6 +22,9 @@ describe("classifyRateLimitedRequest", () => {
       classifyRateLimitedRequest("POST", "/g/river-check/players"),
     ).toBe("admin-write");
     expect(
+      classifyRateLimitedRequest("POST", "/g/river-check/settings"),
+    ).toBe("admin-write");
+    expect(
       classifyRateLimitedRequest(
         "POST",
         "/g/river-check/games/1b233730-eecd-449a-b28b-c93b0a395815/admin",
@@ -54,6 +57,12 @@ describe("classifyRateLimitedRequest", () => {
         "POST",
         "/g/river-check/games/id/admin/extra",
       ),
+    ).toBeNull();
+    expect(
+      classifyRateLimitedRequest("POST", "/g/river-check/logout"),
+    ).toBeNull();
+    expect(
+      classifyRateLimitedRequest("POST", "/g/river-check/organizer-logout"),
     ).toBeNull();
   });
 });

@@ -20,3 +20,9 @@ export async function getGroupOverview(
     games,
   };
 }
+
+export async function getGroupSettings(
+  publicCode: string,
+): Promise<GroupSummary | null> {
+  return findGroupByPublicCode(publicCode);
+}

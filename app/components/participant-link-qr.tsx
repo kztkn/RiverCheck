@@ -2,7 +2,7 @@ import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
 export function ParticipantLinkQr({
-  description = "読み取ると、この会の参加者画面が直接開きます。",
+  description = "読み取ると、参加者画面が直接開きます。",
   panelId = "participant-link-qr",
   panelTitle = "参加する端末で読み取ってください",
   qrTitle = "参加者用リンクのQRコード",

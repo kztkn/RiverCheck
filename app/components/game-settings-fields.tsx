@@ -141,15 +141,12 @@ export function GameSettingsFields({
             <Field
               defaultValue={values.title}
               error={errors.title}
-              label="開催名"
+              label={`開催名（最大${GAME_TITLE_RECOMMENDED_LENGTH}文字）`}
               maxLength={GAME_TITLE_MAX_LENGTH}
               name="title"
               placeholder="例：8月のポーカー会"
               required
             />
-            <p className="field-hint">
-              {GAME_TITLE_RECOMMENDED_LENGTH}文字程度がおすすめ（最大{GAME_TITLE_MAX_LENGTH}文字）
-            </p>
             <Field
               defaultValue={values.playedAt}
               error={errors.playedAt}
@@ -176,7 +173,7 @@ export function GameSettingsFields({
               type="number"
             />
             <p className="field-hint">
-              リバイでも初期チップと同じ枚数を追加します。
+              リバイ時も初期チップと同じチップを追加します。
             </p>
           </fieldset>
         </>
@@ -201,7 +198,7 @@ export function GameSettingsFields({
           value={costValues.venueCost}
         />
         <p className="field-hint">
-          精算総額は100円単位で切り上げます。4位以下は3位と同額以上です。
+          精算総額は100円単位で切り上げます。
         </p>
         <div className="field-grid field-grid-three">
           <Field

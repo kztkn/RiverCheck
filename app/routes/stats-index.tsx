@@ -23,16 +23,11 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
   return (
     <main className="page-shell stats-page">
       <GroupSiteHeader groupCode={group.publicCode} />
-
       <section className="stats-intro">
         <h1>RANKING</h1>
       </section>
-
       <section className="content-section" aria-labelledby="ranking-heading">
         <div className="section-heading stats-heading">
-          <div>
-            <h2 id="ranking-heading">RANKING</h2>
-          </div>
           <div className="stats-sort" aria-label="ランキングの並び順">
             <Link
               aria-current={sort === "total" ? "page" : undefined}
