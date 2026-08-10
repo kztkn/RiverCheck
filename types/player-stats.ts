@@ -32,7 +32,8 @@ export interface PlayerGameStat {
   gameTitle: string;
   playedAt: string;
   rank: number;
-  rebuyCount: number;
+  totalRebuyCount: number | null;
+  settlementRebuyCount: number;
   netBb: number;
   cumulativeNetBb: number;
 }

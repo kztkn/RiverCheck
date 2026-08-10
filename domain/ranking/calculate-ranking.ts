@@ -3,7 +3,7 @@ import { assertNonNegativeSafeInteger } from "../shared/validation";
 export interface RankingEntry {
   groupPlayerId: string;
   score: number;
-  rebuyCount: number;
+  totalRebuyCount: number;
 }
 
 export interface RankedEntry extends RankingEntry {
@@ -18,7 +18,7 @@ export function calculateRanking(entries: RankingEntry[]): RankedEntry[] {
     if (!Number.isSafeInteger(entry.score)) {
       throw new RangeError("score must be a safe integer");
     }
-    assertNonNegativeSafeInteger(entry.rebuyCount, "rebuyCount");
+    assertNonNegativeSafeInteger(entry.totalRebuyCount, "totalRebuyCount");
     return { ...entry };
   });
 
@@ -26,7 +26,7 @@ export function calculateRanking(entries: RankingEntry[]): RankedEntry[] {
     .sort(
       (a, b) =>
         b.score - a.score ||
-        a.rebuyCount - b.rebuyCount ||
+        a.totalRebuyCount - b.totalRebuyCount ||
         a.groupPlayerId.localeCompare(b.groupPlayerId),
     )
     .map((entry, index) => ({ ...entry, rank: index + 1 }));

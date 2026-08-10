@@ -7,7 +7,9 @@ export interface FinalizationParticipant {
   groupPlayerId: string;
   displayName: string;
   remainingChips: number;
-  rebuyCount: number;
+  totalRebuyCount: number | null;
+  outstandingRebuyCount: number;
+  settlementRebuyCount: number;
 }
 
 export interface FinalizationSettings {
@@ -26,9 +28,9 @@ export function calculateFinalResults(
   const chipValidation = validateChipTotal({
     initialChips: settings.initialChips,
     rebuyChips: settings.rebuyChips,
-    reports: participants.map(({ remainingChips, rebuyCount }) => ({
+    reports: participants.map(({ remainingChips, settlementRebuyCount }) => ({
       remainingChips,
-      rebuyCount,
+      settlementRebuyCount,
     })),
   });
   const costShares = calculateCostShares({
@@ -44,10 +46,11 @@ export function calculateFinalResults(
   const ranking = calculateRanking(
     participants.map((participant) => ({
       groupPlayerId: participant.groupPlayerId,
-      rebuyCount: participant.rebuyCount,
+      totalRebuyCount:
+        participant.totalRebuyCount ?? participant.settlementRebuyCount,
       score: calculateScore({
         remainingChips: participant.remainingChips,
-        rebuyCount: participant.rebuyCount,
+        settlementRebuyCount: participant.settlementRebuyCount,
         rebuyChips: settings.rebuyChips,
       }),
     })),
@@ -60,7 +63,12 @@ export function calculateFinalResults(
       const participant = participantById.get(ranked.groupPlayerId);
       if (!participant) throw new Error("ranked participant is missing");
       return {
-        ...participant,
+        groupPlayerId: participant.groupPlayerId,
+        displayName: participant.displayName,
+        remainingChips: participant.remainingChips,
+        totalRebuyCount: participant.totalRebuyCount,
+        trackedOutstandingRebuyCount: participant.outstandingRebuyCount,
+        settlementRebuyCount: participant.settlementRebuyCount,
         score: ranked.score,
         rank: ranked.rank,
         costShare: costShares.shares[ranked.rank - 1]!,

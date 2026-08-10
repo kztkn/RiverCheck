@@ -2,7 +2,9 @@ export interface GameResultSummary {
   groupPlayerId: string;
   displayName: string;
   remainingChips: number;
-  rebuyCount: number;
+  totalRebuyCount: number | null;
+  settlementRebuyCount: number;
+  trackedOutstandingRebuyCount: number | null;
   score: number;
   rank: number;
   costShare: number;

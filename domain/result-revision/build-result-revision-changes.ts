@@ -2,7 +2,9 @@ export interface RevisionResult {
   groupPlayerId: string;
   displayName: string;
   remainingChips: number;
-  rebuyCount: number;
+  totalRebuyCount: number | null;
+  settlementRebuyCount: number;
+  trackedOutstandingRebuyCount: number | null;
   score: number;
   rank: number;
   costShare: number;
@@ -11,7 +13,8 @@ export interface RevisionResult {
 export interface ResultCorrectionInput {
   groupPlayerId: string;
   remainingChips: number;
-  rebuyCount: number;
+  totalRebuyCount: number;
+  settlementRebuyCount: number;
 }
 
 export interface ResultRevisionChange {
@@ -59,7 +62,9 @@ export function hasResultInputChanges(
     return (
       !correction ||
       correction.remainingChips !== before.remainingChips ||
-      correction.rebuyCount !== before.rebuyCount
+      correction.totalRebuyCount !==
+        (before.totalRebuyCount ?? before.settlementRebuyCount) ||
+      correction.settlementRebuyCount !== before.settlementRebuyCount
     );
   });
 }
@@ -70,7 +75,10 @@ function hasResultChanged(
 ): boolean {
   return (
     before.remainingChips !== after.remainingChips ||
-    before.rebuyCount !== after.rebuyCount ||
+    before.totalRebuyCount !== after.totalRebuyCount ||
+    before.settlementRebuyCount !== after.settlementRebuyCount ||
+    before.trackedOutstandingRebuyCount !==
+      after.trackedOutstandingRebuyCount ||
     before.score !== after.score ||
     before.rank !== after.rank ||
     before.costShare !== after.costShare

@@ -43,7 +43,8 @@ interface PlayerGameStatRow {
   game_title: string;
   played_at: Date;
   rank: number;
-  rebuy_count: number;
+  total_rebuy_count: number | null;
+  settlement_rebuy_count: number;
   net_bb: string | null;
   initial_chips: string;
 }
@@ -62,7 +63,8 @@ export interface FinalizedPlayerGameStat {
   gameTitle: string;
   playedAt: string;
   rank: number;
-  rebuyCount: number;
+  totalRebuyCount: number | null;
+  settlementRebuyCount: number;
   netBb: number;
 }
 
@@ -285,7 +287,8 @@ export async function listFinalizedPlayerGameStats(
         game.title AS game_title,
         game.played_at,
         game_result.rank,
-        game_result.rebuy_count,
+        game_result.total_rebuy_count,
+        game_result.settlement_rebuy_count,
         game.initial_chips,
         CASE
           WHEN game.initial_chips > 0 THEN
@@ -313,7 +316,8 @@ export async function listFinalizedPlayerGameStats(
     gameTitle: row.game_title,
     playedAt: row.played_at.toISOString(),
     rank: row.rank,
-    rebuyCount: row.rebuy_count,
+    totalRebuyCount: row.total_rebuy_count,
+    settlementRebuyCount: row.settlement_rebuy_count,
     netBb: Number(row.net_bb),
   }));
 }

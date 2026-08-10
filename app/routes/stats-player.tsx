@@ -215,7 +215,16 @@ export default function StatsPlayer({ loaderData, actionData }: Route.ComponentP
                 <span className="stats-game-date">{formatGameDate(game.playedAt)}</span>
                 <span className="stats-game-title">
                   <strong>{game.gameTitle}</strong>
-                  <small>{formatOrdinal(game.rank)}・リバイ {game.rebuyCount}回</small>
+                  <small>
+                    {formatOrdinal(game.rank)}・
+                    {game.totalRebuyCount === null
+                      ? "終了時未返済 " + game.settlementRebuyCount + "口"
+                      : "リバイ " +
+                        game.totalRebuyCount +
+                        "回・終了時未返済 " +
+                        game.settlementRebuyCount +
+                        "口"}
+                  </small>
                 </span>
                 <strong className={getBbToneClass(game.netBb)}>
                   {formatSignedBbValue(game.netBb)}

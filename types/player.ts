@@ -25,7 +25,9 @@ export interface GameParticipantSummary {
   displayName: string;
   status: "joined" | "submitted" | "locked";
   remainingChips: number | null;
-  rebuyCount: number;
+  totalRebuyCount: number | null;
+  outstandingRebuyCount: number;
+  settlementRebuyCount: number | null;
   deviceLocked: boolean;
   avatarUpdatedAt: string | null;
 }

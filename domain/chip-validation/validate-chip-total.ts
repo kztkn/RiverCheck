@@ -2,7 +2,7 @@ import { assertNonNegativeSafeInteger } from "../shared/validation";
 
 export interface ChipReport {
   remainingChips: number;
-  rebuyCount: number;
+  settlementRebuyCount: number;
 }
 
 export interface ChipValidationInput {
@@ -26,17 +26,21 @@ export function validateChipTotal({
   assertNonNegativeSafeInteger(initialChips, "initialChips");
   assertNonNegativeSafeInteger(rebuyChips, "rebuyChips");
 
-  let totalRebuyCount = 0;
+  let totalSettlementRebuyCount = 0;
   let reportedTotal = 0;
   for (const report of reports) {
     assertNonNegativeSafeInteger(report.remainingChips, "remainingChips");
-    assertNonNegativeSafeInteger(report.rebuyCount, "rebuyCount");
-    totalRebuyCount += report.rebuyCount;
+    assertNonNegativeSafeInteger(
+      report.settlementRebuyCount,
+      "settlementRebuyCount",
+    );
+    totalSettlementRebuyCount += report.settlementRebuyCount;
     reportedTotal += report.remainingChips;
   }
 
   const expectedTotal =
-    initialChips * reports.length + rebuyChips * totalRebuyCount;
+    initialChips * reports.length +
+    rebuyChips * totalSettlementRebuyCount;
   const difference = expectedTotal - reportedTotal;
 
   if (

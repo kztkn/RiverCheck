@@ -17,28 +17,42 @@ describe("calculateFinalResults", () => {
         groupPlayerId: "d",
         displayName: "D",
         remainingChips: 10_000,
-        rebuyCount: 0,
+        totalRebuyCount: 0,
+        outstandingRebuyCount: 0,
+        settlementRebuyCount: 0,
       },
       {
         groupPlayerId: "a",
         displayName: "A",
         remainingChips: 50_000,
-        rebuyCount: 1,
+        totalRebuyCount: 2,
+        outstandingRebuyCount: 1,
+        settlementRebuyCount: 1,
       },
       {
         groupPlayerId: "c",
         displayName: "C",
         remainingChips: 15_000,
-        rebuyCount: 0,
+        totalRebuyCount: 1,
+        outstandingRebuyCount: 0,
+        settlementRebuyCount: 0,
       },
       {
         groupPlayerId: "b",
         displayName: "B",
         remainingChips: 15_000,
-        rebuyCount: 0,
+        totalRebuyCount: 2,
+        outstandingRebuyCount: 0,
+        settlementRebuyCount: 0,
       },
     ]);
 
+    expect(calculated.results[0]).toMatchObject({
+      displayName: "A",
+      totalRebuyCount: 2,
+      settlementRebuyCount: 1,
+      score: 40_000,
+    });
     expect(calculated.chipValidation).toMatchObject({
       expectedTotal: 90_000,
       reportedTotal: 90_000,
@@ -54,8 +68,8 @@ describe("calculateFinalResults", () => {
       })),
     ).toEqual([
       { displayName: "A", score: 40_000, rank: 1, costShare: 0 },
-      { displayName: "B", score: 15_000, rank: 2, costShare: 500 },
-      { displayName: "C", score: 15_000, rank: 3, costShare: 1_000 },
+      { displayName: "C", score: 15_000, rank: 2, costShare: 500 },
+      { displayName: "B", score: 15_000, rank: 3, costShare: 1_000 },
       { displayName: "D", score: 10_000, rank: 4, costShare: 8_500 },
     ]);
   });
@@ -67,7 +81,9 @@ describe("calculateFinalResults", () => {
           groupPlayerId: "a",
           displayName: "A",
           remainingChips: 20_000,
-          rebuyCount: 0,
+          totalRebuyCount: 0,
+        outstandingRebuyCount: 0,
+        settlementRebuyCount: 0,
         },
       ]),
     ).toThrow("participantCount must be at least 4");

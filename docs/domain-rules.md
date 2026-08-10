@@ -7,7 +7,7 @@
 ## 点数
 
 ```text
-score = remaining_chips - rebuy_count × rebuy_chips
+score = remaining_chips - settlement_rebuy_count × rebuy_chips
 ```
 
 点数は負になり得る。入力である残チップ、リバイ回数、リバイチップは 0 以上とする。
@@ -35,7 +35,7 @@ net_bb = bb_score - 100
 次の順に並べ、1 から連番の順位を付ける。共同順位は作らない。
 
 1. `score` の降順
-2. `rebuy_count` の昇順
+2. `total_rebuy_count` の昇順。過去データでNULLの場合だけ`settlement_rebuy_count`を代用
 3. 完全同点は `group_player_id` の Unicode 辞書順（昇順）
 
 3 番目は人の優劣を表すルールではなく、結果を常に再現可能にするための決定的 tie-break である。後から別ルールへ変更できるよう `calculateRanking` 内に閉じ込める。
@@ -44,13 +44,13 @@ net_bb = bb_score - 100
 
 ```text
 expected_total = initial_chips × participant_count
-               + rebuy_chips × total_rebuy_count
+               + rebuy_chips × total_settlement_rebuy_count
 
 reported_total = sum(remaining_chips)
 difference     = expected_total - reported_total
 ```
 
-`difference = 0` を一致とする。正数はチップ不足、負数は報告過多を意味する。差があっても主催者は警告を確認したうえで finalize できる。未入力者がいる間は、その参加者の残チップとリバイ回数を0として暫定値を表示するが、全員が入力するまで finalize は許可しない。
+`difference = 0` を一致とする。正数はチップ不足、負数は報告過多を意味する。差があっても主催者は警告を確認したうえで finalize できる。未入力者がいる間は、その参加者の残チップと終了時リバイ証を0として暫定値を表示するが、全員が入力するまで finalize は許可しない。
 
 ## 会費精算
 
@@ -89,6 +89,20 @@ minimum_required = first_place_cost
 ## 日時
 
 開催条件では日付だけを入力し、時刻は扱わない。今回の利用グループを日本国内と仮定し、入力日付の Asia/Tokyo（UTC+09:00）午前0時として `TIMESTAMPTZ` に保存する。複数タイムゾーン対応時はグループへ IANA time zone を追加する。
+
+## リバイ記録
+
+ゲーム中のリバイは、累計回数と現在の未返済口数を分ける。
+
+- `total_rebuy_count`: リバイで1増え、100BB返済では減らない
+- `outstanding_rebuy_count`: リバイで1増え、100BB返済で1減る
+- `settlement_rebuy_count`: 終了時に実物のリバイ証を数えて入力する精算値
+
+通常操作では`0 <= outstanding_rebuy_count <= total_rebuy_count`を維持する。参加者と主催者の操作はイベント履歴とカウンターを同一トランザクションで更新する。結果入力後は通常のリバイ・返済操作を止め、必要な訂正は主催者の修正操作で行う。
+
+スコアとチップ総量は返却済み100BBを再加算しないよう`settlement_rebuy_count`を使う。統計と同点順位には`total_rebuy_count`を使う。終了時の`outstanding_rebuy_count`と`settlement_rebuy_count`が異なる場合は主催者へ警告し、差を明示確認した場合だけ確定できる。`settlement_rebuy_count > total_rebuy_count`は確定できない。
+
+過去の`rebuy_count`から返済済みリバイは復元できないため、移行前の確定結果の`total_rebuy_count`はNULL（不明）とし、正確な累計統計へ含めない。移行時点で受付中の開催は、入力済みの`settlement_rebuy_count`を累計・未返済の初期値とし、既に返済済みの回数がある場合は主催者が救済修正する。
 
 ## チップ設定
 

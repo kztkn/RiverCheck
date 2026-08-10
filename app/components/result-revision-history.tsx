@@ -60,11 +60,20 @@ export function ResultRevisionHistory({
                           label="残りチップ"
                         />
                       ) : null}
-                      {change.before.rebuyCount !== change.after.rebuyCount ? (
+                      {change.before.totalRebuyCount !==
+                      change.after.totalRebuyCount ? (
                         <ChangeValue
-                          after={`${change.after.rebuyCount}回`}
-                          before={`${change.before.rebuyCount}回`}
-                          label="リバイ"
+                          after={formatRebuyCount(change.after.totalRebuyCount)}
+                          before={formatRebuyCount(change.before.totalRebuyCount)}
+                          label="累計リバイ"
+                        />
+                      ) : null}
+                      {change.before.settlementRebuyCount !==
+                      change.after.settlementRebuyCount ? (
+                        <ChangeValue
+                          after={String(change.after.settlementRebuyCount) + "枚"}
+                          before={String(change.before.settlementRebuyCount) + "枚"}
+                          label="終了時リバイ証"
                         />
                       ) : null}
                       {change.before.score !== change.after.score ? (
@@ -131,6 +140,10 @@ function formatCorrectedAt(value: string): string {
     timeStyle: "short",
     timeZone: "Asia/Tokyo",
   }).format(new Date(value));
+}
+
+function formatRebuyCount(value: number | null): string {
+  return value === null ? "記録なし" : String(value) + "回";
 }
 
 function formatChips(value: number): string {

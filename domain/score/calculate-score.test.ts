@@ -6,7 +6,7 @@ describe("calculateScore", () => {
     expect(
       calculateScore({
         remainingChips: 67_700,
-        rebuyCount: 2,
+        settlementRebuyCount: 2,
         rebuyChips: 10_000,
       }),
     ).toBe(47_700);
@@ -16,7 +16,7 @@ describe("calculateScore", () => {
     expect(() =>
       calculateScore({
         remainingChips: -1,
-        rebuyCount: 0,
+        settlementRebuyCount: 0,
         rebuyChips: 10_000,
       }),
     ).toThrow(RangeError);

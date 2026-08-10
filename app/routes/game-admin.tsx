@@ -21,6 +21,12 @@ import { readParticipantToken } from "@server/services/participant-session.serve
 import { hashToken } from "@server/services/token.server";
 import { requireOrganizer } from "@server/services/organizer-auth.server";
 import {
+  adjustOrganizerRebuyState,
+  recordOrganizerRebuyAction,
+  undoOrganizerRebuyAction,
+  type RebuyServiceResult,
+} from "@server/services/rebuy-service.server";
+import {
   type GameSettingsFormValues,
   validateGameSettingsForm,
 } from "@server/services/game-service.server";
@@ -30,7 +36,18 @@ import {
 } from "@server/services/finalization-service.server";
 import { GameSettingsFields } from "../components/game-settings-fields";
 import { ParticipantLinkQr } from "../components/participant-link-qr";
+import type { GameParticipantSummary } from "@shared-types/player";
 import type { Route } from "./+types/game-admin";
+
+type OrganizerRebuyIntent =
+  | "record-rebuy"
+  | "record-repayment"
+  | "undo-rebuy"
+  | "adjust-rebuy";
+type OrganizerRebuyActionData = RebuyServiceResult & {
+  intent: OrganizerRebuyIntent;
+  participantId: string;
+};
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   await requireOrganizer(request, params.groupCode);
@@ -102,6 +119,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       params.gameId,
       validation.input,
       readString(formData, "confirmDifference") === "yes",
+      readString(formData, "confirmRebuyMismatch") === "yes",
     );
     if (!result.ok) return { ...result, values };
     return redirect(
@@ -112,6 +130,63 @@ export async function action({ request, params }: Route.ActionArgs) {
   const participantId = readString(formData, "participantId");
   if (!isUuid(participantId)) {
     throw new Response("Invalid participant", { status: 400 });
+  }
+
+  if (intent === "record-rebuy" || intent === "record-repayment") {
+    const result = await recordOrganizerRebuyAction({
+      actionType: intent === "record-rebuy" ? "rebuy" : "repayment",
+      commandId: readString(formData, "commandId"),
+      gameId: params.gameId,
+      groupId: authorized.group.id,
+      participantId,
+    });
+    return { ...result, intent, participantId };
+  }
+
+  if (intent === "undo-rebuy") {
+    const result = await undoOrganizerRebuyAction({
+      commandId: readString(formData, "commandId"),
+      eventId: readString(formData, "eventId"),
+      gameId: params.gameId,
+      groupId: authorized.group.id,
+      participantId,
+    });
+    return { ...result, intent, participantId };
+  }
+
+  if (intent === "adjust-rebuy") {
+    const totalRebuyCount = parseNonNegativeInteger(
+      readString(formData, "totalRebuyCount"),
+    );
+    const outstandingRebuyCount = parseNonNegativeInteger(
+      readString(formData, "outstandingRebuyCount"),
+    );
+    const settlementValue = readString(formData, "settlementRebuyCount");
+    const settlementRebuyCount = settlementValue
+      ? parseNonNegativeInteger(settlementValue)
+      : null;
+    if (
+      totalRebuyCount === null ||
+      outstandingRebuyCount === null ||
+      (settlementValue && settlementRebuyCount === null)
+    ) {
+      return {
+        ok: false as const,
+        intent,
+        participantId,
+        error: "累計リバイ、未返済、終了時リバイ証を確認してください。",
+      };
+    }
+    const result = await adjustOrganizerRebuyState({
+      commandId: readString(formData, "commandId"),
+      gameId: params.gameId,
+      groupId: authorized.group.id,
+      outstandingRebuyCount,
+      participantId,
+      settlementRebuyCount,
+      totalRebuyCount,
+    });
+    return { ...result, intent, participantId };
   }
 
   if (intent === "remove") {
@@ -139,6 +214,7 @@ export default function GameAdmin({
 }: Route.ComponentProps) {
   const navigation = useNavigation();
   const removalFetcher = useFetcher<typeof action>();
+  const rebuyFetcher = useFetcher<OrganizerRebuyActionData>();
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
   const failedAction =
@@ -160,13 +236,18 @@ export default function GameAdmin({
     id: string;
     displayName: string;
   } | null>(null);
+  const [pendingRebuyCorrection, setPendingRebuyCorrection] = useState<(
+    GameParticipantSummary & { commandId: string }
+  ) | null>(null);
   const [toast, setToast] = useState<{
     id: number;
     message: string;
     tone: "success" | "error";
   } | null>(null);
   const removalDialogRef = useRef<HTMLDialogElement>(null);
+  const rebuyCorrectionDialogRef = useRef<HTMLDialogElement>(null);
   const participantLinkRef = useRef<HTMLInputElement>(null);
+  const rebuySubmissionPendingRef = useRef(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const notice = noticeText(loaderData.notice);
   const visibleParticipants = optimisticallyRemoved
@@ -199,6 +280,31 @@ export default function GameAdmin({
   }, [removalFetcher.data, removalFetcher.state]);
 
   useEffect(() => {
+    if (rebuyFetcher.state !== "idle") return;
+    rebuySubmissionPendingRef.current = false;
+    if (!rebuyFetcher.data) return;
+    const data = rebuyFetcher.data;
+    const message = data.ok
+      ? data.intent === "record-rebuy"
+        ? "リバイを記録しました。"
+        : data.intent === "record-repayment"
+          ? "100BBの返済を記録しました。"
+          : data.intent === "undo-rebuy"
+            ? "直前のリバイ操作を元に戻しました。"
+            : "リバイ記録を修正しました。"
+      : data.error;
+    setToast({
+      id: Date.now(),
+      message,
+      tone: data.ok ? "success" : "error",
+    });
+    if (data.ok) {
+      if (data.intent === "adjust-rebuy") setPendingRebuyCorrection(null);
+      void revalidator.revalidate();
+    }
+  }, [rebuyFetcher.data, rebuyFetcher.state, revalidator]);
+
+  useEffect(() => {
     if (!toast) return;
     const timeoutId = window.setTimeout(() => setToast(null), 3_000);
     return () => window.clearTimeout(timeoutId);
@@ -221,6 +327,16 @@ export default function GameAdmin({
   }, [pendingRemoval]);
 
   useEffect(() => {
+    const dialog = rebuyCorrectionDialogRef.current;
+    if (!dialog) return;
+    if (pendingRebuyCorrection && !dialog.open) {
+      dialog.showModal();
+    } else if (!pendingRebuyCorrection && dialog.open) {
+      dialog.close();
+    }
+  }, [pendingRebuyCorrection]);
+
+  useEffect(() => {
     if (loaderData.game.status === "finalized") return;
 
     const refresh = () => {
@@ -235,6 +351,34 @@ export default function GameAdmin({
       window.removeEventListener("focus", refresh);
     };
   }, [loaderData.game.status, revalidator]);
+
+  function submitRebuyAction(
+    participantId: string,
+    intent: "record-rebuy" | "record-repayment",
+  ) {
+    if (rebuySubmissionPendingRef.current) return;
+    rebuySubmissionPendingRef.current = true;
+    void rebuyFetcher.submit(
+      { commandId: crypto.randomUUID(), intent, participantId },
+      { method: "post" },
+    );
+  }
+
+  function undoRebuy() {
+    const data = rebuyFetcher.data;
+    if (!data?.ok || !data.eventId) return;
+    if (rebuySubmissionPendingRef.current) return;
+    rebuySubmissionPendingRef.current = true;
+    void rebuyFetcher.submit(
+      {
+        commandId: crypto.randomUUID(),
+        eventId: data.eventId,
+        intent: "undo-rebuy",
+        participantId: data.participantId,
+      },
+      { method: "post" },
+    );
+  }
 
   async function copyParticipantLink() {
     try {
@@ -341,15 +485,26 @@ export default function GameAdmin({
             <div className="participant-admin-list">
               {visibleParticipants.map((participant) => (
                 <article className="participant-admin-row" key={participant.id}>
-                  <div>
-                    <strong>{participant.displayName}</strong>
-                    <span>
-                      {participant.remainingChips === null
-                        ? "未入力"
-                        : `残り ${participant.remainingChips.toLocaleString("ja-JP")} / リバイ ${participant.rebuyCount}回`}
-                    </span>
-                  </div>
-                  {loaderData.game.status !== "finalized" ? (
+                  <div className="participant-admin-main">
+                    <div>
+                      <strong>{participant.displayName}</strong>
+                      <span>
+                        累計 {formatTotalRebuyCount(participant.totalRebuyCount)} ・
+                        未返済 {participant.outstandingRebuyCount}口
+                      </span>
+                      {participant.remainingChips === null ? (
+                        <small>結果未入力</small>
+                      ) : (
+                        <small>
+                          残り {participant.remainingChips.toLocaleString("ja-JP")} ・
+                          リバイ証 {participant.settlementRebuyCount ?? 0}枚
+                          {participant.outstandingRebuyCount ===
+                          participant.settlementRebuyCount
+                            ? " ✓"
+                            : " ⚠"}
+                        </small>
+                      )}
+                    </div>
                     <button
                       aria-label={`${participant.displayName}の参加を取り消す`}
                       className="participant-remove-button"
@@ -365,7 +520,69 @@ export default function GameAdmin({
                     >
                       <span aria-hidden="true">×</span>
                     </button>
-                  ) : null}
+                  </div>
+                  <details className="admin-rebuy-controls">
+                    <summary>代理入力・リバイ記録の修正</summary>
+                    <div className="admin-rebuy-actions">
+                      {participant.status === "joined" ? (
+                        <>
+                          <button
+                            className="button button-primary button-small"
+                            disabled={rebuyFetcher.state !== "idle"}
+                            onClick={() =>
+                              submitRebuyAction(participant.id, "record-rebuy")
+                            }
+                            type="button"
+                          >
+                            ＋ リバイ
+                          </button>
+                          <button
+                            className="button button-secondary button-small"
+                            disabled={
+                              rebuyFetcher.state !== "idle" ||
+                              participant.outstandingRebuyCount === 0
+                            }
+                            onClick={() =>
+                              submitRebuyAction(
+                                participant.id,
+                                "record-repayment",
+                              )
+                            }
+                            type="button"
+                          >
+                            100BB返済
+                          </button>
+                        </>
+                      ) : null}
+                      <button
+                        className="button button-secondary button-small"
+                        disabled={rebuyFetcher.state !== "idle"}
+                        onClick={() =>
+                          setPendingRebuyCorrection({
+                            ...participant,
+                            commandId: crypto.randomUUID(),
+                          })
+                        }
+                        type="button"
+                      >
+                        記録を修正
+                      </button>
+                      {rebuyFetcher.data?.ok &&
+                      rebuyFetcher.data.participantId === participant.id &&
+                      (rebuyFetcher.data.intent === "record-rebuy" ||
+                        rebuyFetcher.data.intent === "record-repayment") &&
+                      rebuyFetcher.data.eventId ? (
+                        <button
+                          className="text-button"
+                          disabled={rebuyFetcher.state !== "idle"}
+                          onClick={undoRebuy}
+                          type="button"
+                        >
+                          直前の操作を元に戻す
+                        </button>
+                      ) : null}
+                    </div>
+                  </details>
                 </article>
               ))}
             </div>
@@ -409,7 +626,7 @@ export default function GameAdmin({
               <h2 id="removal-dialog-title">参加を取り消しますか？</h2>
               <p>
                 <strong>{pendingRemoval?.displayName}</strong>
-                さんをこの会から削除します。入力済みのチップとリバイ回数も削除されます。
+                さんをこの会から削除します。入力済みのチップとリバイ記録も削除されます。
               </p>
             </div>
             <removalFetcher.Form
@@ -442,6 +659,106 @@ export default function GameAdmin({
                 参加を取り消す
               </button>
             </removalFetcher.Form>
+          </div>
+        </dialog>
+        <dialog
+          aria-labelledby="rebuy-correction-title"
+          className="app-dialog"
+          onCancel={() => setPendingRebuyCorrection(null)}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setPendingRebuyCorrection(null);
+            }
+          }}
+          onClose={() => setPendingRebuyCorrection(null)}
+          ref={rebuyCorrectionDialogRef}
+        >
+          <div className="dialog-card rebuy-correction-dialog">
+            <div>
+              <p className="eyebrow">REBUY CORRECTION</p>
+              <h2 id="rebuy-correction-title">リバイ記録を修正</h2>
+              <p>
+                <strong>{pendingRebuyCorrection?.displayName}</strong>
+                さんの記録を、実際の運用とリバイ証に合わせます。
+              </p>
+            </div>
+            <rebuyFetcher.Form
+              className="rebuy-correction-form"
+              key={pendingRebuyCorrection?.id}
+              method="post"
+            >
+              <input name="intent" type="hidden" value="adjust-rebuy" />
+              <input
+                name="participantId"
+                type="hidden"
+                value={pendingRebuyCorrection?.id ?? ""}
+              />
+              <input
+                name="commandId"
+                type="hidden"
+                value={pendingRebuyCorrection?.commandId ?? ""}
+              />
+              <label className="field">
+                <span className="field-label">累計リバイ</span>
+                <input
+                  defaultValue={Math.max(
+                    pendingRebuyCorrection?.totalRebuyCount ?? 0,
+                    pendingRebuyCorrection?.outstandingRebuyCount ?? 0,
+                    pendingRebuyCorrection?.settlementRebuyCount ?? 0,
+                  )}
+                  inputMode="numeric"
+                  min={0}
+                  name="totalRebuyCount"
+                  required
+                  type="number"
+                />
+              </label>
+              <label className="field">
+                <span className="field-label">記録上の未返済</span>
+                <input
+                  defaultValue={
+                    pendingRebuyCorrection?.outstandingRebuyCount ?? 0
+                  }
+                  inputMode="numeric"
+                  min={0}
+                  name="outstandingRebuyCount"
+                  required
+                  type="number"
+                />
+              </label>
+              <label className="field">
+                <span className="field-label">終了時リバイ証</span>
+                <input
+                  defaultValue={
+                    pendingRebuyCorrection?.settlementRebuyCount ?? ""
+                  }
+                  inputMode="numeric"
+                  min={0}
+                  name="settlementRebuyCount"
+                  placeholder="結果入力前は空欄"
+                  type="number"
+                />
+              </label>
+              <p className="field-hint">
+                累計リバイは未返済・終了時リバイ証以上にしてください。
+              </p>
+              <div className="dialog-actions">
+                <button
+                  className="button button-secondary"
+                  onClick={() => setPendingRebuyCorrection(null)}
+                  type="button"
+                >
+                  キャンセル
+                </button>
+                <button
+                  className="button button-primary"
+                  disabled={rebuyFetcher.state !== "idle"}
+                  type="submit"
+                >
+                  {rebuyFetcher.state === "submitting" ? "保存中…" : "修正する"}
+                </button>
+              </div>
+            </rebuyFetcher.Form>
           </div>
         </dialog>
         {toast ? (
@@ -506,6 +823,12 @@ function readAdminCostSettingsForm(
   };
 }
 
+function parseNonNegativeInteger(value: string): number | null {
+  if (!/^\d+$/.test(value.trim())) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
 function readString(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
@@ -544,14 +867,21 @@ function FinalizationPanel({
   settlementParticipantCount: string;
 }) {
   const [differenceConfirmed, setDifferenceConfirmed] = useState(false);
+  const [rebuyMismatchConfirmed, setRebuyMismatchConfirmed] = useState(false);
   const currentDifference = finalization.chipValidation?.difference ?? null;
 
   useEffect(() => {
     setDifferenceConfirmed(false);
-  }, [currentDifference, finalization.isProvisional]);
+    setRebuyMismatchConfirmed(false);
+  }, [
+    currentDifference,
+    finalization.isProvisional,
+    finalization.rebuyMismatches.length,
+  ]);
 
   const validation = finalization.chipValidation;
   const hasDifference = validation ? !validation.isValid : false;
+  const hasRebuyMismatch = finalization.rebuyMismatches.length > 0;
   const participantCountMatches =
     Number(settlementParticipantCount) === finalization.participantCount;
   const settlementParticipantCountLabel = /^\d+$/.test(
@@ -597,8 +927,25 @@ function FinalizationPanel({
       {finalization.isProvisional ? (
         <p className="warning-notice">
           未入力：{finalization.incompleteNames.join("、")}。未入力分は残チップ0・
-          リバイ0回として暫定計算しています。
+          リバイ証0枚として暫定計算しています。
         </p>
+      ) : null}
+      {finalization.invalidRebuyNames.length > 0 ? (
+        <p className="error-notice">
+          累計リバイより終了時リバイ証が多い参加者：
+          {finalization.invalidRebuyNames.join("、")}。参加者一覧から記録を修正してください。
+        </p>
+      ) : null}
+      {hasRebuyMismatch && !finalization.isProvisional ? (
+        <div className="rebuy-mismatch-notice">
+          <strong>リバイ記録と終了時リバイ証に差があります。</strong>
+          {finalization.rebuyMismatches.map((mismatch) => (
+            <span key={mismatch.displayName}>
+              {mismatch.displayName}：記録 {mismatch.outstandingRebuyCount}口 /
+              リバイ証 {mismatch.settlementRebuyCount}枚
+            </span>
+          ))}
+        </div>
       ) : null}
       {validation?.isValid && !finalization.isProvisional ? (
         <p className="match-notice">チップ総量は一致しています。</p>
@@ -631,6 +978,24 @@ function FinalizationPanel({
             </span>
           </label>
         ) : null}
+        {hasRebuyMismatch && !finalization.isProvisional ? (
+          <label className="confirmation-check">
+            <input
+              checked={rebuyMismatchConfirmed}
+              name="confirmRebuyMismatch"
+              onChange={(event) =>
+                setRebuyMismatchConfirmed(event.target.checked)
+              }
+              required
+              type="checkbox"
+              value="yes"
+            />
+            <span className="confirmation-copy">
+              <strong>リバイ記録との差を確認しました</strong>
+              <small>終了時リバイ証を精算値として結果を確定します。</small>
+            </span>
+          </label>
+        ) : null}
         {!participantCountMatches ? (
           <p className="warning-notice">
             会費精算の人数（{settlementParticipantCountLabel}）と参加者（
@@ -651,7 +1016,8 @@ function FinalizationPanel({
             !finalization.canFinalize ||
             !participantCountMatches ||
             isSubmitting ||
-            (hasDifference && !differenceConfirmed)
+            (hasDifference && !differenceConfirmed) ||
+            (hasRebuyMismatch && !rebuyMismatchConfirmed)
           }
           type="submit"
         >
@@ -663,6 +1029,10 @@ function FinalizationPanel({
       </div>
     </section>
   );
+}
+
+function formatTotalRebuyCount(value: number | null): string {
+  return value === null ? "記録なし" : String(value) + "回";
 }
 
 function formatNumber(value: number): string {

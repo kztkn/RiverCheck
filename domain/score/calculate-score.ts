@@ -2,20 +2,23 @@ import { assertNonNegativeSafeInteger } from "../shared/validation";
 
 export interface ScoreInput {
   remainingChips: number;
-  rebuyCount: number;
+  settlementRebuyCount: number;
   rebuyChips: number;
 }
 
 export function calculateScore({
   remainingChips,
-  rebuyCount,
+  settlementRebuyCount,
   rebuyChips,
 }: ScoreInput): number {
   assertNonNegativeSafeInteger(remainingChips, "remainingChips");
-  assertNonNegativeSafeInteger(rebuyCount, "rebuyCount");
+  assertNonNegativeSafeInteger(
+    settlementRebuyCount,
+    "settlementRebuyCount",
+  );
   assertNonNegativeSafeInteger(rebuyChips, "rebuyChips");
 
-  const score = remainingChips - rebuyCount * rebuyChips;
+  const score = remainingChips - settlementRebuyCount * rebuyChips;
   if (!Number.isSafeInteger(score)) {
     throw new RangeError("score exceeds the safe integer range");
   }

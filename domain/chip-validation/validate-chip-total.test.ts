@@ -8,8 +8,8 @@ describe("validateChipTotal", () => {
         initialChips: 20_000,
         rebuyChips: 10_000,
         reports: [
-          { remainingChips: 35_000, rebuyCount: 1 },
-          { remainingChips: 15_000, rebuyCount: 0 },
+          { remainingChips: 35_000, settlementRebuyCount: 1 },
+          { remainingChips: 15_000, settlementRebuyCount: 0 },
         ],
       }),
     ).toEqual({
@@ -26,8 +26,8 @@ describe("validateChipTotal", () => {
         initialChips: 20_000,
         rebuyChips: 10_000,
         reports: [
-          { remainingChips: 30_000, rebuyCount: 1 },
-          { remainingChips: 15_000, rebuyCount: 0 },
+          { remainingChips: 30_000, settlementRebuyCount: 1 },
+          { remainingChips: 15_000, settlementRebuyCount: 0 },
         ],
       }),
     ).toMatchObject({ difference: 5_000, isValid: false });

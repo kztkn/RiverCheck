@@ -2845,3 +2845,233 @@ input[aria-invalid="true"] {
     flex-direction: column;
   }
 }
+
+/* In-game rebuy tracking */
+.rebuy-tracker {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(233, 186, 90, 0.24);
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(233, 186, 90, 0.08), #091711 62%);
+  padding: 17px;
+}
+
+.rebuy-tracker-heading,
+.participant-admin-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rebuy-tracker-heading h3,
+.rebuy-tracker-heading p {
+  margin: 0;
+}
+
+.rebuy-tracker-heading h3 {
+  margin-top: 4px;
+  font-size: 1.05rem;
+}
+
+.rebuy-tracker-locked {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 750;
+  padding: 5px 9px;
+}
+
+.rebuy-state-grid,
+.rebuy-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.rebuy-state-grid > div {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(5, 15, 10, 0.72);
+  padding: 12px;
+}
+
+.rebuy-state-grid span,
+.result-rebuy-check > div > span {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.rebuy-state-grid strong {
+  font-size: 1.02rem;
+}
+
+.rebuy-state-grid small {
+  color: var(--gold);
+  font-size: 0.7rem;
+}
+
+.rebuy-actions .button {
+  min-width: 0;
+  min-height: 46px;
+  padding-inline: 10px;
+}
+
+.rebuy-tracker-help,
+.rebuy-action-error {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+.rebuy-tracker-help {
+  color: var(--muted);
+}
+
+.rebuy-action-error {
+  color: var(--red);
+}
+
+.rebuy-action-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--green);
+  font-size: 0.72rem;
+  padding-top: 10px;
+}
+
+.rebuy-action-feedback .text-button {
+  flex: 0 0 auto;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.result-rebuy-check {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #091711;
+  padding: 13px;
+}
+
+.result-rebuy-check > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rebuy-match-status {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  border-radius: 9px;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  padding: 9px 11px;
+}
+
+.rebuy-match-status small {
+  color: var(--muted);
+}
+
+.rebuy-match-status.is-matched {
+  background: rgba(57, 222, 141, 0.08);
+  color: var(--green);
+}
+
+.rebuy-match-status.has-mismatch {
+  background: rgba(233, 186, 90, 0.1);
+  color: var(--gold);
+}
+
+.rebuy-submitted-values {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.participant-admin-row {
+  display: grid;
+  align-items: stretch;
+  gap: 9px;
+}
+
+.participant-admin-main > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.participant-admin-main small {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.admin-rebuy-controls {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.admin-rebuy-controls summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 700;
+  list-style-position: inside;
+  padding: 3px 0;
+}
+
+.admin-rebuy-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.admin-rebuy-actions .text-button {
+  grid-column: 1 / -1;
+  color: var(--ink);
+}
+
+.rebuy-correction-form {
+  display: grid;
+  gap: 12px;
+}
+
+.rebuy-correction-dialog {
+  width: min(100%, 520px);
+}
+
+.rebuy-mismatch-notice {
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(233, 186, 90, 0.3);
+  border-radius: 12px;
+  background: rgba(233, 186, 90, 0.08);
+  color: var(--gold);
+  font-size: 0.76rem;
+  line-height: 1.55;
+  padding: 13px 15px;
+}
+
+.rebuy-mismatch-notice span {
+  color: var(--muted);
+}
+
+@media (max-width: 420px) {
+  .rebuy-submitted-values {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rebuy-submitted-values > div:last-child {
+    grid-column: 1 / -1;
+  }
+}

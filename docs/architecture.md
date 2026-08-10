@@ -74,7 +74,9 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 - ID は外部公開や複数グループ対応を考慮して UUID とする
 - 金額、チップ、点数は整数だけを扱い PostgreSQL `BIGINT` とする
 - 状態値は変更しやすい `TEXT + CHECK` とし、PostgreSQL enum へ固定しない
-- `game_participants` は参加者入力の現在値、`game_results` は現在公開する確定結果、`game_result_revisions` は訂正前後の履歴として分離する
+- `game_participants` はライブの累計・未返済と終了時入力、`game_rebuy_events`は操作履歴、`game_results`は確定スナップショット、`game_result_revisions`は訂正前後の履歴として分離する
+- リバイ操作はrouteからserviceを経由し、participant行のロック、状態遷移、イベント追加を1つのPostgreSQLトランザクションで行う。イベントの`command_id`一意制約で同じPOSTの再送を冪等化する
+- リバイ履歴は専用テーブルに限定し、今回の段階では汎用的なgame event sourcingへ拡張しない
 - `game_results` は開催内でプレイヤーと順位を一意にし、確定スナップショットの重複を防ぐ
 - 同名プレイヤーは許可し、表示名ではなく UUID で識別する
 - トークンは 64 文字の SHA-256 hex として保存する
@@ -87,7 +89,7 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 
 参加者routeのloaderは開催、プロフィール、参加状態などの参照だけを行い、参加登録を含むDB更新を行わない。プロフィール認証済みの本人参加は`intent=join-self`のPOST actionからserviceを呼び、serviceがプロフィールsessionとgroup playerをサーバー側で再検証してから参加登録する。登録はgameとgroup playerの有効性・受付中状態をSQLでも確認し、`game_participants(game_id, group_player_id)`の一意制約と競合時の既存行確認によって二重送信を冪等に扱う。成功後は参加者URLへ303 redirectする。
 
-既存のgame participantにtokenハッシュがある場合、別ブラウザからの再取得を拒否する。本人Cookieを利用できなくなった場合は、主催者が参加取消を行い、本人が参加し直す。参加取消ではその開催の入力済みremaining_chipsとrebuy_countも削除する。
+既存のgame participantにtokenハッシュがある場合、別ブラウザからの再取得を拒否する。本人Cookieを利用できなくなった場合は、主催者が参加取消を行い、本人が参加し直す。参加取消ではその開催の入力済みremaining_chips、リバイ状態、game_rebuy_eventsも削除する。
 
 ## プレイヤープロフィールと本人端末
 

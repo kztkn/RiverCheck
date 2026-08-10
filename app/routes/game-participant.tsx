@@ -2,10 +2,11 @@ import {
   Form,
   Link,
   redirect,
+  useFetcher,
   useNavigation,
   useRevalidator,
 } from "react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   findGameForGroup,
   listGamesForGroup,
@@ -45,6 +46,11 @@ import {
   selectPlayerProfile,
 } from "@server/services/player-profile-service.server";
 import { joinSelfParticipant } from "@server/services/participant-service.server";
+import {
+  recordOwnRebuyAction,
+  undoOwnRebuyAction,
+  type RebuyServiceResult,
+} from "@server/services/rebuy-service.server";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { createPlayerProfileCookie } from "@server/services/player-profile-session.server";
 import { GameHighlight } from "../components/game-highlight";
@@ -55,6 +61,9 @@ import { findGamePaymentAmountForPlayer } from "@server/repositories/group-paypa
 import type { GameListItem } from "@shared-types/game";
 import type { Route } from "./+types/game-participant";
 import { formatTokyoDateNumeric } from "@domain/date/format-tokyo-date";
+
+type RebuyActionIntent = "record-rebuy" | "record-repayment" | "undo-rebuy";
+type RebuyActionData = RebuyServiceResult & { intent: RebuyActionIntent };
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const context = await requireGame(params.groupCode, params.gameId);
@@ -261,6 +270,31 @@ export async function action({ request, params }: Route.ActionArgs) {
     });
   }
 
+  if (
+    intent === "record-rebuy" ||
+    intent === "record-repayment" ||
+    intent === "undo-rebuy"
+  ) {
+    const commandId = readString(formData, "commandId");
+    const result =
+      intent === "undo-rebuy"
+        ? await undoOwnRebuyAction(request, {
+            commandId,
+            eventId: readString(formData, "eventId"),
+            gameId: params.gameId,
+            groupCode: params.groupCode,
+            groupId: context.group.id,
+          })
+        : await recordOwnRebuyAction(request, {
+            actionType: intent === "record-rebuy" ? "rebuy" : "repayment",
+            commandId,
+            gameId: params.gameId,
+            groupCode: params.groupCode,
+            groupId: context.group.id,
+          });
+    return { ...result, intent };
+  }
+
   const token = readParticipantToken(request, params.gameId);
   const tokenHash = token ? await hashToken(token) : null;
 
@@ -268,10 +302,10 @@ export async function action({ request, params }: Route.ActionArgs) {
     const remainingChips = parseNonNegativeInteger(
       readString(formData, "remainingChips"),
     );
-    const rebuyCount = parseNonNegativeInteger(
-      readString(formData, "rebuyCount"),
+    const settlementRebuyCount = parseNonNegativeInteger(
+      readString(formData, "settlementRebuyCount"),
     );
-    if (remainingChips === null || rebuyCount === null) {
+    if (remainingChips === null || settlementRebuyCount === null) {
       return {
         error: "残りチップとリバイ回数は0以上の整数で入力してください。",
       };
@@ -286,7 +320,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         params.gameId,
         groupPlayerId,
         remainingChips,
-        rebuyCount,
+        settlementRebuyCount,
       )
       : false;
     if (!updated && tokenHash) {
@@ -295,7 +329,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         params.gameId,
         tokenHash,
         remainingChips,
-        rebuyCount,
+        settlementRebuyCount,
       );
     }
     if (!updated)
@@ -347,6 +381,7 @@ export default function GameParticipant({
   actionData,
 }: Route.ComponentProps) {
   const navigation = useNavigation();
+  const rebuyFetcher = useFetcher<RebuyActionData>();
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
   const [isEditing, setIsEditing] = useState(false);
@@ -462,13 +497,20 @@ export default function GameParticipant({
             </div>
           </div>
 
+          <RebuyTracker
+            canRecord={loaderData.participant.status === "joined"}
+            fetcher={rebuyFetcher}
+            outstandingRebuyCount={loaderData.participant.outstandingRebuyCount}
+            totalRebuyCount={loaderData.participant.totalRebuyCount}
+          />
+
           {loaderData.participant.status === "submitted" && !isEditing ? (
             <section className="submitted-input" aria-label="保存済みの結果">
               <div>
                 <h3>SUBMITTED</h3>
                 <p>主催者が結果を確定するまでは修正できます。</p>
               </div>
-              <div className="submitted-input-values">
+              <div className="submitted-input-values rebuy-submitted-values">
                 <div>
                   <span>残りチップ</span>
                   <strong>
@@ -478,10 +520,28 @@ export default function GameParticipant({
                   </strong>
                 </div>
                 <div>
-                  <span>リバイ回数</span>
-                  <strong>{loaderData.participant.rebuyCount}回</strong>
+                  <span>累計リバイ</span>
+                  <strong>
+                    {formatTotalRebuyCount(
+                      loaderData.participant.totalRebuyCount,
+                    )}
+                  </strong>
+                </div>
+                <div>
+                  <span>終了時リバイ証</span>
+                  <strong>
+                    {loaderData.participant.settlementRebuyCount ?? 0}枚
+                  </strong>
                 </div>
               </div>
+              <RebuyMatchStatus
+                outstandingRebuyCount={
+                  loaderData.participant.outstandingRebuyCount
+                }
+                settlementRebuyCount={
+                  loaderData.participant.settlementRebuyCount ?? 0
+                }
+              />
               <button
                 className="button button-secondary"
                 onClick={() => setIsEditing(true)}
@@ -491,47 +551,18 @@ export default function GameParticipant({
               </button>
             </section>
           ) : (
-            <Form
-              className="result-entry-form"
-              method="post"
-              noValidate
-              reloadDocument
-            >
-              <input name="intent" type="hidden" value="save-input" />
-              <label className="field">
-                <span className="field-label">残りチップ</span>
-                <input
-                  defaultValue={
-                    loaderData.participant.remainingChips ??
-                    loaderData.game.initialChips
-                  }
-                  inputMode="numeric"
-                  min={0}
-                  name="remainingChips"
-                  placeholder="0"
-                  required
-                  type="number"
-                />
-              </label>
-              <label className="field">
-                <span className="field-label">リバイ回数</span>
-                <input
-                  defaultValue={loaderData.participant.rebuyCount}
-                  inputMode="numeric"
-                  min={0}
-                  name="rebuyCount"
-                  required
-                  type="number"
-                />
-              </label>
-              <button
-                className="button button-primary"
-                disabled={isSubmitting}
-                type="submit"
-              >
-                {isSubmitting ? "保存中…" : "結果を保存"}
-              </button>
-            </Form>
+            <ResultEntryForm
+              initialChips={loaderData.game.initialChips}
+              isSubmitting={isSubmitting}
+              outstandingRebuyCount={
+                loaderData.participant.outstandingRebuyCount
+              }
+              remainingChips={loaderData.participant.remainingChips}
+              settlementRebuyCount={
+                loaderData.participant.settlementRebuyCount
+              }
+              totalRebuyCount={loaderData.participant.totalRebuyCount}
+            />
           )}
 
           <Form method="post" reloadDocument>
@@ -641,6 +672,228 @@ export default function GameParticipant({
   );
 }
 
+
+function RebuyTracker({
+  canRecord,
+  fetcher,
+  outstandingRebuyCount,
+  totalRebuyCount,
+}: {
+  canRecord: boolean;
+  fetcher: ReturnType<typeof useFetcher<RebuyActionData>>;
+  outstandingRebuyCount: number;
+  totalRebuyCount: number | null;
+}) {
+  const isPending = fetcher.state !== "idle";
+  const result = fetcher.data;
+  const submissionPendingRef = useRef(false);
+
+  useEffect(() => {
+    if (fetcher.state === "idle") submissionPendingRef.current = false;
+  }, [fetcher.state]);
+  const canUndo =
+    result?.ok === true &&
+    result.intent !== "undo-rebuy" &&
+    Boolean(result.eventId);
+
+  function submit(intent: "record-rebuy" | "record-repayment") {
+    if (submissionPendingRef.current) return;
+    submissionPendingRef.current = true;
+    void fetcher.submit(
+      { commandId: crypto.randomUUID(), intent },
+      { method: "post" },
+    );
+  }
+
+  function undo() {
+    if (!result?.ok || !result.eventId) return;
+    if (submissionPendingRef.current) return;
+    submissionPendingRef.current = true;
+    void fetcher.submit(
+      {
+        commandId: crypto.randomUUID(),
+        eventId: result.eventId,
+        intent: "undo-rebuy",
+      },
+      { method: "post" },
+    );
+  }
+
+  return (
+    <section className="rebuy-tracker" aria-labelledby="rebuy-tracker-title">
+      <div className="rebuy-tracker-heading">
+        <div>
+          <p className="eyebrow">REBUY TRACKER</p>
+          <h3 id="rebuy-tracker-title">リバイ記録</h3>
+        </div>
+        {!canRecord ? <span className="rebuy-tracker-locked">入力済み</span> : null}
+      </div>
+      <div className="rebuy-state-grid">
+        <div>
+          <span>累計リバイ</span>
+          <strong>{formatTotalRebuyCount(totalRebuyCount)}</strong>
+        </div>
+        <div>
+          <span>未返済</span>
+          <strong>
+            {outstandingRebuyCount}口
+            <small> / {outstandingRebuyCount * 100}BB</small>
+          </strong>
+        </div>
+      </div>
+      {canRecord ? (
+        <div className="rebuy-actions">
+          <button
+            className="button button-primary"
+            disabled={isPending}
+            onClick={() => submit("record-rebuy")}
+            type="button"
+          >
+            {isPending && fetcher.formData?.get("intent") === "record-rebuy"
+              ? "記録中…"
+              : "＋ リバイ"}
+          </button>
+          <button
+            className="button button-secondary"
+            disabled={isPending || outstandingRebuyCount === 0}
+            onClick={() => submit("record-repayment")}
+            type="button"
+          >
+            {isPending &&
+            fetcher.formData?.get("intent") === "record-repayment"
+              ? "返済中…"
+              : "100BB返済"}
+          </button>
+        </div>
+      ) : (
+        <p className="rebuy-tracker-help">
+          結果入力後は記録を固定しています。必要な場合は入力を修正してください。
+        </p>
+      )}
+      {result ? (
+        result.ok ? (
+          <div className="rebuy-action-feedback" role="status">
+            <span>
+              {result.intent === "record-rebuy"
+                ? "リバイを記録しました。"
+                : result.intent === "record-repayment"
+                  ? "100BBの返済を記録しました。"
+                  : "直前の操作を元に戻しました。"}
+            </span>
+            {canUndo ? (
+              <button className="text-button" onClick={undo} type="button">
+                元に戻す
+              </button>
+            ) : null}
+          </div>
+        ) : (
+          <p className="rebuy-action-error" role="alert">
+            {result.error}
+          </p>
+        )
+      ) : null}
+    </section>
+  );
+}
+
+function ResultEntryForm({
+  initialChips,
+  isSubmitting,
+  outstandingRebuyCount,
+  remainingChips,
+  settlementRebuyCount,
+  totalRebuyCount,
+}: {
+  initialChips: number;
+  isSubmitting: boolean;
+  outstandingRebuyCount: number;
+  remainingChips: number | null;
+  settlementRebuyCount: number | null;
+  totalRebuyCount: number | null;
+}) {
+  const [reportedCount, setReportedCount] = useState(
+    settlementRebuyCount ?? outstandingRebuyCount,
+  );
+
+  return (
+    <Form className="result-entry-form" method="post" noValidate reloadDocument>
+      <input name="intent" type="hidden" value="save-input" />
+      <label className="field">
+        <span className="field-label">残りチップ</span>
+        <input
+          defaultValue={remainingChips ?? initialChips}
+          inputMode="numeric"
+          min={0}
+          name="remainingChips"
+          placeholder="0"
+          required
+          type="number"
+        />
+      </label>
+      <label className="field">
+        <span className="field-label">手元のリバイ証</span>
+        <input
+          inputMode="numeric"
+          min={0}
+          name="settlementRebuyCount"
+          onChange={(event) => {
+            const value = Number(event.currentTarget.value);
+            if (Number.isSafeInteger(value) && value >= 0) {
+              setReportedCount(value);
+            }
+          }}
+          required
+          type="number"
+          value={reportedCount}
+        />
+        <span className="field-hint">終了時に手元に残っている枚数</span>
+      </label>
+      <div className="result-rebuy-check">
+        <div>
+          <span>今日の累計リバイ</span>
+          <strong>{formatTotalRebuyCount(totalRebuyCount)}</strong>
+        </div>
+        <RebuyMatchStatus
+          outstandingRebuyCount={outstandingRebuyCount}
+          settlementRebuyCount={reportedCount}
+        />
+      </div>
+      <button
+        className="button button-primary"
+        disabled={isSubmitting}
+        type="submit"
+      >
+        {isSubmitting ? "保存中…" : "結果を保存"}
+      </button>
+    </Form>
+  );
+}
+
+function RebuyMatchStatus({
+  outstandingRebuyCount,
+  settlementRebuyCount,
+}: {
+  outstandingRebuyCount: number;
+  settlementRebuyCount: number;
+}) {
+  const matched = outstandingRebuyCount === settlementRebuyCount;
+  return (
+    <p className={matched ? "rebuy-match-status is-matched" : "rebuy-match-status has-mismatch"}>
+      <strong>
+        {matched
+          ? "✓ リバイ記録と一致しています"
+          : "! リバイ記録とリバイ証が一致しません"}
+      </strong>
+      <small>
+        記録上の未返済 {outstandingRebuyCount}口 / リバイ証 {settlementRebuyCount}枚
+      </small>
+    </p>
+  );
+}
+
+function formatTotalRebuyCount(value: number | null): string {
+  return value === null ? "記録なし" : `${value}回`;
+}
 async function requireGame(groupCode: string, gameId: string) {
   const group = await findGroupByPublicCode(groupCode);
   if (!group) throw new Response("Game not found", { status: 404 });

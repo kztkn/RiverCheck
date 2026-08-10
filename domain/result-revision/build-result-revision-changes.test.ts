@@ -13,7 +13,9 @@ function result(
     groupPlayerId,
     displayName: groupPlayerId.toUpperCase(),
     remainingChips: 20_000,
-    rebuyCount: 0,
+    totalRebuyCount: 0,
+    settlementRebuyCount: 0,
+    trackedOutstandingRebuyCount: 0,
     score: 20_000,
     rank: 1,
     costShare: 0,
@@ -29,7 +31,12 @@ describe("buildResultRevisionChanges", () => {
       result("c", { rank: 3, costShare: 1_000 }),
     ];
     const after = [
-      result("a", { remainingChips: 10_000, score: 10_000, rank: 2, costShare: 500 }),
+      result("a", {
+        remainingChips: 10_000,
+        score: 10_000,
+        rank: 2,
+        costShare: 500,
+      }),
       result("b", { rank: 1, costShare: 0 }),
       result("c", { rank: 3, costShare: 1_000 }),
     ];
@@ -59,19 +66,32 @@ describe("buildResultRevisionChanges", () => {
     expect(
       hasResultInputChanges(
         before,
-        before.map(({ groupPlayerId, remainingChips, rebuyCount }) => ({
-          groupPlayerId,
-          remainingChips,
-          rebuyCount,
-        })),
+        before.map(
+          ({
+            groupPlayerId,
+            remainingChips,
+            settlementRebuyCount,
+            totalRebuyCount,
+          }) => ({
+            groupPlayerId,
+            remainingChips,
+            settlementRebuyCount,
+            totalRebuyCount: totalRebuyCount ?? settlementRebuyCount,
+          }),
+        ),
       ),
     ).toBe(false);
   });
 
-  it("残りチップまたはリバイの変更を検出する", () => {
+  it("残りチップ、累計リバイ、終了時リバイ証の変更を検出する", () => {
     expect(
       hasResultInputChanges([result("a")], [
-        { groupPlayerId: "a", remainingChips: 19_000, rebuyCount: 0 },
+        {
+          groupPlayerId: "a",
+          remainingChips: 19_000,
+          totalRebuyCount: 1,
+          settlementRebuyCount: 0,
+        },
       ]),
     ).toBe(true);
   });

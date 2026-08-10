@@ -82,21 +82,27 @@ MVPではログイン機能やユーザーアカウントを設けない。
 
 登録済みプレイヤー一覧は、確定済み開催への参加回数が多い順、同数なら最終参加開催日が新しい順、その後は表示名順とする。常連を自動的に上へ表示し、MVPでは手動のお気に入り・並び順管理を設けない。
 
-### 3.3 参加者が結果を入力する
+### 3.3 リバイを記録して結果を入力する
 
-1. 参加者は自分の remaining_chips と rebuy_count を入力する
-2. 主催者が finalize するまでは同じブラウザから修正できる
-3. finalized 後は編集できない
+1. 参加者本人はゲーム中に「＋ リバイ」と「100BB返済」だけを1操作で記録できる
+2. リバイは累計と未返済を1ずつ増やし、返済は未返済だけを1減らす
+3. 主催者は参加者一覧から同じ操作を代理入力でき、累計・未返済・終了時リバイ証を救済修正できる
+4. 参加者は終了時に自分の remaining_chips と settlement_rebuy_count（手元のリバイ証）を入力する
+5. outstanding_rebuy_countとsettlement_rebuy_countの一致・不一致を画面に表示する
+6. 主催者が finalize するまでは同じブラウザから結果を修正できる
+7. finalized 後は参加者が編集できない
 
 ### 3.4 主催者が結果を確定する
 
 1. 参加者の入力状況を確認する
 2. expected_total、reported_total、difference を確認する
 3. difference が0でない場合は警告を表示する
-4. 警告を確認したうえで、差分があっても主催者判断で finalize できる
-5. finalize処理で点数、順位、会費負担を計算する
-6. 確定値を game_results に保存する
-7. gameを finalized にする
+4. 記録上の未返済と終了時リバイ証が異なる場合は参加者ごとの差を表示する
+5. settlement_rebuy_countがtotal_rebuy_countを超える場合は修正するまでfinalizeできない
+6. 警告を確認したうえで、チップ差分・リバイ記録差があっても主催者判断で finalize できる
+7. finalize処理で点数、順位、会費負担を計算する
+8. 確定値を game_results に保存する
+9. gameを finalized にする
 
 ### 3.5 グループTOPで開催を探す
 
@@ -177,7 +183,7 @@ games.status は最低限次を持つ。
 - open の間は、会費、人数、1〜3位負担額を変更できる
 - 精算の丸め単位は100円固定で、画面には入力欄を設けない
 - finalized 後は変更できない
-- open 中に条件を変更しても、参加者の入力済み remaining_chips と rebuy_count は保持する
+- open 中に条件を変更しても、参加者の入力済み remaining_chips と settlement_rebuy_count は保持する
 - finalize 時点の最新設定を点数・検算・精算へ使用する
 - 会費精算の人数と実際の参加人数が一致しない場合はfinalizeできず、確定ボタン付近に理由を表示する
 - 精算設定の独立した保存操作は設けず、finalize成功時に精算設定と確定結果を同一トランザクションで保存する
@@ -219,13 +225,30 @@ games.status は最低限次を持つ。
 - participant_token_hash
 - status
 - remaining_chips
-- rebuy_count
+- total_rebuy_count
+- outstanding_rebuy_count
+- settlement_rebuy_count
 - joined_at
 - submitted_at
 - created_at
 - updated_at
 
 同じ game_id と group_player_id の組み合わせは1件だけとする。
+
+### game_rebuy_events
+
+ゲーム中のリバイ操作履歴を表す。
+
+- command_id（同じPOST再送を冪等化する一意UUID）
+- game_participant_id
+- event_type（rebuy、repayment、undo、adjustment）
+- total_delta
+- outstanding_delta
+- recorded_by_type（participant、organizer）
+- reverts_event_id
+- recorded_at
+
+通常のリバイ・返済、Undo、主催者修正は履歴を削除せず差分イベントとして残す。参加取消ではgame participantと一緒に削除する。今回のUIでは完全なタイムラインを表示しないが、将来の開催イベント表示に利用できる時刻を保存する。
 
 ### 参加時の選択肢
 
@@ -273,7 +296,7 @@ games.status は最低限次を持つ。
 - 同じ開催内で、使用中の同一 group_player を別tokenから選択できない
 - 使用中の場合は「この参加者はすでに使用中です」等を表示する
 - 本人Cookieを利用できない場合は、主催者が参加取消を行い、本人が同じ名前で参加し直す
-- 参加取消では、その開催の入力済みremaining_chipsとrebuy_countも削除する
+- 参加取消では、その開催の入力済みremaining_chips、リバイ状態、リバイイベントも削除する
 - 主催者画面の参加取消はアプリのデザインに合わせた確認モーダルを経て、画面遷移なしで一覧から即時反映し、成功・失敗を数秒間のトーストで通知する
 
 ブラウザ内の具体的な保存手段は、セキュリティとCloudflare Workers構成を踏まえて architecture.md で決める。
@@ -281,7 +304,9 @@ games.status は最低限次を持つ。
 ## 8. 参加者入力
 
 - remaining_chips: 0以上のsafe integer
-- rebuy_count: 0以上のsafe integer
+- total_rebuy_count: 0以上のsafe integer。移行前の確定結果はNULL可
+- outstanding_rebuy_count: 0以上かつ累計以下のsafe integer
+- settlement_rebuy_count: 終了時入力前はNULL、入力後は0以上のsafe integer
 - 数字入力を中心としたスマホファーストUIにする
 - 保存後は入力済みの値を確認画面に表示し、「入力を修正する」から再編集できる
 - finalized前は本人tokenで更新できる
@@ -290,7 +315,7 @@ games.status は最低限次を持つ。
 ## 9. 点数
 
 ```text
-score = remaining_chips - rebuy_count × rebuy_chips
+score = remaining_chips - settlement_rebuy_count × rebuy_chips
 ```
 
 domain層の純粋関数として実装する。点数は負になり得る。順位判定とDB保存は整数の`score`を使用する。
@@ -311,7 +336,7 @@ bb_score     = score / chips_per_bb
 順位は次の順で決める。
 
 1. score の降順
-2. rebuy_count の昇順
+2. total_rebuy_count の昇順。移行前のNULLだけsettlement_rebuy_countを代用
 3. 完全同点は group_player_id のUnicode辞書順
 
 共同順位は作らない。3番目は結果を再現可能にするための決定的tie-breakであり、優劣を意味しない。詳細は docs/domain-rules.md を正とする。
@@ -322,7 +347,7 @@ bb_score     = score / chips_per_bb
 
 ```text
 expected_total = initial_chips × participant_count
-               + rebuy_chips × total_rebuy_count
+               + rebuy_chips × total_settlement_rebuy_count
 
 reported_total = sum(remaining_chips)
 difference     = expected_total - reported_total
@@ -332,7 +357,7 @@ difference     = expected_total - reported_total
 - 正数は報告チップ不足
 - 負数は報告チップ過多
 - 差分があっても警告後に主催者判断でfinalize可能
-- 未入力者がいる間は残チップ0・リバイ0回として暫定検算を表示し、未入力者名と暫定値であることを明記する。全員入力まではfinalize不可とする
+- 未入力者がいる間は残チップ0・終了時リバイ証0枚として暫定検算を表示し、未入力者名と暫定値であることを明記する。全員入力まではfinalize不可とする
 - 確定可能なチップ差分は黄色の警告として表示し、確定不能なエラーの赤と区別する
 
 ## 12. 会費の順位別傾斜精算
@@ -377,7 +402,7 @@ game_participants は参加者入力の現在値、game_results は現在公開�
 
 - 開催は`finalized`のまま維持し、受付中へ戻さない
 - 主催者画面の確定結果下部から訂正モードを開く
-- 訂正できるのは既存参加者の`remaining_chips`と`rebuy_count`だけとする
+- 訂正できるのは既存参加者の`remaining_chips`、`total_rebuy_count`、`settlement_rebuy_count`だけとする
 - 参加者の追加・削除、開催条件・会費設定の変更は訂正対象にしない
 - 会そのものを削除するUIは設けない
 - 保存前に訂正後の順位、BBスコア、会費負担額、チップ差分をプレビューする
@@ -533,7 +558,7 @@ UUID、外部キー、一意制約、金額・チップの整数制約を使用�
 5. [完了] 登録済みプレイヤー選択と新しい名前での参加・自動メンバー登録を実装する
 6. [完了] participant token発行、ブラウザ保持、重複利用防止を実装する
 7. [完了] open 中の途中参加・参加取り消しを実装する
-8. [完了] 参加者のremaining_chips / rebuy_count入力を実装する
+8. [完了] 参加者のremaining_chips / settlement_rebuy_count入力を実装する
 9. [完了] 主催者画面の入力状況とチップ総量検算を実装する
 10. [完了] finalizeトランザクションを実装する
 11. [完了] 確定結果とLINE用コピーを実装する

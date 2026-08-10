@@ -27,11 +27,34 @@ export function buildFinalizationState(
   participants: GameParticipantSummary[],
 ) {
   const incompleteNames = participants
-    .filter((participant) => participant.remainingChips === null)
+    .filter(
+      (participant) =>
+        participant.remainingChips === null ||
+        participant.settlementRebuyCount === null,
+    )
     .map((participant) => participant.displayName);
   const completeParticipants = participants.filter(
-    (participant) => participant.remainingChips !== null,
+    (participant) =>
+      participant.remainingChips !== null &&
+      participant.settlementRebuyCount !== null,
   );
+  const rebuyMismatches = completeParticipants
+    .filter(
+      (participant) =>
+        participant.outstandingRebuyCount !== participant.settlementRebuyCount,
+    )
+    .map((participant) => ({
+      displayName: participant.displayName,
+      outstandingRebuyCount: participant.outstandingRebuyCount,
+      settlementRebuyCount: participant.settlementRebuyCount!,
+    }));
+  const invalidRebuyNames = completeParticipants
+    .filter(
+      (participant) =>
+        participant.totalRebuyCount !== null &&
+        participant.settlementRebuyCount! > participant.totalRebuyCount,
+    )
+    .map((participant) => participant.displayName);
   const chipValidation =
     participants.length > 0
       ? validateChipTotal({
@@ -39,8 +62,7 @@ export function buildFinalizationState(
           rebuyChips: game.rebuyChips,
           reports: participants.map((participant) => ({
             remainingChips: participant.remainingChips ?? 0,
-            rebuyCount:
-              participant.remainingChips === null ? 0 : participant.rebuyCount,
+            settlementRebuyCount: participant.settlementRebuyCount ?? 0,
           })),
         })
       : null;
@@ -50,11 +72,14 @@ export function buildFinalizationState(
     submittedCount: completeParticipants.length,
     incompleteNames,
     isProvisional: incompleteNames.length > 0,
+    rebuyMismatches,
+    invalidRebuyNames,
     chipValidation,
     canFinalize:
       game.status === "open" &&
       participants.length >= 4 &&
-      incompleteNames.length === 0,
+      incompleteNames.length === 0 &&
+      invalidRebuyNames.length === 0,
   };
 }
 
@@ -63,6 +88,7 @@ export async function finalizeGame(
   gameId: string,
   settings: CreateGameInput,
   differenceConfirmed: boolean,
+  rebuyMismatchConfirmed: boolean,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   return withTransaction(async (transaction) => {
     const game = await lockGameForFinalization(transaction, groupId, gameId);
@@ -88,6 +114,31 @@ export async function finalizeGame(
     if (participants.some((participant) => participant === null)) {
       return { ok: false, error: "未入力の参加者がいます。" };
     }
+    const completeParticipants = participants.filter(
+      (participant): participant is NonNullable<typeof participant> =>
+        participant !== null,
+    );
+    const invalidRebuy = completeParticipants.find(
+      (participant) =>
+        participant.totalRebuyCount !== null &&
+        participant.settlementRebuyCount > participant.totalRebuyCount,
+    );
+    if (invalidRebuy) {
+      return {
+        ok: false,
+        error: invalidRebuy.displayName + "の累計リバイは終了時リバイ証以上にしてください。",
+      };
+    }
+    const hasRebuyMismatch = completeParticipants.some(
+      (participant) =>
+        participant.outstandingRebuyCount !== participant.settlementRebuyCount,
+    );
+    if (hasRebuyMismatch && !rebuyMismatchConfirmed) {
+      return {
+        ok: false,
+        error: "リバイ記録と終了時リバイ証の差を確認してください。",
+      };
+    }
 
     let calculated;
     try {
@@ -99,10 +150,7 @@ export async function finalizeGame(
           secondPlaceCost: settings.secondPlaceCost,
           thirdPlaceCost: settings.thirdPlaceCost,
         },
-        participants.filter(
-          (participant): participant is NonNullable<typeof participant> =>
-            participant !== null,
-        ),
+        completeParticipants,
       );
     } catch {
       return {
@@ -144,7 +192,8 @@ export async function finalizeGame(
 export interface ResultCorrectionInput {
   groupPlayerId: string;
   remainingChips: number;
-  rebuyCount: number;
+  totalRebuyCount: number;
+  settlementRebuyCount: number;
 }
 
 export async function updateFinalizedGame(
@@ -169,13 +218,16 @@ export async function updateFinalizedGame(
         (correction) =>
           !Number.isSafeInteger(correction.remainingChips) ||
           correction.remainingChips < 0 ||
-          !Number.isSafeInteger(correction.rebuyCount) ||
-          correction.rebuyCount < 0,
+          !Number.isSafeInteger(correction.totalRebuyCount) ||
+          correction.totalRebuyCount < 0 ||
+          !Number.isSafeInteger(correction.settlementRebuyCount) ||
+          correction.settlementRebuyCount < 0 ||
+          correction.settlementRebuyCount > correction.totalRebuyCount,
       )
     ) {
       return {
         ok: false,
-        error: "残りチップとリバイ回数は0以上の整数で入力してください。",
+        error: "残りチップ、累計リバイ、終了時リバイ証を確認してください。",
       };
     }
 
@@ -251,7 +303,9 @@ export async function updateFinalizedGame(
         groupPlayerId: row.group_player_id,
         displayName: row.display_name,
         remainingChips: correction.remainingChips,
-        rebuyCount: correction.rebuyCount,
+        totalRebuyCount: correction.totalRebuyCount,
+        outstandingRebuyCount: correction.settlementRebuyCount,
+        settlementRebuyCount: correction.settlementRebuyCount,
       };
     });
 

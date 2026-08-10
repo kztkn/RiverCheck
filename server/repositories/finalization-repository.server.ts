@@ -32,14 +32,18 @@ interface ParticipantRow {
   group_player_id: string;
   display_name: string;
   remaining_chips: string | null;
-  rebuy_count: number;
+  total_rebuy_count: number | null;
+  outstanding_rebuy_count: number;
+  settlement_rebuy_count: number | null;
 }
 
 interface ResultRow {
   group_player_id: string;
   display_name: string;
   remaining_chips: string;
-  rebuy_count: number;
+  total_rebuy_count: number | null;
+  tracked_outstanding_rebuy_count: number | null;
+  settlement_rebuy_count: number;
   score: string;
   rank: number;
   cost_share: string;
@@ -82,7 +86,9 @@ export async function lockParticipantsForFinalization(
       SELECT participant.group_player_id,
              player.display_name AS display_name,
              participant.remaining_chips,
-             participant.rebuy_count
+             participant.total_rebuy_count,
+             participant.outstanding_rebuy_count,
+             participant.settlement_rebuy_count
       FROM game_participants AS participant
       INNER JOIN group_players AS group_player
         ON group_player.id = participant.group_player_id
@@ -105,16 +111,18 @@ export async function insertFinalResults(
     await transaction.query(
       `
         INSERT INTO game_results (
-          game_id, group_player_id, remaining_chips, rebuy_count,
-          score, rank, cost_share
+          game_id, group_player_id, remaining_chips, total_rebuy_count,
+          tracked_outstanding_rebuy_count, settlement_rebuy_count, score, rank, cost_share
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `,
       [
         gameId,
         result.groupPlayerId,
         result.remainingChips,
-        result.rebuyCount,
+        result.totalRebuyCount,
+        result.trackedOutstandingRebuyCount,
+        result.settlementRebuyCount,
         result.score,
         result.rank,
         result.costShare,
@@ -178,7 +186,9 @@ export async function listFinalResults(
     `
       SELECT game_result.group_player_id,
              player.display_name AS display_name,
-             game_result.remaining_chips, game_result.rebuy_count,
+             game_result.remaining_chips, game_result.total_rebuy_count,
+             game_result.tracked_outstanding_rebuy_count,
+             game_result.settlement_rebuy_count,
              game_result.score, game_result.rank, game_result.cost_share
       FROM game_results AS game_result
       INNER JOIN games AS game ON game.id = game_result.game_id
@@ -194,7 +204,9 @@ export async function listFinalResults(
     groupPlayerId: row.group_player_id,
     displayName: row.display_name,
     remainingChips: Number(row.remaining_chips),
-    rebuyCount: row.rebuy_count,
+    totalRebuyCount: row.total_rebuy_count,
+    trackedOutstandingRebuyCount: row.tracked_outstanding_rebuy_count,
+    settlementRebuyCount: row.settlement_rebuy_count,
     score: Number(row.score),
     rank: row.rank,
     costShare: Number(row.cost_share),
@@ -205,13 +217,15 @@ export function toFinalizationParticipants(
   rows: ParticipantRow[],
 ): Array<FinalizationParticipant | null> {
   return rows.map((row) =>
-    row.remaining_chips === null
+    row.remaining_chips === null || row.settlement_rebuy_count === null
       ? null
       : {
           groupPlayerId: row.group_player_id,
           displayName: row.display_name,
           remainingChips: Number(row.remaining_chips),
-          rebuyCount: row.rebuy_count,
+          totalRebuyCount: row.total_rebuy_count,
+          outstandingRebuyCount: row.outstanding_rebuy_count,
+          settlementRebuyCount: row.settlement_rebuy_count,
         },
   );
 }
@@ -241,7 +255,9 @@ export async function lockFinalResults(
     `
       SELECT game_result.group_player_id,
              player.display_name AS display_name,
-             game_result.remaining_chips, game_result.rebuy_count,
+             game_result.remaining_chips, game_result.total_rebuy_count,
+             game_result.tracked_outstanding_rebuy_count,
+             game_result.settlement_rebuy_count,
              game_result.score, game_result.rank, game_result.cost_share
       FROM game_results AS game_result
       INNER JOIN group_players AS group_player
@@ -266,7 +282,9 @@ export async function updateParticipantsForCorrection(
       `
         UPDATE game_participants AS participant
         SET remaining_chips = $3,
-            rebuy_count = $4,
+            total_rebuy_count = $4,
+            outstanding_rebuy_count = $5,
+            settlement_rebuy_count = $6,
             status = 'submitted',
             updated_at = NOW()
         FROM games AS game
@@ -279,7 +297,9 @@ export async function updateParticipantsForCorrection(
         gameId,
         participant.groupPlayerId,
         participant.remainingChips,
-        participant.rebuyCount,
+        participant.totalRebuyCount,
+        participant.outstandingRebuyCount,
+        participant.settlementRebuyCount,
       ],
     );
     if (result.rowCount !== 1) {
@@ -364,9 +384,24 @@ export async function listResultRevisions(
     id: row.id,
     revisionNumber: row.revision_number,
     correctedAt: row.corrected_at.toISOString(),
-    beforeResults: row.before_results,
-    afterResults: row.after_results,
+    beforeResults: row.before_results.map(normalizeRevisionResult),
+    afterResults: row.after_results.map(normalizeRevisionResult),
   }));
+}
+
+function normalizeRevisionResult(
+  result: GameResultSummary,
+): GameResultSummary {
+  const legacy = result as GameResultSummary & { rebuyCount?: number };
+  const settlementRebuyCount =
+    result.settlementRebuyCount ?? legacy.rebuyCount ?? 0;
+  return {
+    ...result,
+    totalRebuyCount: result.totalRebuyCount ?? null,
+    trackedOutstandingRebuyCount:
+      result.trackedOutstandingRebuyCount ?? null,
+    settlementRebuyCount,
+  };
 }
 
 function mapResultRow(row: ResultRow): GameResultSummary {
@@ -374,7 +409,9 @@ function mapResultRow(row: ResultRow): GameResultSummary {
     groupPlayerId: row.group_player_id,
     displayName: row.display_name,
     remainingChips: Number(row.remaining_chips),
-    rebuyCount: row.rebuy_count,
+    totalRebuyCount: row.total_rebuy_count,
+    trackedOutstandingRebuyCount: row.tracked_outstanding_rebuy_count,
+    settlementRebuyCount: row.settlement_rebuy_count,
     score: Number(row.score),
     rank: row.rank,
     costShare: Number(row.cost_share),

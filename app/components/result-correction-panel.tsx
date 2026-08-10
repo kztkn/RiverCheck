@@ -8,7 +8,8 @@ import type { GameResultSummary } from "@shared-types/result";
 
 interface CorrectionValue {
   remainingChips: string;
-  rebuyCount: string;
+  totalRebuyCount: string;
+  settlementRebuyCount: string;
 }
 
 export function ResultCorrectionPanel({
@@ -34,11 +35,22 @@ export function ResultCorrectionPanel({
       const participants = results.map((result) => {
         const value = values[result.groupPlayerId];
         if (!value) throw new RangeError("missing correction input");
+        const totalRebuyCount = parseNonNegativeInteger(
+          value.totalRebuyCount,
+        );
+        const settlementRebuyCount = parseNonNegativeInteger(
+          value.settlementRebuyCount,
+        );
+        if (settlementRebuyCount > totalRebuyCount) {
+          throw new RangeError("settlement exceeds total");
+        }
         return {
           groupPlayerId: result.groupPlayerId,
           displayName: result.displayName,
           remainingChips: parseNonNegativeInteger(value.remainingChips),
-          rebuyCount: parseNonNegativeInteger(value.rebuyCount),
+          totalRebuyCount,
+          outstandingRebuyCount: settlementRebuyCount,
+          settlementRebuyCount,
         };
       });
       return {
@@ -48,7 +60,7 @@ export function ResultCorrectionPanel({
     } catch {
       return {
         calculated: null,
-        error: "残りチップとリバイ回数を0以上の整数で入力してください。",
+        error: "残りチップ、累計リバイ、終了時リバイ証を0以上の整数で入力してください。",
       };
     }
   }, [game, results, values]);
@@ -57,7 +69,9 @@ export function ResultCorrectionPanel({
     const value = values[result.groupPlayerId];
     return (
       value?.remainingChips !== String(result.remainingChips) ||
-      value?.rebuyCount !== String(result.rebuyCount)
+      value?.totalRebuyCount !==
+        String(result.totalRebuyCount ?? result.settlementRebuyCount) ||
+      value?.settlementRebuyCount !== String(result.settlementRebuyCount)
     );
   });
   const hasChanges = hasResultChanges;
@@ -93,7 +107,7 @@ export function ResultCorrectionPanel({
         </div>
       </div>
       <p className="correction-intro">
-        残りチップとリバイ回数を訂正します。変更内容は参加者にも訂正履歴として表示されます。
+        残りチップ、累計リバイ、終了時リバイ証を訂正します。変更内容は参加者にも訂正履歴として表示されます。
       </p>
 
       <Form
@@ -140,24 +154,45 @@ export function ResultCorrectionPanel({
                   />
                 </label>
                 <label>
-                  <span>リバイ</span>
+                  <span>累計リバイ</span>
                   <span className="input-wrap">
                     <input
                       inputMode="numeric"
                       min={0}
-                      name="rebuyCount"
+                      name="totalRebuyCount"
                       onChange={(event) =>
                         updateValue(
                           result.groupPlayerId,
-                          "rebuyCount",
+                          "totalRebuyCount",
                           event.currentTarget.value,
                         )
                       }
                       required
                       type="number"
-                      value={value.rebuyCount}
+                      value={value.totalRebuyCount}
                     />
                     <span className="input-suffix">回</span>
+                  </span>
+                </label>
+                <label>
+                  <span>終了時リバイ証</span>
+                  <span className="input-wrap">
+                    <input
+                      inputMode="numeric"
+                      min={0}
+                      name="settlementRebuyCount"
+                      onChange={(event) =>
+                        updateValue(
+                          result.groupPlayerId,
+                          "settlementRebuyCount",
+                          event.currentTarget.value,
+                        )
+                      }
+                      required
+                      type="number"
+                      value={value.settlementRebuyCount}
+                    />
+                    <span className="input-suffix">枚</span>
                   </span>
                 </label>
               </fieldset>
@@ -253,7 +288,10 @@ function initialValues(
       result.groupPlayerId,
       {
         remainingChips: String(result.remainingChips),
-        rebuyCount: String(result.rebuyCount),
+        totalRebuyCount: String(
+          result.totalRebuyCount ?? result.settlementRebuyCount,
+        ),
+        settlementRebuyCount: String(result.settlementRebuyCount),
       },
     ]),
   );

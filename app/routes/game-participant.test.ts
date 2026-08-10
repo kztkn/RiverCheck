@@ -22,6 +22,8 @@ const mocked = vi.hoisted(() => ({
   selectPlayerProfile: vi.fn(),
   updateParticipantInput: vi.fn(),
   updateParticipantInputByGroupPlayerId: vi.fn(),
+  recordOwnRebuyAction: vi.fn(),
+  undoOwnRebuyAction: vi.fn(),
 }));
 
 vi.mock("@server/repositories/game-repository.server", () => ({
@@ -48,6 +50,10 @@ vi.mock("@server/repositories/participant-repository.server", () => ({
 }));
 vi.mock("@server/repositories/group-paypay-repository.server", () => ({
   findGamePaymentAmountForPlayer: mocked.findGamePaymentAmountForPlayer,
+}));
+vi.mock("@server/services/rebuy-service.server", () => ({
+  recordOwnRebuyAction: mocked.recordOwnRebuyAction,
+  undoOwnRebuyAction: mocked.undoOwnRebuyAction,
 }));
 vi.mock("@server/services/participant-session.server", () => ({
   clearParticipantCookie: vi.fn(() => "participant=; Max-Age=0"),
@@ -117,7 +123,9 @@ const participant = {
   displayName: "Alice",
   groupPlayerId,
   id: "55555555-5555-4555-8555-555555555555",
-  rebuyCount: 0,
+  totalRebuyCount: 0,
+  outstandingRebuyCount: 0,
+  settlementRebuyCount: null,
   remainingChips: null,
   status: "joined",
 };
@@ -236,6 +244,56 @@ describe("game participant route", () => {
       gameId,
       groupPlayerId,
     );
+  });
+
+  it("リバイactionを本人用serviceへ渡す", async () => {
+    mocked.recordOwnRebuyAction.mockResolvedValue({
+      ok: true,
+      eventId: "66666666-6666-4666-8666-666666666666",
+      state: { totalRebuyCount: 1, outstandingRebuyCount: 1 },
+    });
+
+    const result = await action(
+      actionArgs({
+        intent: "record-rebuy",
+        commandId: "77777777-7777-4777-8777-777777777777",
+      }),
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      intent: "record-rebuy",
+      state: { totalRebuyCount: 1, outstandingRebuyCount: 1 },
+    });
+    expect(mocked.recordOwnRebuyAction).toHaveBeenCalledWith(
+      expect.any(Request),
+      {
+        actionType: "rebuy",
+        commandId: "77777777-7777-4777-8777-777777777777",
+        gameId,
+        groupCode: "river-check",
+        groupId: group.id,
+      },
+    );
+  });
+
+  it("未認証等のserviceエラーではリバイを記録できない", async () => {
+    mocked.recordOwnRebuyAction.mockResolvedValue({
+      ok: false,
+      error: "参加者情報を確認できません。画面を更新してください。",
+    });
+
+    const result = await action(
+      actionArgs({
+        intent: "record-rebuy",
+        commandId: "77777777-7777-4777-8777-777777777777",
+      }),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      intent: "record-rebuy",
+    });
   });
 
   it("登録済みメンバーを選ぶ既存参加導線を維持する", async () => {

@@ -10,7 +10,9 @@ interface ParticipantRow {
   display_name: string;
   status: "joined" | "submitted" | "locked";
   remaining_chips: string | null;
-  rebuy_count: number;
+  total_rebuy_count: number | null;
+  outstanding_rebuy_count: number;
+  settlement_rebuy_count: number | null;
   device_locked: boolean;
   avatar_uploaded_at: Date | null;
 }
@@ -80,7 +82,9 @@ export async function listGameParticipants(
         player.display_name,
         participant.status,
         participant.remaining_chips,
-        participant.rebuy_count,
+        participant.total_rebuy_count,
+        participant.outstanding_rebuy_count,
+        participant.settlement_rebuy_count,
         participant.participant_token_hash IS NOT NULL AS device_locked,
         player.avatar_uploaded_at
       FROM game_participants AS participant
@@ -110,7 +114,9 @@ export async function findParticipantByTokenHash(
         player.display_name,
         participant.status,
         participant.remaining_chips,
-        participant.rebuy_count,
+        participant.total_rebuy_count,
+        participant.outstanding_rebuy_count,
+        participant.settlement_rebuy_count,
         TRUE AS device_locked,
         player.avatar_uploaded_at
       FROM game_participants AS participant
@@ -142,7 +148,9 @@ export async function findParticipantByGroupPlayerId(
         player.display_name,
         participant.status,
         participant.remaining_chips,
-        participant.rebuy_count,
+        participant.total_rebuy_count,
+        participant.outstanding_rebuy_count,
+        participant.settlement_rebuy_count,
         participant.participant_token_hash IS NOT NULL AS device_locked,
         player.avatar_uploaded_at
       FROM game_participants AS participant
@@ -295,14 +303,14 @@ export async function updateParticipantInput(
   gameId: string,
   tokenHash: string,
   remainingChips: number,
-  rebuyCount: number,
+  settlementRebuyCount: number,
 ): Promise<boolean> {
   const result = await queryDatabase<{ id: string }>(
     `
       UPDATE game_participants AS participant
       SET
         remaining_chips = $4,
-        rebuy_count = $5,
+        settlement_rebuy_count = $5,
         status = 'submitted',
         submitted_at = NOW(),
         updated_at = NOW()
@@ -314,7 +322,7 @@ export async function updateParticipantInput(
         AND participant.participant_token_hash = $3
       RETURNING participant.id
     `,
-    [gameId, groupId, tokenHash, remainingChips, rebuyCount],
+    [gameId, groupId, tokenHash, remainingChips, settlementRebuyCount],
   );
 
   return result.rowCount === 1;
@@ -325,14 +333,14 @@ export async function updateParticipantInputByGroupPlayerId(
   gameId: string,
   groupPlayerId: string,
   remainingChips: number,
-  rebuyCount: number,
+  settlementRebuyCount: number,
 ): Promise<boolean> {
   const result = await queryDatabase<{ id: string }>(
     `
       UPDATE game_participants AS participant
       SET
         remaining_chips = $4,
-        rebuy_count = $5,
+        settlement_rebuy_count = $5,
         status = 'submitted',
         submitted_at = NOW(),
         updated_at = NOW()
@@ -344,7 +352,7 @@ export async function updateParticipantInputByGroupPlayerId(
         AND participant.group_player_id = $3
       RETURNING participant.id
     `,
-    [gameId, groupId, groupPlayerId, remainingChips, rebuyCount],
+    [gameId, groupId, groupPlayerId, remainingChips, settlementRebuyCount],
   );
 
   return result.rowCount === 1;
@@ -424,7 +432,9 @@ function mapParticipant(row: ParticipantRow): GameParticipantSummary {
     status: row.status,
     remainingChips:
       row.remaining_chips === null ? null : Number(row.remaining_chips),
-    rebuyCount: row.rebuy_count,
+    totalRebuyCount: row.total_rebuy_count,
+    outstandingRebuyCount: row.outstanding_rebuy_count,
+    settlementRebuyCount: row.settlement_rebuy_count,
     deviceLocked: row.device_locked,
     avatarUpdatedAt: row.avatar_uploaded_at?.toISOString() ?? null,
   };

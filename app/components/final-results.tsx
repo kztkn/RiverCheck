@@ -154,8 +154,14 @@ export function FinalResults({
             <div className="result-player">
               <strong>{result.displayName}</strong>
               <span>
-                残り {formatNumber(result.remainingChips)}・リバイ
-                {result.rebuyCount}回
+                残り {formatNumber(result.remainingChips)}・
+                {result.totalRebuyCount === null
+                  ? "終了時未返済 " + result.settlementRebuyCount + "口"
+                  : "リバイ " +
+                    result.totalRebuyCount +
+                    "回・終了時未返済 " +
+                    result.settlementRebuyCount +
+                    "口"}
               </span>
             </div>
             <strong

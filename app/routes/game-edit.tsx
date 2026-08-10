@@ -74,7 +74,9 @@ export async function action({ request, params }: Route.ActionArgs) {
     const corrections = currentResults.map((result) => ({
       groupPlayerId: result.groupPlayerId,
       remainingChips: result.remainingChips,
-      rebuyCount: result.rebuyCount,
+      totalRebuyCount:
+        result.totalRebuyCount ?? result.settlementRebuyCount,
+      settlementRebuyCount: result.settlementRebuyCount,
     }));
     try {
       const result = await updateFinalizedGame(
@@ -142,7 +144,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     return {
       ok: false as const,
       intent: "correct-results" as const,
-      error: "残りチップとリバイ回数は0以上の整数で入力してください。",
+      error: "残りチップ、累計リバイ、終了時リバイ証は0以上の整数で入力してください。",
       identityErrors: {},
       identityValues,
     };
@@ -259,11 +261,13 @@ function readResultCorrections(
 ): ResultCorrectionInput[] | null {
   const groupPlayerIds = formData.getAll("groupPlayerId");
   const remainingChipsValues = formData.getAll("remainingChips");
-  const rebuyCountValues = formData.getAll("rebuyCount");
+  const totalRebuyCountValues = formData.getAll("totalRebuyCount");
+  const settlementRebuyCountValues = formData.getAll("settlementRebuyCount");
   if (
     groupPlayerIds.length === 0 ||
     groupPlayerIds.length !== remainingChipsValues.length ||
-    groupPlayerIds.length !== rebuyCountValues.length
+    groupPlayerIds.length !== totalRebuyCountValues.length ||
+    groupPlayerIds.length !== settlementRebuyCountValues.length
   ) {
     return null;
   }
@@ -272,16 +276,28 @@ function readResultCorrections(
   for (let index = 0; index < groupPlayerIds.length; index += 1) {
     const groupPlayerId = groupPlayerIds[index];
     const remainingChips = parseNonNegativeInteger(remainingChipsValues[index]);
-    const rebuyCount = parseNonNegativeInteger(rebuyCountValues[index]);
+    const totalRebuyCount = parseNonNegativeInteger(
+      totalRebuyCountValues[index],
+    );
+    const settlementRebuyCount = parseNonNegativeInteger(
+      settlementRebuyCountValues[index],
+    );
     if (
       typeof groupPlayerId !== "string" ||
       !isUuid(groupPlayerId) ||
       remainingChips === null ||
-      rebuyCount === null
+      totalRebuyCount === null ||
+      settlementRebuyCount === null ||
+      settlementRebuyCount > totalRebuyCount
     ) {
       return null;
     }
-    corrections.push({ groupPlayerId, remainingChips, rebuyCount });
+    corrections.push({
+      groupPlayerId,
+      remainingChips,
+      totalRebuyCount,
+      settlementRebuyCount,
+    });
   }
   return corrections;
 }

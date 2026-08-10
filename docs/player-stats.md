@@ -18,7 +18,7 @@
 初期チップを100BBとして、開催ごとに次で計算する。
 
 ```text
-score        = remaining_chips - rebuy_count × rebuy_chips
+score        = remaining_chips - settlement_rebuy_count × rebuy_chips
 profit_chips = score - initial_chips
 net_bb       = profit_chips ÷ (initial_chips ÷ 100)
              = (score - initial_chips) × 100 ÷ initial_chips
@@ -61,4 +61,4 @@ stats route loader
 - 累計損益BB推移と開催情報Tooltip
 - 新しい順の開催別結果と確定結果への導線
 
-順位推移グラフ、年別フィルター、リバイ率、シーズン集計、連勝・連続入賞、自動ハイライトは次の拡張候補とする。
+順位推移グラフ、年別フィルター、累計リバイ統計・リバイ率、シーズン集計、連勝・連続入賞、自動ハイライトは次の拡張候補とする。
