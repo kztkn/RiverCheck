@@ -1,4 +1,5 @@
 import { GroupSiteHeader } from "~/components/site-menu";
+import { consumeCompletedFetcherSubmission } from "~/utils/consume-completed-fetcher-submission";
 import { useEffect, useRef, useState } from "react";
 import {
   Form,
@@ -38,6 +39,7 @@ import { GameSettingsFields } from "../components/game-settings-fields";
 import { ParticipantLinkQr } from "../components/participant-link-qr";
 import type { GameParticipantSummary } from "@shared-types/player";
 import type { Route } from "./+types/game-admin";
+import { createCommandId } from "~/utils/create-command-id";
 
 type OrganizerRebuyIntent =
   | "record-rebuy"
@@ -280,10 +282,12 @@ export default function GameAdmin({
   }, [removalFetcher.data, removalFetcher.state]);
 
   useEffect(() => {
-    if (rebuyFetcher.state !== "idle") return;
-    rebuySubmissionPendingRef.current = false;
-    if (!rebuyFetcher.data) return;
-    const data = rebuyFetcher.data;
+    const data = consumeCompletedFetcherSubmission(
+      rebuySubmissionPendingRef,
+      rebuyFetcher.state,
+      rebuyFetcher.data,
+    );
+    if (!data) return;
     const message = data.ok
       ? data.intent === "record-rebuy"
         ? "リバイを記録しました。"
@@ -359,7 +363,7 @@ export default function GameAdmin({
     if (rebuySubmissionPendingRef.current) return;
     rebuySubmissionPendingRef.current = true;
     void rebuyFetcher.submit(
-      { commandId: crypto.randomUUID(), intent, participantId },
+      { commandId: createCommandId(), intent, participantId },
       { method: "post" },
     );
   }
@@ -371,7 +375,7 @@ export default function GameAdmin({
     rebuySubmissionPendingRef.current = true;
     void rebuyFetcher.submit(
       {
-        commandId: crypto.randomUUID(),
+        commandId: createCommandId(),
         eventId: data.eventId,
         intent: "undo-rebuy",
         participantId: data.participantId,
@@ -524,7 +528,7 @@ export default function GameAdmin({
                   <details className="admin-rebuy-controls">
                     <summary>代理入力・リバイ記録の修正</summary>
                     <div className="admin-rebuy-actions">
-                      {participant.status === "joined" ? (
+                      {participant.status !== "locked" ? (
                         <>
                           <button
                             className="button button-primary button-small"
@@ -560,7 +564,7 @@ export default function GameAdmin({
                         onClick={() =>
                           setPendingRebuyCorrection({
                             ...participant,
-                            commandId: crypto.randomUUID(),
+                            commandId: createCommandId(),
                           })
                         }
                         type="button"
@@ -686,6 +690,9 @@ export default function GameAdmin({
               className="rebuy-correction-form"
               key={pendingRebuyCorrection?.id}
               method="post"
+              onSubmit={() => {
+                rebuySubmissionPendingRef.current = true;
+              }}
             >
               <input name="intent" type="hidden" value="adjust-rebuy" />
               <input

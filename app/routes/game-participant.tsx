@@ -22,6 +22,7 @@ import {
   joinNewParticipant,
   leaveGame,
   leaveGameByGroupPlayerId,
+  listCurrentGameParticipants,
   listRegisteredPlayersForGame,
   updateParticipantInput,
   updateParticipantInputByGroupPlayerId,
@@ -61,6 +62,7 @@ import { findGamePaymentAmountForPlayer } from "@server/repositories/group-paypa
 import type { GameListItem } from "@shared-types/game";
 import type { Route } from "./+types/game-participant";
 import { formatTokyoDateNumeric } from "@domain/date/format-tokyo-date";
+import { createCommandId } from "~/utils/create-command-id";
 
 type RebuyActionIntent = "record-rebuy" | "record-repayment" | "undo-rebuy";
 type RebuyActionData = RebuyServiceResult & { intent: RebuyActionIntent };
@@ -72,13 +74,20 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     getAuthenticatedPlayerProfile(request, params.groupCode),
   ]);
   const url = new URL(request.url);
-  const participant = profileOverview?.profile
-    ? await findParticipantByGroupPlayerId(
-      context.group.id,
-      params.gameId,
-      profileOverview.profile.groupPlayerId,
-    )
-    : null;
+  const [participant, participantRoster] = await Promise.all([
+    profileOverview?.profile
+      ? findParticipantByGroupPlayerId(
+          context.group.id,
+          params.gameId,
+          profileOverview.profile.groupPlayerId,
+        )
+      : Promise.resolve(null),
+    context.game.status === "open"
+      ? listCurrentGameParticipants(context.group.id, params.gameId)
+          .then((participants) => ({ available: true, participants }))
+          .catch(() => ({ available: false, participants: [] }))
+      : Promise.resolve({ available: true, participants: [] }),
+  ]);
   const players =
     context.game.status === "open" && !participant
       ? await listRegisteredPlayersForGame(context.group.id, params.gameId)
@@ -142,6 +151,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         }),
       }
       : null,
+    participantRoster: {
+      available: participantRoster.available,
+      items: participantRoster.participants.map((currentParticipant) => ({
+        displayName: currentParticipant.displayName,
+        isCurrentUser:
+          currentParticipant.groupPlayerId ===
+          profileOverview?.profile?.groupPlayerId,
+      })),
+    },
     players: players.map((player) => ({
       ...player,
       avatarUrl: buildPlayerAvatarUrl({
@@ -497,72 +515,121 @@ export default function GameParticipant({
             </div>
           </div>
 
-          <RebuyTracker
-            canRecord={loaderData.participant.status === "joined"}
-            fetcher={rebuyFetcher}
-            outstandingRebuyCount={loaderData.participant.outstandingRebuyCount}
-            totalRebuyCount={loaderData.participant.totalRebuyCount}
+          <ParticipantRosterSheet
+            available={loaderData.participantRoster.available}
+            items={loaderData.participantRoster.items}
+            onOpen={() => {
+              if (revalidator.state === "idle") {
+                void revalidator.revalidate();
+              }
+            }}
           />
 
-          {loaderData.participant.status === "submitted" && !isEditing ? (
-            <section className="submitted-input" aria-label="保存済みの結果">
+          <section className="participant-phase participant-phase-live">
+            <div className="participant-phase-heading">
+              <span className="participant-phase-label">プレイ中</span>
               <div>
-                <h3>SUBMITTED</h3>
-                <p>主催者が結果を確定するまでは修正できます。</p>
+                <h3>リバイ・返済を記録</h3>
+                <p>リバイした時と、100BBを返した時に押します。</p>
               </div>
-              <div className="submitted-input-values rebuy-submitted-values">
-                <div>
-                  <span>残りチップ</span>
-                  <strong>
-                    {loaderData.participant.remainingChips?.toLocaleString(
-                      "ja-JP",
-                    ) ?? 0}
-                  </strong>
-                </div>
-                <div>
-                  <span>累計リバイ</span>
-                  <strong>
-                    {formatTotalRebuyCount(
-                      loaderData.participant.totalRebuyCount,
-                    )}
-                  </strong>
-                </div>
-                <div>
-                  <span>終了時リバイ証</span>
-                  <strong>
-                    {loaderData.participant.settlementRebuyCount ?? 0}枚
-                  </strong>
-                </div>
-              </div>
-              <RebuyMatchStatus
-                outstandingRebuyCount={
-                  loaderData.participant.outstandingRebuyCount
-                }
-                settlementRebuyCount={
-                  loaderData.participant.settlementRebuyCount ?? 0
-                }
-              />
-              <button
-                className="button button-secondary"
-                onClick={() => setIsEditing(true)}
-                type="button"
-              >
-                入力を修正する
-              </button>
-            </section>
-          ) : (
-            <ResultEntryForm
-              initialChips={loaderData.game.initialChips}
-              isSubmitting={isSubmitting}
+            </div>
+            <RebuyTracker
+              canRecord={loaderData.participant.status !== "locked"}
+              fetcher={rebuyFetcher}
               outstandingRebuyCount={
                 loaderData.participant.outstandingRebuyCount
               }
-              remainingChips={loaderData.participant.remainingChips}
-              settlementRebuyCount={
-                loaderData.participant.settlementRebuyCount
-              }
               totalRebuyCount={loaderData.participant.totalRebuyCount}
             />
+          </section>
+
+          {loaderData.participant.status === "submitted" && !isEditing ? (
+            <section
+              className="participant-phase participant-phase-after"
+              aria-label="保存済みの結果"
+            >
+              <div className="participant-phase-heading">
+                <span className="participant-phase-label">プレイ終了後</span>
+                <div>
+                  <h3>保存済みの結果</h3>
+                  <p>主催者が結果を確定するまでは修正できます。</p>
+                </div>
+              </div>
+              <div className="submitted-input">
+                <div className="submitted-input-values rebuy-submitted-values">
+                  <div>
+                    <span>残りチップ</span>
+                    <strong>
+                      {loaderData.participant.remainingChips?.toLocaleString(
+                        "ja-JP",
+                      ) ?? 0}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>累計リバイ</span>
+                    <strong>
+                      {formatTotalRebuyCount(
+                        loaderData.participant.totalRebuyCount,
+                      )}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>終了時リバイ証</span>
+                    <strong>
+                      {loaderData.participant.settlementRebuyCount ?? 0}枚
+                    </strong>
+                  </div>
+                </div>
+                <RebuyMatchStatus
+                  outstandingRebuyCount={
+                    loaderData.participant.outstandingRebuyCount
+                  }
+                  settlementRebuyCount={
+                    loaderData.participant.settlementRebuyCount ?? 0
+                  }
+                />
+                <button
+                  className="button button-secondary"
+                  onClick={() => setIsEditing(true)}
+                  type="button"
+                >
+                  終了時の入力を修正する
+                </button>
+              </div>
+            </section>
+          ) : (
+            <details
+              className="participant-phase participant-phase-after participant-after-entry"
+              open={isEditing || undefined}
+            >
+              <summary>
+                <span className="participant-phase-label">プレイ終了後</span>
+                <span className="participant-phase-summary-copy">
+                  <strong>残りチップとリバイ証を入力</strong>
+                  <small>ゲームが終わったら開いて保存します</small>
+                </span>
+                <span className="participant-phase-chevron" aria-hidden="true">
+                  ⌄
+                </span>
+              </summary>
+              <div className="participant-after-entry-body">
+                <p className="participant-after-entry-help">
+                  プレイ中のリバイ記録とは別の操作です。終了時の手元の状態を入力してください。
+                </p>
+                <ResultEntryForm
+                  initialChips={loaderData.game.initialChips}
+                  isSubmitting={isSubmitting}
+                  outstandingRebuyCount={
+                    loaderData.participant.outstandingRebuyCount
+                  }
+                  remainingChips={loaderData.participant.remainingChips}
+                  settlementRebuyCount={
+                    loaderData.participant.settlementRebuyCount
+                  }
+                  totalRebuyCount={loaderData.participant.totalRebuyCount}
+                />
+              </div>
+            </details>
           )}
 
           <Form method="post" reloadDocument>
@@ -672,6 +739,137 @@ export default function GameParticipant({
   );
 }
 
+interface ParticipantRosterItem {
+  displayName: string;
+  isCurrentUser: boolean;
+}
+
+export function ParticipantRosterSheet({
+  available,
+  items,
+  onOpen,
+}: {
+  available: boolean;
+  items: ParticipantRosterItem[];
+  onOpen?: () => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const countLabel = available ? String(items.length) : "—";
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  function closeSheet() {
+    setIsOpen(false);
+  }
+
+  function handleDialogClose() {
+    setIsOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  function openSheet() {
+    onOpen?.();
+    setIsOpen(true);
+  }
+
+  return (
+    <>
+      <button
+        aria-controls="participant-roster-dialog"
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        className="participant-roster-trigger"
+        onClick={openSheet}
+        ref={triggerRef}
+        type="button"
+      >
+        <span>
+          参加者 <strong>{countLabel}</strong>
+        </span>
+        <small>一覧を見る</small>
+      </button>
+      <dialog
+        aria-labelledby="participant-roster-title"
+        className="app-dialog participant-roster-dialog"
+        id="participant-roster-dialog"
+        onCancel={closeSheet}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) closeSheet();
+        }}
+        onClose={handleDialogClose}
+        ref={dialogRef}
+      >
+        <div className="participant-roster-sheet">
+          <header className="participant-roster-header">
+            <div>
+              <p className="eyebrow">CURRENT PLAYERS</p>
+              <h2 id="participant-roster-title">
+                参加者 {countLabel}
+              </h2>
+            </div>
+            <button
+              aria-label="参加者一覧を閉じる"
+              className="participant-roster-close"
+              onClick={closeSheet}
+              type="button"
+            >
+              ×
+            </button>
+          </header>
+          <div className="participant-roster-scroll">
+            {!available ? (
+              <p className="participant-roster-empty" role="status">
+                参加者一覧を読み込めませんでした。
+              </p>
+            ) : items.length === 0 ? (
+              <p className="participant-roster-empty">参加者はいません</p>
+            ) : (
+              <ul className="participant-roster-list">
+                {items.map((item, index) => (
+                  <li key={item.displayName + "-" + index}>
+                    <span>{item.displayName}</span>
+                    {item.isCurrentUser ? (
+                      <small className="participant-roster-you">あなた</small>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <footer className="participant-roster-footer">
+            <button
+              className="button button-secondary"
+              onClick={closeSheet}
+              type="button"
+            >
+              閉じる
+            </button>
+          </footer>
+        </div>
+      </dialog>
+    </>
+  );
+}
+
 
 function RebuyTracker({
   canRecord,
@@ -700,7 +898,7 @@ function RebuyTracker({
     if (submissionPendingRef.current) return;
     submissionPendingRef.current = true;
     void fetcher.submit(
-      { commandId: crypto.randomUUID(), intent },
+      { commandId: createCommandId(), intent },
       { method: "post" },
     );
   }
@@ -711,7 +909,7 @@ function RebuyTracker({
     submissionPendingRef.current = true;
     void fetcher.submit(
       {
-        commandId: crypto.randomUUID(),
+        commandId: createCommandId(),
         eventId: result.eventId,
         intent: "undo-rebuy",
       },
@@ -723,10 +921,10 @@ function RebuyTracker({
     <section className="rebuy-tracker" aria-labelledby="rebuy-tracker-title">
       <div className="rebuy-tracker-heading">
         <div>
-          <p className="eyebrow">REBUY TRACKER</p>
-          <h3 id="rebuy-tracker-title">リバイ記録</h3>
+          <p className="eyebrow">CURRENT STATUS</p>
+          <h3 id="rebuy-tracker-title">現在の記録</h3>
         </div>
-        {!canRecord ? <span className="rebuy-tracker-locked">入力済み</span> : null}
+        {!canRecord ? <span className="rebuy-tracker-locked">編集不可</span> : null}
       </div>
       <div className="rebuy-state-grid">
         <div>
@@ -767,7 +965,7 @@ function RebuyTracker({
         </div>
       ) : (
         <p className="rebuy-tracker-help">
-          結果入力後は記録を固定しています。必要な場合は入力を修正してください。
+          このリバイ記録は現在変更できません。
         </p>
       )}
       {result ? (

@@ -1,5 +1,6 @@
 import { queryDatabase } from "@server/db/client.server";
 import type {
+  CurrentGameParticipant,
   GameParticipantSummary,
   RegisteredPlayerOption,
 } from "@shared-types/player";
@@ -15,6 +16,11 @@ interface ParticipantRow {
   settlement_rebuy_count: number | null;
   device_locked: boolean;
   avatar_uploaded_at: Date | null;
+}
+
+interface CurrentParticipantRow {
+  group_player_id: string;
+  display_name: string;
 }
 
 interface PlayerOptionRow {
@@ -67,6 +73,33 @@ export async function listRegisteredPlayersForGame(
     displayName: row.display_name,
     deviceLocked: row.device_locked,
     avatarUpdatedAt: row.avatar_uploaded_at?.toISOString() ?? null,
+  }));
+}
+
+export async function listCurrentGameParticipants(
+  groupId: string,
+  gameId: string,
+): Promise<CurrentGameParticipant[]> {
+  const result = await queryDatabase<CurrentParticipantRow>(
+    `
+      SELECT
+        participant.group_player_id,
+        player.display_name
+      FROM game_participants AS participant
+      INNER JOIN games AS game ON game.id = participant.game_id
+      INNER JOIN group_players AS group_player
+        ON group_player.id = participant.group_player_id
+      INNER JOIN players AS player ON player.id = group_player.player_id
+      WHERE game.id = $1
+        AND game.group_id = $2
+      ORDER BY participant.joined_at ASC
+    `,
+    [gameId, groupId],
+  );
+
+  return result.rows.map((row) => ({
+    groupPlayerId: row.group_player_id,
+    displayName: row.display_name,
   }));
 }
 

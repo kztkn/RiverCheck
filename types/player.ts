@@ -19,6 +19,11 @@ export interface PlayerProfile {
   updatedAt: string;
 }
 
+export interface CurrentGameParticipant {
+  groupPlayerId: string;
+  displayName: string;
+}
+
 export interface GameParticipantSummary {
   id: string;
   groupPlayerId: string;

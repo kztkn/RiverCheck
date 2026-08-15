@@ -187,10 +187,7 @@ function mapMutationResult(result: RebuyMutationResult): RebuyServiceResult {
     return { ok: false, error: "未返済のリバイはありません。" };
   }
   if (result.reason === "already-submitted") {
-    return {
-      ok: false,
-      error: "結果入力後はリバイ記録を変更できません。入力を修正してください。",
-    };
+    return { ok: false, error: "このリバイ記録は現在変更できません。" };
   }
   if (result.reason === "not-latest") {
     return {

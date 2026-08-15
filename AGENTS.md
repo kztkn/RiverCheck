@@ -29,6 +29,8 @@ RiverCheck は、ポーカー会の開催、参加、結果、順位、チップ
 
 - このリポジトリの開発コマンドは、WSL内のLinuxネイティブ環境で実行する。
 - Node.js、npm、React Router、Vite、Vitest、Wranglerなどは、WSL側にインストールされたLinux版を使用する。
+- 現在のWSL側Node.jsは `/home/kzt/.nvm/versions/node/v24.18.0/bin/node`、npmは同じディレクトリの `/home/kzt/.nvm/versions/node/v24.18.0/bin/npm` にある。NVMがシェルで初期化されず `command -v node` が失敗する場合は、利用不可と判断する前にこのパスの実行権限を確認し、`/home/kzt/.nvm/versions/node/v24.18.0/bin` を既存の `PATH` の先頭へ追加して開発コマンドを実行する。
+- Node.jsのバージョン更新で上記パスが存在しなくなった場合は、`/home/kzt/.nvm/versions/node/` 配下を深さ制限せず確認し、Linux版の `bin/node` と `bin/npm` を使用する。
 - `cmd.exe`、PowerShell、Windows版Node.js、Codex付属のWindows向けworkspace dependency runtimeを、開発コマンドの代替として使用しない。
 - `command -v node`や`command -v npm`でWindows側のパス（`/mnt/c/`配下など）が解決された場合は、そのまま実行せず、WSL側のNode.js設定、バージョン管理ツール、PATHを確認する。
 - WSL側のLinux版Node.jsを利用できない場合は、Windows側へフォールバックしたり依存を再構築したりせず、作業を停止してユーザーへ環境状態を報告する。

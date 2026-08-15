@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 const mocked = vi.hoisted(() => ({
   createNewPlayerProfileSessionCredentials: vi.fn(),
@@ -17,6 +19,7 @@ const mocked = vi.hoisted(() => ({
   leaveGameByGroupPlayerId: vi.fn(),
   listFinalResults: vi.fn(),
   listGamesForGroup: vi.fn(),
+  listCurrentGameParticipants: vi.fn(),
   listRegisteredPlayersForGame: vi.fn(),
   listResultRevisions: vi.fn(),
   selectPlayerProfile: vi.fn(),
@@ -43,6 +46,7 @@ vi.mock("@server/repositories/participant-repository.server", () => ({
   joinNewParticipant: mocked.joinNewParticipant,
   leaveGame: mocked.leaveGame,
   leaveGameByGroupPlayerId: mocked.leaveGameByGroupPlayerId,
+  listCurrentGameParticipants: mocked.listCurrentGameParticipants,
   listRegisteredPlayersForGame: mocked.listRegisteredPlayersForGame,
   updateParticipantInput: mocked.updateParticipantInput,
   updateParticipantInputByGroupPlayerId:
@@ -92,7 +96,11 @@ vi.mock("~/components/site-menu", () => ({
   GroupSiteHeader: vi.fn(() => null),
 }));
 
-import { action, loader } from "./game-participant";
+import {
+  action,
+  loader,
+  ParticipantRosterSheet,
+} from "./game-participant";
 
 const group = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -141,6 +149,7 @@ describe("game participant route", () => {
       profile,
     });
     mocked.findParticipantByGroupPlayerId.mockResolvedValue(null);
+    mocked.listCurrentGameParticipants.mockResolvedValue([]);
     mocked.listRegisteredPlayersForGame.mockResolvedValue([]);
     mocked.listFinalResults.mockResolvedValue([]);
     mocked.listResultRevisions.mockResolvedValue([]);
@@ -181,6 +190,123 @@ describe("game participant route", () => {
     expect(result.shareUrl).toBe(
       `https://example.com/g/river-check/games/${gameId}`,
     );
+  });
+
+  it("open開催では現在の参加人数と一覧を本人表示付きで返す", async () => {
+    const otherGroupPlayerId = "66666666-6666-4666-8666-666666666666";
+    mocked.findParticipantByGroupPlayerId.mockResolvedValue(participant);
+    mocked.listCurrentGameParticipants.mockResolvedValue([
+      { displayName: "Alice", groupPlayerId },
+      { displayName: "Bob", groupPlayerId: otherGroupPlayerId },
+    ]);
+
+    const result = await loader(loaderArgs());
+
+    expect(result.participantRoster).toEqual({
+      available: true,
+      items: [
+        { displayName: "Alice", isCurrentUser: true },
+        { displayName: "Bob", isCurrentUser: false },
+      ],
+    });
+    expect(mocked.listCurrentGameParticipants).toHaveBeenCalledWith(
+      group.id,
+      gameId,
+    );
+  });
+
+  it("参加取り消し済み行を含まないrepository結果だけを一覧へ返す", async () => {
+    mocked.listCurrentGameParticipants.mockResolvedValue([
+      { displayName: "Alice", groupPlayerId },
+    ]);
+
+    const result = await loader(loaderArgs());
+
+    expect(result.participantRoster.items.map((item) => item.displayName)).toEqual([
+      "Alice",
+    ]);
+    expect(result.participantRoster.items).not.toContainEqual(
+      expect.objectContaining({ displayName: "Canceled player" }),
+    );
+  });
+
+  it("本人判定不能でも参加者一覧を返し、あなた表示だけを省略する", async () => {
+    mocked.getAuthenticatedPlayerProfile.mockResolvedValue({
+      group,
+      profile: null,
+    });
+    mocked.listCurrentGameParticipants.mockResolvedValue([
+      { displayName: "Alice", groupPlayerId },
+    ]);
+
+    const result = await loader(loaderArgs());
+
+    expect(result.participantRoster).toEqual({
+      available: true,
+      items: [{ displayName: "Alice", isCurrentUser: false }],
+    });
+  });
+
+  it("参加者一覧の取得失敗だけでは開催ページをエラーにしない", async () => {
+    mocked.listCurrentGameParticipants.mockRejectedValue(
+      new Error("temporary database error"),
+    );
+
+    const result = await loader(loaderArgs());
+
+    expect(result.game.status).toBe("open");
+    expect(result.participantRoster).toEqual({
+      available: false,
+      items: [],
+    });
+  });
+
+  it("finalized開催では参加者一覧を取得せず入口用データも空にする", async () => {
+    mocked.findGameForGroup.mockResolvedValue({
+      ...openGame,
+      status: "finalized",
+    });
+
+    const result = await loader(loaderArgs());
+
+    expect(result.participantRoster).toEqual({
+      available: true,
+      items: [],
+    });
+    expect(mocked.listCurrentGameParticipants).not.toHaveBeenCalled();
+  });
+
+  it("参加者入口と一覧には人数・全員の名前・本人表示だけを描画する", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ParticipantRosterSheet, {
+        available: true,
+        items: [
+          { displayName: "Alice", isCurrentUser: true },
+          { displayName: "Bob", isCurrentUser: false },
+        ],
+      }),
+    );
+
+    expect(markup).toContain("参加者 <strong>2</strong>");
+    expect(markup).toContain("Alice");
+    expect(markup).toContain("Bob");
+    expect(markup).toContain("あなた");
+    expect(markup).toContain('aria-haspopup="dialog"');
+    expect(markup).toContain("参加者一覧を閉じる");
+    expect(markup).not.toContain("リバイ回数");
+    expect(markup).not.toContain("未返済");
+    expect(markup).not.toContain("残りチップ");
+  });
+
+  it("参加者0件では空状態を描画する", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ParticipantRosterSheet, {
+        available: true,
+        items: [],
+      }),
+    );
+
+    expect(markup).toContain("参加者はいません");
   });
 
   it("join-self actionで認証済みの本人が参加し303で戻る", async () => {

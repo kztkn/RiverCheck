@@ -53,7 +53,7 @@ export async function applyRebuyAction(input: {
   return withTransaction(async (transaction) => {
     const participant = await lockParticipant(transaction, input);
     if (!participant) return { ok: false, reason: "not-found" };
-    if (participant.status !== "joined") {
+    if (participant.status === "locked") {
       return { ok: false, reason: "already-submitted" };
     }
 
@@ -111,7 +111,7 @@ export async function undoRebuyAction(input: {
   return withTransaction(async (transaction) => {
     const participant = await lockParticipant(transaction, input);
     if (!participant) return { ok: false, reason: "not-found" };
-    if (participant.status !== "joined") {
+    if (participant.status === "locked") {
       return { ok: false, reason: "already-submitted" };
     }
 
