@@ -78,15 +78,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const [participant, participantRoster] = await Promise.all([
     profileOverview?.profile
       ? findParticipantByGroupPlayerId(
-          context.group.id,
-          params.gameId,
-          profileOverview.profile.groupPlayerId,
-        )
+        context.group.id,
+        params.gameId,
+        profileOverview.profile.groupPlayerId,
+      )
       : Promise.resolve(null),
     context.game.status === "open"
       ? listCurrentGameParticipants(context.group.id, params.gameId)
-          .then((participants) => ({ available: true, participants }))
-          .catch(() => ({ available: false, participants: [] }))
+        .then((participants) => ({ available: true, participants }))
+        .catch(() => ({ available: false, participants: [] }))
       : Promise.resolve({ available: true, participants: [] }),
   ]);
   const players =
@@ -298,19 +298,19 @@ export async function action({ request, params }: Route.ActionArgs) {
     const result =
       intent === "undo-rebuy"
         ? await undoOwnRebuyAction(request, {
-            commandId,
-            eventId: readString(formData, "eventId"),
-            gameId: params.gameId,
-            groupCode: params.groupCode,
-            groupId: context.group.id,
-          })
+          commandId,
+          eventId: readString(formData, "eventId"),
+          gameId: params.gameId,
+          groupCode: params.groupCode,
+          groupId: context.group.id,
+        })
         : await recordOwnRebuyAction(request, {
-            actionType: intent === "record-rebuy" ? "rebuy" : "repayment",
-            commandId,
-            gameId: params.gameId,
-            groupCode: params.groupCode,
-            groupId: context.group.id,
-          });
+          actionType: intent === "record-rebuy" ? "rebuy" : "repayment",
+          commandId,
+          gameId: params.gameId,
+          groupCode: params.groupCode,
+          groupId: context.group.id,
+        });
     return { ...result, intent };
   }
 
@@ -439,11 +439,10 @@ export default function GameParticipant({
 
   return (
     <main
-      className={`page-shell participant-page${
-        loaderData.game.status === "open" && !loaderData.participant
+      className={`page-shell participant-page${loaderData.game.status === "open" && !loaderData.participant
           ? " participant-selection-page"
           : ""
-      }`}
+        }`}
     >
       <GroupSiteHeader
         groupCode={loaderData.group.publicCode}
@@ -1048,7 +1047,7 @@ function RebuyRulesSheet() {
           >
             <ol className="rebuy-rules-list">
               <li>
-                <strong>200BB超</strong>
+                <strong>150BB超</strong>
                 <span>任意で100BBを返済できます</span>
               </li>
               <li>
@@ -1067,7 +1066,7 @@ function RebuyRulesSheet() {
               </li>
             </ol>
             <p className="rebuy-rules-note">
-              現在スタックをRiverCheckへ入力する必要はありません。
+              現在のスタックをRiverCheckへ入力する必要はありません。
             </p>
           </div>
         </div>
@@ -1185,7 +1184,7 @@ function RebuyTracker({
             type="button"
           >
             {isPending &&
-            fetcher.formData?.get("intent") === "record-repayment"
+              fetcher.formData?.get("intent") === "record-repayment"
               ? "返済中…"
               : "100BB返済"}
           </button>

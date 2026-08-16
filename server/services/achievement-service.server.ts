@@ -1,6 +1,6 @@
 import { evaluateAchievements } from "@domain/achievement/evaluate-achievements";
 import {
-  insertAchievementUnlocks,
+  synchronizeAchievementUnlocks,
   listAchievementHistoryGames,
   listPlayerAchievementCollection,
   listUnlockedAchievementIds,
@@ -26,9 +26,13 @@ export async function awardAchievementsForPlayers(
       .map((game) => ({
         gameId: game.gameId,
         rank: game.rank,
+        participantCount: game.participantCount,
         netBb: game.netBb,
+        totalRebuyCount: game.totalRebuyCount,
+        outstandingRebuyCount: game.outstandingRebuyCount,
+        settlementRebuyCount: game.settlementRebuyCount,
       }));
-    await insertAchievementUnlocks(
+    await synchronizeAchievementUnlocks(
       transaction,
       groupId,
       groupPlayerId,

@@ -1,5 +1,8 @@
 import { queryDatabase, type DatabaseTransaction } from "@server/db/client.server";
-import type { AchievementUnlock } from "@domain/achievement/evaluate-achievements";
+import {
+  evaluatedAchievementCodes,
+  type AchievementUnlock,
+} from "@domain/achievement/evaluate-achievements";
 import type {
   AchievementIconKey,
   PlayerAchievementCollection,
@@ -10,8 +13,12 @@ interface AchievementHistoryRow {
   group_player_id: string;
   game_id: string;
   rank: number;
+  participant_count: string;
   net_bb: string | null;
   initial_chips: string;
+  total_rebuy_count: number | null;
+  tracked_outstanding_rebuy_count: number | null;
+  settlement_rebuy_count: number;
 }
 
 interface AchievementCollectionRow {
@@ -33,7 +40,11 @@ export interface AchievementHistoryGame {
   groupPlayerId: string;
   gameId: string;
   rank: number;
+  participantCount: number;
   netBb: number;
+  totalRebuyCount: number;
+  outstandingRebuyCount: number | null;
+  settlementRebuyCount: number;
 }
 
 export async function listAchievementHistoryGames(
@@ -44,26 +55,47 @@ export async function listAchievementHistoryGames(
   if (groupPlayerIds.length === 0) return [];
   const result = await transaction.query<AchievementHistoryRow>(
     `
+      WITH finalized_results AS (
+        SELECT
+          game_result.group_player_id,
+          game_result.game_id,
+          game_result.rank,
+          COUNT(*) OVER (
+            PARTITION BY game_result.game_id
+          ) AS participant_count,
+          game_result.total_rebuy_count,
+          game_result.tracked_outstanding_rebuy_count,
+          game_result.settlement_rebuy_count,
+          game.initial_chips,
+          game.played_at,
+          game.finalized_at,
+          CASE
+            WHEN game.initial_chips > 0 THEN
+              ((game_result.score - game.initial_chips)::NUMERIC * 100)
+                / game.initial_chips
+            ELSE NULL
+          END AS net_bb
+        FROM game_results AS game_result
+        INNER JOIN games AS game ON game.id = game_result.game_id
+        WHERE game.group_id = $1
+          AND game.status = 'finalized'
+      )
       SELECT
-        game_result.group_player_id,
-        game_result.game_id,
-        game_result.rank,
-        game.initial_chips,
-        CASE
-          WHEN game.initial_chips > 0 THEN
-            ((game_result.score - game.initial_chips)::NUMERIC * 100)
-              / game.initial_chips
-          ELSE NULL
-        END AS net_bb
-      FROM game_results AS game_result
-      INNER JOIN games AS game ON game.id = game_result.game_id
-      WHERE game.group_id = $1
-        AND game.status = 'finalized'
-        AND game_result.group_player_id = ANY($2::UUID[])
-      ORDER BY game_result.group_player_id,
-               game.played_at ASC,
-               game.finalized_at ASC,
-               game.id ASC
+        group_player_id,
+        game_id,
+        rank,
+        participant_count,
+        total_rebuy_count,
+        tracked_outstanding_rebuy_count,
+        settlement_rebuy_count,
+        initial_chips,
+        net_bb
+      FROM finalized_results
+      WHERE group_player_id = ANY($2::UUID[])
+      ORDER BY group_player_id,
+               played_at ASC,
+               finalized_at ASC,
+               game_id ASC
     `,
     [groupId, groupPlayerIds],
   );
@@ -80,29 +112,67 @@ export async function listAchievementHistoryGames(
     groupPlayerId: row.group_player_id,
     gameId: row.game_id,
     rank: row.rank,
+    participantCount: Number(row.participant_count),
     netBb: Number(row.net_bb),
+    totalRebuyCount:
+      row.total_rebuy_count ?? row.settlement_rebuy_count,
+    outstandingRebuyCount: row.tracked_outstanding_rebuy_count,
+    settlementRebuyCount: row.settlement_rebuy_count,
   }));
 }
 
-export async function insertAchievementUnlocks(
+export async function synchronizeAchievementUnlocks(
   transaction: DatabaseTransaction,
   groupId: string,
   groupPlayerId: string,
   unlocks: AchievementUnlock[],
 ): Promise<void> {
+  const unlockedCodes = unlocks.map((unlock) => unlock.code);
+
+  await transaction.query(
+    `
+      UPDATE group_players AS group_player
+      SET equipped_achievement_id = NULL
+      FROM achievements AS achievement
+      WHERE group_player.id = $2
+        AND group_player.group_id = $1
+        AND group_player.equipped_achievement_id = achievement.id
+        AND achievement.code = ANY($3::TEXT[])
+        AND NOT (achievement.code = ANY($4::TEXT[]))
+    `,
+    [groupId, groupPlayerId, [...evaluatedAchievementCodes], unlockedCodes],
+  );
+
+  await transaction.query(
+    `
+      DELETE FROM player_achievements AS player_achievement
+      USING achievements AS achievement, group_players AS group_player
+      WHERE player_achievement.group_player_id = group_player.id
+        AND player_achievement.achievement_id = achievement.id
+        AND group_player.id = $2
+        AND group_player.group_id = $1
+        AND achievement.code = ANY($3::TEXT[])
+        AND NOT (achievement.code = ANY($4::TEXT[]))
+    `,
+    [groupId, groupPlayerId, [...evaluatedAchievementCodes], unlockedCodes],
+  );
+
   for (const unlock of unlocks) {
     await transaction.query(
       `
         INSERT INTO player_achievements (
-          group_player_id, achievement_id, source_game_id
+          group_player_id, achievement_id, source_game_id, unlocked_at
         )
-        SELECT group_player.id, achievement.id, game.id
+        SELECT group_player.id, achievement.id, game.id,
+               COALESCE(game.finalized_at, game.updated_at, game.played_at)
         FROM group_players AS group_player
         INNER JOIN games AS game
           ON game.id = $4 AND game.group_id = group_player.group_id
         INNER JOIN achievements AS achievement ON achievement.code = $3
         WHERE group_player.id = $2 AND group_player.group_id = $1
-        ON CONFLICT (group_player_id, achievement_id) DO NOTHING
+        ON CONFLICT (group_player_id, achievement_id) DO UPDATE
+        SET source_game_id = EXCLUDED.source_game_id,
+            unlocked_at = EXCLUDED.unlocked_at
       `,
       [groupId, groupPlayerId, unlock.code, unlock.sourceGameId],
     );

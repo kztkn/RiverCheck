@@ -53,8 +53,8 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
       >
         <div className="home-section-heading">
           <div>
-            <p className="home-section-kicker">NOW AT THE TABLE</p>
-            <h2 id="current-game-heading">いまのゲーム</h2>
+            <p className="home-section-kicker">OPEN TABLE</p>
+            <h2 id="current-game-heading">受付中のゲーム</h2>
           </div>
           <span className="home-section-count">{activeGames.length}件</span>
         </div>
@@ -71,7 +71,7 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
                   <time dateTime={primaryGame.playedAt}>
                     {formatGameDate(primaryGame.playedAt)}
                   </time>
-                  <span>参加 {primaryGame.participantCount}人</span>
+                  <span>参加者 {primaryGame.participantCount}人</span>
                 </div>
               </div>
               <Link
@@ -81,7 +81,7 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
                 {isOrganizer
                   ? "開催管理を開く"
                   : primaryGame.status === "open"
-                    ? "ゲームに参加・戻る"
+                    ? "ゲーム画面へ"
                     : "受付状況を見る"}
                 <span aria-hidden="true">→</span>
               </Link>
@@ -103,7 +103,7 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
           </>
         ) : (
           <div className="home-current-empty">
-            <p>現在受付中の会はありません。</p>
+            <p>受付中のゲームはありません。</p>
             {getCreateGameUrl(0, isOrganizer, false) ? (
               <Link className="button button-secondary" to="games/new">
                 新しい会を作成
@@ -116,8 +116,8 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
       <Link className="home-profile-link" to={playerStatsUrl}>
         <span>
           <small>PLAYER RECORD</small>
-          <strong>個人戦績を見る</strong>
-          <span>これまでの損益・順位・MY HAND</span>
+          <strong>プロフィールと戦績</strong>
+          <span>損益・順位・MY HANDを振り返る</span>
         </span>
         <span aria-hidden="true">→</span>
       </Link>
@@ -156,7 +156,7 @@ function PastGames({ games }: { games: GameListItem[] }) {
           </div>
           {remainingGames.length > 0 ? (
             <details className="home-history-more">
-              <summary>すべて見る（あと{remainingGames.length}件）</summary>
+              <summary>過去の開催をすべて見る</summary>
               <div className="home-game-list">
                 {remainingGames.map((game) => (
                   <GameListRow game={game} isPast key={game.id} />
@@ -188,7 +188,7 @@ function GameListRow({
       <span className="home-game-row-main">
         <strong>{game.title}</strong>
         <small>
-          参加 {game.participantCount}人
+          参加者 {game.participantCount}人
           {isPast ? ` ・ 優勝 ${game.winnerName ?? "—"}` : ""}
         </small>
       </span>
