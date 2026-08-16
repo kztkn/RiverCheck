@@ -119,6 +119,14 @@ export default function StatsPlayer({ loaderData, actionData }: Route.ComponentP
               ) : null}
             </div>
           </div>
+          {loaderData.canEditProfile ? (
+            <Link
+              className="stats-profile-edit-button"
+              to={`${profilePath}?editProfile=1`}
+            >
+              編集 <span aria-hidden="true">›</span>
+            </Link>
+          ) : null}
         </div>
         {summary.profileMessage ? (
           <p className="stats-profile-message">{summary.profileMessage}</p>
@@ -130,16 +138,6 @@ export default function StatsPlayer({ loaderData, actionData }: Route.ComponentP
               card1={summary.favoriteCard1}
               card2={summary.favoriteCard2}
             />
-          </div>
-        ) : null}
-        {loaderData.canEditProfile ? (
-          <div className="stats-profile-actions">
-            <Link
-              className="stats-profile-edit-button"
-              to={`${profilePath}?editProfile=1`}
-            >
-              編集 <span aria-hidden="true">›</span>
-            </Link>
           </div>
         ) : null}
       </section>

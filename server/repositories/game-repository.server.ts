@@ -41,13 +41,17 @@ export async function listGamesForGroup(
         game.title,
         game.played_at,
         game.status,
-        COALESCE(result_summary.participant_count, 0)::INTEGER
+        COALESCE(participant_summary.participant_count, 0)::INTEGER
           AS participant_count,
         result_summary.winner_name
       FROM games AS game
       LEFT JOIN LATERAL (
+        SELECT COUNT(participant.id)::INTEGER AS participant_count
+        FROM game_participants AS participant
+        WHERE participant.game_id = game.id
+      ) AS participant_summary ON TRUE
+      LEFT JOIN LATERAL (
         SELECT
-          COUNT(game_result.id)::INTEGER AS participant_count,
           MAX(
             CASE WHEN game_result.rank = 1
               THEN player.display_name

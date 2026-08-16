@@ -70,12 +70,15 @@
 .stats-player-intro {
   display: grid;
   gap: 0;
-  padding: clamp(32px, 6vw, 48px) 0 32px;
+  padding: clamp(32px, 6vw, 48px) 0 22px;
 }
 
 .stats-profile-header {
-  display: block;
-  max-width: 46rem;
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
 }
 
 .stats-profile-identity {
@@ -96,12 +99,6 @@
 
 .stats-hand-label {
   color: #a9b9b0;
-}
-
-.stats-profile-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 6px;
 }
 
 .stats-profile-edit-button {
@@ -195,38 +192,38 @@
 }
 
 .stats-sort {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  display: flex;
   max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
   border: 1px solid var(--line);
   border-radius: 11px;
   background: #091711;
   padding: 3px;
+  scroll-padding-inline: 3px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.stats-sort::-webkit-scrollbar {
+  display: none;
 }
 
 .stats-sort a {
-  min-width: 0;
+  min-width: 96px;
+  flex: 0 0 auto;
   border-radius: 8px;
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 800;
   padding: 9px 12px;
+  scroll-snap-align: start;
   text-align: center;
 }
 
 .stats-sort a.is-active {
   background: rgba(57, 222, 141, 0.14);
   color: var(--green);
-}
-
-@media (max-width: 639px) {
-  .stats-sort {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .stats-sort a:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-  }
 }
 
 .stats-ranking-list {
@@ -604,6 +601,7 @@
 
   .stats-player-intro {
     padding-top: 30px;
+    padding-bottom: 18px;
   }
 
   .stats-player-page {
@@ -628,8 +626,8 @@
       "core"
       "detail";
     gap: 24px;
-    margin-top: 8px;
-    padding: 28px 0 30px;
+    margin-top: 0;
+    padding: 26px 0 30px;
   }
 
   .stats-profit-lead > strong {
@@ -1041,7 +1039,7 @@
 }
 
 .stats-ranking-section .stats-sort a {
-  min-width: 0;
+  min-width: 102px;
   min-height: 40px;
   padding: 11px 14px;
 }

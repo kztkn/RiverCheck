@@ -17,6 +17,7 @@ import {
   findParticipantByTokenHash,
   listGameParticipants,
   removeParticipant,
+  updateParticipantInputByGroupPlayerId,
 } from "@server/repositories/participant-repository.server";
 import { readParticipantToken } from "@server/services/participant-session.server";
 import { hashToken } from "@server/services/token.server";
@@ -41,6 +42,10 @@ import { ParticipantLinkQr } from "../components/participant-link-qr";
 import type { GameParticipantSummary } from "@shared-types/player";
 import type { Route } from "./+types/game-admin";
 import { createCommandId } from "~/utils/create-command-id";
+import {
+  getAdminParticipantInputState,
+  summarizeAdminParticipantStates,
+} from "~/utils/admin-participant-state";
 
 type OrganizerRebuyIntent =
   | "record-rebuy"
@@ -51,6 +56,18 @@ type OrganizerRebuyActionData = RebuyServiceResult & {
   intent: OrganizerRebuyIntent;
   participantId: string;
 };
+type OrganizerParticipantInputActionData =
+  | {
+      ok: true;
+      intent: "save-participant-input";
+      participantId: string;
+    }
+  | {
+      ok: false;
+      intent: "save-participant-input";
+      participantId: string;
+      error: string;
+    };
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   await requireOrganizer(request, params.groupCode);
@@ -133,6 +150,43 @@ export async function action({ request, params }: Route.ActionArgs) {
   const participantId = readString(formData, "participantId");
   if (!isUuid(participantId)) {
     throw new Response("Invalid participant", { status: 400 });
+  }
+
+  if (intent === "save-participant-input") {
+    const groupPlayerId = readString(formData, "groupPlayerId");
+    const remainingChips = parseNonNegativeInteger(
+      readString(formData, "remainingChips"),
+    );
+    const settlementRebuyCount = parseNonNegativeInteger(
+      readString(formData, "settlementRebuyCount"),
+    );
+    if (
+      !isUuid(groupPlayerId) ||
+      remainingChips === null ||
+      settlementRebuyCount === null
+    ) {
+      return {
+        ok: false as const,
+        intent,
+        participantId,
+        error: "最終スタックと手元のリバイ証を0以上の整数で入力してください。",
+      };
+    }
+    const updated = await updateParticipantInputByGroupPlayerId(
+      authorized.group.id,
+      params.gameId,
+      groupPlayerId,
+      remainingChips,
+      settlementRebuyCount,
+    );
+    return updated
+      ? { ok: true as const, intent, participantId }
+      : {
+          ok: false as const,
+          intent,
+          participantId,
+          error: "終了入力を保存できませんでした。画面を更新してお試しください。",
+        };
   }
 
   if (intent === "record-rebuy" || intent === "record-repayment") {
@@ -218,6 +272,8 @@ export default function GameAdmin({
   const navigation = useNavigation();
   const removalFetcher = useFetcher<typeof action>();
   const rebuyFetcher = useFetcher<OrganizerRebuyActionData>();
+  const participantInputFetcher =
+    useFetcher<OrganizerParticipantInputActionData>();
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
   const failedAction =
@@ -239,6 +295,12 @@ export default function GameAdmin({
     id: string;
     displayName: string;
   } | null>(null);
+  const [participantActionMenu, setParticipantActionMenu] = useState<{
+    id: string;
+    displayName: string;
+  } | null>(null);
+  const [pendingParticipantInput, setPendingParticipantInput] =
+    useState<GameParticipantSummary | null>(null);
   const [pendingRebuyCorrection, setPendingRebuyCorrection] = useState<(
     GameParticipantSummary & { commandId: string }
   ) | null>(null);
@@ -247,10 +309,13 @@ export default function GameAdmin({
     message: string;
     tone: "success" | "error";
   } | null>(null);
+  const participantActionDialogRef = useRef<HTMLDialogElement>(null);
+  const participantInputDialogRef = useRef<HTMLDialogElement>(null);
   const removalDialogRef = useRef<HTMLDialogElement>(null);
   const rebuyCorrectionDialogRef = useRef<HTMLDialogElement>(null);
   const participantLinkRef = useRef<HTMLInputElement>(null);
   const rebuySubmissionPendingRef = useRef(false);
+  const participantInputSubmissionPendingRef = useRef(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const notice = noticeText(loaderData.notice);
   const visibleParticipants = optimisticallyRemoved
@@ -264,6 +329,21 @@ export default function GameAdmin({
       participant.settlementRebuyCount !== null,
   ).length;
   const incompleteCount = visibleParticipants.length - submittedCount;
+  const participantStateSummary = summarizeAdminParticipantStates(
+    visibleParticipants,
+  );
+  const totalRebuyCount = visibleParticipants.reduce(
+    (total, participant) => total + (participant.totalRebuyCount ?? 0),
+    0,
+  );
+  const totalRepaymentCount = visibleParticipants.reduce(
+    (total, participant) =>
+      total + Math.max(
+        0,
+        (participant.totalRebuyCount ?? 0) - participant.outstandingRebuyCount,
+      ),
+    0,
+  );
   const outstandingRebuyCount = visibleParticipants.reduce(
     (total, participant) => total + participant.outstandingRebuyCount,
     0,
@@ -312,6 +392,29 @@ export default function GameAdmin({
 
   useEffect(() => {
     const data = consumeCompletedFetcherSubmission(
+      participantInputSubmissionPendingRef,
+      participantInputFetcher.state,
+      participantInputFetcher.data,
+    );
+    if (!data) return;
+    setToast({
+      id: Date.now(),
+      message: data.ok ? "終了入力を代理で保存しました。" : data.error,
+      tone: data.ok ? "success" : "error",
+    });
+    if (data.ok) {
+      setPendingParticipantInput(null);
+      void revalidator.revalidate();
+    }
+  }, [
+    participantInputFetcher.data,
+    participantInputFetcher.state,
+    revalidator,
+  ]);
+
+
+  useEffect(() => {
+    const data = consumeCompletedFetcherSubmission(
       rebuySubmissionPendingRef,
       rebuyFetcher.state,
       rebuyFetcher.data,
@@ -350,6 +453,28 @@ export default function GameAdmin({
     const timeoutId = window.setTimeout(() => setLinkCopied(false), 2_000);
     return () => window.clearTimeout(timeoutId);
   }, [linkCopied]);
+
+
+  useEffect(() => {
+    const dialog = participantActionDialogRef.current;
+    if (!dialog) return;
+    if (participantActionMenu && !dialog.open) {
+      dialog.showModal();
+    } else if (!participantActionMenu && dialog.open) {
+      dialog.close();
+    }
+  }, [participantActionMenu]);
+
+
+  useEffect(() => {
+    const dialog = participantInputDialogRef.current;
+    if (!dialog) return;
+    if (pendingParticipantInput && !dialog.open) {
+      dialog.showModal();
+    } else if (!pendingParticipantInput && dialog.open) {
+      dialog.close();
+    }
+  }, [pendingParticipantInput]);
 
 
   useEffect(() => {
@@ -557,103 +682,202 @@ export default function GameAdmin({
               {visibleParticipants.length}人
             </span>
           </div>
+          <div
+            aria-label="参加者の入力状況内訳"
+            className="participant-state-summary"
+          >
+            <span className="is-complete">
+              <small>入力済み</small>
+              <strong>{participantStateSummary.complete}人</strong>
+            </span>
+            <span>
+              <small>未入力</small>
+              <strong>{participantStateSummary.pending}人</strong>
+            </span>
+            <span className={participantStateSummary.warning > 0 ? "has-warning" : undefined}>
+              <small>要確認</small>
+              <strong>{participantStateSummary.warning}人</strong>
+            </span>
+            <span>
+              <small>リバイ累計</small>
+              <strong>{totalRebuyCount}回</strong>
+            </span>
+            <span>
+              <small>100BB返済</small>
+              <strong>{totalRepaymentCount}回</strong>
+            </span>
+          </div>
           {visibleParticipants.length === 0 ? (
             <div className="mini-empty">
               <p>まだ参加者はいません。参加者用リンクを共有してください。</p>
             </div>
           ) : (
             <div className="participant-admin-list">
-              {visibleParticipants.map((participant) => (
-                <article className="participant-admin-row" key={participant.id}>
-                  <div className="participant-admin-main">
-                    <div>
-                      <strong>{participant.displayName}</strong>
-                      <span>
-                        累計 {formatTotalRebuyCount(participant.totalRebuyCount)} ・
-                        未返済 {participant.outstandingRebuyCount}口
-                      </span>
-                      {participant.remainingChips === null ? (
-                        <small>結果未入力</small>
-                      ) : (
-                        <small>
-                          残り {participant.remainingChips.toLocaleString("ja-JP")} ・
-                          リバイ証 {participant.settlementRebuyCount ?? 0}枚
-                          {participant.outstandingRebuyCount ===
-                          participant.settlementRebuyCount
-                            ? " ✓"
-                            : " ⚠"}
-                        </small>
-                      )}
-                    </div>
-                    <button
-                      aria-label={`${participant.displayName}の参加を取り消す`}
-                      className="participant-remove-button"
-                      disabled={removalFetcher.state !== "idle"}
-                      onClick={() =>
-                        setPendingRemoval({
-                          id: participant.id,
-                          displayName: participant.displayName,
-                        })
-                      }
-                      title="参加を取り消す"
-                      type="button"
+              {visibleParticipants.map((participant) => {
+                const inputState = getAdminParticipantInputState(participant);
+                const repaymentCount = Math.max(
+                  0,
+                  (participant.totalRebuyCount ?? 0) -
+                    participant.outstandingRebuyCount,
+                );
+                const isParticipantActionPending =
+                  rebuyFetcher.state !== "idle" &&
+                  rebuyFetcher.formData?.get("participantId") === participant.id;
+                const pendingIntent = isParticipantActionPending
+                  ? rebuyFetcher.formData?.get("intent")
+                  : null;
+                const stateLabel = inputState === "complete"
+                  ? "入力済み"
+                  : inputState === "warning"
+                    ? "要確認"
+                    : "未入力";
+                const operationsId = "participant-operations-" + participant.id;
+
+                return (
+                  <details
+                    className={"participant-admin-row is-input-" + inputState}
+                    key={participant.id}
+                    name="admin-participant"
+                    onToggle={(event) => {
+                      const currentCard = event.currentTarget;
+                      if (!currentCard.open) return;
+                      currentCard.parentElement
+                        ?.querySelectorAll<HTMLDetailsElement>(
+                          "details.participant-admin-row[open]",
+                        )
+                        .forEach((card) => {
+                          if (card !== currentCard) card.removeAttribute("open");
+                        });
+                    }}
+                  >
+                    <summary
+                      aria-controls={operationsId}
+                      className="participant-admin-toggle"
                     >
-                      <span aria-hidden="true">×</span>
-                    </button>
-                  </div>
-                  <details className="admin-rebuy-controls">
-                    <summary>代理入力・リバイ記録の修正</summary>
-                    <div className="admin-rebuy-actions">
-                      {participant.status !== "locked" ? (
-                        <>
-                          <button
-                            className="button button-primary button-small"
-                            disabled={rebuyFetcher.state !== "idle"}
-                            onClick={() =>
-                              submitRebuyAction(participant.id, "record-rebuy")
-                            }
-                            type="button"
-                          >
-                            ＋ リバイ
-                          </button>
-                          <button
-                            className="button button-secondary button-small"
-                            disabled={
-                              rebuyFetcher.state !== "idle" ||
-                              participant.outstandingRebuyCount === 0
-                            }
-                            onClick={() =>
-                              submitRebuyAction(
-                                participant.id,
-                                "record-repayment",
-                              )
-                            }
-                            type="button"
-                          >
-                            100BB返済
-                          </button>
-                        </>
-                      ) : null}
-                      <button
-                        className="button button-secondary button-small"
-                        disabled={rebuyFetcher.state !== "idle"}
-                        onClick={() =>
-                          setPendingRebuyCorrection({
-                            ...participant,
-                            commandId: createCommandId(),
-                          })
-                        }
-                        type="button"
-                      >
-                        記録を修正
-                      </button>
+                      <div className="participant-admin-overview">
+                        <div className="participant-admin-primary">
+                          <div className="participant-admin-title">
+                            <strong>{participant.displayName}</strong>
+                            <span className="participant-input-status">
+                              {stateLabel}
+                            </span>
+                          </div>
+                          <div className="participant-admin-facts">
+                            <span>
+                              リバイ {formatTotalRebuyCount(participant.totalRebuyCount)}
+                            </span>
+                            <span>100BB返済 {repaymentCount}回</span>
+                            <span>未返済 {participant.outstandingRebuyCount}口</span>
+                          </div>
+                        </div>
+                        <div className="participant-admin-final">
+                          <span>最終入力</span>
+                          {participant.remainingChips === null ? (
+                            <>
+                              <strong>未入力</strong>
+                              <small>最終結果の入力待ち</small>
+                            </>
+                          ) : (
+                            <>
+                              <strong>
+                                最終スタック {participant.remainingChips.toLocaleString("ja-JP")}
+                              </strong>
+                              <small>
+                                リバイ証 {participant.settlementRebuyCount ?? 0}枚
+                              </small>
+                            </>
+                          )}
+                          {inputState === "warning" ? (
+                            <small className="participant-admin-warning">
+                              リバイ記録を確認してください
+                            </small>
+                          ) : null}
+                        </div>
+                        <span
+                          aria-hidden="true"
+                          className="participant-admin-chevron"
+                        >
+                          ›
+                        </span>
+                      </div>
+                    </summary>
+
+                    <div
+                      className="admin-participant-operations"
+                      id={operationsId}
+                    >
+                      <p className="admin-participant-operations-heading">
+                        リバイ・返済を代理入力
+                      </p>
+                      <div className="participant-admin-actions">
+                        {participant.status !== "locked" ? (
+                          <>
+                            <button
+                              className="button button-primary button-small"
+                              disabled={rebuyFetcher.state !== "idle"}
+                              onClick={() =>
+                                submitRebuyAction(participant.id, "record-rebuy")
+                              }
+                              type="button"
+                            >
+                              {pendingIntent === "record-rebuy"
+                                ? "記録中…"
+                                : "＋ リバイ"}
+                            </button>
+                            <button
+                              className="button button-secondary button-small"
+                              disabled={
+                                rebuyFetcher.state !== "idle" ||
+                                participant.outstandingRebuyCount === 0
+                              }
+                              onClick={() =>
+                                submitRebuyAction(
+                                  participant.id,
+                                  "record-repayment",
+                                )
+                              }
+                              type="button"
+                            >
+                              {pendingIntent === "record-repayment"
+                                ? "記録中…"
+                                : "100BB返済"}
+                            </button>
+                          </>
+                        ) : null}
+                        <button
+                          className="button button-secondary button-small"
+                          disabled={rebuyFetcher.state !== "idle"}
+                          onClick={() =>
+                            setPendingRebuyCorrection({
+                              ...participant,
+                              commandId: createCommandId(),
+                            })
+                          }
+                          type="button"
+                        >
+                          記録を修正
+                        </button>
+                        <button
+                          aria-label={participant.displayName + "のその他の操作"}
+                          className="participant-more-button"
+                          onClick={() =>
+                            setParticipantActionMenu({
+                              id: participant.id,
+                              displayName: participant.displayName,
+                            })
+                          }
+                          type="button"
+                        >
+                          <span aria-hidden="true">…</span>
+                        </button>
+                      </div>
                       {rebuyFetcher.data?.ok &&
                       rebuyFetcher.data.participantId === participant.id &&
                       (rebuyFetcher.data.intent === "record-rebuy" ||
                         rebuyFetcher.data.intent === "record-repayment") &&
                       rebuyFetcher.data.eventId ? (
                         <button
-                          className="text-button"
+                          className="text-button participant-admin-undo"
                           disabled={rebuyFetcher.state !== "idle"}
                           onClick={undoRebuy}
                           type="button"
@@ -663,8 +887,8 @@ export default function GameAdmin({
                       ) : null}
                     </div>
                   </details>
-                </article>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
@@ -690,6 +914,176 @@ export default function GameAdmin({
             settlementParticipantCount={settlementParticipantCount}
           />
         </Form>
+        <dialog
+          aria-labelledby="participant-action-title"
+          className="participant-action-dialog"
+          onCancel={() => setParticipantActionMenu(null)}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setParticipantActionMenu(null);
+            }
+          }}
+          onClose={() => setParticipantActionMenu(null)}
+          ref={participantActionDialogRef}
+        >
+          <div className="participant-action-sheet">
+            <div className="participant-action-heading">
+              <div>
+                <p className="eyebrow">PLAYER ACTIONS</p>
+                <h2 id="participant-action-title">
+                  {participantActionMenu?.displayName} の操作
+                </h2>
+              </div>
+              <button
+                aria-label="操作メニューを閉じる"
+                className="participant-action-close"
+                onClick={() => setParticipantActionMenu(null)}
+                type="button"
+              >
+                ×
+              </button>
+            </div>
+            <button
+              className="participant-action-option"
+              onClick={() => {
+                const participant = visibleParticipants.find(
+                  (item) => item.id === participantActionMenu?.id,
+                );
+                setParticipantActionMenu(null);
+                if (participant) setPendingParticipantInput(participant);
+              }}
+              type="button"
+            >
+              <strong>終了入力を代理で入力</strong>
+              <small>最終スタックと手元のリバイ証を記録します</small>
+            </button>
+            <button
+              className="participant-action-danger"
+              onClick={() => {
+                const participant = participantActionMenu;
+                setParticipantActionMenu(null);
+                if (participant) setPendingRemoval(participant);
+              }}
+              type="button"
+            >
+              <strong>この参加者の参加を取り消す</strong>
+              <small>チップ入力とリバイ記録も削除されます</small>
+            </button>
+            <button
+              className="button button-secondary participant-action-cancel"
+              onClick={() => setParticipantActionMenu(null)}
+              type="button"
+            >
+              キャンセル
+            </button>
+          </div>
+        </dialog>
+        <dialog
+          aria-labelledby="participant-input-title"
+          className="app-dialog participant-input-modal"
+          onCancel={() => setPendingParticipantInput(null)}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setPendingParticipantInput(null);
+            }
+          }}
+          onClose={() => setPendingParticipantInput(null)}
+          ref={participantInputDialogRef}
+        >
+          <div className="dialog-card participant-input-dialog">
+            <div>
+              <p className="eyebrow">RESULT ENTRY</p>
+              <h2 id="participant-input-title">終了入力を代理で入力</h2>
+              <p>
+                <strong>{pendingParticipantInput?.displayName}</strong>
+                さんの終了時点の記録を入力します。
+              </p>
+            </div>
+            <participantInputFetcher.Form
+              className="participant-input-form"
+              key={pendingParticipantInput?.id}
+              method="post"
+              onSubmit={() => {
+                participantInputSubmissionPendingRef.current = true;
+              }}
+            >
+              <input
+                name="intent"
+                type="hidden"
+                value="save-participant-input"
+              />
+              <input
+                name="participantId"
+                type="hidden"
+                value={pendingParticipantInput?.id ?? ""}
+              />
+              <input
+                name="groupPlayerId"
+                type="hidden"
+                value={pendingParticipantInput?.groupPlayerId ?? ""}
+              />
+              <label className="field">
+                <span className="field-label">最終スタック</span>
+                <input
+                  defaultValue={
+                    pendingParticipantInput?.remainingChips ??
+                    loaderData.game.initialChips
+                  }
+                  inputMode="numeric"
+                  min={0}
+                  name="remainingChips"
+                  placeholder="0"
+                  required
+                  type="number"
+                />
+              </label>
+              <label className="field">
+                <span className="field-label">手元のリバイ証</span>
+                <input
+                  defaultValue={
+                    pendingParticipantInput?.settlementRebuyCount ??
+                    pendingParticipantInput?.outstandingRebuyCount ??
+                    0
+                  }
+                  inputMode="numeric"
+                  min={0}
+                  name="settlementRebuyCount"
+                  placeholder="0"
+                  required
+                  type="number"
+                />
+                <span className="field-hint">
+                  未入力の場合は現在の未返済口数を初期値にしています。
+                </span>
+              </label>
+              {participantInputFetcher.data?.ok === false &&
+              participantInputFetcher.data.participantId ===
+                pendingParticipantInput?.id ? (
+                <p className="field-error">
+                  {participantInputFetcher.data.error}
+                </p>
+              ) : null}
+              <div className="dialog-actions">
+                <button
+                  className="button button-secondary"
+                  onClick={() => setPendingParticipantInput(null)}
+                  type="button"
+                >
+                  キャンセル
+                </button>
+                <button
+                  className="button button-primary"
+                  disabled={participantInputFetcher.state !== "idle"}
+                  type="submit"
+                >
+                  {participantInputFetcher.state === "submitting"
+                    ? "保存中…"
+                    : "代理入力を保存"}
+                </button>
+              </div>
+            </participantInputFetcher.Form>
+          </div>
+        </dialog>
         <dialog
           aria-labelledby="removal-dialog-title"
           className="app-dialog"
