@@ -1,6 +1,7 @@
 import { redirect, useNavigation } from "react-router";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { PayPayLinkEditor } from "~/components/paypay-link-editor";
+import { AppToast } from "~/components/app-toast";
 import { getGroupSettings } from "@server/services/group-service.server";
 import { saveGroupPayPayRecipientLink } from "@server/services/group-paypay-service.server";
 import { requireOrganizer } from "@server/services/organizer-auth.server";
@@ -59,7 +60,7 @@ export default function GroupSettings({
         organizer
       />
 
-      <section className="form-intro">
+      <section className="form-intro settings-intro">
         <p className="eyebrow">GROUP SETTINGS</p>
         <h1>グループ設定</h1>
         <p>
@@ -67,11 +68,10 @@ export default function GroupSettings({
         </p>
       </section>
 
-      {loaderData.notice === "paypay-saved" ? (
-        <p className="success-notice" role="status">
-          PayPay受取リンクを保存しました。
-        </p>
-      ) : null}
+      <AppToast
+        message={loaderData.notice === "paypay-saved" ? "PayPay受取リンクを保存しました。" : null}
+        searchParam="notice"
+      />
 
       <PayPayLinkEditor
         actionUrl={settingsUrl}

@@ -207,7 +207,7 @@ export default function GameEdit({
       <GroupSiteHeader groupCode={loaderData.group.publicCode} organizer />
 
       <section className="form-intro edit-game-intro">
-        <p className="eyebrow">EDIT GAME</p>
+        <p className="form-brand-label">EDIT GAME</p>
         <h1>{loaderData.game.title}</h1>
         <p>確定状態を保ったまま、開催情報と結果を修正できます。</p>
       </section>

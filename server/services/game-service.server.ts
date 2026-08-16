@@ -11,6 +11,8 @@ import {
   MINIMUM_PARTICIPANT_COUNT,
 } from "@domain/cost-sharing/calculate-cost-shares";
 
+import { validateCostSharePlan } from "@domain/cost-sharing/validate-cost-share-plan";
+
 const JST_OFFSET_MILLISECONDS = 9 * 60 * 60 * 1_000;
 const LOCAL_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -23,6 +25,7 @@ export interface GameSettingsFormValues {
   secondPlaceCost: string;
   thirdPlaceCost: string;
   previewParticipantCount: string;
+  costShares: string[];
 }
 
 export interface GameIdentityFormValues {
@@ -74,6 +77,7 @@ export function readGameSettingsForm(
     secondPlaceCost: readString(formData, "secondPlaceCost"),
     thirdPlaceCost: readString(formData, "thirdPlaceCost"),
     previewParticipantCount: readString(formData, "previewParticipantCount"),
+    costShares: readStrings(formData, "costShare"),
   };
 }
 
@@ -157,46 +161,11 @@ export function validateGameSettingsForm(
     "venueCost",
     errors,
   );
-  const firstPlaceCost = parseNonNegativeInteger(
-    values.firstPlaceCost,
-    "firstPlaceCost",
-    errors,
-  );
-  const secondPlaceCost = parseNonNegativeInteger(
-    values.secondPlaceCost,
-    "secondPlaceCost",
-    errors,
-  );
-  const thirdPlaceCost = parseNonNegativeInteger(
-    values.thirdPlaceCost,
-    "thirdPlaceCost",
-    errors,
-  );
   const previewParticipantCount = parsePositiveInteger(
     values.previewParticipantCount,
     "previewParticipantCount",
     errors,
   );
-
-  validateRoundedCost(firstPlaceCost, "firstPlaceCost", errors);
-  validateRoundedCost(secondPlaceCost, "secondPlaceCost", errors);
-  validateRoundedCost(thirdPlaceCost, "thirdPlaceCost", errors);
-
-  if (
-    firstPlaceCost !== null &&
-    secondPlaceCost !== null &&
-    firstPlaceCost > secondPlaceCost
-  ) {
-    errors.secondPlaceCost = "2位は1位以上の負担額にしてください。";
-  }
-  if (
-    secondPlaceCost !== null &&
-    thirdPlaceCost !== null &&
-    secondPlaceCost > thirdPlaceCost
-  ) {
-    errors.thirdPlaceCost = "3位は2位以上の負担額にしてください。";
-  }
-
   if (
     previewParticipantCount !== null &&
     previewParticipantCount < minimumParticipantCount
@@ -207,38 +176,94 @@ export function validateGameSettingsForm(
         : `現在の参加人数（${minimumParticipantCount}人）以上で試算してください。`;
   }
 
-  if (
-    venueCost !== null &&
-    firstPlaceCost !== null &&
-    secondPlaceCost !== null &&
-    thirdPlaceCost !== null &&
-    previewParticipantCount !== null &&
-    !errors.firstPlaceCost &&
-    !errors.secondPlaceCost &&
-    !errors.thirdPlaceCost &&
-    !errors.previewParticipantCount
-  ) {
-    try {
-      calculateCostShares({
+  let firstPlaceCost: number | null = null;
+  let secondPlaceCost: number | null = null;
+  let thirdPlaceCost: number | null = null;
+  let costShares: number[] | null = null;
+
+  if (values.costShares.length > 0) {
+    const parsedShares = parseCostShares(values.costShares, errors);
+    if (
+      parsedShares &&
+      venueCost !== null &&
+      previewParticipantCount !== null &&
+      !errors.previewParticipantCount
+    ) {
+      const planError = getCostSharePlanError(
         venueCost,
-        participantCount: previewParticipantCount,
-        firstPlaceCost,
-        secondPlaceCost,
-        thirdPlaceCost,
-      });
-    } catch {
-      const settlementTotal =
-        Math.ceil(venueCost / COST_ROUNDING_UNIT) * COST_ROUNDING_UNIT;
-      if (!Number.isSafeInteger(settlementTotal)) {
-        errors.venueCost = "会費が大きすぎます。";
+        previewParticipantCount,
+        parsedShares,
+      );
+      if (planError) {
+        errors.costShares = planError;
       } else {
+        costShares = parsedShares;
+        firstPlaceCost = parsedShares[0] ?? null;
+        secondPlaceCost = parsedShares[1] ?? null;
+        thirdPlaceCost = parsedShares[2] ?? null;
+      }
+    }
+  } else {
+    firstPlaceCost = parseNonNegativeInteger(
+      values.firstPlaceCost,
+      "firstPlaceCost",
+      errors,
+    );
+    secondPlaceCost = parseNonNegativeInteger(
+      values.secondPlaceCost,
+      "secondPlaceCost",
+      errors,
+    );
+    thirdPlaceCost = parseNonNegativeInteger(
+      values.thirdPlaceCost,
+      "thirdPlaceCost",
+      errors,
+    );
+    validateRoundedCost(firstPlaceCost, "firstPlaceCost", errors);
+    validateRoundedCost(secondPlaceCost, "secondPlaceCost", errors);
+    validateRoundedCost(thirdPlaceCost, "thirdPlaceCost", errors);
+
+    if (
+      firstPlaceCost !== null &&
+      secondPlaceCost !== null &&
+      firstPlaceCost > secondPlaceCost
+    ) {
+      errors.secondPlaceCost = "2位は1位以上の負担額にしてください。";
+    }
+    if (
+      secondPlaceCost !== null &&
+      thirdPlaceCost !== null &&
+      secondPlaceCost > thirdPlaceCost
+    ) {
+      errors.thirdPlaceCost = "3位は2位以上の負担額にしてください。";
+    }
+    if (
+      venueCost !== null &&
+      firstPlaceCost !== null &&
+      secondPlaceCost !== null &&
+      thirdPlaceCost !== null &&
+      previewParticipantCount !== null &&
+      !errors.firstPlaceCost &&
+      !errors.secondPlaceCost &&
+      !errors.thirdPlaceCost &&
+      !errors.previewParticipantCount
+    ) {
+      try {
+        costShares = calculateCostShares({
+          venueCost,
+          participantCount: previewParticipantCount,
+          firstPlaceCost,
+          secondPlaceCost,
+          thirdPlaceCost,
+        }).shares;
+      } catch {
         errors.venueCost =
           "この人数では精算総額が不足します。会費か上位の負担額を調整してください。";
       }
     }
   }
 
-  if (Object.keys(errors).length > 0 || !playedAt) {
+  if (Object.keys(errors).length > 0 || !playedAt || !costShares) {
     return { ok: false, errors };
   }
 
@@ -254,6 +279,7 @@ export function validateGameSettingsForm(
       firstPlaceCost: firstPlaceCost!,
       secondPlaceCost: secondPlaceCost!,
       thirdPlaceCost: thirdPlaceCost!,
+      costShares,
     },
   };
 }
@@ -261,6 +287,12 @@ export function validateGameSettingsForm(
 function readString(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
+}
+
+function readStrings(formData: FormData, name: string): string[] {
+  return formData
+    .getAll(name)
+    .filter((value): value is string => typeof value === "string");
 }
 
 function parseNonNegativeInteger(
@@ -303,6 +335,67 @@ function validateRoundedCost(
 ): void {
   if (value !== null && value % COST_ROUNDING_UNIT !== 0) {
     errors[field] = "100円単位で入力してください。";
+  }
+}
+
+function parseCostShares(
+  values: string[],
+  errors: GameSettingsFormErrors,
+): number[] | null {
+  const parsed = values.map((value) => {
+    const normalized = value.trim();
+    if (!/^\d+$/.test(normalized)) return null;
+    const amount = Number(normalized);
+    return Number.isSafeInteger(amount) ? amount : null;
+  });
+  if (parsed.some((value) => value === null)) {
+    errors.costShares = "各順位の負担額を0以上の整数で入力してください。";
+    return null;
+  }
+  return parsed as number[];
+}
+
+function getCostSharePlanError(
+  venueCost: number,
+  participantCount: number,
+  shares: number[],
+): string | null {
+  if (shares.length !== participantCount) {
+    return `負担額は${participantCount}人分入力してください。`;
+  }
+  const unroundedIndex = shares.findIndex(
+    (share) => share % COST_ROUNDING_UNIT !== 0,
+  );
+  if (unroundedIndex >= 0) {
+    return `${unroundedIndex + 1}位の負担額を100円単位で入力してください。`;
+  }
+  const reversedIndex = shares.findIndex(
+    (share, index) => index > 0 && share < shares[index - 1]!,
+  );
+  if (reversedIndex >= 0) {
+    return `${reversedIndex + 1}位は${reversedIndex}位以上の負担額にしてください。`;
+  }
+  const settlementTotal =
+    Math.ceil(venueCost / COST_ROUNDING_UNIT) * COST_ROUNDING_UNIT;
+  const allocatedTotal = shares.reduce((total, share) => total + share, 0);
+  if (
+    !Number.isSafeInteger(settlementTotal) ||
+    !Number.isSafeInteger(allocatedTotal)
+  ) {
+    return "会費または負担額が大きすぎます。";
+  }
+  const difference = settlementTotal - allocatedTotal;
+  if (difference > 0) {
+    return `負担額合計が精算総額より${difference.toLocaleString("ja-JP")}円不足しています。`;
+  }
+  if (difference < 0) {
+    return `負担額合計が精算総額より${Math.abs(difference).toLocaleString("ja-JP")}円多いです。`;
+  }
+  try {
+    validateCostSharePlan({ venueCost, participantCount, shares });
+    return null;
+  } catch {
+    return "順位別の負担額を確認してください。";
   }
 }
 

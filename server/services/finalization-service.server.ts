@@ -149,6 +149,7 @@ export async function finalizeGame(
           firstPlaceCost: settings.firstPlaceCost,
           secondPlaceCost: settings.secondPlaceCost,
           thirdPlaceCost: settings.thirdPlaceCost,
+          costShares: settings.costShares,
         },
         completeParticipants,
       );

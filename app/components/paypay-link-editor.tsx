@@ -29,8 +29,8 @@ export function PayPayLinkEditor({
     : null;
 
   return (
-    <section className="result-correction-panel paypay-link-editor">
-      <div className="section-heading">
+    <section className="paypay-link-editor">
+      <div className="paypay-link-heading">
         <div>
           <p className="eyebrow">PAYPAY</p>
           <h2>受取リンク</h2>
@@ -41,13 +41,13 @@ export function PayPayLinkEditor({
           </span>
         ) : null}
       </div>
-      <p className="correction-intro">
+      <p className="paypay-link-intro">
         グループ内すべての結果画面で使用します。登録から{PAYPAY_LINK_VALIDITY_DAYS}日間だけ表示されます。
       </p>
 
       <Form
         action={actionUrl}
-        className="correction-form"
+        className="paypay-link-form"
         method="post"
         noValidate
         reloadDocument
@@ -85,14 +85,14 @@ export function PayPayLinkEditor({
           </dl>
         ) : null}
 
-        {error ? <p className="finalize-error" role="alert"><span aria-hidden="true">!</span>{error}</p> : null}
+        {error ? <p className="error-notice" role="alert">{error}</p> : null}
 
-        <div className="correction-actions">
+        <div className="paypay-link-actions">
           <Link className="button button-secondary" reloadDocument to={cancelUrl}>
-            Cancel
+            戻る
           </Link>
           <button className="button button-primary" disabled={isSubmitting} type="submit">
-            {isSubmitting ? "保存中…" : "Save"}
+            {isSubmitting ? "保存中…" : "保存"}
           </button>
         </div>
       </Form>

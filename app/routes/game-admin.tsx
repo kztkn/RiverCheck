@@ -35,6 +35,7 @@ import {
   buildFinalizationState,
   finalizeGame,
 } from "@server/services/finalization-service.server";
+import { calculateCostShares } from "@domain/cost-sharing/calculate-cost-shares";
 import { GameSettingsFields } from "../components/game-settings-fields";
 import { ParticipantLinkQr } from "../components/participant-link-qr";
 import type { GameParticipantSummary } from "@shared-types/player";
@@ -257,10 +258,37 @@ export default function GameAdmin({
       (participant) => participant.id !== optimisticallyRemoved.id,
     )
     : loaderData.participants;
+  const submittedCount = visibleParticipants.filter(
+    (participant) =>
+      participant.remainingChips !== null &&
+      participant.settlementRebuyCount !== null,
+  ).length;
+  const incompleteCount = visibleParticipants.length - submittedCount;
+  const outstandingRebuyCount = visibleParticipants.reduce(
+    (total, participant) => total + participant.outstandingRebuyCount,
+    0,
+  );
+  const chipDifference =
+    loaderData.finalization.chipValidation?.difference ?? null;
+
+
+
+  useEffect(() => {
+    if (!notice) return;
+    setToast({ id: Date.now(), message: notice, tone: "success" });
+    const url = new URL(window.location.href);
+    url.searchParams.delete("notice");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  }, [notice]);
 
   useEffect(() => {
     setSettlementParticipantCount(values.previewParticipantCount);
   }, [values.previewParticipantCount]);
+
 
   useEffect(() => {
     if (
@@ -280,6 +308,7 @@ export default function GameAdmin({
       return null;
     });
   }, [removalFetcher.data, removalFetcher.state]);
+
 
   useEffect(() => {
     const data = consumeCompletedFetcherSubmission(
@@ -308,17 +337,20 @@ export default function GameAdmin({
     }
   }, [rebuyFetcher.data, rebuyFetcher.state, revalidator]);
 
+
   useEffect(() => {
     if (!toast) return;
     const timeoutId = window.setTimeout(() => setToast(null), 3_000);
     return () => window.clearTimeout(timeoutId);
   }, [toast]);
 
+
   useEffect(() => {
     if (!linkCopied) return;
     const timeoutId = window.setTimeout(() => setLinkCopied(false), 2_000);
     return () => window.clearTimeout(timeoutId);
   }, [linkCopied]);
+
 
   useEffect(() => {
     const dialog = removalDialogRef.current;
@@ -330,6 +362,7 @@ export default function GameAdmin({
     }
   }, [pendingRemoval]);
 
+
   useEffect(() => {
     const dialog = rebuyCorrectionDialogRef.current;
     if (!dialog) return;
@@ -339,6 +372,7 @@ export default function GameAdmin({
       dialog.close();
     }
   }, [pendingRebuyCorrection]);
+
 
   useEffect(() => {
     if (loaderData.game.status === "finalized") return;
@@ -420,12 +454,53 @@ export default function GameAdmin({
         <p>条件・受付・参加者をまとめて管理できます。</p>
       </section>
 
-      {notice ? <p className="success-notice">{notice}</p> : null}
 
       <>
-        <section className="admin-share-panel">
+        <section className="admin-share-panel admin-utility-panel">
           <div>
-            <h2>PARTICIPANT LINK</h2>
+        <section
+          aria-labelledby="admin-command-heading"
+          className="admin-command-summary"
+        >
+          <div className="admin-command-heading">
+            <div>
+              <p className="form-brand-label">LIVE CONTROL</p>
+              <h2 id="admin-command-heading">運営状況</h2>
+            </div>
+            <span className={`status status-${loaderData.game.status}`}>
+              {statusLabel(loaderData.game.status)}
+            </span>
+          </div>
+          <div className="admin-command-stats">
+            <div className={incompleteCount > 0 ? "is-warning" : "is-clear"}>
+              <span>結果入力</span>
+              <strong>{submittedCount} / {visibleParticipants.length}人</strong>
+              <small>
+                {incompleteCount > 0 ? `未入力 ${incompleteCount}人` : "全員入力済み"}
+              </small>
+            </div>
+            <div className={chipDifference === 0 ? "is-clear" : "is-warning"}>
+              <span>チップ差分</span>
+              <strong>
+                {chipDifference === null ? "—" : formatSignedNumber(chipDifference)}
+              </strong>
+              <small>{chipDifference === 0 ? "一致" : "要確認"}</small>
+            </div>
+            <div className={outstandingRebuyCount > 0 ? "is-warning" : "is-clear"}>
+              <span>未返済リバイ</span>
+              <strong>{outstandingRebuyCount}口</strong>
+              <small>
+                {outstandingRebuyCount > 0 ? "返済状況を確認" : "未返済なし"}
+              </small>
+            </div>
+          </div>
+          <nav aria-label="開催管理内の移動" className="admin-command-links">
+            <a href="#admin-participants">参加者を見る</a>
+            <a href="#admin-settlement">精算・確定へ</a>
+          </nav>
+        </section>
+
+            <h2>参加者リンク</h2>
             <p>このリンクを参加者に共有してください。</p>
             {loaderData.currentParticipant ? (
               <p>
@@ -472,10 +547,11 @@ export default function GameAdmin({
           </Link>
         </section>
 
-        <section className="admin-participants">
+        <section className="admin-participants" id="admin-participants">
           <div className="section-heading">
             <div>
-              <h2>PARTICIPANTS</h2>
+              <p className="form-brand-label">PLAYERS</p>
+              <h2>参加者と入力状況</h2>
             </div>
             <span className="count-badge">
               {visibleParticipants.length}人
@@ -593,7 +669,12 @@ export default function GameAdmin({
           )}
         </section>
 
-        <Form className="game-form" method="post" noValidate>
+        <Form
+          className="game-form admin-finalization-form"
+          id="admin-settlement"
+          method="post"
+          noValidate
+        >
           <input name="intent" type="hidden" value="finalize" />
           <GameSettingsFields
             actualParticipantCount={loaderData.participants.length}
@@ -810,6 +891,16 @@ function gameToFormValues(game: Route.ComponentProps["loaderData"]["game"]) {
     secondPlaceCost: String(game.secondPlaceCost),
     thirdPlaceCost: String(game.thirdPlaceCost),
     previewParticipantCount: String(game.previewParticipantCount),
+    costShares: (
+      game.costShares ??
+      calculateCostShares({
+        venueCost: game.venueCost,
+        participantCount: game.previewParticipantCount,
+        firstPlaceCost: game.firstPlaceCost,
+        secondPlaceCost: game.secondPlaceCost,
+        thirdPlaceCost: game.thirdPlaceCost,
+      }).shares
+    ).map(String),
   };
 }
 
@@ -827,6 +918,9 @@ function readAdminCostSettingsForm(
       formData,
       "previewParticipantCount",
     ),
+    costShares: formData
+      .getAll("costShare")
+      .filter((value): value is string => typeof value === "string"),
   };
 }
 
@@ -877,6 +971,7 @@ function FinalizationPanel({
   const [rebuyMismatchConfirmed, setRebuyMismatchConfirmed] = useState(false);
   const currentDifference = finalization.chipValidation?.difference ?? null;
 
+
   useEffect(() => {
     setDifferenceConfirmed(false);
     setRebuyMismatchConfirmed(false);
@@ -898,10 +993,10 @@ function FinalizationPanel({
     : "未入力";
 
   return (
-    <section className="settlement-panel">
+    <section className="settlement-panel admin-finalize-panel">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">CHIP CHECK</p>
+          <p className="form-brand-label">FINAL CHECK</p>
           <h2 className="finalization-title">
             <span>チップ検算と結果確定</span>
           </h2>

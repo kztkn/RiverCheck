@@ -1,5 +1,6 @@
 import { validateChipTotal } from "../chip-validation/validate-chip-total";
 import { calculateCostShares } from "../cost-sharing/calculate-cost-shares";
+import { validateCostSharePlan } from "../cost-sharing/validate-cost-share-plan";
 import { calculateRanking } from "../ranking/calculate-ranking";
 import { calculateScore } from "../score/calculate-score";
 
@@ -19,6 +20,7 @@ export interface FinalizationSettings {
   firstPlaceCost: number;
   secondPlaceCost: number;
   thirdPlaceCost: number;
+  costShares?: number[] | null;
 }
 
 export function calculateFinalResults(
@@ -33,13 +35,19 @@ export function calculateFinalResults(
       settlementRebuyCount,
     })),
   });
-  const costShares = calculateCostShares({
-    venueCost: settings.venueCost,
-    participantCount: participants.length,
-    firstPlaceCost: settings.firstPlaceCost,
-    secondPlaceCost: settings.secondPlaceCost,
-    thirdPlaceCost: settings.thirdPlaceCost,
-  });
+  const costShares = settings.costShares
+    ? validateCostSharePlan({
+        venueCost: settings.venueCost,
+        participantCount: participants.length,
+        shares: settings.costShares,
+      })
+    : calculateCostShares({
+        venueCost: settings.venueCost,
+        participantCount: participants.length,
+        firstPlaceCost: settings.firstPlaceCost,
+        secondPlaceCost: settings.secondPlaceCost,
+        thirdPlaceCost: settings.thirdPlaceCost,
+      });
   const participantById = new Map(
     participants.map((participant) => [participant.groupPlayerId, participant]),
   );

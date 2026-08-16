@@ -103,7 +103,7 @@ export function ResultCorrectionPanel({
     <section className="result-correction-panel">
       <div className="section-heading">
         <div>
-          <h2>PLAYER RESULTS</h2>
+          <h2>参加者の結果</h2>
         </div>
       </div>
       <p className="correction-intro">
@@ -203,7 +203,7 @@ export function ResultCorrectionPanel({
         <div className="correction-preview">
           <div className="section-heading">
             <div>
-              <h3>RESULT PREVIEW</h3>
+              <h3>訂正後のプレビュー</h3>
             </div>
             <span className="count-badge">{results.length}人</span>
           </div>
@@ -265,14 +265,14 @@ export function ResultCorrectionPanel({
 
         <div className="correction-actions">
           <Link className="button button-secondary" to={cancelUrl}>
-            Cancel
+            キャンセル
           </Link>
           <button
             className="button button-primary"
             disabled={!canSubmit}
             type="submit"
           >
-            {isSubmitting ? "保存中…" : "Save"}
+            {isSubmitting ? "保存中…" : "結果を訂正"}
           </button>
         </div>
       </Form>

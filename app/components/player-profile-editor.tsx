@@ -3,7 +3,7 @@ import { Form, Link, useSubmit } from "react-router";
 import { PlayerAvatar } from "./player-avatar";
 import { FavoriteHandPicker } from "./favorite-hand-picker";
 import { compressPlayerAvatar } from "~/utils/compress-player-avatar";
-import { IconCheck, IconEyeOff } from "@tabler/icons-react";
+import { IconCheck, IconEyeOff, IconX } from "@tabler/icons-react";
 import { AchievementIcon } from "./achievement-icon";
 import type { AchievementSummary } from "@shared-types/achievement";
 import {
@@ -47,6 +47,7 @@ export function PlayerProfileEditor({
   const [removeAvatar, setRemoveAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isAchievementPickerOpen, setAchievementPickerOpen] = useState(false);
   const [favoriteCard1, setFavoriteCard1] = useState(
     values?.favoriteCard1 ?? profile.favoriteCard1 ?? "",
   );
@@ -66,6 +67,20 @@ export function PlayerProfileEditor({
     setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [selectedAvatar]);
+
+  useEffect(() => {
+    if (!isAchievementPickerOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAchievementPickerOpen(false);
+    };
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isAchievementPickerOpen]);
 
   async function handleAvatar(file: File | undefined) {
     if (!file) return;
@@ -101,6 +116,7 @@ export function PlayerProfileEditor({
       ? null
       : avatarUrl;
   const displayName = profile.displayName;
+  const selectedAchievement = achievements.find((achievement) => achievement.id === equippedAchievementId) ?? null;
 
   return (
     <Form
@@ -219,52 +235,127 @@ export function PlayerProfileEditor({
       <section className="achievement-selector" aria-labelledby="achievement-selector-heading">
         <div className="achievement-selector-heading">
           <div>
-            <h2 id="achievement-selector-heading">表示する実績</h2>
-            <p>獲得済みから1つだけ、プロフィールの称号として表示できます。</p>
+            <h2 id="achievement-selector-heading">表示する称号</h2>
+            <p>獲得済みから1つだけ、プロフィールの署名として表示できます。</p>
           </div>
         </div>
-        <div className="achievement-selector-list" role="radiogroup" aria-label="表示する実績">
-          <button
-            aria-checked={equippedAchievementId === ""}
-            className={`achievement-option${equippedAchievementId === "" ? " is-selected" : ""}`}
-            disabled={isSubmitting || isProcessing}
-            onClick={() => setEquippedAchievementId("")}
-            role="radio"
-            type="button"
-          >
+
+        {selectedAchievement ? (
+          <div className="achievement-current">
+            <span className="achievement-option-icon">
+              <AchievementIcon iconKey={selectedAchievement.iconKey} />
+            </span>
+            <span className="achievement-option-copy">
+              <small>現在の称号</small>
+              <strong>{selectedAchievement.name}</strong>
+            </span>
+            <button
+              className="achievement-change-button"
+              disabled={isSubmitting || isProcessing}
+              onClick={() => setAchievementPickerOpen(true)}
+              type="button"
+            >
+              変更
+            </button>
+          </div>
+        ) : (
+          <div className="achievement-current is-empty">
             <span className="achievement-option-icon"><IconEyeOff aria-hidden="true" /></span>
             <span className="achievement-option-copy">
+              <small>現在の称号</small>
               <strong>表示しない</strong>
-              <small>称号を外す</small>
             </span>
-            {equippedAchievementId === "" ? <IconCheck className="achievement-option-check" aria-hidden="true" /> : null}
-          </button>
-          {achievements.map((achievement) => {
-            const selected = equippedAchievementId === achievement.id;
-            return (
-              <button
-                aria-checked={selected}
-                className={`achievement-option${selected ? " is-selected" : ""}`}
-                disabled={isSubmitting || isProcessing}
-                key={achievement.id}
-                onClick={() => setEquippedAchievementId(achievement.id)}
-                role="radio"
-                type="button"
-              >
-                <span className="achievement-option-icon">
-                  <AchievementIcon iconKey={achievement.iconKey} />
-                </span>
-                <span className="achievement-option-copy">
-                  <strong>{achievement.name}</strong>
-                  <small>{achievement.description}</small>
-                </span>
-                {selected ? <IconCheck className="achievement-option-check" aria-hidden="true" /> : null}
-              </button>
-            );
-          })}
-        </div>
+            <button
+              className="achievement-change-button"
+              disabled={achievements.length === 0 || isSubmitting || isProcessing}
+              onClick={() => setAchievementPickerOpen(true)}
+              type="button"
+            >
+              変更
+            </button>
+          </div>
+        )}
+
         {achievements.length === 0 ? (
-          <p className="achievement-selector-empty">開催結果が確定すると、獲得した実績を選べます。</p>
+          <p className="achievement-selector-empty">開催結果が確定すると、獲得した称号を選べます。</p>
+        ) : null}
+
+        {isAchievementPickerOpen ? (
+          <div className="achievement-picker-modal">
+            <button
+              aria-label="称号選択を閉じる"
+              className="achievement-picker-backdrop"
+              onClick={() => setAchievementPickerOpen(false)}
+              type="button"
+            />
+            <section
+              aria-labelledby="achievement-picker-heading"
+              aria-modal="true"
+              className="achievement-picker-sheet"
+              role="dialog"
+            >
+              <header className="achievement-picker-header">
+                <div>
+                  <p className="eyebrow">TITLE SELECT</p>
+                  <h2 id="achievement-picker-heading">表示する称号</h2>
+                </div>
+                <button
+                  aria-label="称号選択を閉じる"
+                  className="achievement-picker-close"
+                  onClick={() => setAchievementPickerOpen(false)}
+                  type="button"
+                >
+                  <IconX aria-hidden="true" />
+                </button>
+              </header>
+              <div className="achievement-selector-list" role="radiogroup" aria-label="表示する称号">
+                <button
+                  aria-checked={equippedAchievementId === ""}
+                  className={`achievement-option${equippedAchievementId === "" ? " is-selected" : ""}`}
+                  disabled={isSubmitting || isProcessing}
+                  onClick={() => {
+                    setEquippedAchievementId("");
+                    setAchievementPickerOpen(false);
+                  }}
+                  role="radio"
+                  type="button"
+                >
+                  <span className="achievement-option-icon"><IconEyeOff aria-hidden="true" /></span>
+                  <span className="achievement-option-copy">
+                    <strong>表示しない</strong>
+                    <small>称号を外す</small>
+                  </span>
+                  {equippedAchievementId === "" ? <IconCheck className="achievement-option-check" aria-hidden="true" /> : null}
+                </button>
+                {achievements.map((achievement) => {
+                  const selected = equippedAchievementId === achievement.id;
+                  return (
+                    <button
+                      aria-checked={selected}
+                      className={`achievement-option${selected ? " is-selected" : ""}`}
+                      disabled={isSubmitting || isProcessing}
+                      key={achievement.id}
+                      onClick={() => {
+                        setEquippedAchievementId(achievement.id);
+                        setAchievementPickerOpen(false);
+                      }}
+                      role="radio"
+                      type="button"
+                    >
+                      <span className="achievement-option-icon">
+                        <AchievementIcon iconKey={achievement.iconKey} />
+                      </span>
+                      <span className="achievement-option-copy">
+                        <strong>{achievement.name}</strong>
+                        <small>{achievement.description}</small>
+                      </span>
+                      {selected ? <IconCheck className="achievement-option-check" aria-hidden="true" /> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
         ) : null}
       </section>
 

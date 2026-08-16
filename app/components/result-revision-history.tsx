@@ -19,7 +19,7 @@ export function ResultRevisionHistory({
     >
       <div className="revision-heading">
         <div>
-          <h3 id="result-revisions-heading">CORRECTION HISTORY</h3>
+          <h3 id="result-revisions-heading">訂正履歴</h3>
         </div>
         <span className="revision-status">訂正済み</span>
       </div>

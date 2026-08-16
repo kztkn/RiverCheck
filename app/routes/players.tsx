@@ -1,6 +1,8 @@
 import { GroupSiteHeader } from "~/components/site-menu";
 import { Form, Link, redirect, useNavigation } from "react-router";
 import { PlayerAvatar } from "~/components/player-avatar";
+import { AppToast } from "~/components/app-toast";
+import { IconEdit, IconPlus } from "@tabler/icons-react";
 import {
   addPlayerForGroup,
   getPlayerManagement,
@@ -89,31 +91,36 @@ export default function Players({
     <main className="page-shell form-page">
       <GroupSiteHeader groupCode={loaderData.group.publicCode} organizer />
 
-      <section className="form-intro">
-        <h1>MEMBERS</h1>
-        <p>メンバーの登録と表示名を管理します。</p>
+      <section className="form-intro member-management-intro">
+        <p className="eyebrow">MEMBERS</p>
+        <h1>メンバー管理</h1>
+        <p>参加するプレイヤーの登録と表示名を管理します。</p>
       </section>
 
-      {loaderData.added ? (
-        <p className="success-notice" role="status">メンバーを追加しました。</p>
-      ) : null}
+      <AppToast
+        message={loaderData.added ? "メンバーを追加しました。" : null}
+        searchParam="added"
+      />
 
-      {loaderData.renamed ? (
-        <p className="success-notice" role="status">表示名を変更しました。</p>
-      ) : null}
+      <AppToast
+        message={loaderData.renamed ? "表示名を変更しました。" : null}
+        searchParam="renamed"
+      />
 
-      <div className="management-grid">
+      <div className="member-management">
         <Form
           action={`/g/${loaderData.group.publicCode}/players`}
-          className="compact-form"
+          className="member-add-form"
           method="post"
           noValidate
           reloadDocument
         >
           <input name="intent" type="hidden" value="add-player" />
-          <div className="section-heading compact-heading">
+          <div className="member-add-heading">
+            <span aria-hidden="true"><IconPlus /></span>
             <div>
-              <h2>ADD MEMBER</h2>
+              <h2>メンバーを追加</h2>
+              <p>開催に参加する名前を名簿へ登録します。</p>
             </div>
           </div>
 
@@ -146,12 +153,9 @@ export default function Players({
           </button>
         </Form>
 
-        <section className="member-panel" aria-labelledby="member-list-heading">
-          <div className="section-heading compact-heading">
-            <div>
-              <p className="eyebrow">ROSTER</p>
-              <h2 id="member-list-heading">登録済み</h2>
-            </div>
+        <section className="member-roster" aria-labelledby="member-list-heading">
+          <div className="member-roster-heading">
+            <h2 id="member-list-heading">登録済みメンバー</h2>
             <span className="count-badge">{loaderData.players.length}人</span>
           </div>
 
@@ -173,10 +177,10 @@ export default function Players({
                       </span>
                       <span
                         aria-hidden="true"
-                        className="profile-claim-issue-button"
+                        className="member-edit-action"
                         title="表示名を編集"
                       >
-                        <PencilIcon />
+                        <IconEdit />
                       </span>
                     </summary>
                     <Form
@@ -229,15 +233,6 @@ export default function Players({
         </section>
       </div>
     </main>
-  );
-}
-
-function PencilIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="m4 16-.8 4 4-.8L18.5 7.9l-3.2-3.2L4 16Z" />
-      <path d="m13.8 6.2 3.2 3.2" />
-    </svg>
   );
 }
 

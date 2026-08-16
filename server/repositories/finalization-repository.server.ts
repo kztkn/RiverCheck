@@ -26,6 +26,7 @@ interface GameRow {
   first_place_cost: string;
   second_place_cost: string;
   third_place_cost: string;
+  cost_shares: string[] | null;
 }
 
 interface ParticipantRow {
@@ -66,7 +67,8 @@ export async function lockGameForFinalization(
     `
       SELECT id, group_id, title, played_at, status, initial_chips,
              rebuy_chips, preview_participant_count, venue_cost,
-             first_place_cost, second_place_cost, third_place_cost
+             first_place_cost, second_place_cost, third_place_cost,
+             cost_shares
       FROM games
       WHERE id = $1 AND group_id = $2
       FOR UPDATE
@@ -146,6 +148,7 @@ export async function saveCostSettingsForFinalization(
           second_place_cost = $5,
           third_place_cost = $6,
           preview_participant_count = $7,
+          cost_shares = $8::BIGINT[],
           updated_at = NOW()
       WHERE id = $1 AND group_id = $2 AND status = 'open'
     `,
@@ -157,6 +160,7 @@ export async function saveCostSettingsForFinalization(
       input.secondPlaceCost,
       input.thirdPlaceCost,
       input.previewParticipantCount,
+      input.costShares,
     ],
   );
   return result.rowCount === 1;
@@ -244,6 +248,7 @@ function mapGame(row: GameRow): GameDetails {
     firstPlaceCost: Number(row.first_place_cost),
     secondPlaceCost: Number(row.second_place_cost),
     thirdPlaceCost: Number(row.third_place_cost),
+    costShares: row.cost_shares?.map((value) => Number(value)) ?? null,
   };
 }
 

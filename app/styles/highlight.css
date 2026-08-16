@@ -1,15 +1,29 @@
-.game-highlight-panel,
+.game-highlight-panel {
+  display: grid;
+  gap: 22px;
+  margin: 44px 0 22px;
+  border-top: 1px solid rgba(233, 186, 90, 0.26);
+  border-bottom: 1px solid rgba(233, 186, 90, 0.16);
+  background: linear-gradient(180deg, rgba(233, 186, 90, 0.035), transparent 42%);
+  padding: clamp(24px, 5vw, 34px) 0;
+}
+
 .game-highlight-editor {
   display: grid;
   gap: 18px;
   margin-bottom: 16px;
-  border: 1px solid rgba(233, 186, 90, 0.25);
+  border: 1px solid rgba(57, 222, 141, 0.2);
   border-radius: 20px;
   background: rgba(14, 30, 24, 0.82);
   padding: clamp(20px, 5vw, 32px);
 }
 
-.game-highlight-panel h2,
+.game-highlight-panel h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 4vw, 1.8rem);
+  letter-spacing: 0.08em;
+}
+
 .game-highlight-editor h2 {
   margin: 0;
   font-size: clamp(1.35rem, 4vw, 1.8rem);
@@ -21,7 +35,7 @@
   overflow: hidden;
   margin: 0;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 10px;
   background: #07120e;
 }
 
@@ -40,10 +54,6 @@
   line-height: 1.9;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-
-.game-highlight-editor {
-  border-color: rgba(57, 222, 141, 0.2);
 }
 
 .game-highlight-editor > div > p:last-child {
@@ -158,14 +168,38 @@
 }
 
 @media (max-width: 639px) {
-  .game-highlight-photo,
+  .game-highlight-photo {
+    width: calc(100% + 24px);
+    margin-inline: -12px;
+    border-radius: 8px;
+  }
+
   .highlight-photo-preview {
     margin-inline: -8px;
-    border-radius: 12px;
+    border-radius: 10px;
   }
 
   .highlight-photo-selection {
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+.edit-game-page .game-highlight-editor {
+  gap: 18px;
+  margin-bottom: 42px;
+  border: 0;
+  border-top: 1px solid rgba(233, 186, 90, 0.3);
+  border-radius: 0;
+  background: transparent;
+  padding: 25px 0 0;
+}
+
+.edit-game-page .game-highlight-editor h2 {
+  font-size: 1.28rem;
+  letter-spacing: 0.06em;
+}
+
+.edit-game-page .highlight-editor-actions .button {
+  min-height: 52px;
 }

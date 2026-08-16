@@ -36,6 +36,7 @@ export function FinalResults({
   >("idle");
   const [payPayModalOpen, setPayPayModalOpen] = useState(false);
   const [payPayCopyError, setPayPayCopyError] = useState<string | null>(null);
+  const winner = results.find((result) => result.rank === 1) ?? null;
   const shareText = `${lineText}\n\n結果を見る\n${shareUrl}`;
   const settlementTotal = results.reduce(
     (total, result) => total + result.costShare,
@@ -99,9 +100,10 @@ export function FinalResults({
 
   return (
     <section className="settlement-panel result-panel">
-      <div className="section-heading">
+      <div className="section-heading result-heading">
         <div>
-          <p className="eyebrow">FINAL RESULTS</p>
+          <p className="form-brand-label">FINAL RESULTS</p>
+          <h2>確定結果</h2>
           <time className="result-played-at" dateTime={playedAt}>
             {formatPlayedAt(playedAt)}
           </time>
@@ -140,11 +142,34 @@ export function FinalResults({
               : "このブラウザでは共有またはコピーを利用できません。"}
         </p>
       ) : null}
+      {winner ? (
+        <Link
+          aria-label={`${winner.displayName}の戦績を見る`}
+          className="result-winner"
+          to={`/g/${groupCode}/stats/${winner.groupPlayerId}`}
+        >
+          <div className="result-winner-copy">
+            <span>WINNER</span>
+            <strong>{winner.displayName}</strong>
+            <ResultParticipantMeta result={winner} />
+          </div>
+          <div className="result-values result-winner-values">
+            <b className={`result-score result-score-${scoreTone(winner.score)}`}>
+              {formatBbScore({ score: winner.score, initialChips })}
+            </b>
+            <strong className="result-cost">
+              {formatNumber(winner.costShare)}円
+            </strong>
+          </div>
+        </Link>
+      ) : null}
       <div className="result-list">
-        {results.map((result) => (
+        {results.filter((result) => result.rank !== 1).map((result) => (
           <Link
             aria-label={`${result.displayName}の戦績を見る`}
-            className={`result-row result-row-rank-${result.rank}`}
+            className={`result-row result-row-rank-${result.rank}${
+              result.rank <= 3 ? " is-top-three" : ""
+            }`}
             key={result.groupPlayerId}
             to={`/g/${groupCode}/stats/${result.groupPlayerId}`}
           >
@@ -153,25 +178,18 @@ export function FinalResults({
             </span>
             <div className="result-player">
               <strong>{result.displayName}</strong>
-              <span>
-                残り {formatNumber(result.remainingChips)}・
-                {result.totalRebuyCount === null
-                  ? "終了時未返済 " + result.settlementRebuyCount + "口"
-                  : "リバイ " +
-                    result.totalRebuyCount +
-                    "回・終了時未返済 " +
-                    result.settlementRebuyCount +
-                    "口"}
-              </span>
+              <ResultParticipantMeta result={result} />
             </div>
-            <strong
-              className={`result-score result-score-${scoreTone(result.score)}`}
-            >
-              {formatBbScore({ score: result.score, initialChips })}
-            </strong>
-            <strong className="result-cost">
-              {formatNumber(result.costShare)}円
-            </strong>
+            <div className="result-values">
+              <strong
+                className={`result-score result-score-${scoreTone(result.score)}`}
+              >
+                {formatBbScore({ score: result.score, initialChips })}
+              </strong>
+              <strong className="result-cost">
+                {formatNumber(result.costShare)}円
+              </strong>
+            </div>
           </Link>
         ))}
       </div>
@@ -268,6 +286,25 @@ export function FinalResults({
   );
 }
 
+
+function ResultParticipantMeta({
+  result,
+}: {
+  result: GameResultSummary;
+}) {
+  return (
+    <div className="result-participant-meta">
+      <span className="result-final-stack">
+        最終スタック <strong>{formatNumber(result.remainingChips)}</strong>
+      </span>
+      <span className="result-rebuy-meta">
+        リバイ {result.totalRebuyCount === null ? "記録なし" : `${result.totalRebuyCount}回`}
+        <span aria-hidden="true">・</span>
+        終了時未返済 {result.settlementRebuyCount}口
+      </span>
+    </div>
+  );
+}
 function scoreTone(score: number): "positive" | "negative" | "neutral" {
   if (score > 0) return "positive";
   if (score < 0) return "negative";

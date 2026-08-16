@@ -1,4 +1,5 @@
 import { GroupSiteHeader } from "~/components/site-menu";
+import { useEffect, useState } from "react";
 import { Link, redirect, useNavigation } from "react-router";
 import { PlayerProfileEditor } from "~/components/player-profile-editor";
 import { PlayerPerformanceChart } from "~/components/player-performance-chart";
@@ -6,9 +7,12 @@ import { PlayerAvatar } from "~/components/player-avatar";
 import { FavoriteHandDisplay } from "~/components/playing-card";
 import { AchievementBadge } from "~/components/achievement-badge";
 import { PlayerAchievementCollectionView } from "~/components/player-achievement-collection";
+import {
+  PlayerGameHistory,
+  PlayerStatsOverview,
+} from "~/components/player-stats-detail";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { formatSignedBbValue } from "@domain/score/bb-score";
-import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import { getPlayerStatsDetail } from "@server/services/player-stats-service.server";
 import { getAuthenticatedPlayerProfile, savePlayerProfile } from "@server/services/player-profile-service.server";
 import type { Route } from "./+types/stats-player";
@@ -61,6 +65,9 @@ export default function StatsPlayer({ loaderData, actionData }: Route.ComponentP
   const { summary, games } = playerStats;
   const recentGames = [...games].reverse();
   const navigation = useNavigation();
+  const [showProfileSavedToast, setShowProfileSavedToast] = useState(
+    loaderData.profileSaved,
+  );
   const profileSaveFailure = actionData?.ok === false ? actionData : null;
   const isSavingProfile =
     navigation.state === "submitting" &&
@@ -72,49 +79,76 @@ export default function StatsPlayer({ loaderData, actionData }: Route.ComponentP
     groupPlayerId: summary.groupPlayerId,
   });
 
+  useEffect(() => {
+    if (!loaderData.profileSaved) {
+      setShowProfileSavedToast(false);
+      return;
+    }
+    setShowProfileSavedToast(true);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("profileSaved");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+    const timeoutId = window.setTimeout(
+      () => setShowProfileSavedToast(false),
+      3_000,
+    );
+    return () => window.clearTimeout(timeoutId);
+  }, [loaderData.profileSaved]);
+
   return (
-    <main className="page-shell stats-page">
+    <main className="page-shell stats-page stats-player-page">
       <GroupSiteHeader groupCode={group.publicCode} />
 
       <section className="stats-intro stats-player-intro" id="profile-summary">
-        <div className="stats-profile-topline">
-          <PlayerAvatar
-            avatarUrl={avatarUrl}
-            className="player-avatar-large"
-            displayName={summary.displayName}
-          />
-          {loaderData.canEditProfile ? (
-            <Link
-              className="stats-profile-edit-button"
-              to={`${profilePath}?editProfile=1`}
-            >
-              プロフィールを編集
-            </Link>
-          ) : null}
+        <div className="stats-profile-header">
+          <div className="stats-profile-identity">
+            <PlayerAvatar
+              avatarUrl={avatarUrl}
+              className="player-avatar-large"
+              displayName={summary.displayName}
+            />
+            <div className="stats-profile-copy">
+              <p className="stats-brand-label">PLAYER PROFILE</p>
+              <h1>{summary.displayName}</h1>
+              {achievements.equippedAchievement ? (
+                <AchievementBadge achievement={achievements.equippedAchievement} />
+              ) : null}
+            </div>
+          </div>
         </div>
-        <div className="stats-profile-copy">
-          <p className="eyebrow">PLAYER PROFILE</p>
-          <h1>{summary.displayName}</h1>
-          {achievements.equippedAchievement ? (
-            <AchievementBadge achievement={achievements.equippedAchievement} />
-          ) : null}
-          {summary.profileMessage ? (
-            <p className="stats-profile-message">{summary.profileMessage}</p>
-          ) : null}
-        </div>
+        {summary.profileMessage ? (
+          <p className="stats-profile-message">{summary.profileMessage}</p>
+        ) : null}
         {summary.favoriteCard1 && summary.favoriteCard2 ? (
           <div className="stats-favorite-hand">
-            <span className="eyebrow">MY HAND</span>
+            <span className="stats-hand-label">MY HAND</span>
             <FavoriteHandDisplay
               card1={summary.favoriteCard1}
               card2={summary.favoriteCard2}
             />
           </div>
         ) : null}
+        {loaderData.canEditProfile ? (
+          <div className="stats-profile-actions">
+            <Link
+              className="stats-profile-edit-button"
+              to={`${profilePath}?editProfile=1`}
+            >
+              編集 <span aria-hidden="true">›</span>
+            </Link>
+          </div>
+        ) : null}
       </section>
 
-      {loaderData.profileSaved ? (
-        <p className="success-notice" role="status">プロフィールを保存しました。</p>
+      {showProfileSavedToast ? (
+        <div className="app-toast" role="status">
+          <span aria-hidden="true">✓</span>
+          プロフィールを保存しました。
+        </div>
       ) : null}
 
       {loaderData.canEditProfile ? (
@@ -151,40 +185,30 @@ export default function StatsPlayer({ loaderData, actionData }: Route.ComponentP
               }}
               values={profileSaveFailure
                 ? {
-                    ...profileSaveFailure.values,
-                    equippedAchievementId: profileSaveFailure.equippedAchievementId,
-                  }
+                  ...profileSaveFailure.values,
+                  equippedAchievementId: profileSaveFailure.equippedAchievementId,
+                }
                 : null}
             />
           </div>
         </section>
       ) : null}
 
-      <section className="stats-kpi-grid" aria-label="戦績サマリー">
-        <Kpi label="参加回数" value={`${summary.gamesPlayed}回`} />
-        <Kpi label="優勝回数" value={`${summary.wins}回`} />
-        <Kpi label="優勝率" value={formatPercent(summary.winRate)} />
-        <Kpi
-          label="平均順位"
-          value={summary.gamesPlayed === 0 ? "—" : formatDecimal(summary.averageRank)}
-        />
-        <Kpi label="累計損益" tone={getBbToneClass(summary.totalNetBb)} value={formatSignedBbValue(summary.totalNetBb)} />
-        <Kpi label="平均損益" tone={getBbToneClass(summary.averageNetBb)} value={formatSignedBbValue(summary.averageNetBb)} />
-        <Kpi label="最大勝ち" tone={getBbToneClass(summary.maxWinBb)} value={formatSignedBbValue(summary.maxWinBb)} />
-        <Kpi label="最大負け" tone={getBbToneClass(summary.maxLossBb)} value={formatSignedBbValue(summary.maxLossBb)} />
-      </section>
+      <PlayerStatsOverview summary={summary} />
 
       <PlayerAchievementCollectionView
         collection={achievements}
-        groupCode={group.publicCode}
       />
 
-      <section className="stats-panel" aria-labelledby="chart-heading">
-        <div className="section-heading compact-heading">
-          <div>
-            <p className="eyebrow">PERFORMANCE</p>
-            <h2 id="chart-heading">累計損益BB推移</h2>
-          </div>
+      <section className="stats-chart-section" aria-labelledby="chart-heading">
+        <div className="section-heading stats-section-heading">
+          <h2 id="chart-heading">累計損益BB推移</h2>
+          <span className="stats-chart-current">
+            現在
+            <strong className={getBbToneClass(summary.totalNetBb)}>
+              {formatSignedBbValue(summary.totalNetBb)}
+            </strong>
+          </span>
         </div>
         {games.length === 0 ? (
           <div className="mini-empty"><p>確定済みの戦績がまだありません。</p></div>
@@ -193,70 +217,12 @@ export default function StatsPlayer({ loaderData, actionData }: Route.ComponentP
         )}
       </section>
 
-      <section className="content-section stats-history" aria-labelledby="history-heading">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">GAME HISTORY</p>
-            <h2 id="history-heading">開催別結果</h2>
-          </div>
-          <span className="count-badge">{games.length}戦</span>
-        </div>
-
-        {recentGames.length === 0 ? (
-          <div className="mini-empty"><p>参加した開催が確定すると、ここに追加されます。</p></div>
-        ) : (
-          <div className="stats-game-list">
-            {recentGames.map((game) => (
-              <Link
-                className="stats-game-card"
-                key={game.gameId}
-                to={`/g/${group.publicCode}/games/${game.gameId}`}
-              >
-                <span className="stats-game-date">{formatGameDate(game.playedAt)}</span>
-                <span className="stats-game-title">
-                  <strong>{game.gameTitle}</strong>
-                  <small>
-                    {formatOrdinal(game.rank)}・
-                    {game.totalRebuyCount === null
-                      ? "終了時未返済 " + game.settlementRebuyCount + "口"
-                      : "リバイ " +
-                        game.totalRebuyCount +
-                        "回・終了時未返済 " +
-                        game.settlementRebuyCount +
-                        "口"}
-                  </small>
-                </span>
-                <strong className={getBbToneClass(game.netBb)}>
-                  {formatSignedBbValue(game.netBb)}
-                </strong>
-                <span className="card-arrow" aria-hidden="true">→</span>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
+      <PlayerGameHistory
+        games={recentGames}
+        groupCode={group.publicCode}
+      />
     </main>
   );
-}
-
-function Kpi({ label, value, tone = "" }: { label: string; value: string; tone?: string }) {
-  return <div className="stats-kpi-card"><span>{label}</span><strong className={tone}>{value}</strong></div>;
-}
-
-function formatPercent(value: number): string {
-  return `${formatDecimal(value)}%`;
-}
-
-function formatDecimal(value: number): string {
-  return value.toLocaleString("ja-JP", { maximumFractionDigits: 1 });
-}
-
-function formatGameDate(isoDate: string): string {
-  return new Intl.DateTimeFormat("ja-JP", {
-    month: "short",
-    day: "numeric",
-    timeZone: "Asia/Tokyo",
-  }).format(new Date(isoDate));
 }
 
 function getBbToneClass(value: number): string {

@@ -24,104 +24,130 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
 export default function GroupManage({ loaderData }: Route.ComponentProps) {
   const { group, games } = loaderData;
+  const activeGames = games.filter((game) => game.status !== "finalized");
+  const pastGames = games.filter((game) => game.status === "finalized");
 
   return (
-    <main className="page-shell">
+    <main className="page-shell organizer-home-page">
       <GroupSiteHeader groupCode={group.publicCode} organizer />
 
-      <section className="hero-card organizer-hero">
-        <div>
-          <h1>ORGANIZER HOME</h1>
-          <p className="hero-copy">
-            {group.name} の開催作成、参加状況、結果をここから管理します。
-          </p>
-        </div>
-        <div className="hero-actions">
+      <section className="organizer-home-intro">
+        <p className="form-brand-label">ORGANIZER</p>
+        <h1>開催管理</h1>
+        <p>{group.name} のテーブルを準備し、進行を確認します。</p>
+        <nav aria-label="グループ管理" className="organizer-home-tools">
           <Link
-            className="button button-secondary organizer-nav-button"
+            className="organizer-home-tool"
             to={`/g/${group.publicCode}/players`}
           >
             <IconUsers aria-hidden="true" stroke={1.8} />
             メンバー管理
           </Link>
           <Link
-            className="button button-secondary organizer-nav-button"
+            className="organizer-home-tool"
             to={`/g/${group.publicCode}/settings`}
           >
             <IconSettings aria-hidden="true" stroke={1.8} />
             グループ設定
           </Link>
-        </div>
+        </nav>
       </section>
 
       <section
-        className="content-section"
+        className="organizer-game-section"
         aria-labelledby="manage-games-heading"
       >
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">MANAGE GAMES</p>
-            <h2 id="manage-games-heading">開催管理</h2>
-          </div>
+        <div className="organizer-section-heading">
+          <h2 id="manage-games-heading">進行中のゲーム</h2>
           <div className="section-heading-actions">
-            <span className="count-badge">{games.length}件</span>
+            <span className="home-section-count">{activeGames.length}件</span>
             <Link
-              className="button button-primary button-small"
+              className="button button-primary organizer-new-game"
               to={`/g/${group.publicCode}/games/new`}
             >
               <IconPlus aria-hidden="true" stroke={2} />
-              新しい会
+              新しい会を作成
             </Link>
           </div>
         </div>
 
-        {games.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon" aria-hidden="true">
-              ♠
-            </div>
-            <h3>まだ開催はありません</h3>
-            <p>「新しい会」から最初の開催を作ってください。</p>
-          </div>
+        {activeGames.length === 0 ? (
+          <p className="organizer-game-empty">
+            進行中のゲームはありません。次の会を作成できます。
+          </p>
         ) : (
-          <div className="game-list">
-            {games.map((game) => (
-              <article className="game-card" key={game.id}>
-                <Link
-                  className="game-card-main"
-                  to={
-                    game.status === "finalized"
-                      ? `/g/${group.publicCode}/games/${game.id}/admin/edit`
-                      : `/g/${group.publicCode}/games/${game.id}/admin`
-                  }
-                >
-                  <span className={`status status-${game.status}`}>
-                    {statusLabels[game.status]}
-                  </span>
-                  <h3>{game.title}</h3>
-                  <time dateTime={game.playedAt}>
-                    {new Intl.DateTimeFormat("ja-JP", {
-                      dateStyle: "long",
-                      timeZone: "Asia/Tokyo",
-                    }).format(new Date(game.playedAt))}
-                  </time>
-                </Link>
-                <div className="game-card-actions">
-                  <Link
-                    className="card-action"
-                    to={
-                      game.status === "finalized"
-                        ? `/g/${group.publicCode}/games/${game.id}/admin/edit`
-                        : `/g/${group.publicCode}/games/${game.id}/admin`
-                    }
-                  >
-                  </Link>
-                </div>
-              </article>
+          <div className="organizer-game-list">
+            {activeGames.map((game) => (
+              <ManageGameRow
+                game={game}
+                groupCode={group.publicCode}
+                key={game.id}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section
+        aria-labelledby="manage-history-heading"
+        className="organizer-game-section organizer-history-section"
+      >
+        <div className="organizer-section-heading">
+          <h2 id="manage-history-heading">過去の開催</h2>
+          <span className="home-section-count">{pastGames.length}件</span>
+        </div>
+        {pastGames.length === 0 ? (
+          <p className="organizer-game-empty">確定済みの開催はまだありません。</p>
+        ) : (
+          <div className="organizer-game-list">
+            {pastGames.map((game) => (
+              <ManageGameRow
+                game={game}
+                groupCode={group.publicCode}
+                key={game.id}
+              />
             ))}
           </div>
         )}
       </section>
     </main>
   );
+}
+
+function ManageGameRow({
+  game,
+  groupCode,
+}: {
+  game: Route.ComponentProps["loaderData"]["games"][number];
+  groupCode: string;
+}) {
+  const isPast = game.status === "finalized";
+  return (
+    <Link
+      className="organizer-game-row"
+      to={
+        isPast
+          ? `/g/${groupCode}/games/${game.id}/admin/edit`
+          : `/g/${groupCode}/games/${game.id}/admin`
+      }
+    >
+      <time dateTime={game.playedAt}>{formatGameDate(game.playedAt)}</time>
+      <span className="organizer-game-row-main">
+        <strong>{game.title}</strong>
+        <small>
+          {statusLabels[game.status]} ・ 参加 {game.participantCount}人
+          {isPast ? ` ・ 優勝 ${game.winnerName ?? "—"}` : ""}
+        </small>
+      </span>
+      <span aria-hidden="true">→</span>
+    </Link>
+  );
+}
+
+function formatGameDate(playedAt: string): string {
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    timeZone: "Asia/Tokyo",
+  }).format(new Date(playedAt));
 }

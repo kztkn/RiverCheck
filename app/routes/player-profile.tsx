@@ -1,7 +1,8 @@
 import { GroupSiteHeader } from "~/components/site-menu";
 import { Form, redirect, useNavigation } from "react-router";
 import { PlayerProfileEditor } from "~/components/player-profile-editor";
-import { PlayerAvatar } from "~/components/player-avatar";
+import { AppToast } from "~/components/app-toast";
+import { PlayerChoiceList } from "~/components/player-choice-list";
 import {
   getAuthenticatedPlayerProfile,
   savePlayerProfile,
@@ -180,9 +181,10 @@ export default function PlayerProfileRoute({
         <p>アイコンとひとことは、RiverCheck内のあなた自身に紐付きます。</p>
       </section>
 
-      {loaderData.saved ? (
-        <p className="success-notice" role="status">プロフィールを保存しました。</p>
-      ) : null}
+      <AppToast
+        message={loaderData.saved ? "プロフィールを保存しました。" : null}
+        searchParam="saved"
+      />
 
       {loaderData.profile ? (
         <>
@@ -215,11 +217,11 @@ export default function PlayerProfileRoute({
           />
         </>
       ) : (
-        <div className="profile-selection">
-          <section className="participant-panel">
+        <div className="player-selection">
+          <section className="player-selection-primary">
             <div className="section-heading compact-heading">
               <div>
-                <p className="eyebrow">SELECT PLAYER</p>
+                <p className="eyebrow">PROFILE SETUP</p>
                 <h2>あなたの名前を選択</h2>
               </div>
             </div>
@@ -229,30 +231,15 @@ export default function PlayerProfileRoute({
             {actionData?.ok === false && actionData.intent === "select-existing"
               ? <p className="error-notice" role="alert">{actionData.error}</p>
               : null}
-            <div className="player-join-list">
-              {loaderData.players.map((player) => (
-                <Form className="player-join-form" key={player.id} method="post">
-                  <input name="intent" type="hidden" value="select-existing" />
-                  <input name="groupPlayerId" type="hidden" value={player.id} />
-                  <button
-                    aria-label={`${player.displayName}としてログイン`}
-                    className="player-join-button"
-                    disabled={isSubmitting}
-                    type="submit"
-                  >
-                    <PlayerAvatar
-                      avatarUrl={player.avatarUrl}
-                      displayName={player.displayName}
-                    />
-                    <span>{player.displayName}</span>
-                    <small>選択</small>
-                  </button>
-                </Form>
-              ))}
-            </div>
+            <PlayerChoiceList
+              actionLabel="選択"
+              intent="select-existing"
+              isSubmitting={isSubmitting}
+              players={loaderData.players}
+            />
           </section>
 
-          <section className="participant-panel new-player-panel">
+          <section className="player-selection-create">
             <div>
               <h2>一覧に名前がない方</h2>
               <p className="muted-copy">新しいプレイヤーとして登録します。</p>

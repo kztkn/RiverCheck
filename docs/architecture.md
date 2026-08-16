@@ -81,6 +81,7 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 - 同名プレイヤーは許可し、表示名ではなく UUID で識別する
 - トークンは 64 文字の SHA-256 hex として保存する
 - `games.rounding_unit` は既存スキーマとの互換用に残すが、DB制約とrepositoryで100固定にする
+- `games.cost_shares` は検証済みの全順位負担額を`BIGINT[]`で保存する。移行前のNULLだけは1〜3位設定から従来計算する
 - MVPのハイライトは1開催につき文章1件・写真1枚のためgamesへ直接持たせ、複数写真が必要になった時点で別テーブルへ移行する
 
 ## 参加者のブラウザ識別
@@ -118,7 +119,7 @@ PIN・合言葉と32文字以上の署名鍵はCloudflare Secretで受け取る�
 ## 新規開催作成
 
 1. route action が `FormData` を service 用の値へ変換する
-2. service が必須値、非負整数、100円単位、順位別負担額の成立条件を検証する
+2. service が必須値、全順位件数、非負整数、100円単位、順位傾斜、精算総額との合計一致を検証する
 3. repository がパラメータ化 INSERT を実行する
 4. `open` の開催を作成し、開催の管理画面へ移動する
 

@@ -26,26 +26,26 @@ export function PlayerPerformanceChart({
 
   return (
     <div className="stats-chart" aria-label="累計損益BBの推移グラフ">
-      <ResponsiveContainer height={280} width="100%">
+      <ResponsiveContainer height="100%" width="100%">
         <LineChart
           accessibilityLayer
           data={data}
-          margin={{ top: 12, right: 14, bottom: 2, left: -14 }}
+          margin={{ top: 12, right: 10, bottom: 2, left: -20 }}
         >
-          <CartesianGrid stroke="rgba(223, 236, 227, 0.1)" vertical={false} />
+          <CartesianGrid stroke="rgba(223, 236, 227, 0.055)" vertical={false} />
           <XAxis
             axisLine={false}
             dataKey="dateLabel"
             minTickGap={24}
-            tick={{ fill: "#9db0a6", fontSize: 11 }}
+            tick={{ fill: "#84988e", fontSize: 11 }}
             tickLine={false}
           />
           <YAxis
             axisLine={false}
-            tick={{ fill: "#9db0a6", fontSize: 11 }}
+            tick={{ fill: "#84988e", fontSize: 10 }}
             tickFormatter={(value: number) => `${value}`}
             tickLine={false}
-            width={54}
+            width={46}
           />
           <Tooltip
             content={({ active, payload }) => {
@@ -74,20 +74,20 @@ export function PlayerPerformanceChart({
                 </div>
               );
             }}
-            cursor={{ stroke: "rgba(57, 222, 141, 0.4)", strokeWidth: 1 }}
+            cursor={{ stroke: "rgba(101, 201, 154, 0.3)", strokeWidth: 1 }}
           />
           <Line
             activeDot={{
               fill: "#f7f3e8",
               r: 5,
-              stroke: "#39de8d",
+              stroke: "#65c99a",
               strokeWidth: 3,
             }}
             dataKey="cumulativeNetBb"
-            dot={{ fill: "#08130f", r: 3, stroke: "#39de8d", strokeWidth: 2 }}
+            dot={false}
             isAnimationActive={false}
             name="累計損益BB"
-            stroke="#39de8d"
+            stroke="#65c99a"
             strokeWidth={3}
             type="monotone"
           />

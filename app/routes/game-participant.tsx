@@ -41,6 +41,7 @@ import {
 } from "@server/services/game-highlight-service.server";
 import { FinalResults } from "../components/final-results";
 import { PlayerAvatar } from "../components/player-avatar";
+import { PlayerChoiceList } from "~/components/player-choice-list";
 import {
   createNewPlayerProfileSessionCredentials,
   getAuthenticatedPlayerProfile,
@@ -403,6 +404,8 @@ export default function GameParticipant({
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
   const [isEditing, setIsEditing] = useState(false);
+  const noticeMessage = getParticipantNotice(loaderData.notice);
+  const [showNoticeToast, setShowNoticeToast] = useState(Boolean(noticeMessage));
 
   useEffect(() => {
     if (loaderData.game.status !== "open") return;
@@ -417,15 +420,40 @@ export default function GameParticipant({
     };
   }, [loaderData.game.status, revalidator]);
 
+  useEffect(() => {
+    if (!noticeMessage) {
+      setShowNoticeToast(false);
+      return;
+    }
+    setShowNoticeToast(true);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("notice");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+    const timer = window.setTimeout(() => setShowNoticeToast(false), 3000);
+    return () => window.clearTimeout(timer);
+  }, [noticeMessage]);
+
   return (
-    <main className="page-shell participant-page">
+    <main
+      className={`page-shell participant-page${
+        loaderData.game.status === "open" && !loaderData.participant
+          ? " participant-selection-page"
+          : ""
+      }`}
+    >
       <GroupSiteHeader
         groupCode={loaderData.group.publicCode}
         organizer={loaderData.isOrganizer}
       />
 
       <section className="participant-hero">
-        <p className="eyebrow">JOIN THE TABLE</p>
+        <p className="participant-hero-status">
+          {loaderData.game.status === "finalized" ? "RESULTS" : "AT THE TABLE"}
+        </p>
         <h1>{loaderData.game.title}</h1>
         {loaderData.game.status !== "finalized" ? (
           <p>
@@ -444,27 +472,11 @@ export default function GameParticipant({
         />
       ) : null}
 
-      {loaderData.notice === "joined" ? (
-        <p className="success-notice">
-          参加しました。終了時に結果を入力してください。
-        </p>
-      ) : null}
-      {loaderData.notice === "saved" ? (
-        <p className="success-notice">
-          保存しました。結果確定までは変更可能です。
-        </p>
-      ) : null}
-      {loaderData.notice === "left" ? (
-        <p className="success-notice">参加を取り消しました。</p>
-      ) : null}
-      {loaderData.notice === "finalized" ? (
-        <p className="success-notice">結果を確定しました。</p>
-      ) : null}
-      {loaderData.notice === "corrected" ? (
-        <p className="success-notice">開催情報と結果を更新しました。</p>
-      ) : null}
-      {loaderData.notice === "highlight-saved" ? (
-        <p className="success-notice">ハイライトを保存しました。</p>
+      {showNoticeToast && noticeMessage ? (
+        <div className="app-toast" role="status">
+          <span aria-hidden="true">✓</span>
+          {noticeMessage}
+        </div>
       ) : null}
       {actionData?.error ? (
         <p className="error-notice">{actionData.error}</p>
@@ -503,15 +515,29 @@ export default function GameParticipant({
           <p>主催者が受付を開始すると、このページから参加できます。</p>
         </section>
       ) : loaderData.participant ? (
-        <section className="participant-panel">
-          <div className="participant-identity">
-            <PlayerAvatar
-              avatarUrl={loaderData.participant.avatarUrl}
-              displayName={loaderData.participant.displayName}
-            />
-            <div>
-              <p>参加中</p>
-              <h2>{loaderData.participant.displayName}</h2>
+        <section className="participant-panel participant-session">
+          <div className="participant-session-header">
+            <div className="participant-identity">
+              <PlayerAvatar
+                avatarUrl={loaderData.participant.avatarUrl}
+                displayName={loaderData.participant.displayName}
+              />
+              <div>
+                <p>YOU ARE SEATED</p>
+                <h2>{loaderData.participant.displayName}</h2>
+              </div>
+            </div>
+            <div className="participant-session-state">
+              <strong>
+                {loaderData.participant.status === "submitted"
+                  ? "入力済み"
+                  : "ゲーム中"}
+              </strong>
+              <small>
+                {loaderData.participant.status === "submitted"
+                  ? "主催者の確定待ち"
+                  : "参加済み"}
+              </small>
             </div>
           </div>
 
@@ -527,10 +553,10 @@ export default function GameParticipant({
 
           <section className="participant-phase participant-phase-live">
             <div className="participant-phase-heading">
-              <span className="participant-phase-label">プレイ中</span>
               <div>
-                <h3>リバイ・返済を記録</h3>
-                <p>リバイした時と、100BBを返した時に押します。</p>
+                <span className="participant-phase-label">プレイ中</span>
+                <h3>リバイ</h3>
+                <p>リバイと100BB返済を、その場で記録します。</p>
               </div>
             </div>
             <RebuyTracker
@@ -549,10 +575,10 @@ export default function GameParticipant({
               aria-label="保存済みの結果"
             >
               <div className="participant-phase-heading">
-                <span className="participant-phase-label">プレイ終了後</span>
                 <div>
-                  <h3>保存済みの結果</h3>
-                  <p>主催者が結果を確定するまでは修正できます。</p>
+                  <span className="participant-phase-label">ゲーム終了後</span>
+                  <h3>入力済み</h3>
+                  <p>主催者の確定待ちです。確定までは修正できます。</p>
                 </div>
               </div>
               <div className="submitted-input">
@@ -593,7 +619,7 @@ export default function GameParticipant({
                   onClick={() => setIsEditing(true)}
                   type="button"
                 >
-                  終了時の入力を修正する
+                  修正する
                 </button>
               </div>
             </section>
@@ -603,10 +629,10 @@ export default function GameParticipant({
               open={isEditing || undefined}
             >
               <summary>
-                <span className="participant-phase-label">プレイ終了後</span>
+                <span className="participant-phase-label">ゲーム終了後</span>
                 <span className="participant-phase-summary-copy">
-                  <strong>残りチップとリバイ証を入力</strong>
-                  <small>ゲームが終わったら開いて保存します</small>
+                  <strong>最終結果を入力</strong>
+                  <small>残りチップと手元のリバイ証</small>
                 </span>
                 <span className="participant-phase-chevron" aria-hidden="true">
                   ⌄
@@ -614,7 +640,7 @@ export default function GameParticipant({
               </summary>
               <div className="participant-after-entry-body">
                 <p className="participant-after-entry-help">
-                  プレイ中のリバイ記録とは別の操作です。終了時の手元の状態を入力してください。
+                  ゲームが終わったら、最後に手元へ残った数を入力します。
                 </p>
                 <ResultEntryForm
                   initialChips={loaderData.game.initialChips}
@@ -632,15 +658,14 @@ export default function GameParticipant({
             </details>
           )}
 
-          <Form method="post" reloadDocument>
-            <input name="intent" type="hidden" value="leave" />
-            <button className="text-button danger-text" type="submit">
-              参加を取り消す
-            </button>
-          </Form>
+          <ParticipantLeaveControl isSubmitting={isSubmitting} />
         </section>
       ) : (
-        <div className="join-grid">
+        <div
+          className={
+            loaderData.authenticatedPlayer ? "join-grid" : "player-selection"
+          }
+        >
           {loaderData.authenticatedPlayer ? (
             <section className="participant-panel">
               <div className="participant-identity">
@@ -666,44 +691,30 @@ export default function GameParticipant({
             </section>
           ) : (
             <>
-              <section className="participant-panel">
+              <section className="player-selection-primary">
+                <div className="section-heading compact-heading">
+                  <div>
+                    <p className="eyebrow">JOIN THE TABLE</p>
+                    <h2>参加する名前を選択</h2>
+                  </div>
+                </div>
+                <p className="muted-copy">
+                  自分の名前を選ぶと、そのまま今回のゲームへ参加します。
+                </p>
                 {loaderData.players.length === 0 ? (
                   <p className="muted-copy">登録済みメンバーはまだいません。</p>
                 ) : (
-                  <div className="player-join-list">
-                    {loaderData.players.map((player) => (
-                      <Form
-                        className="player-join-form"
-                        key={player.id}
-                        method="post"
-                        reloadDocument
-                      >
-                        <input name="intent" type="hidden" value="join-existing" />
-                        <input
-                          name="groupPlayerId"
-                          type="hidden"
-                          value={player.id}
-                        />
-                        <button
-                          aria-label={`${player.displayName}として参加`}
-                          className="player-join-button"
-                          disabled={isSubmitting}
-                          type="submit"
-                        >
-                          <PlayerAvatar
-                            avatarUrl={player.avatarUrl}
-                            displayName={player.displayName}
-                          />
-                          <span>{player.displayName}</span>
-                          <small>参加</small>
-                        </button>
-                      </Form>
-                    ))}
-                  </div>
+                  <PlayerChoiceList
+                    actionLabel="参加"
+                    intent="join-existing"
+                    isSubmitting={isSubmitting}
+                    players={loaderData.players}
+                    reloadDocument
+                  />
                 )}
               </section>
 
-              <section className="participant-panel new-player-panel">
+              <section className="player-selection-create">
                 <div>
                   <h2>一覧に名前がない方</h2>
                   <p className="muted-copy">
@@ -736,6 +747,97 @@ export default function GameParticipant({
         </div>
       )}
     </main>
+  );
+}
+
+function ParticipantLeaveControl({
+  isSubmitting,
+}: {
+  isSubmitting: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
+
+  function closeDialog() {
+    setIsOpen(false);
+  }
+
+  function handleDialogClose() {
+    setIsOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  return (
+    <>
+      <button
+        aria-controls="participant-leave-dialog"
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        className="text-button danger-text participant-leave-trigger"
+        disabled={isSubmitting}
+        onClick={() => setIsOpen(true)}
+        ref={triggerRef}
+        type="button"
+      >
+        参加を取り消す
+      </button>
+      <dialog
+        aria-labelledby="participant-leave-title"
+        className="app-dialog"
+        id="participant-leave-dialog"
+        onCancel={closeDialog}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) closeDialog();
+        }}
+        onClose={handleDialogClose}
+        ref={dialogRef}
+      >
+        <div className="dialog-card">
+          <span aria-hidden="true" className="dialog-danger-icon">
+            !
+          </span>
+          <div>
+            <p className="eyebrow">LEAVE GAME</p>
+            <h2 id="participant-leave-title">参加を取り消しますか？</h2>
+            <p>
+              この開催の参加状態、リバイ記録、終了時入力が削除されます。
+              プレイヤープロフィールは削除されません。
+            </p>
+          </div>
+          <div className="dialog-actions">
+            <button
+              autoFocus
+              className="button button-secondary"
+              onClick={closeDialog}
+              type="button"
+            >
+              キャンセル
+            </button>
+            <Form method="post" reloadDocument>
+              <input name="intent" type="hidden" value="leave" />
+              <button
+                className="button button-danger"
+                disabled={isSubmitting}
+                type="submit"
+              >
+                {isSubmitting ? "取消中…" : "参加を取り消す"}
+              </button>
+            </Form>
+          </div>
+        </div>
+      </dialog>
+    </>
   );
 }
 
@@ -832,7 +934,9 @@ export function ParticipantRosterSheet({
               onClick={closeSheet}
               type="button"
             >
-              ×
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
             </button>
           </header>
           <div className="participant-roster-scroll">
@@ -855,21 +959,122 @@ export function ParticipantRosterSheet({
               </ul>
             )}
           </div>
-          <footer className="participant-roster-footer">
-            <button
-              className="button button-secondary"
-              onClick={closeSheet}
-              type="button"
-            >
-              閉じる
-            </button>
-          </footer>
         </div>
       </dialog>
     </>
   );
 }
 
+
+function RebuyRulesSheet() {
+  const [isOpen, setIsOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  function closeSheet() {
+    setIsOpen(false);
+  }
+
+  function handleDialogClose() {
+    setIsOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  return (
+    <>
+      <button
+        aria-controls="rebuy-rules-dialog"
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        className="rebuy-rules-trigger"
+        onClick={() => setIsOpen(true)}
+        ref={triggerRef}
+        type="button"
+      >
+        <span>返済ルールを確認</span>
+        <span aria-hidden="true">›</span>
+      </button>
+      <dialog
+        aria-describedby="rebuy-rules-description"
+        aria-labelledby="rebuy-rules-title"
+        className="app-dialog participant-roster-dialog rebuy-rules-dialog"
+        id="rebuy-rules-dialog"
+        onCancel={closeSheet}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) closeSheet();
+        }}
+        onClose={handleDialogClose}
+        ref={dialogRef}
+      >
+        <div className="participant-roster-sheet rebuy-rules-sheet">
+          <header className="participant-roster-header">
+            <div>
+              <p className="eyebrow">REBUY RULES</p>
+              <h2 id="rebuy-rules-title">100BB返済ルール</h2>
+            </div>
+            <button
+              aria-label="返済ルールを閉じる"
+              className="participant-roster-close"
+              onClick={closeSheet}
+              type="button"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </header>
+          <div
+            className="participant-roster-scroll rebuy-rules-content"
+            id="rebuy-rules-description"
+          >
+            <ol className="rebuy-rules-list">
+              <li>
+                <strong>200BB超</strong>
+                <span>任意で100BBを返済できます</span>
+              </li>
+              <li>
+                <strong>300BB超</strong>
+                <span>100BBを返済してください</span>
+              </li>
+              <li>
+                <strong>返済後</strong>
+                <span>
+                  まだ300BBを超える場合は、未返済がある限り繰り返します
+                </span>
+              </li>
+              <li>
+                <strong>記録</strong>
+                <span>ポット精算後に本人が記録します</span>
+              </li>
+            </ol>
+            <p className="rebuy-rules-note">
+              現在スタックをRiverCheckへ入力する必要はありません。
+            </p>
+          </div>
+        </div>
+      </dialog>
+    </>
+  );
+}
 
 function RebuyTracker({
   canRecord,
@@ -885,10 +1090,25 @@ function RebuyTracker({
   const isPending = fetcher.state !== "idle";
   const result = fetcher.data;
   const submissionPendingRef = useRef(false);
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
 
   useEffect(() => {
     if (fetcher.state === "idle") submissionPendingRef.current = false;
   }, [fetcher.state]);
+
+  useEffect(() => {
+    if (!result?.ok) {
+      setFeedbackVisible(false);
+      return;
+    }
+    setFeedbackVisible(true);
+    const timeoutId = window.setTimeout(
+      () => setFeedbackVisible(false),
+      4_000,
+    );
+    return () => window.clearTimeout(timeoutId);
+  }, [result]);
+
   const canUndo =
     result?.ok === true &&
     result.intent !== "undo-rebuy" &&
@@ -906,6 +1126,7 @@ function RebuyTracker({
   function undo() {
     if (!result?.ok || !result.eventId) return;
     if (submissionPendingRef.current) return;
+    setFeedbackVisible(false);
     submissionPendingRef.current = true;
     void fetcher.submit(
       {
@@ -917,13 +1138,19 @@ function RebuyTracker({
     );
   }
 
+  const feedbackMessage =
+    result?.ok === true
+      ? result.intent === "record-rebuy"
+        ? "リバイを記録しました。"
+        : result.intent === "record-repayment"
+          ? "100BBの返済を記録しました。"
+          : "直前の操作を元に戻しました。"
+      : null;
+
   return (
     <section className="rebuy-tracker" aria-labelledby="rebuy-tracker-title">
       <div className="rebuy-tracker-heading">
-        <div>
-          <p className="eyebrow">CURRENT STATUS</p>
-          <h3 id="rebuy-tracker-title">現在の記録</h3>
-        </div>
+        <h3 id="rebuy-tracker-title">現在の記録</h3>
         {!canRecord ? <span className="rebuy-tracker-locked">編集不可</span> : null}
       </div>
       <div className="rebuy-state-grid">
@@ -968,27 +1195,31 @@ function RebuyTracker({
           このリバイ記録は現在変更できません。
         </p>
       )}
-      {result ? (
-        result.ok ? (
-          <div className="rebuy-action-feedback" role="status">
-            <span>
-              {result.intent === "record-rebuy"
-                ? "リバイを記録しました。"
-                : result.intent === "record-repayment"
-                  ? "100BBの返済を記録しました。"
-                  : "直前の操作を元に戻しました。"}
-            </span>
-            {canUndo ? (
-              <button className="text-button" onClick={undo} type="button">
-                元に戻す
-              </button>
-            ) : null}
-          </div>
-        ) : (
-          <p className="rebuy-action-error" role="alert">
-            {result.error}
-          </p>
-        )
+      <RebuyRulesSheet />
+      {result?.ok === false ? (
+        <p className="rebuy-action-error" role="alert">
+          {result.error}
+        </p>
+      ) : null}
+      {feedbackMessage && feedbackVisible ? (
+        <div
+          aria-live="polite"
+          className="app-toast rebuy-action-toast"
+          role="status"
+        >
+          <span aria-hidden="true">✓</span>
+          <strong>{feedbackMessage}</strong>
+          {canUndo ? (
+            <button
+              className="rebuy-toast-undo"
+              disabled={isPending}
+              onClick={undo}
+              type="button"
+            >
+              元に戻す
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </section>
   );
@@ -1012,12 +1243,24 @@ function ResultEntryForm({
   const [reportedCount, setReportedCount] = useState(
     settlementRebuyCount ?? outstandingRebuyCount,
   );
+  const reportedCountEditedRef = useRef(settlementRebuyCount !== null);
+
+  useEffect(() => {
+    if (settlementRebuyCount !== null) {
+      reportedCountEditedRef.current = true;
+      setReportedCount(settlementRebuyCount);
+      return;
+    }
+    if (!reportedCountEditedRef.current) {
+      setReportedCount(outstandingRebuyCount);
+    }
+  }, [outstandingRebuyCount, settlementRebuyCount]);
 
   return (
     <Form className="result-entry-form" method="post" noValidate reloadDocument>
       <input name="intent" type="hidden" value="save-input" />
       <label className="field">
-        <span className="field-label">残りチップ</span>
+        <span className="field-label">残りチップ（枚）</span>
         <input
           defaultValue={remainingChips ?? initialChips}
           inputMode="numeric"
@@ -1035,6 +1278,7 @@ function ResultEntryForm({
           min={0}
           name="settlementRebuyCount"
           onChange={(event) => {
+            reportedCountEditedRef.current = true;
             const value = Number(event.currentTarget.value);
             if (Number.isSafeInteger(value) && value >= 0) {
               setReportedCount(value);
@@ -1065,6 +1309,18 @@ function ResultEntryForm({
       </button>
     </Form>
   );
+}
+
+function getParticipantNotice(notice: string | null): string | null {
+  const messages: Record<string, string> = {
+    joined: "参加しました。ゲーム中の操作を開始できます。",
+    saved: "最終結果を保存しました。",
+    left: "参加を取り消しました。",
+    finalized: "結果を確定しました。",
+    corrected: "開催情報と結果を更新しました。",
+    "highlight-saved": "ハイライトを保存しました。",
+  };
+  return notice ? messages[notice] ?? null : null;
 }
 
 function RebuyMatchStatus({

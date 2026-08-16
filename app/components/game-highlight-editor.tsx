@@ -175,7 +175,7 @@ export function GameHighlightEditor({
 
         <div className="highlight-editor-actions">
           <Link className="button button-secondary" to={cancelUrl}>
-            Cancel
+            キャンセル
           </Link>
           <button
             className="button button-primary"
@@ -186,7 +186,7 @@ export function GameHighlightEditor({
               ? "写真を処理中…"
               : isSubmitting
                 ? "保存中…"
-                : "Save"}
+                : "TABLE STORYを保存"}
           </button>
         </div>
       </Form>

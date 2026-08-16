@@ -20,13 +20,17 @@ export interface GameSettingsValues {
   secondPlaceCost: string;
   thirdPlaceCost: string;
   previewParticipantCount: string;
+  costShares: string[];
 }
+
+type AdjustmentMode = "top-three" | "individual";
 
 type SettingsErrors = Partial<Record<keyof GameSettingsValues, string>>;
 
 interface GameSettingsFieldsProps {
   actualParticipantCount?: number;
   errors: SettingsErrors;
+  onValidityChange?: (valid: boolean) => void;
   onParticipantCountChange?: (value: string) => void;
   showCoreSettings?: boolean;
   values: GameSettingsValues;
@@ -35,78 +39,60 @@ interface GameSettingsFieldsProps {
 export function GameSettingsFields({
   actualParticipantCount = 0,
   errors,
+  onValidityChange,
   onParticipantCountChange,
   showCoreSettings = true,
   values,
 }: GameSettingsFieldsProps) {
-  const [costValues, setCostValues] = useState(() => ({
-    venueCost: values.venueCost,
-    firstPlaceCost: values.firstPlaceCost,
-    secondPlaceCost: values.secondPlaceCost,
-    thirdPlaceCost: values.thirdPlaceCost,
-  }));
+  const [venueCost, setVenueCost] = useState(values.venueCost);
   const [participantCountInput, setParticipantCountInput] = useState(
     String(Math.max(4, Number(values.previewParticipantCount) || 4)),
   );
+  const [recommendationMode, setRecommendationMode] =
+    useState<RecommendationMode>("standard");
+  const [shareValues, setShareValues] = useState(() =>
+    buildInitialShares(values),
+  );
+  const [adjustmentMode, setAdjustmentMode] =
+    useState<AdjustmentMode>("top-three");
+  const [editingRank, setEditingRank] = useState<number | null>(null);
   const [recommendationNotice, setRecommendationNotice] = useState<
     string | null
   >(null);
 
-  useEffect(() => {
-    const value = String(
-      Math.max(4, Number(values.previewParticipantCount) || 4),
-    );
-    setParticipantCountInput(value);
-    onParticipantCountChange?.(value);
-  }, [onParticipantCountChange, values.previewParticipantCount]);
-
-  const participantCount = Math.max(
-    4,
-    Number(participantCountInput) || 4,
+  const analysis = useMemo(
+    () => analyzeSettlement(venueCost, participantCountInput, shareValues),
+    [participantCountInput, shareValues, venueCost],
   );
 
-  const preview = useMemo(() => {
-    try {
-      const input = {
-        venueCost: parsePreviewInteger(costValues.venueCost),
-        participantCount,
-        firstPlaceCost: parsePreviewInteger(costValues.firstPlaceCost),
-        secondPlaceCost: parsePreviewInteger(costValues.secondPlaceCost),
-        thirdPlaceCost: parsePreviewInteger(costValues.thirdPlaceCost),
-      };
-      return { result: calculateCostShares(input), error: null };
-    } catch {
-      return {
-        result: null,
-        error:
-          "設定不可です。1〜3位を100円単位かつ順位順の金額にし、4位以下へ3位額を保証できる会費にしてください。",
-      };
-    }
-  }, [costValues, participantCount]);
+  useEffect(() => {
+    onValidityChange?.(analysis.isValid);
+  }, [analysis.isValid, onValidityChange]);
 
   const recommendationAvailable = useMemo(() => {
     try {
       recommendTopCosts(
-        parsePreviewInteger(costValues.venueCost),
-        participantCount,
+        parsePreviewInteger(venueCost),
+        parseParticipantCount(participantCountInput),
+        recommendationMode,
       );
       return true;
     } catch {
       return false;
     }
-  }, [costValues.venueCost, participantCount]);
+  }, [participantCountInput, recommendationMode, venueCost]);
 
-  function setCost(name: keyof typeof costValues, value: string) {
-    setRecommendationNotice(null);
-    setCostValues((current) => ({ ...current, [name]: value }));
-  }
-
-  function applyRecommendation(mode: RecommendationMode) {
+  function replaceWithRecommendation(
+    nextVenueCost: string,
+    nextParticipantCount: string,
+    mode: RecommendationMode,
+    showNotice: boolean,
+  ) {
     let adjusted;
     try {
       adjusted = recommendTopCostsForAttendance(
-        parsePreviewInteger(costValues.venueCost),
-        participantCount,
+        parsePreviewInteger(nextVenueCost),
+        parseParticipantCount(nextParticipantCount),
         actualParticipantCount,
         mode,
       );
@@ -116,27 +102,81 @@ export function GameSettingsFields({
     const adjustedParticipantCount = String(adjusted.participantCount);
     setParticipantCountInput(adjustedParticipantCount);
     onParticipantCountChange?.(adjustedParticipantCount);
-    setCostValues((current) => ({
-      ...current,
-      firstPlaceCost: String(adjusted.firstPlaceCost),
-      secondPlaceCost: String(adjusted.secondPlaceCost),
-      thirdPlaceCost: String(adjusted.thirdPlaceCost),
-    }));
+    setShareValues(adjusted.shares.map(String));
+    setEditingRank(null);
+    setAdjustmentMode("top-three");
+    setRecommendationMode(mode);
     setRecommendationNotice(
-      adjusted.adjustedToAttendance
-        ? `参加状況${actualParticipantCount}人に合わせて${recommendationLabel(mode)}を反映しました。`
-        : `${adjusted.participantCount}人想定の${recommendationLabel(mode)}を反映しました。`,
+      showNotice
+        ? adjusted.adjustedToAttendance
+          ? `参加状況${actualParticipantCount}人に合わせて${recommendationLabel(mode)}を反映しました。`
+          : `${adjusted.participantCount}人想定の${recommendationLabel(mode)}を反映しました。`
+        : null,
     );
+  }
+
+  function applyRecommendation(mode: RecommendationMode) {
+    replaceWithRecommendation(
+      venueCost,
+      participantCountInput,
+      mode,
+      true,
+    );
+  }
+
+  function applyTopThreeDistribution() {
+    try {
+      const result = calculateCostShares({
+        venueCost: parsePreviewInteger(venueCost),
+        participantCount: parseParticipantCount(participantCountInput),
+        firstPlaceCost: parsePreviewInteger(shareValues[0] ?? ""),
+        secondPlaceCost: parsePreviewInteger(shareValues[1] ?? ""),
+        thirdPlaceCost: parsePreviewInteger(shareValues[2] ?? ""),
+      });
+      setShareValues(result.shares.map(String));
+      setEditingRank(null);
+      setAdjustmentMode("top-three");
+      setRecommendationNotice(
+        "現在の1〜3位を基準に、4位以下を再配分しました。",
+      );
+    } catch {
+      setRecommendationNotice(
+        "1〜3位を100円単位かつ順位順にすると自動配分できます。",
+      );
+    }
+  }
+
+  function updateShare(index: number, value: string) {
+    setRecommendationNotice(null);
+    setShareValues((current) => {
+      const next = current.map((share, shareIndex) =>
+        shareIndex === index ? value : share,
+      );
+      if (adjustmentMode !== "top-three" || index >= 3) {
+        return next;
+      }
+      try {
+        return calculateCostShares({
+          venueCost: parsePreviewInteger(venueCost),
+          participantCount: parseParticipantCount(participantCountInput),
+          firstPlaceCost: parsePreviewInteger(next[0] ?? ""),
+          secondPlaceCost: parsePreviewInteger(next[1] ?? ""),
+          thirdPlaceCost: parsePreviewInteger(next[2] ?? ""),
+        }).shares.map(String);
+      } catch {
+        return next;
+      }
+    });
   }
 
   return (
     <>
       {showCoreSettings ? (
         <>
-          <fieldset className="form-section">
+          <fieldset className="form-section form-section-primary">
             <legend>
               <span>01</span>
-              基本情報
+              開催情報
             </legend>
             <Field
               defaultValue={values.title}
@@ -157,10 +197,10 @@ export function GameSettingsFields({
             />
           </fieldset>
 
-          <fieldset className="form-section">
+          <fieldset className="form-section form-section-stack">
             <legend>
               <span>02</span>
-              チップ設定
+              ゲーム設定
             </legend>
             <Field
               defaultValue={values.initialChips}
@@ -179,10 +219,10 @@ export function GameSettingsFields({
         </>
       ) : null}
 
-      <fieldset className="form-section">
+      <fieldset className="form-section form-section-settlement">
         <legend>
           <span>03</span>
-          会費の精算
+          精算設定
         </legend>
         <Field
           containerClassName="venue-cost-field"
@@ -190,56 +230,31 @@ export function GameSettingsFields({
           inputMode="numeric"
           label="会費"
           name="venueCost"
-          onChange={(event) => setCost("venueCost", event.target.value)}
+          onChange={(event) => {
+            const nextVenueCost = event.target.value;
+            setVenueCost(nextVenueCost);
+            setRecommendationNotice(null);
+            replaceWithRecommendation(
+              nextVenueCost,
+              participantCountInput,
+              recommendationMode,
+              false,
+            );
+          }}
           placeholder="12000"
           required
           suffix="円"
           type="number"
-          value={costValues.venueCost}
+          value={venueCost}
         />
         <p className="field-hint">
           精算総額は100円単位で切り上げます。
         </p>
-        <div className="field-grid field-grid-three">
-          <Field
-            error={errors.firstPlaceCost}
-            inputMode="numeric"
-            label={<PlaceLabel rank={1} tone="gold" />}
-            name="firstPlaceCost"
-            onChange={(event) => setCost("firstPlaceCost", event.target.value)}
-            required
-            suffix="円"
-            type="number"
-            value={costValues.firstPlaceCost}
-          />
-          <Field
-            error={errors.secondPlaceCost}
-            inputMode="numeric"
-            label={<PlaceLabel rank={2} tone="silver" />}
-            name="secondPlaceCost"
-            onChange={(event) => setCost("secondPlaceCost", event.target.value)}
-            required
-            suffix="円"
-            type="number"
-            value={costValues.secondPlaceCost}
-          />
-          <Field
-            error={errors.thirdPlaceCost}
-            inputMode="numeric"
-            label={<PlaceLabel rank={3} tone="bronze" />}
-            name="thirdPlaceCost"
-            onChange={(event) => setCost("thirdPlaceCost", event.target.value)}
-            required
-            suffix="円"
-            type="number"
-            value={costValues.thirdPlaceCost}
-          />
-        </div>
 
         <section className="cost-preview" aria-live="polite">
           <div className="cost-preview-heading">
             <div>
-              <h2>COST PREVIEW</h2>
+              <h2>精算プレビュー</h2>
             </div>
             <Field
               containerClassName="preview-count-field"
@@ -249,9 +264,16 @@ export function GameSettingsFields({
               min={4}
               name="previewParticipantCount"
               onChange={(event) => {
+                const nextParticipantCount = event.target.value;
                 setRecommendationNotice(null);
-                setParticipantCountInput(event.target.value);
-                onParticipantCountChange?.(event.target.value);
+                setParticipantCountInput(nextParticipantCount);
+                onParticipantCountChange?.(nextParticipantCount);
+                replaceWithRecommendation(
+                  venueCost,
+                  nextParticipantCount,
+                  recommendationMode,
+                  false,
+                );
               }}
               required
               suffix="人"
@@ -277,14 +299,16 @@ export function GameSettingsFields({
               </div>
               <div className="recommendation-actions">
                 <button
-                  className="button button-small button-secondary"
+                  aria-pressed={recommendationMode === "standard"}
+                  className={`button button-small button-secondary${recommendationMode === "standard" ? " is-active" : ""}`}
                   onClick={() => applyRecommendation("standard")}
                   type="button"
                 >
                   標準を反映
                 </button>
                 <button
-                  className="button button-small button-secondary"
+                  aria-pressed={recommendationMode === "gentle"}
+                  className={`button button-small button-secondary${recommendationMode === "gentle" ? " is-active" : ""}`}
                   onClick={() => applyRecommendation("gentle")}
                   type="button"
                 >
@@ -294,37 +318,117 @@ export function GameSettingsFields({
             </div>
           ) : null}
 
-          {preview.result ? (
-            <>
-              <div className="share-grid">
-                {preview.result.shares.map((share, index) => (
-                  <div className="share-item" key={index}>
-                    <span>{formatOrdinal(index + 1)}</span>
-                    <strong>{formatYen(share)}</strong>
-                  </div>
-                ))}
+          <div
+            aria-label="精算額の調整方法"
+            className="settlement-adjustment-control"
+            role="group"
+          >
+            <span>調整方法</span>
+            <div>
+              <button
+                aria-pressed={adjustmentMode === "top-three"}
+                className={adjustmentMode === "top-three" ? "is-active" : ""}
+                onClick={applyTopThreeDistribution}
+                type="button"
+              >
+                上位3位から配分
+              </button>
+              <button
+                aria-pressed={adjustmentMode === "individual"}
+                className={adjustmentMode === "individual" ? "is-active" : ""}
+                onClick={() => setAdjustmentMode("individual")}
+                type="button"
+              >
+                全順位を個別調整
+              </button>
+            </div>
+          </div>
+          <p className="settlement-edit-hint">
+            {adjustmentMode === "top-three"
+              ? "1〜3位を変えると、4位以下を自動で再配分します。"
+              : "変更した順位だけを調整します。"}
+          </p>
+          <div className="share-grid">
+            {shareValues.map((share, index) => (
+              <div
+                className={`share-item${analysis.invalidRankIndex === index ? " is-invalid" : ""}`}
+                key={index}
+              >
+                <span>{formatOrdinal(index + 1)}</span>
+                {editingRank === index ? (
+                  <span className="share-amount-input-wrap">
+                    <input
+                      aria-label={`${index + 1}位の負担額`}
+                      autoFocus
+                      className="share-amount-input"
+                      inputMode="numeric"
+                      min={0}
+                      onBlur={() => setEditingRank(null)}
+                      onChange={(event) =>
+                        updateShare(index, event.target.value)
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          event.currentTarget.blur();
+                        }
+                      }}
+                      pattern="[0-9]*"
+                      type="text"
+                      value={share}
+                    />
+                    <span>円</span>
+                  </span>
+                ) : (
+                  <button
+                    aria-label={`${index + 1}位の負担額 ${formatShareValue(share)}。タップして編集`}
+                    className="share-amount-button"
+                    onClick={() => {
+                      if (index >= 3) {
+                        setAdjustmentMode("individual");
+                      }
+                      setEditingRank(index);
+                    }}
+                    type="button"
+                  >
+                    <strong>{formatShareValue(share)}</strong>
+                  </button>
+                )}
+                <input name="costShare" type="hidden" value={share} />
               </div>
-              <div className="preview-totals">
-                <span>
-                  精算総額{" "}
-                  <strong>{formatYen(preview.result.settlementTotal)}</strong>
-                </span>
-                <span>
-                  負担額合計{" "}
-                  <strong>
-                    {formatYen(
-                      preview.result.shares.reduce(
-                        (sum, share) => sum + share,
-                        0,
-                      ),
-                    )}
-                  </strong>
-                </span>
-              </div>
-            </>
-          ) : (
-            <p className="preview-error">{preview.error}</p>
-          )}
+            ))}
+          </div>
+          <input
+            name="firstPlaceCost"
+            type="hidden"
+            value={shareValues[0] ?? ""}
+          />
+          <input
+            name="secondPlaceCost"
+            type="hidden"
+            value={shareValues[1] ?? ""}
+          />
+          <input
+            name="thirdPlaceCost"
+            type="hidden"
+            value={shareValues[2] ?? ""}
+          />
+          <div className="preview-totals">
+            <span>
+              精算総額{" "}
+              <strong>{formatOptionalYen(analysis.settlementTotal)}</strong>
+            </span>
+            <span>
+              負担額合計{" "}
+              <strong>{formatOptionalYen(analysis.allocatedTotal)}</strong>
+            </span>
+          </div>
+          <p
+            className={`settlement-validation ${analysis.isValid ? "is-valid" : "is-error"}`}
+            role={analysis.isValid ? "status" : "alert"}
+          >
+            {errors.costShares ?? analysis.message}
+          </p>
         </section>
       </fieldset>
     </>
@@ -337,22 +441,6 @@ interface FieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: React.ReactNode;
   name: string;
   suffix?: string;
-}
-
-function PlaceLabel({
-  rank,
-  tone,
-}: {
-  rank: number;
-  tone: "gold" | "silver" | "bronze";
-}) {
-  return (
-    <span className="place-label">
-      <span className={`place-rank place-rank-${tone}`}>
-        {formatOrdinal(rank)}
-      </span>
-    </span>
-  );
 }
 
 export function Field({
@@ -400,8 +488,171 @@ function parsePreviewInteger(value: string): number {
   return parsed;
 }
 
+function parseParticipantCount(value: string): number {
+  const parsed = parsePreviewInteger(value);
+  if (parsed < 4) throw new RangeError("participant count is too small");
+  return parsed;
+}
+
+function buildInitialShares(values: GameSettingsValues): string[] {
+  let participantCount: number;
+  try {
+    participantCount = parseParticipantCount(values.previewParticipantCount);
+  } catch {
+    participantCount = 4;
+  }
+  if (values.costShares.length === participantCount) {
+    return [...values.costShares];
+  }
+  try {
+    return calculateCostShares({
+      venueCost: parsePreviewInteger(values.venueCost),
+      participantCount,
+      firstPlaceCost: parsePreviewInteger(values.firstPlaceCost),
+      secondPlaceCost: parsePreviewInteger(values.secondPlaceCost),
+      thirdPlaceCost: parsePreviewInteger(values.thirdPlaceCost),
+    }).shares.map(String);
+  } catch {
+    try {
+      return recommendTopCosts(
+        parsePreviewInteger(values.venueCost),
+        participantCount,
+      ).shares.map(String);
+    } catch {
+      return Array.from({ length: participantCount }, () => "0");
+    }
+  }
+}
+
+interface SettlementAnalysis {
+  allocatedTotal: number | null;
+  invalidRankIndex: number | null;
+  isValid: boolean;
+  message: string;
+  settlementTotal: number | null;
+}
+
+function analyzeSettlement(
+  venueCostValue: string,
+  participantCountValue: string,
+  shares: string[],
+): SettlementAnalysis {
+  let venueCost: number;
+  let participantCount: number;
+  try {
+    venueCost = parsePreviewInteger(venueCostValue);
+  } catch {
+    return invalidAnalysis("会費を0以上の整数で入力してください。");
+  }
+  const settlementTotal = Math.ceil(venueCost / 100) * 100;
+  try {
+    participantCount = parseParticipantCount(participantCountValue);
+  } catch {
+    return invalidAnalysis(
+      "人数は4人以上で入力してください。",
+      settlementTotal,
+    );
+  }
+  if (shares.length !== participantCount) {
+    return invalidAnalysis(
+      `負担額は${participantCount}人分必要です。人数を確認してください。`,
+      settlementTotal,
+    );
+  }
+  const parsedShares: number[] = [];
+  for (const [index, share] of shares.entries()) {
+    try {
+      parsedShares.push(parsePreviewInteger(share));
+    } catch {
+      return invalidAnalysis(
+        `${index + 1}位の負担額を0以上の整数で入力してください。`,
+        settlementTotal,
+        null,
+        index,
+      );
+    }
+  }
+  const allocatedTotal = parsedShares.reduce(
+    (total, share) => total + share,
+    0,
+  );
+  const unroundedIndex = parsedShares.findIndex((share) => share % 100 !== 0);
+  if (unroundedIndex >= 0) {
+    return invalidAnalysis(
+      `${unroundedIndex + 1}位の負担額を100円単位にしてください。`,
+      settlementTotal,
+      allocatedTotal,
+      unroundedIndex,
+    );
+  }
+  const reversedIndex = parsedShares.findIndex(
+    (share, index) => index > 0 && share < parsedShares[index - 1]!,
+  );
+  if (reversedIndex >= 0) {
+    return invalidAnalysis(
+      `${reversedIndex + 1}位は${reversedIndex}位以上の負担額にしてください。`,
+      settlementTotal,
+      allocatedTotal,
+      reversedIndex,
+    );
+  }
+  const difference = settlementTotal - allocatedTotal;
+  if (difference > 0) {
+    return invalidAnalysis(
+      `あと${formatNumber(difference)}円割り振ってください。`,
+      settlementTotal,
+      allocatedTotal,
+    );
+  }
+  if (difference < 0) {
+    return invalidAnalysis(
+      `${formatNumber(Math.abs(difference))}円多いです。`,
+      settlementTotal,
+      allocatedTotal,
+    );
+  }
+  return {
+    allocatedTotal,
+    invalidRankIndex: null,
+    isValid: true,
+    message: `${formatYen(settlementTotal)} ✓ 配分が一致しています。`,
+    settlementTotal,
+  };
+}
+
+function invalidAnalysis(
+  message: string,
+  settlementTotal: number | null = null,
+  allocatedTotal: number | null = null,
+  invalidRankIndex: number | null = null,
+): SettlementAnalysis {
+  return {
+    allocatedTotal,
+    invalidRankIndex,
+    isValid: false,
+    message,
+    settlementTotal,
+  };
+}
+
 function formatYen(value: number): string {
-  return `${new Intl.NumberFormat("ja-JP").format(value)}円`;
+  return `${formatNumber(value)}円`;
+}
+
+function formatOptionalYen(value: number | null): string {
+  return value === null ? "—" : formatYen(value);
+}
+
+function formatShareValue(value: string): string {
+  try {
+    return formatYen(parsePreviewInteger(value));
+  } catch {
+    return "未入力";
+  }
+}
+
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat("ja-JP").format(value);
 }
 
 function recommendationLabel(mode: RecommendationMode): string {

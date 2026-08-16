@@ -21,6 +21,7 @@ export interface GameDetails extends GameSummary {
   firstPlaceCost: number;
   secondPlaceCost: number;
   thirdPlaceCost: number;
+  costShares: number[] | null;
 }
 
 export interface CreateGameInput {
@@ -33,4 +34,5 @@ export interface CreateGameInput {
   firstPlaceCost: number;
   secondPlaceCost: number;
   thirdPlaceCost: number;
+  costShares: number[];
 }

@@ -28,6 +28,7 @@ interface GameDetailsRow {
   first_place_cost: string;
   second_place_cost: string;
   third_place_cost: string;
+  cost_shares: string[] | null;
 }
 
 export async function listGamesForGroup(
@@ -93,7 +94,8 @@ export async function findGameForGroup(
         venue_cost,
         first_place_cost,
         second_place_cost,
-        third_place_cost
+        third_place_cost,
+        cost_shares
       FROM games
       WHERE id = $1 AND group_id = $2
     `,
@@ -115,6 +117,7 @@ export async function findGameForGroup(
     firstPlaceCost: Number(row.first_place_cost),
     secondPlaceCost: Number(row.second_place_cost),
     thirdPlaceCost: Number(row.third_place_cost),
+    costShares: mapCostShares(row.cost_shares),
   };
 }
 
@@ -136,9 +139,10 @@ export async function insertGame(
         first_place_cost,
         second_place_cost,
         third_place_cost,
-        preview_participant_count
+        preview_participant_count,
+        cost_shares
       )
-      VALUES ($1, $2, $3, 'open', $4, $5, $6, 100, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, 'open', $4, $5, $6, 100, $7, $8, $9, $10, $11::BIGINT[])
       RETURNING id
     `,
     [
@@ -152,10 +156,15 @@ export async function insertGame(
       input.secondPlaceCost,
       input.thirdPlaceCost,
       input.previewParticipantCount,
+      input.costShares,
     ],
   );
 
   const id = result.rows[0]?.id;
   if (!id) throw new Error("Game creation did not return an id");
   return id;
+}
+
+function mapCostShares(values: string[] | null): number[] | null {
+  return values?.map((value) => Number(value)) ?? null;
 }

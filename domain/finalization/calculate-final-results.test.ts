@@ -74,6 +74,53 @@ describe("calculateFinalResults", () => {
     ]);
   });
 
+
+  it("保存済みの全順位配分を順位へそのまま割り当てる", () => {
+    const calculated = calculateFinalResults(
+      {
+        ...settings,
+        costShares: [1_000, 2_000, 3_000, 4_000],
+      },
+      [
+        {
+          groupPlayerId: "a",
+          displayName: "A",
+          remainingChips: 40_000,
+          totalRebuyCount: 0,
+          outstandingRebuyCount: 0,
+          settlementRebuyCount: 0,
+        },
+        {
+          groupPlayerId: "b",
+          displayName: "B",
+          remainingChips: 30_000,
+          totalRebuyCount: 0,
+          outstandingRebuyCount: 0,
+          settlementRebuyCount: 0,
+        },
+        {
+          groupPlayerId: "c",
+          displayName: "C",
+          remainingChips: 20_000,
+          totalRebuyCount: 0,
+          outstandingRebuyCount: 0,
+          settlementRebuyCount: 0,
+        },
+        {
+          groupPlayerId: "d",
+          displayName: "D",
+          remainingChips: 10_000,
+          totalRebuyCount: 0,
+          outstandingRebuyCount: 0,
+          settlementRebuyCount: 0,
+        },
+      ],
+    );
+
+    expect(calculated.results.map((result) => result.costShare)).toEqual([
+      1_000, 2_000, 3_000, 4_000,
+    ]);
+  });
   it("4人未満は確定計算できない", () => {
     expect(() =>
       calculateFinalResults(settings, [

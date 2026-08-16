@@ -20,7 +20,7 @@ export function GameIdentityEditor({
     <section className="result-correction-panel game-identity-editor">
       <div className="section-heading">
         <div>
-          <h2>GAME DETAILS</h2>
+          <h2>開催情報</h2>
         </div>
       </div>
       <p className="correction-intro">
@@ -36,7 +36,7 @@ export function GameIdentityEditor({
       >
         <input name="intent" type="hidden" value="save-game-identity" />
         <fieldset className="correction-game-details">
-          <legend>GAME INFO</legend>
+          <legend>開催名と開催日</legend>
           <label className="field">
             <span className="field-label">開催名</span>
             <input
@@ -72,10 +72,10 @@ export function GameIdentityEditor({
 
         <div className="correction-actions">
           <Link className="button button-secondary" reloadDocument to={cancelUrl}>
-            Cancel
+            キャンセル
           </Link>
           <button className="button button-primary" disabled={isSubmitting} type="submit">
-            {isSubmitting ? "保存中…" : "Save"}
+            {isSubmitting ? "保存中…" : "開催情報を保存"}
           </button>
         </div>
       </Form>

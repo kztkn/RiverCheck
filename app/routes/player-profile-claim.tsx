@@ -38,25 +38,28 @@ export default function PlayerProfileClaim({
   return (
     <main className="page-shell auth-page profile-claim-page">
       <GroupSiteHeader groupCode={loaderData.group.publicCode} />
-      <section className="participant-panel auth-panel profile-claim-card">
-        <div>
-          <p className="eyebrow">PLAYER ACCESS</p>
+      <section className="access-shell auth-panel profile-claim-card">
+        <header className="access-header">
+          <p className="eyebrow">PLAYER PROFILE</p>
           <h1>{claim ? `${claim.displayName}さんの本人用リンク` : "リンクを確認できません"}</h1>
-          <p className="muted-copy">
+          <p>
             {claim
               ? "この端末をあなたのプロフィールに紐付けます。名前・アイコン・一言を自分で編集できるようになります。"
               : "このリンクは使用済み・期限切れ、または新しいリンクが発行されています。"}
           </p>
-        </div>
+        </header>
         {actionData?.ok === false ? (
           <p className="error-notice" role="alert">{actionData.error}</p>
         ) : null}
         {claim ? (
           <>
-            <p className="profile-claim-expiry">
-              有効期限：{formatExpiry(claim.expiresAt)}
-            </p>
-            <Form method="post">
+            <dl className="access-meta">
+              <div>
+                <dt>リンクの有効期限</dt>
+                <dd>{formatExpiry(claim.expiresAt)}</dd>
+              </div>
+            </dl>
+            <Form className="access-form" method="post">
               <button className="button button-primary" disabled={isSubmitting} type="submit">
                 {isSubmitting ? "紐付け中…" : "この端末を本人として登録"}
               </button>

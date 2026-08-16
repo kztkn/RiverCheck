@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { IconQrcode, IconX } from "@tabler/icons-react";
 import { QRCodeSVG } from "qrcode.react";
 
 export function ParticipantLinkQr({
@@ -18,55 +19,88 @@ export function ParticipantLinkQr({
   const hostname = new URL(url).hostname;
   const isLoopback = hostname === "localhost" || hostname === "127.0.0.1";
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsOpen(false);
+    };
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
   return (
     <div className="participant-qr">
       <button
         aria-controls={panelId}
         aria-expanded={isOpen}
         className="button button-secondary participant-qr-toggle"
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={() => setIsOpen(true)}
         type="button"
       >
-        <QrIcon />
-        {isOpen ? "QRコードを閉じる" : "QRコードを表示"}
+        <IconQrcode aria-hidden="true" />
+        QRコードを表示
       </button>
 
       {isOpen ? (
-        <div className="participant-qr-panel" id={panelId}>
-          <div className="participant-qr-code">
-            <QRCodeSVG
-              bgColor="#ffffff"
-              fgColor="#07120e"
-              level="M"
-              marginSize={4}
-              size={240}
-              title={qrTitle}
-              value={url}
-            />
-          </div>
-          <div className="participant-qr-copy">
-            <strong>{panelTitle}</strong>
-            <p>{description}</p>
-            {isLoopback ? (
-              <p className="participant-qr-warning" role="note">
-                localhostは別端末から開けません。スマホで試す場合は、PCのLAN
-                IPでこの管理画面を開き直してからQRを表示してください。
-              </p>
-            ) : null}
-          </div>
+        <div className="participant-qr-overlay">
+          <button
+            aria-label="QRコードを閉じる"
+            className="participant-qr-backdrop"
+            onClick={() => setIsOpen(false)}
+            type="button"
+          />
+          <section
+            aria-labelledby={`${panelId}-heading`}
+            aria-modal="true"
+            className="participant-qr-panel"
+            id={panelId}
+            role="dialog"
+          >
+            <header className="participant-qr-header">
+              <div>
+                <p className="eyebrow">JOIN THE TABLE</p>
+                <h2 id={`${panelId}-heading`}>参加用QRコード</h2>
+              </div>
+              <button
+                aria-label="QRコードを閉じる"
+                className="participant-qr-close"
+                onClick={() => setIsOpen(false)}
+                type="button"
+              >
+                <IconX aria-hidden="true" />
+              </button>
+            </header>
+            <div className="participant-qr-content">
+              <div className="participant-qr-code">
+                <QRCodeSVG
+                  bgColor="#ffffff"
+                  fgColor="#07120e"
+                  level="M"
+                  marginSize={4}
+                  size={240}
+                  title={qrTitle}
+                  value={url}
+                />
+              </div>
+              <div className="participant-qr-copy">
+                <strong>{panelTitle}</strong>
+                <p>{description}</p>
+                {isLoopback ? (
+                  <p className="participant-qr-warning" role="note">
+                    localhostは別端末から開けません。スマホで試す場合は、PCのLAN
+                    IPでこの管理画面を開き直してからQRを表示してください。
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </section>
         </div>
       ) : null}
     </div>
-  );
-}
-
-function QrIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <rect height="7" rx="1" width="7" x="3" y="3" />
-      <rect height="7" rx="1" width="7" x="14" y="3" />
-      <rect height="7" rx="1" width="7" x="3" y="14" />
-      <path d="M14 14h3v3h-3zM19 14h2v5h-2M14 19h3v2h-3M19 21h2" />
-    </svg>
   );
 }

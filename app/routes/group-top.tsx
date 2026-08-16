@@ -19,143 +19,197 @@ export async function loader({ params }: Route.LoaderArgs) {
 export default function GroupTop({ loaderData }: Route.ComponentProps) {
   const { group, games } = loaderData;
   const rootData = useRouteLoaderData("root") as
-    | { isOrganizer: boolean }
+    | {
+        authenticatedPlayerGroupPlayerId: string | null;
+        isOrganizer: boolean;
+      }
     | undefined;
   const isOrganizer = rootData?.isOrganizer ?? false;
+  const playerStatsUrl = rootData?.authenticatedPlayerGroupPlayerId
+    ? `stats/${rootData.authenticatedPlayerGroupPlayerId}`
+    : "profile";
 
   const activeGames = games.filter((game) => game.status !== "finalized");
   const pastGames = games.filter((game) => game.status === "finalized");
+  const primaryGame =
+    activeGames.find((game) => game.status === "open") ?? activeGames[0];
+  const otherActiveGames = primaryGame
+    ? activeGames.filter((game) => game.id !== primaryGame.id)
+    : [];
 
   return (
-    <main className="page-shell">
+    <main className="page-shell group-home-page">
       <GroupSiteHeader groupCode={group.publicCode} />
 
-      <section className="hero-card group-hero-card">
-        <div>
-          <p className="eyebrow">YOUR POKER TABLE</p>
-          <h1>{group.name}</h1>
-          <p className="hero-copy">
-            チップも会費も戦績も<br />
-            みんなの結果をひとつにまとめる
-          </p>
-        </div>
+      <section className="group-home-intro">
+        <p className="group-home-brand">YOUR POKER TABLE</p>
+        <h1>{group.name}</h1>
+        <p>今日のテーブルへ。終わったゲームは、みんなの記録へ。</p>
       </section>
 
-      <Link className="stats-cta" to="stats">
+      <section
+        aria-labelledby="current-game-heading"
+        className="home-current-game"
+      >
+        <div className="home-section-heading">
+          <div>
+            <p className="home-section-kicker">NOW AT THE TABLE</p>
+            <h2 id="current-game-heading">いまのゲーム</h2>
+          </div>
+          <span className="home-section-count">{activeGames.length}件</span>
+        </div>
+
+        {primaryGame ? (
+          <>
+            <article className="home-primary-game">
+              <div className="home-primary-game-copy">
+                <span className={`status status-${primaryGame.status}`}>
+                  {statusLabels[primaryGame.status]}
+                </span>
+                <h3>{primaryGame.title}</h3>
+                <div className="home-game-meta">
+                  <time dateTime={primaryGame.playedAt}>
+                    {formatGameDate(primaryGame.playedAt)}
+                  </time>
+                  <span>参加 {primaryGame.participantCount}人</span>
+                </div>
+              </div>
+              <Link
+                className="button button-primary home-game-primary-action"
+                to={buildGameUrl(primaryGame, isOrganizer, false)}
+              >
+                {isOrganizer
+                  ? "開催管理を開く"
+                  : primaryGame.status === "open"
+                    ? "ゲームに参加・戻る"
+                    : "受付状況を見る"}
+                <span aria-hidden="true">→</span>
+              </Link>
+            </article>
+            {otherActiveGames.length > 0 ? (
+              <div
+                aria-label="その他の受付中ゲーム"
+                className="home-other-games"
+              >
+                {otherActiveGames.map((game) => (
+                  <GameListRow
+                    game={game}
+                    isOrganizer={isOrganizer}
+                    key={game.id}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div className="home-current-empty">
+            <p>現在受付中の会はありません。</p>
+            {getCreateGameUrl(0, isOrganizer, false) ? (
+              <Link className="button button-secondary" to="games/new">
+                新しい会を作成
+              </Link>
+            ) : null}
+          </div>
+        )}
+      </section>
+
+      <Link className="home-profile-link" to={playerStatsUrl}>
         <span>
-          <small>RANKING</small>
-          <strong>ランキング</strong>
+          <small>PLAYER RECORD</small>
+          <strong>個人戦績を見る</strong>
+          <span>これまでの損益・順位・MY HAND</span>
         </span>
         <span aria-hidden="true">→</span>
       </Link>
 
-      <GameSection
-        eyebrow="OPEN GAMES"
-        emptyMessage="現在受付中の会はありません。"
-        games={activeGames}
-        heading="受付中"
-        isOrganizer={isOrganizer}
-      />
+      <PastGames games={pastGames} />
 
-      <GameSection
-        eyebrow="HISTORY"
-        emptyMessage="過去の開催はまだありません。"
-        games={pastGames}
-        heading="過去の開催"
-        isPast
-      />
+      <nav aria-label="その他のグループ情報" className="home-secondary-links">
+        <Link to="stats">
+          ランキングを見る <span aria-hidden="true">→</span>
+        </Link>
+        <Link to="about">
+          RiverCheckについて <span aria-hidden="true">→</span>
+        </Link>
+      </nav>
     </main>
   );
 }
 
-function GameSection({
-  eyebrow,
-  emptyMessage,
-  games,
-  heading,
+function PastGames({ games }: { games: GameListItem[] }) {
+  const visibleGames = games.slice(0, 3);
+  const remainingGames = games.slice(3);
+  return (
+    <section aria-labelledby="past-games-heading" className="home-history">
+      <div className="home-section-heading">
+        <h2 id="past-games-heading">最近の開催</h2>
+        <span className="home-section-count">{games.length}件</span>
+      </div>
+      {games.length === 0 ? (
+        <p className="home-history-empty">過去の開催はまだありません。</p>
+      ) : (
+        <>
+          <div className="home-game-list">
+            {visibleGames.map((game) => (
+              <GameListRow game={game} isPast key={game.id} />
+            ))}
+          </div>
+          {remainingGames.length > 0 ? (
+            <details className="home-history-more">
+              <summary>すべて見る（あと{remainingGames.length}件）</summary>
+              <div className="home-game-list">
+                {remainingGames.map((game) => (
+                  <GameListRow game={game} isPast key={game.id} />
+                ))}
+              </div>
+            </details>
+          ) : null}
+        </>
+      )}
+    </section>
+  );
+}
+
+function GameListRow({
+  game,
   isPast = false,
   isOrganizer = false,
 }: {
-  eyebrow: string;
-  emptyMessage: string;
-  games: GameListItem[];
-  heading: string;
+  game: GameListItem;
   isPast?: boolean;
   isOrganizer?: boolean;
 }) {
-  const headingId = isPast ? "past-games-heading" : "active-games-heading";
-  const createGameUrl = getCreateGameUrl(
-    games.length,
-    isOrganizer,
-    isPast,
-  );
-
   return (
-    <section
-      className={`content-section game-history-section${isPast ? " is-past" : ""}`}
-      aria-labelledby={headingId}
+    <Link
+      className="home-game-row"
+      to={buildGameUrl(game, isOrganizer, isPast)}
     >
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">{eyebrow}</p>
-          <h2 id={headingId}>{heading}</h2>
-        </div>
-        <span className="count-badge">{games.length}件</span>
-      </div>
-
-      {games.length === 0 ? (
-        <div className="game-history-empty">
-          <p>{emptyMessage}</p>
-          {createGameUrl ? (
-            <Link
-              className="button button-primary game-history-empty-action"
-              to={createGameUrl}
-            >
-              新しい会を作成
-            </Link>
-          ) : null}
-        </div>
-      ) : (
-        <div className="game-list">
-          {games.map((game) => (
-            <article className="game-card" key={game.id}>
-              <Link
-                className="game-card-main"
-                to={buildGameUrl(game, isOrganizer, isPast)}
-              >
-                {!isPast ? (
-                  <span className={`status status-${game.status}`}>
-                    {statusLabels[game.status]}
-                  </span>
-                ) : null}
-                <h3>{game.title}</h3>
-                <time dateTime={game.playedAt}>
-                  {formatGameDate(game.playedAt)}
-                </time>
-                {isPast ? (
-                  <span className="game-card-summary">
-                    <span>参加 {game.participantCount}人</span>
-                    <span>優勝 {game.winnerName ?? "—"}</span>
-                  </span>
-                ) : null}
-              </Link>
-              <div className="game-card-actions">
-                <Link
-                  className="card-action"
-                  to={buildGameUrl(game, isOrganizer, isPast)}
-                ></Link>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
-    </section>
+      <time dateTime={game.playedAt}>{formatGameDateShort(game.playedAt)}</time>
+      <span className="home-game-row-main">
+        <strong>{game.title}</strong>
+        <small>
+          参加 {game.participantCount}人
+          {isPast ? ` ・ 優勝 ${game.winnerName ?? "—"}` : ""}
+        </small>
+      </span>
+      <span aria-hidden="true" className="home-game-row-arrow">
+        →
+      </span>
+    </Link>
   );
 }
 
 function formatGameDate(playedAt: string): string {
   return new Intl.DateTimeFormat("ja-JP", {
     dateStyle: "long",
+    timeZone: "Asia/Tokyo",
+  }).format(new Date(playedAt));
+}
+
+function formatGameDateShort(playedAt: string): string {
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
     timeZone: "Asia/Tokyo",
   }).format(new Date(playedAt));
 }

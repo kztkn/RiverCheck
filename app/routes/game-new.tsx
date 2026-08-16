@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { Form, Link, redirect, useNavigation } from "react-router";
 import {
@@ -6,6 +7,7 @@ import {
 } from "@server/services/game-service.server";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import { requireOrganizer } from "@server/services/organizer-auth.server";
+import { calculateCostShares } from "@domain/cost-sharing/calculate-cost-shares";
 import { GameSettingsFields } from "../components/game-settings-fields";
 import type { Route } from "./+types/game-new";
 
@@ -27,6 +29,14 @@ export async function action({ request, params }: Route.ActionArgs) {
   return redirect(`/g/${params.groupCode}/games/${result.gameId}/admin`);
 }
 
+const defaultCostShares = calculateCostShares({
+  venueCost: 11_330,
+  participantCount: 8,
+  firstPlaceCost: 0,
+  secondPlaceCost: 500,
+  thirdPlaceCost: 1_000,
+});
+
 const defaults = {
   title: "",
   initialChips: "20000",
@@ -35,6 +45,7 @@ const defaults = {
   secondPlaceCost: "500",
   thirdPlaceCost: "1000",
   previewParticipantCount: "8",
+  costShares: defaultCostShares.shares.map(String),
 };
 
 export default function NewGame({
@@ -43,6 +54,7 @@ export default function NewGame({
 }: Route.ComponentProps) {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const [isSettlementValid, setIsSettlementValid] = useState(false);
   const values = {
     ...defaults,
     playedAt: loaderData.defaultPlayedAt,
@@ -54,28 +66,33 @@ export default function NewGame({
     <main className="page-shell form-page">
       <GroupSiteHeader groupCode={loaderData.group.publicCode} organizer />
 
-      <section className="form-intro">
-        <h1>NEW GAME</h1>
-        <p>{loaderData.group.name} の開催条件を設定します。</p>
+      <section className="form-intro game-create-intro">
+        <p className="form-brand-label">NEW GAME</p>
+        <h1>新しい会を作成</h1>
+        <p>{loaderData.group.name} のゲームと精算条件を決めます。</p>
       </section>
 
       <Form className="game-form" method="post" noValidate>
-        <GameSettingsFields errors={errors} values={values} />
+        <GameSettingsFields
+          errors={errors}
+          onValidityChange={setIsSettlementValid}
+          values={values}
+        />
 
         <div className="form-actions">
-          <button
-            className="button button-primary"
-            disabled={isSubmitting}
-            type="submit"
-          >
-            {isSubmitting ? "作成中…" : "開催を作成"}
-          </button>
           <Link
             className="button button-secondary"
             to={`/g/${loaderData.group.publicCode}/manage`}
           >
             キャンセル
           </Link>
+          <button
+            className="button button-primary"
+            disabled={isSubmitting || !isSettlementValid}
+            type="submit"
+          >
+            {isSubmitting ? "作成中…" : "開催を作成"}
+          </button>
         </div>
       </Form>
     </main>

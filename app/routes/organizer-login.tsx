@@ -67,14 +67,15 @@ export default function OrganizerLogin({
     <main className="page-shell auth-page">
       <GroupSiteHeader groupCode={loaderData.group.publicCode} />
 
-      <section className="participant-panel auth-panel">
-        <div>
-          <h1>ORGANIZER ACCESS</h1>
-          <p className="muted-copy">
+      <section className="access-shell auth-panel">
+        <header className="access-header">
+          <p className="eyebrow">ORGANIZER</p>
+          <h1>主催者として開く</h1>
+          <p>
             {loaderData.group.name} の主催者PINまたは合言葉を入力してください。
             この端末では次回から入力を省略できます。
           </p>
-        </div>
+        </header>
 
         {!loaderData.configured ? (
           <p className="error-notice" role="alert">
@@ -88,7 +89,7 @@ export default function OrganizerLogin({
           </p>
         ) : null}
 
-        <Form className="compact-form" method="post">
+        <Form className="access-form" method="post">
           <input name="intent" type="hidden" value="login" />
           <input name="returnTo" type="hidden" value={returnTo} />
           <label className="field">

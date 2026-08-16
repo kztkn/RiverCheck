@@ -16,13 +16,13 @@ import type {
 } from "@shared-types/player-stats";
 
 const rankingOptions: Array<{ value: PlayerStatsSort; label: string }> = [
-  { value: "total", label: "累計" },
-  { value: "average", label: "平均" },
+  { value: "total", label: "累計損益" },
+  { value: "average", label: "平均損益" },
   { value: "max-win", label: "最大勝ち" },
   { value: "max-loss", label: "最大負け" },
-  { value: "recent", label: "最近" },
-  { value: "top-three", label: "TOP3" },
-  { value: "rank-rate", label: "平均順位率" },
+  { value: "recent", label: "直近3戦" },
+  { value: "top-three", label: "TOP3回数" },
+  { value: "rank-rate", label: "順位率" },
 ];
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -38,10 +38,12 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
   return (
     <main className="page-shell stats-page">
       <GroupSiteHeader groupCode={group.publicCode} />
-      <section className="stats-intro">
+      <section className="stats-intro stats-ranking-intro">
+        <p className="stats-brand-label">TABLE RANKING</p>
         <h1>RANKING</h1>
+        <p>{group.name} のプレイヤーを、好きな指標で比べる。</p>
       </section>
-      <section className="content-section" aria-labelledby="ranking-heading">
+      <section className="stats-ranking-section" aria-label="ランキング">
         <div className="section-heading stats-heading">
           <div className="stats-sort" aria-label="ランキングの並び順">
             {rankingOptions.map((option) => (
@@ -69,7 +71,9 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
               const metric = getRankingMetric(player, sort);
               return (
                 <Link
-                  className="stats-ranking-card"
+                  className={`stats-ranking-card${
+                    player.rank <= 3 ? " is-top-three" : ""
+                  }`}
                   key={player.groupPlayerId}
                   to={player.groupPlayerId}
                 >
@@ -91,7 +95,12 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
                           compact
                         />
                       ) : null}
-                      <small>{player.gamesPlayed}回参加・優勝{player.wins}回</small>
+                      <small>
+                        参加 {player.gamesPlayed}回 ・ 優勝 {player.wins}回
+                        {player.averageRankRate === null
+                          ? ""
+                          : ` ・ 順位率 ${formatDecimal(player.averageRankRate)}%`}
+                      </small>
                     </span>
                   </span>
                   <span className="stats-primary-value">
