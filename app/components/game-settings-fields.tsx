@@ -4,6 +4,7 @@ import {
   GAME_TITLE_RECOMMENDED_LENGTH,
 } from "@domain/game/game-title";
 import { calculateCostShares } from "@domain/cost-sharing/calculate-cost-shares";
+import { MINIMUM_PODIUM_PARTICIPANT_COUNT } from "@domain/cost-sharing/calculate-podium-cost-shares";
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import {
   recommendTopCosts,
@@ -74,13 +75,26 @@ export function GameSettingsFields({
       recommendTopCosts(
         parsePreviewInteger(venueCost),
         parseParticipantCount(participantCountInput),
-        recommendationMode,
       );
       return true;
     } catch {
       return false;
     }
-  }, [participantCountInput, recommendationMode, venueCost]);
+  }, [participantCountInput, venueCost]);
+
+  const podiumRecommendationAvailable = useMemo(() => {
+    try {
+      recommendTopCostsForAttendance(
+        parsePreviewInteger(venueCost),
+        parseParticipantCount(participantCountInput),
+        actualParticipantCount,
+        "podium",
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }, [actualParticipantCount, participantCountInput, venueCost]);
 
   function replaceWithRecommendation(
     nextVenueCost: string,
@@ -89,12 +103,23 @@ export function GameSettingsFields({
     showNotice: boolean,
   ) {
     let adjusted;
+    let effectiveMode = mode;
     try {
+      const intendedParticipantCount = parseParticipantCount(
+        nextParticipantCount,
+      );
+      if (
+        mode === "podium" &&
+        Math.max(intendedParticipantCount, actualParticipantCount) <
+          MINIMUM_PODIUM_PARTICIPANT_COUNT
+      ) {
+        effectiveMode = "standard";
+      }
       adjusted = recommendTopCostsForAttendance(
         parsePreviewInteger(nextVenueCost),
-        parseParticipantCount(nextParticipantCount),
+        intendedParticipantCount,
         actualParticipantCount,
-        mode,
+        effectiveMode,
       );
     } catch {
       return;
@@ -104,13 +129,19 @@ export function GameSettingsFields({
     onParticipantCountChange?.(adjustedParticipantCount);
     setShareValues(adjusted.shares.map(String));
     setEditingRank(null);
-    setAdjustmentMode(mode === "simple" ? "individual" : "top-three");
-    setRecommendationMode(mode);
+    setAdjustmentMode(
+      effectiveMode === "standard" || effectiveMode === "gentle"
+        ? "top-three"
+        : "individual",
+    );
+    setRecommendationMode(effectiveMode);
     setRecommendationNotice(
-      showNotice
+      mode === "podium" && effectiveMode === "standard"
+        ? "表彰台ボーナスは6人以上のため、標準傾斜に切り替えました。"
+        : showNotice
         ? adjusted.adjustedToAttendance
-          ? `参加状況${actualParticipantCount}人に合わせて${recommendationLabel(mode)}を反映しました。`
-          : `${adjusted.participantCount}人想定の${recommendationLabel(mode)}を反映しました。`
+          ? `参加状況${actualParticipantCount}人に合わせて${recommendationLabel(effectiveMode)}を反映しました。`
+          : `${adjusted.participantCount}人想定の${recommendationLabel(effectiveMode)}を反映しました。`
         : null,
     );
   }
@@ -289,15 +320,31 @@ export function GameSettingsFields({
                   おすすめ配分をすぐ反映
                 </p>
                 <p>
-                  標準は順位差をしっかり、ゆる傾斜は差を小さく、割り勘は端数分だけ上位を安くします。
+                  表彰台は1〜3位を優遇、標準は順位差をしっかり、ゆる傾斜は差を小さく、割り勘はほぼ均等です。
                 </p>
                 {recommendationNotice ? (
                   <small className="recommendation-notice">
                     {recommendationNotice}
                   </small>
+                ) : !podiumRecommendationAvailable ? (
+                  <small>表彰台ボーナスは6人以上で利用できます。</small>
                 ) : null}
               </div>
               <div className="recommendation-actions">
+                <button
+                  aria-pressed={recommendationMode === "podium"}
+                  className={`button button-small button-secondary${recommendationMode === "podium" ? " is-active" : ""}`}
+                  disabled={!podiumRecommendationAvailable}
+                  onClick={() => applyRecommendation("podium")}
+                  title={
+                    podiumRecommendationAvailable
+                      ? undefined
+                      : "表彰台ボーナスは6人以上で利用できます"
+                  }
+                  type="button"
+                >
+                  表彰台を反映
+                </button>
                 <button
                   aria-pressed={recommendationMode === "standard"}
                   className={`button button-small button-secondary${recommendationMode === "standard" ? " is-active" : ""}`}
@@ -664,6 +711,7 @@ function formatNumber(value: number): string {
 }
 
 function recommendationLabel(mode: RecommendationMode): string {
+  if (mode === "podium") return "表彰台ボーナス";
   if (mode === "gentle") return "ゆる傾斜";
   if (mode === "simple") return "シンプル割り勘";
   return "標準傾斜";

@@ -2,7 +2,9 @@ import {
   calculateCostShares,
   COST_ROUNDING_UNIT,
   MINIMUM_PARTICIPANT_COUNT,
+  type CostShareResult,
 } from "./calculate-cost-shares";
+import { calculatePodiumCostShares } from "./calculate-podium-cost-shares";
 import { calculateSimpleCostShares } from "./calculate-simple-cost-shares";
 import { assertNonNegativeSafeInteger } from "../shared/validation";
 
@@ -19,7 +21,7 @@ export interface AttendanceAdjustedRecommendation extends RecommendedTopCosts {
   adjustedToAttendance: boolean;
 }
 
-export type RecommendationMode = "standard" | "gentle" | "simple";
+export type RecommendationMode = "podium" | "standard" | "gentle" | "simple";
 
 export function recommendTopCosts(
   venueCost: number,
@@ -38,6 +40,18 @@ export function recommendTopCosts(
     throw new RangeError("settlementTotal exceeds the safe integer range");
   }
 
+  if (mode === "podium") {
+    return toRecommendedTopCosts(
+      calculatePodiumCostShares(venueCost, participantCount),
+    );
+  }
+
+  if (mode === "simple") {
+    return toRecommendedTopCosts(
+      calculateSimpleCostShares(venueCost, participantCount),
+    );
+  }
+
   const weightTotal = (participantCount * (participantCount + 1)) / 2;
   if (!Number.isSafeInteger(weightTotal)) {
     throw new RangeError("weightTotal exceeds the safe integer range");
@@ -50,17 +64,6 @@ export function recommendTopCosts(
       settlementTotal,
       weightTotal,
     );
-  }
-
-  if (mode === "simple") {
-    const result = calculateSimpleCostShares(venueCost, participantCount);
-    return {
-      firstPlaceCost: result.shares[0]!,
-      secondPlaceCost: result.shares[1]!,
-      thirdPlaceCost: result.shares[2]!,
-      settlementTotal: result.settlementTotal,
-      shares: result.shares,
-    };
   }
 
   const recommended = [1, 2, 3].map(
@@ -86,6 +89,18 @@ export function recommendTopCosts(
     firstPlaceCost,
     secondPlaceCost,
     thirdPlaceCost,
+    settlementTotal: result.settlementTotal,
+    shares: result.shares,
+  };
+}
+
+function toRecommendedTopCosts(
+  result: CostShareResult,
+): RecommendedTopCosts {
+  return {
+    firstPlaceCost: result.shares[0]!,
+    secondPlaceCost: result.shares[1]!,
+    thirdPlaceCost: result.shares[2]!,
     settlementTotal: result.settlementTotal,
     shares: result.shares,
   };

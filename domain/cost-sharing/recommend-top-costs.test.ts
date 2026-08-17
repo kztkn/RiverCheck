@@ -62,6 +62,20 @@ describe("recommendTopCosts", () => {
     });
   });
 
+  it("8人の表彰台ボーナスでは1位を無料にして下位をなだらかにする", () => {
+    expect(recommendTopCosts(12_000, 8, "podium")).toEqual({
+      firstPlaceCost: 0,
+      secondPlaceCost: 700,
+      thirdPlaceCost: 1_100,
+      settlementTotal: 12_000,
+      shares: [0, 700, 1_100, 1_800, 2_000, 2_100, 2_100, 2_200],
+    });
+  });
+
+  it("表彰台ボーナスは6人未満を拒否する", () => {
+    expect(() => recommendTopCosts(12_000, 5, "podium")).toThrow(RangeError);
+  });
+
   it("ゆる傾斜でも100円単位・順位順・合計一致を維持する", () => {
     for (let participantCount = 4; participantCount <= 20; participantCount += 1) {
       const result = recommendTopCosts(11_330, participantCount, "gentle");
@@ -96,6 +110,14 @@ describe("recommendTopCosts", () => {
       participantCount: 8,
       adjustedToAttendance: true,
       shares: [900, 1_500, 1_500, 1_500, 1_500, 1_500, 1_500, 1_500],
+    });
+  });
+
+  it("表彰台ボーナスも実参加人数へ合わせて再計算する", () => {
+    expect(recommendTopCostsForAttendance(12_000, 4, 8, "podium")).toMatchObject({
+      participantCount: 8,
+      adjustedToAttendance: true,
+      shares: [0, 700, 1_100, 1_800, 2_000, 2_100, 2_100, 2_200],
     });
   });
 
