@@ -104,7 +104,7 @@ export function GameSettingsFields({
     onParticipantCountChange?.(adjustedParticipantCount);
     setShareValues(adjusted.shares.map(String));
     setEditingRank(null);
-    setAdjustmentMode("top-three");
+    setAdjustmentMode(mode === "simple" ? "individual" : "top-three");
     setRecommendationMode(mode);
     setRecommendationNotice(
       showNotice
@@ -289,7 +289,7 @@ export function GameSettingsFields({
                   おすすめ配分をすぐ反映
                 </p>
                 <p>
-                  標準は順位差をしっかり、ゆる傾斜は少人数・初心者向けです。
+                  標準は順位差をしっかり、ゆる傾斜は差を小さく、割り勘は端数分だけ上位を安くします。
                 </p>
                 {recommendationNotice ? (
                   <small className="recommendation-notice">
@@ -313,6 +313,14 @@ export function GameSettingsFields({
                   type="button"
                 >
                   ゆる傾斜を反映
+                </button>
+                <button
+                  aria-pressed={recommendationMode === "simple"}
+                  className={`button button-small button-secondary${recommendationMode === "simple" ? " is-active" : ""}`}
+                  onClick={() => applyRecommendation("simple")}
+                  type="button"
+                >
+                  割り勘を反映
                 </button>
               </div>
             </div>
@@ -656,5 +664,7 @@ function formatNumber(value: number): string {
 }
 
 function recommendationLabel(mode: RecommendationMode): string {
-  return mode === "gentle" ? "ゆる傾斜" : "標準傾斜";
+  if (mode === "gentle") return "ゆる傾斜";
+  if (mode === "simple") return "シンプル割り勘";
+  return "標準傾斜";
 }

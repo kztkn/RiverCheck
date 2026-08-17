@@ -52,6 +52,16 @@ describe("recommendTopCosts", () => {
     });
   });
 
+  it("8人のシンプル割り勘では超過分だけ1位を安くする", () => {
+    expect(recommendTopCosts(11_330, 8, "simple")).toEqual({
+      firstPlaceCost: 900,
+      secondPlaceCost: 1_500,
+      thirdPlaceCost: 1_500,
+      settlementTotal: 11_400,
+      shares: [900, 1_500, 1_500, 1_500, 1_500, 1_500, 1_500, 1_500],
+    });
+  });
+
   it("ゆる傾斜でも100円単位・順位順・合計一致を維持する", () => {
     for (let participantCount = 4; participantCount <= 20; participantCount += 1) {
       const result = recommendTopCosts(11_330, participantCount, "gentle");
@@ -78,6 +88,14 @@ describe("recommendTopCosts", () => {
       firstPlaceCost: 500,
       secondPlaceCost: 1_000,
       thirdPlaceCost: 1_600,
+    });
+  });
+
+  it("シンプル割り勘も実参加人数へ合わせて再計算する", () => {
+    expect(recommendTopCostsForAttendance(11_330, 4, 8, "simple")).toMatchObject({
+      participantCount: 8,
+      adjustedToAttendance: true,
+      shares: [900, 1_500, 1_500, 1_500, 1_500, 1_500, 1_500, 1_500],
     });
   });
 

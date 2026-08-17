@@ -1396,7 +1396,7 @@ input[aria-invalid="true"] {
 
 .recommendation-actions {
   display: grid;
-  grid-template-columns: repeat(2, auto);
+  grid-template-columns: repeat(3, auto);
   gap: 8px;
 }
 
@@ -2704,6 +2704,10 @@ input[aria-invalid="true"] {
 
   .recommendation-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .recommendation-actions .button:last-child {
+    grid-column: 1 / -1;
   }
 
   .header-chip {

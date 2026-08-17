@@ -3,6 +3,7 @@ import {
   COST_ROUNDING_UNIT,
   MINIMUM_PARTICIPANT_COUNT,
 } from "./calculate-cost-shares";
+import { calculateSimpleCostShares } from "./calculate-simple-cost-shares";
 import { assertNonNegativeSafeInteger } from "../shared/validation";
 
 export interface RecommendedTopCosts {
@@ -18,7 +19,7 @@ export interface AttendanceAdjustedRecommendation extends RecommendedTopCosts {
   adjustedToAttendance: boolean;
 }
 
-export type RecommendationMode = "standard" | "gentle";
+export type RecommendationMode = "standard" | "gentle" | "simple";
 
 export function recommendTopCosts(
   venueCost: number,
@@ -49,6 +50,17 @@ export function recommendTopCosts(
       settlementTotal,
       weightTotal,
     );
+  }
+
+  if (mode === "simple") {
+    const result = calculateSimpleCostShares(venueCost, participantCount);
+    return {
+      firstPlaceCost: result.shares[0]!,
+      secondPlaceCost: result.shares[1]!,
+      thirdPlaceCost: result.shares[2]!,
+      settlementTotal: result.settlementTotal,
+      shares: result.shares,
+    };
   }
 
   const recommended = [1, 2, 3].map(
