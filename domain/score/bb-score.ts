@@ -5,16 +5,9 @@ export interface BbScoreInput {
   initialChips: number;
 }
 
-export function calculateBbScore({
-  score,
-  initialChips,
-}: BbScoreInput): number {
+export function calculateNetBb({ score, initialChips }: BbScoreInput): number {
   assertBbScoreInput(score, initialChips);
-  return (score / initialChips) * INITIAL_STACK_BB;
-}
-
-export function calculateNetBb(input: BbScoreInput): number {
-  return calculateBbScore(input) - INITIAL_STACK_BB;
+  return ((score - initialChips) / initialChips) * INITIAL_STACK_BB;
 }
 
 export function calculateChipsPerBb(initialChips: number): number {
@@ -22,9 +15,8 @@ export function calculateChipsPerBb(initialChips: number): number {
   return initialChips / INITIAL_STACK_BB;
 }
 
-export function formatBbScore(input: BbScoreInput): string {
-  const bbScore = calculateBbScore(input);
-  return `${bbScore > 0 ? "+" : ""}${formatBbNumber(bbScore)}BB`;
+export function formatNetBb(input: BbScoreInput): string {
+  return formatSignedBbValue(calculateNetBb(input));
 }
 
 export function formatChipsPerBb(initialChips: number): string {

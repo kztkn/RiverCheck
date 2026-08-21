@@ -1,4 +1,4 @@
-import { formatBbScore } from "@domain/score/bb-score";
+import { formatNetBb } from "@domain/score/bb-score";
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import { buildResultRevisionChanges } from "@domain/result-revision/build-result-revision-changes";
 import type { GameResultRevision } from "@shared-types/result";
@@ -78,15 +78,15 @@ export function ResultRevisionHistory({
                       ) : null}
                       {change.before.score !== change.after.score ? (
                         <ChangeValue
-                          after={formatBbScore({
+                          after={formatNetBb({
                             score: change.after.score,
                             initialChips,
                           })}
-                          before={formatBbScore({
+                          before={formatNetBb({
                             score: change.before.score,
                             initialChips,
                           })}
-                          label="BBスコア"
+                          label="損益BB"
                         />
                       ) : null}
                       {change.before.rank !== change.after.rank ? (

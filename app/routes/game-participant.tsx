@@ -34,6 +34,7 @@ import {
 } from "@server/services/participant-session.server";
 import { generateOpaqueToken, hashToken } from "@server/services/token.server";
 import { formatLineResult } from "@domain/result-sharing/format-line-result";
+import { encodeResultCode } from "@domain/result-sharing/result-code";
 import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
 import {
   buildGamePhotoUrl,
@@ -185,7 +186,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
           context.game.initialChips,
         )
         : "",
-    shareUrl: `${url.origin}/g/${params.groupCode}/games/${params.gameId}`,
+    shareUrl: `${url.origin}/r/${encodeResultCode(params.gameId)}`,
     pastGameNavigation: buildPastGameNavigation(finalizedGames, params.gameId),
     payPay: payPayRecipientLink
       ? { link: payPayRecipientLink, paymentAmount: payPayPaymentAmount }

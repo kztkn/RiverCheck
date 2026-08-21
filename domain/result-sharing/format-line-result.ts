@@ -1,4 +1,4 @@
-import { formatBbScore, formatChipsPerBb } from "../score/bb-score";
+import { formatNetBb } from "../score/bb-score";
 
 export interface LineResultEntry {
   displayName: string;
@@ -25,7 +25,7 @@ export function formatLineResult(
           : result.rank === 3
             ? "🥉"
             : "";
-    return `${medal}${result.rank}位：${result.displayName} ${formatBbScore({ score: result.score, initialChips })} ${formatNumber(result.costShare)}円`;
+    return `${medal}${result.rank}位：${result.displayName} ${formatNetBb({ score: result.score, initialChips })} ${formatNumber(result.costShare)}円`;
   });
 
   return [
@@ -33,9 +33,6 @@ export function formatLineResult(
     `合計：${formatNumber(settlementTotal)}円（${results.length}人）`,
     "",
     ...resultLines,
-    "",
-    "※BBスコア＝（残チップ－リバイ数×初期チップ）÷1BB",
-    `1BB＝${formatChipsPerBb(initialChips)}チップ（初期${formatNumber(initialChips)}チップ＝100BB）`,
   ].join("\n");
 }
 

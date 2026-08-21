@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
-import { formatBbScore, formatChipsPerBb } from "@domain/score/bb-score";
+import {
+  calculateNetBb,
+  formatChipsPerBb,
+  formatNetBb,
+} from "@domain/score/bb-score";
 import type {
   GameResultRevision,
   GameResultSummary,
@@ -154,8 +158,10 @@ export function FinalResults({
             <ResultParticipantMeta result={winner} />
           </div>
           <div className="result-values result-winner-values">
-            <b className={`result-score result-score-${scoreTone(winner.score)}`}>
-              {formatBbScore({ score: winner.score, initialChips })}
+            <b
+              className={`result-score result-score-${scoreTone(winner.score, initialChips)}`}
+            >
+              {formatNetBb({ score: winner.score, initialChips })}
             </b>
             <strong className="result-cost">
               {formatNumber(winner.costShare)}円
@@ -182,9 +188,9 @@ export function FinalResults({
             </div>
             <div className="result-values">
               <strong
-                className={`result-score result-score-${scoreTone(result.score)}`}
+                className={`result-score result-score-${scoreTone(result.score, initialChips)}`}
               >
-                {formatBbScore({ score: result.score, initialChips })}
+                {formatNetBb({ score: result.score, initialChips })}
               </strong>
               <strong className="result-cost">
                 {formatNumber(result.costShare)}円
@@ -305,9 +311,13 @@ function ResultParticipantMeta({
     </div>
   );
 }
-function scoreTone(score: number): "positive" | "negative" | "neutral" {
-  if (score > 0) return "positive";
-  if (score < 0) return "negative";
+function scoreTone(
+  score: number,
+  initialChips: number,
+): "positive" | "negative" | "neutral" {
+  const netBb = calculateNetBb({ score, initialChips });
+  if (netBb > 0) return "positive";
+  if (netBb < 0) return "negative";
   return "neutral";
 }
 

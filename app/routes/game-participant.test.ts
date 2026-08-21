@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { encodeResultCode } from "@domain/result-sharing/result-code";
 
 const mocked = vi.hoisted(() => ({
   createNewPlayerProfileSessionCredentials: vi.fn(),
@@ -188,7 +189,7 @@ describe("game participant route", () => {
     );
 
     expect(result.shareUrl).toBe(
-      `https://example.com/g/river-check/games/${gameId}`,
+      `https://example.com/r/${encodeResultCode(gameId)}`,
     );
   });
 

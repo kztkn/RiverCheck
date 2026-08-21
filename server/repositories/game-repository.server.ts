@@ -31,6 +31,11 @@ interface GameDetailsRow {
   cost_shares: string[] | null;
 }
 
+interface FinalizedGamePublicRouteRow {
+  id: string;
+  public_code: string;
+}
+
 export async function listGamesForGroup(
   groupId: string,
 ): Promise<GameListItem[]> {
@@ -123,6 +128,24 @@ export async function findGameForGroup(
     thirdPlaceCost: Number(row.third_place_cost),
     costShares: mapCostShares(row.cost_shares),
   };
+}
+
+export async function findFinalizedGamePublicRoute(
+  gameId: string,
+): Promise<{ gameId: string; groupPublicCode: string } | null> {
+  const result = await queryDatabase<FinalizedGamePublicRouteRow>(
+    `
+      SELECT game.id, game_group.public_code
+      FROM games AS game
+      INNER JOIN groups AS game_group ON game_group.id = game.group_id
+      WHERE game.id = $1 AND game.status = 'finalized'
+    `,
+    [gameId],
+  );
+  const row = result.rows[0];
+  return row
+    ? { gameId: row.id, groupPublicCode: row.public_code }
+    : null;
 }
 
 export async function insertGame(

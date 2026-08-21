@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Form, Link } from "react-router";
 import { calculateFinalResults } from "@domain/finalization/calculate-final-results";
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
-import { formatBbScore } from "@domain/score/bb-score";
+import { calculateNetBb, formatNetBb } from "@domain/score/bb-score";
 import type { GameDetails } from "@shared-types/game";
 import type { GameResultSummary } from "@shared-types/result";
 
@@ -216,8 +216,13 @@ export function ResultCorrectionPanel({
                 >
                   <span>{formatOrdinal(result.rank)}</span>
                   <strong>{result.displayName}</strong>
-                  <span className={scoreClassName(result.score)}>
-                    {formatBbScore({
+                  <span
+                    className={scoreClassName(
+                      result.score,
+                      game.initialChips,
+                    )}
+                  >
+                    {formatNetBb({
                       score: result.score,
                       initialChips: game.initialChips,
                     })}
@@ -304,10 +309,11 @@ function parseNonNegativeInteger(value: string): number {
   return parsed;
 }
 
-function scoreClassName(score: number): string {
-  return score > 0
+function scoreClassName(score: number, initialChips: number): string {
+  const netBb = calculateNetBb({ score, initialChips });
+  return netBb > 0
     ? "result-score-positive"
-    : score < 0
+    : netBb < 0
       ? "result-score-negative"
       : "result-score-neutral";
 }
