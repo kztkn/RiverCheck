@@ -18,7 +18,6 @@ export default [
   route("g/:groupCode/logout", "routes/player-logout.ts"),
   route("g/:groupCode/profile/claim/:claimToken", "routes/player-profile-claim.tsx"),
   route("g/:groupCode/games/new", "routes/game-new.tsx"),
-  route("g/:groupCode/games/:gameId/photo", "routes/game-photo.ts"),
   route(
     "g/:groupCode/games/:gameId/stories/:postId/photo",
     "routes/game-story-photo.ts",

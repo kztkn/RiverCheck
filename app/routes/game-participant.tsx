@@ -42,10 +42,6 @@ import { generateOpaqueToken, hashToken } from "@server/services/token.server";
 import { formatLineResult } from "@domain/result-sharing/format-line-result";
 import { encodeResultCode } from "@domain/result-sharing/result-code";
 import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
-import {
-  buildGamePhotoUrl,
-  getGameHighlight,
-} from "@server/services/game-highlight-service.server";
 import { FinalResults } from "../components/final-results";
 import { PlayerAvatar } from "../components/player-avatar";
 import { PlayerChoiceList } from "~/components/player-choice-list";
@@ -144,10 +140,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     context.game.status === "finalized"
       ? await listResultRevisions(context.group.id, params.gameId)
       : [];
-  const highlight =
-    context.game.status === "finalized"
-      ? await getGameHighlight(context.group.id, params.gameId)
-      : null;
   const storyPosts =
     context.game.status === "finalized"
       ? await getPublishedGameStoryPosts(context.group.id, params.gameId)
@@ -218,12 +210,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     })),
     results,
     revisions,
-    highlight,
-    highlightPhotoUrl: buildGamePhotoUrl({
-      gameId: params.gameId,
-      groupCode: params.groupCode,
-      highlight,
-    }),
     ownStoryPost,
     ownStoryPhotoUrl: ownStoryPost
       ? buildGameStoryPhotoUrl({
@@ -631,8 +617,6 @@ export default function GameParticipant({
             />
           ) : null}
           <GameStories
-            highlight={loaderData.highlight}
-            highlightPhotoUrl={loaderData.highlightPhotoUrl}
             initialChips={loaderData.game.initialChips}
             isOrganizer={loaderData.isOrganizer}
             posts={loaderData.storyPosts}
@@ -1791,7 +1775,6 @@ function getParticipantNotice(notice: string | null): string | null {
     left: "参加を取り消しました。",
     finalized: "結果を確定しました。",
     corrected: "開催情報と結果を更新しました。",
-    "highlight-saved": "ハイライトを保存しました。",
   };
   return notice ? messages[notice] ?? null : null;
 }

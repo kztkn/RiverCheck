@@ -1,6 +1,5 @@
 import { redirect, useNavigation } from "react-router";
 import { GroupSiteHeader } from "~/components/site-menu";
-import { GameHighlightEditor } from "~/components/game-highlight-editor";
 import { GameIdentityEditor } from "~/components/game-identity-editor";
 import { ResultCorrectionPanel } from "~/components/result-correction-panel";
 import { findGameForGroup } from "@server/repositories/game-repository.server";
@@ -15,11 +14,6 @@ import {
   updateFinalizedGame,
   type ResultCorrectionInput,
 } from "@server/services/finalization-service.server";
-import {
-  buildGamePhotoUrl,
-  getGameHighlight,
-  saveGameHighlight,
-} from "@server/services/game-highlight-service.server";
 import type { Route } from "./+types/game-edit";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -29,20 +23,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     return redirect(`/g/${params.groupCode}/games/${params.gameId}/admin`);
   }
 
-  const [results, highlight] = await Promise.all([
-    listFinalResults(context.group.id, params.gameId),
-    getGameHighlight(context.group.id, params.gameId),
-  ]);
+  const results = await listFinalResults(context.group.id, params.gameId);
   return {
     group: { name: context.group.name, publicCode: context.group.publicCode },
     game: context.game,
     results,
-    highlight,
-    highlightPhotoUrl: buildGamePhotoUrl({
-      gameId: params.gameId,
-      groupCode: params.groupCode,
-      highlight,
-    }),
   };
 }
 
@@ -106,21 +91,6 @@ export async function action({ request, params }: Route.ActionArgs) {
       };
     }
     return redirect(`${resultUrl}?notice=corrected`, { status: 303 });
-  }
-
-  if (intent === "save-highlight") {
-    const photoEntry = formData.get("photo");
-    const photo =
-      photoEntry instanceof File && photoEntry.size > 0 ? photoEntry : null;
-    const result = await saveGameHighlight(context.group.id, params.gameId, {
-      photo,
-      removePhoto: readString(formData, "removePhoto") === "yes",
-      text: readString(formData, "highlightText"),
-    });
-    if (!result.ok) {
-      return { ...result, intent: "save-highlight" as const };
-    }
-    return redirect(`${resultUrl}?notice=highlight-saved`);
   }
 
   if (intent !== "correct-results") {
@@ -191,10 +161,6 @@ export default function GameEdit({
     actionData?.ok === false && actionData.intent === "correct-results"
       ? actionData
       : null;
-  const highlightError =
-    actionData?.ok === false && actionData.intent === "save-highlight"
-      ? actionData.error
-      : null;
   const identityAction =
     actionData?.ok === false && actionData.intent === "save-game-identity"
       ? actionData
@@ -211,16 +177,6 @@ export default function GameEdit({
         <h1>{loaderData.game.title}</h1>
         <p>確定状態を保ったまま、開催情報と結果を修正できます。</p>
       </section>
-
-      <GameHighlightEditor
-        actionUrl={editUrl}
-        cancelUrl={resultUrl}
-        key={loaderData.highlight?.updatedAt ?? "empty"}
-        error={highlightError}
-        highlight={loaderData.highlight}
-        isSubmitting={isSubmitting}
-        photoUrl={loaderData.highlightPhotoUrl}
-      />
 
       <GameIdentityEditor
         actionUrl={editUrl}

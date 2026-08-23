@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Form, useNavigation } from "react-router";
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import { formatNetBb } from "@domain/score/bb-score";
-import type { GameHighlight } from "@shared-types/highlight";
 import type { GameResultSummary } from "@shared-types/result";
 import type { PublishedGameStoryPost } from "@shared-types/game-story";
 import { PlayerAvatar } from "./player-avatar";
@@ -13,39 +12,22 @@ export interface GameStoryPostView extends PublishedGameStoryPost {
 }
 
 export function GameStories({
-  highlight,
-  highlightPhotoUrl,
   initialChips,
   isOrganizer,
   posts,
   results,
 }: {
-  highlight: GameHighlight | null;
-  highlightPhotoUrl: string | null;
   initialChips: number;
   isOrganizer: boolean;
   posts: GameStoryPostView[];
   results: GameResultSummary[];
 }) {
-  if (!highlight?.text && !highlightPhotoUrl && posts.length === 0) return null;
+  if (posts.length === 0) return null;
   const resultByPlayer = new Map(
     results.map((result) => [result.groupPlayerId, result]),
   );
-  const entries: StoryEntry[] = [
-    ...(highlight?.text || highlightPhotoUrl
-      ? [{
-          avatarUrl: null,
-          body: highlight?.text ?? null,
-          createdAt:
-            highlight?.updatedAt ?? highlight?.photo?.uploadedAt ?? "",
-          displayName: "主催者",
-          groupPlayerId: null,
-          id: "organizer-story",
-          participantPostId: null,
-          photoUrl: highlightPhotoUrl,
-        }]
-      : []),
-    ...posts.map((post) => ({
+  const entries: StoryEntry[] = posts
+    .map((post) => ({
       avatarUrl: post.avatarUrl,
       body: post.body,
       createdAt: post.createdAt,
@@ -54,10 +36,12 @@ export function GameStories({
       id: post.id,
       participantPostId: post.id,
       photoUrl: post.photoUrl,
-    })),
-  ].sort((left, right) =>
-    left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id),
-  );
+    }))
+    .sort(
+      (left, right) =>
+        left.createdAt.localeCompare(right.createdAt) ||
+        left.id.localeCompare(right.id),
+    );
 
   return (
     <section className="game-stories-panel" aria-labelledby="game-stories-heading">

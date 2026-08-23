@@ -13,7 +13,6 @@ const mocked = vi.hoisted(() => ({
   findParticipantByGroupPlayerId: vi.fn(),
   findParticipantByTokenHash: vi.fn(),
   getAuthenticatedPlayerProfile: vi.fn(),
-  getGameHighlight: vi.fn(),
   getOwnGameStoryPost: vi.fn(),
   getPublishedGameStoryPosts: vi.fn(),
   isOrganizerAuthenticated: vi.fn(),
@@ -76,10 +75,6 @@ vi.mock("@server/services/player-profile-service.server", () => ({
 }));
 vi.mock("@server/services/player-profile-session.server", () => ({
   createPlayerProfileCookie: mocked.createPlayerProfileCookie,
-}));
-vi.mock("@server/services/game-highlight-service.server", () => ({
-  buildGamePhotoUrl: vi.fn(() => null),
-  getGameHighlight: mocked.getGameHighlight,
 }));
 vi.mock("@server/services/game-story-service.server", () => ({
   buildGameStoryPhotoUrl: vi.fn(() => null),
@@ -170,7 +165,6 @@ describe("game participant route", () => {
     mocked.listFinalResults.mockResolvedValue([]);
     mocked.listResultRevisions.mockResolvedValue([]);
     mocked.listGamesForGroup.mockResolvedValue([]);
-    mocked.getGameHighlight.mockResolvedValue(null);
     mocked.getOwnGameStoryPost.mockResolvedValue(null);
     mocked.getPublishedGameStoryPosts.mockResolvedValue([]);
     mocked.saveParticipantCompletion.mockResolvedValue({ ok: true });

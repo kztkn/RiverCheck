@@ -1417,7 +1417,6 @@ function noticeText(notice: string | null): string | null {
   if (notice === "finalized") return "結果を確定しました。";
   if (notice === "local-rules-saved") return "ローカルルールを保存しました。";
   if (notice === "corrected") return "確定結果を訂正しました。";
-  if (notice === "highlight-saved") return "ハイライトを保存しました。";
   return null;
 }
 

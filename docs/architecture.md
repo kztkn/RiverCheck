@@ -51,15 +51,15 @@ Workers はリクエストをまたいだネットワーク I/O の再利用を�
 
 ## TABLE STORIESとCloudflare R2
 
-TABLE STORIESは、既存の主催者投稿と参加者投稿を開催詳細上で統合表示する。主催者投稿は従来どおり`games`へ文章と写真メタデータを持ち、確定後のmultipart actionから編集する。参加者投稿は`game_story_posts`へ分離し、`game_participant_id`の一意制約で1参加者1件にする。本文、写真メタデータ、作成・更新時刻に加え、主催者削除の`deleted_at`と`deleted_by_type`を保持する。画像本体はPostgreSQLへ保存しない。
+TABLE STORIESは主催者を含む全投稿を`game_story_posts`へ保存し、`game_participant_id`の一意制約で1参加者1件にする。固定の主催者名義は作らず、投稿者のプレイヤー名、アイコン、開催結果を共通表示する。本文、写真メタデータ、作成・更新時刻に加え、主催者削除の`deleted_at`と`deleted_by_type`を保持する。画像本体はPostgreSQLへ保存しない。
 
-参加者の終了時入力actionは、本文検証と写真検証後に、`game_participants`の残りチップ・リバイ証・提出状態と`game_story_posts`を1つのPostgreSQLトランザクションで更新する。開催が`open`であることと本人のprofile sessionまたはparticipant tokenを行ロック時に再確認し、写真object keyの楽観ロックで別画面からの同時更新を検出する。`finalized`後の投稿専用actionも同じ本人確認と行ロックを行うが、`game_story_posts`だけを更新し、確定結果には触れない。公開一覧は主催者投稿と参加者投稿を同じview modelへ変換し、作成時刻の古い順に並べる。
+参加者の終了時入力actionは、本文検証と写真検証後に、`game_participants`の残りチップ・リバイ証・提出状態と`game_story_posts`を1つのPostgreSQLトランザクションで更新する。開催が`open`であることと本人のprofile sessionまたはparticipant tokenを行ロック時に再確認し、写真object keyの楽観ロックで別画面からの同時更新を検出する。`finalized`後の投稿専用actionも同じ本人確認と行ロックを行うが、`game_story_posts`だけを更新し、確定結果には触れない。公開一覧は全参加者投稿を作成時刻の古い順に並べる。
 
 画像は専用resource routeからWorker経由で配信し、R2 bucket自体は公開しない。参加者投稿写真は`open`中は本人・主催者だけ、`finalized`後は開催詳細の閲覧者へ配信する。soft delete済みまたはDB参照が外れたobjectは配信しない。
 
 ブラウザはアップロード前にCanvasで長辺1,800px以内へ縮小し、WebPを優先して圧縮する。WebP canvas変換が利用できないブラウザはJPEGへ自動フォールバックする。Worker側もcontent type、ファイルシグネチャ、3MB上限を検証する。object keyはgame単位のprefixとランダムUUIDで衝突を避ける。
 
-R2とPostgreSQLをまたぐ分散トランザクションは作らない。参加者投稿はR2へ新画像を保存してからDB参照を更新し、DB更新失敗時の新画像と更新成功後の旧画像をbest effortで削除する。主催者削除ではDBを先にsoft deleteして即座に非公開化し、その後でR2 objectをbest effortで削除する。R2削除失敗時も表示は復活させず、DB参照を正とする。既存の主催者投稿で生じた未参照objectは従来どおり運用削除する。
+R2とPostgreSQLをまたぐ分散トランザクションは作らない。参加者投稿はR2へ新画像を保存してからDB参照を更新し、DB更新失敗時の新画像と更新成功後の旧画像をbest effortで削除する。主催者削除ではDBを先にsoft deleteして即座に非公開化し、その後でR2 objectをbest effortで削除する。R2削除失敗時も表示は復活させず、DB参照を正とする。
 
 ## Worker入口のRate Limiting
 
@@ -88,7 +88,7 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 - `games.cost_shares` は検証済みの全順位負担額を`BIGINT[]`で保存する。移行前のNULLだけは1〜3位設定から従来計算する
 - `games.seven_deuce_rule_enabled` は72oボーナスの開催単位スナップショットとする。新規開催の既定値はONだが、導入前データは移行時にOFFとして過去開催へ遡及させない
 - ローカルルールの文言は`domain/rules/local-rules.ts`へ集約し、参加者画面は100BB返済ルールと72o設定を同じ参照用ボトムシートへ描画する。72oの成立や支払いはDBイベント化せず、表示だけを担当する
-- 主催者投稿は1開催につき文章1件・写真1枚のためgamesへ直接持たせる。参加者投稿は`game_story_posts`へ分離し、`game_participant_id`で一意にする
+- TABLE STORIESは投稿者の役割にかかわらず`game_story_posts`へ保存し、`game_participant_id`で一意にする
 
 ## 参加者のブラウザ識別
 
