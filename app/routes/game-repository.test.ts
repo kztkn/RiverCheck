@@ -8,7 +8,10 @@ vi.mock("@server/db/client.server", () => ({
   queryDatabase: mocked.queryDatabase,
 }));
 
-import { findFinalizedGamePublicRoute } from "@server/repositories/game-repository.server";
+import {
+  findFinalizedGamePublicRoute,
+  updateSevenDeuceRule,
+} from "@server/repositories/game-repository.server";
 
 describe("game repository public result route", () => {
   beforeEach(() => {
@@ -39,5 +42,36 @@ describe("game repository public result route", () => {
     await expect(
       findFinalizedGamePublicRoute("missing-game"),
     ).resolves.toBeNull();
+  });
+});
+
+describe("game repository local rules", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("受付中の開催だけ72oルールを更新する", async () => {
+    mocked.queryDatabase.mockResolvedValue({ rowCount: 1, rows: [] });
+
+    await expect(
+      updateSevenDeuceRule("group-1", "game-1", true),
+    ).resolves.toBe(true);
+
+    const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
+    expect(sql).toContain("seven_deuce_rule_enabled = $3");
+    expect(sql).toContain("status = 'open'");
+    expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
+      "game-1",
+      "group-1",
+      true,
+    ]);
+  });
+
+  it("確定済みなど更新対象がなければ失敗を返す", async () => {
+    mocked.queryDatabase.mockResolvedValue({ rowCount: 0, rows: [] });
+
+    await expect(
+      updateSevenDeuceRule("group-1", "game-1", false),
+    ).resolves.toBe(false);
   });
 });

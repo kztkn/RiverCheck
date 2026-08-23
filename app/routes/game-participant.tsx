@@ -5,8 +5,15 @@ import {
   useFetcher,
   useNavigation,
   useRevalidator,
+  useSubmit,
 } from "react-router";
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import {
   findGameForGroup,
   listGamesForGroup,
@@ -18,14 +25,13 @@ import {
 } from "@server/repositories/finalization-repository.server";
 import {
   findParticipantByGroupPlayerId,
+  findParticipantByTokenHash,
   joinAuthenticatedParticipant,
   joinNewParticipant,
   leaveGame,
   leaveGameByGroupPlayerId,
   listCurrentGameParticipants,
   listRegisteredPlayersForGame,
-  updateParticipantInput,
-  updateParticipantInputByGroupPlayerId,
 } from "@server/repositories/participant-repository.server";
 import {
   clearParticipantCookie,
@@ -56,15 +62,33 @@ import {
 } from "@server/services/rebuy-service.server";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { createPlayerProfileCookie } from "@server/services/player-profile-session.server";
-import { GameHighlight } from "../components/game-highlight";
+import { GameStories } from "../components/game-stories";
 import { GroupSiteHeader } from "~/components/site-menu";
-import { isOrganizerAuthenticated } from "@server/services/organizer-auth.server";
+import {
+  isOrganizerAuthenticated,
+  requireOrganizer,
+} from "@server/services/organizer-auth.server";
 import { isPayPayLinkActive } from "@domain/payment/paypay-link";
 import { findGamePaymentAmountForPlayer } from "@server/repositories/group-paypay-repository.server";
 import type { GameListItem } from "@shared-types/game";
 import type { Route } from "./+types/game-participant";
 import { formatTokyoDateNumeric } from "@domain/date/format-tokyo-date";
 import { createCommandId } from "~/utils/create-command-id";
+import {
+  buildGameStoryPhotoUrl,
+  deleteGameStoryPostAsOrganizer,
+  getOwnGameStoryPost,
+  getPublishedGameStoryPosts,
+  saveFinalizedGameStory,
+  saveParticipantCompletion,
+} from "@server/services/game-story-service.server";
+import { compressGamePhoto } from "~/utils/compress-game-photo";
+import {
+  GAME_PHOTO_MAX_BYTES,
+} from "@domain/highlight/validate-game-highlight";
+import { GAME_STORY_BODY_MAX_LENGTH } from "@domain/story/validate-game-story";
+import { buildLocalRules } from "@domain/rules/local-rules";
+import type { OwnGameStoryPost } from "@shared-types/game-story";
 
 type RebuyActionIntent = "record-rebuy" | "record-repayment" | "undo-rebuy";
 type RebuyActionData = RebuyServiceResult & { intent: RebuyActionIntent };
@@ -76,6 +100,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     getAuthenticatedPlayerProfile(request, params.groupCode),
   ]);
   const url = new URL(request.url);
+  const participantToken = readParticipantToken(request, params.gameId);
+  const participantTokenHash = participantToken
+    ? await hashToken(participantToken)
+    : null;
   const [participant, participantRoster] = await Promise.all([
     profileOverview?.profile
       ? findParticipantByGroupPlayerId(
@@ -83,7 +111,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         params.gameId,
         profileOverview.profile.groupPlayerId,
       )
-      : Promise.resolve(null),
+      : participantTokenHash
+        ? findParticipantByTokenHash(
+            context.group.id,
+            params.gameId,
+            participantTokenHash,
+          )
+        : Promise.resolve(null),
     context.game.status === "open"
       ? listCurrentGameParticipants(context.group.id, params.gameId)
         .then((participants) => ({ available: true, participants }))
@@ -94,6 +128,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     context.game.status === "open" && !participant
       ? await listRegisteredPlayersForGame(context.group.id, params.gameId)
       : [];
+  const ownStoryPost =
+    participant
+      ? await getOwnGameStoryPost(
+        context.group.id,
+        params.gameId,
+        participant.id,
+      )
+      : null;
   const results =
     context.game.status === "finalized"
       ? await listFinalResults(context.group.id, params.gameId)
@@ -106,6 +148,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     context.game.status === "finalized"
       ? await getGameHighlight(context.group.id, params.gameId)
       : null;
+  const storyPosts =
+    context.game.status === "finalized"
+      ? await getPublishedGameStoryPosts(context.group.id, params.gameId)
+      : [];
   const finalizedGames =
     context.game.status === "finalized"
       ? (await listGamesForGroup(context.group.id)).filter(
@@ -159,7 +205,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         displayName: currentParticipant.displayName,
         isCurrentUser:
           currentParticipant.groupPlayerId ===
-          profileOverview?.profile?.groupPlayerId,
+          participant?.groupPlayerId,
       })),
     },
     players: players.map((player) => ({
@@ -178,6 +224,27 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       groupCode: params.groupCode,
       highlight,
     }),
+    ownStoryPost,
+    ownStoryPhotoUrl: ownStoryPost
+      ? buildGameStoryPhotoUrl({
+        gameId: params.gameId,
+        groupCode: params.groupCode,
+        post: ownStoryPost,
+      })
+      : null,
+    storyPosts: storyPosts.map((post) => ({
+      ...post,
+      avatarUrl: buildPlayerAvatarUrl({
+        avatarUpdatedAt: post.avatarUpdatedAt,
+        groupCode: params.groupCode,
+        groupPlayerId: post.groupPlayerId,
+      }),
+      photoUrl: buildGameStoryPhotoUrl({
+        gameId: params.gameId,
+        groupCode: params.groupCode,
+        post,
+      }),
+    })),
     lineText:
       results.length > 0
         ? formatLineResult(
@@ -200,6 +267,55 @@ export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const intent = readString(formData, "intent");
   const participantUrl = `/g/${params.groupCode}/games/${params.gameId}`;
+
+  if (intent === "delete-story-post") {
+    await requireOrganizer(request, params.groupCode);
+    const postId = readString(formData, "postId");
+    if (!isUuid(postId)) throw new Response("Bad Request", { status: 400 });
+    const deleted = await deleteGameStoryPostAsOrganizer(
+      context.group.id,
+      params.gameId,
+      postId,
+    );
+    if (!deleted) return { error: "投稿を削除できませんでした。" };
+    return redirect(`${participantUrl}?notice=story-deleted`, { status: 303 });
+  }
+
+  if (intent === "save-story-post") {
+    if (context.game.status !== "finalized") {
+      return { error: "確定済みの開催だけに投稿できます。" };
+    }
+    const groupPlayerId = await getAuthenticatedGroupPlayerId(
+      request,
+      params.groupCode,
+    );
+    const participantToken = readParticipantToken(request, params.gameId);
+    const target = groupPlayerId
+      ? { kind: "group-player-id" as const, value: groupPlayerId }
+      : participantToken
+        ? {
+            kind: "participant-token" as const,
+            value: await hashToken(participantToken),
+          }
+        : null;
+    if (!target) {
+      return { error: "この開催への参加状態を確認できませんでした。" };
+    }
+    const photoEntry = formData.get("storyPhoto");
+    const result = await saveFinalizedGameStory(
+      context.group.id,
+      params.gameId,
+      {
+        body: readString(formData, "storyBody"),
+        photo:
+          photoEntry instanceof File && photoEntry.size > 0 ? photoEntry : null,
+        removePhoto: readString(formData, "removeStoryPhoto") === "yes",
+        target,
+      },
+    );
+    if (!result.ok) return { error: result.error };
+    return redirect(`${participantUrl}?notice=story-saved`, { status: 303 });
+  }
 
   if (intent === "join-self") {
     if (context.game.status !== "open") {
@@ -327,35 +443,38 @@ export async function action({ request, params }: Route.ActionArgs) {
     );
     if (remainingChips === null || settlementRebuyCount === null) {
       return {
-        error: "残りチップとリバイ回数は0以上の整数で入力してください。",
+        error: "残りチップとリバイ証は0以上の整数で入力してください。",
       };
     }
     const groupPlayerId = await getAuthenticatedGroupPlayerId(
       request,
       params.groupCode,
     );
-    let updated = groupPlayerId
-      ? await updateParticipantInputByGroupPlayerId(
-        context.group.id,
-        params.gameId,
-        groupPlayerId,
-        remainingChips,
-        settlementRebuyCount,
-      )
-      : false;
-    if (!updated && tokenHash) {
-      updated = await updateParticipantInput(
-        context.group.id,
-        params.gameId,
-        tokenHash,
-        remainingChips,
-        settlementRebuyCount,
-      );
-    }
-    if (!updated)
+    const target = groupPlayerId
+      ? { kind: "group-player-id" as const, value: groupPlayerId }
+      : tokenHash
+        ? { kind: "participant-token" as const, value: tokenHash }
+        : null;
+    if (!target) {
       return {
         error: "入力を保存できませんでした。受付状況を確認してください。",
       };
+    }
+    const photoEntry = formData.get("storyPhoto");
+    const result = await saveParticipantCompletion(
+      context.group.id,
+      params.gameId,
+      {
+        body: readString(formData, "storyBody"),
+        photo:
+          photoEntry instanceof File && photoEntry.size > 0 ? photoEntry : null,
+        removePhoto: readString(formData, "removeStoryPhoto") === "yes",
+        remainingChips,
+        settlementRebuyCount,
+        target,
+      },
+    );
+    if (!result.ok) return { error: result.error };
     return redirect(`${participantUrl}?notice=saved`, { status: 303 });
   }
 
@@ -465,6 +584,10 @@ export default function GameParticipant({
         ) : null}
       </section>
 
+      <LocalRulesSheet
+        sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
+      />
+
       {loaderData.game.status === "finalized" && loaderData.pastGameNavigation ? (
         <PastGameNavigation
           groupCode={loaderData.group.publicCode}
@@ -500,10 +623,20 @@ export default function GameParticipant({
             shareUrl={loaderData.shareUrl}
             showSharePanel={loaderData.isOrganizer}
           />
-          <GameHighlight
-            gameTitle={loaderData.game.title}
+          {loaderData.participant ? (
+            <FinalizedStoryEditor
+              isSubmitting={isSubmitting}
+              storyPhotoUrl={loaderData.ownStoryPhotoUrl}
+              storyPost={loaderData.ownStoryPost}
+            />
+          ) : null}
+          <GameStories
             highlight={loaderData.highlight}
-            photoUrl={loaderData.highlightPhotoUrl}
+            highlightPhotoUrl={loaderData.highlightPhotoUrl}
+            initialChips={loaderData.game.initialChips}
+            isOrganizer={loaderData.isOrganizer}
+            posts={loaderData.storyPosts}
+            results={loaderData.results}
           />
         </>
       ) : loaderData.game.status === "draft" ? (
@@ -614,6 +747,10 @@ export default function GameParticipant({
                     loaderData.participant.settlementRebuyCount ?? 0
                   }
                 />
+                <OwnStoryPostPreview
+                  photoUrl={loaderData.ownStoryPhotoUrl}
+                  post={loaderData.ownStoryPost}
+                />
                 <button
                   className="button button-secondary"
                   onClick={() => setIsEditing(true)}
@@ -624,38 +761,22 @@ export default function GameParticipant({
               </div>
             </section>
           ) : (
-            <details
-              className="participant-phase participant-phase-after participant-after-entry"
-              open={isEditing || undefined}
-            >
-              <summary>
-                <span className="participant-phase-label">ゲーム終了後</span>
-                <span className="participant-phase-summary-copy">
-                  <strong>最終結果を入力</strong>
-                  <small>残りチップと手元のリバイ証</small>
-                </span>
-                <span className="participant-phase-chevron" aria-hidden="true">
-                  ⌄
-                </span>
-              </summary>
-              <div className="participant-after-entry-body">
-                <p className="participant-after-entry-help">
-                  ゲームが終わったら、最後に手元へ残った数を入力します。
-                </p>
-                <ResultEntryForm
-                  initialChips={loaderData.game.initialChips}
-                  isSubmitting={isSubmitting}
-                  outstandingRebuyCount={
-                    loaderData.participant.outstandingRebuyCount
-                  }
-                  remainingChips={loaderData.participant.remainingChips}
-                  settlementRebuyCount={
-                    loaderData.participant.settlementRebuyCount
-                  }
-                  totalRebuyCount={loaderData.participant.totalRebuyCount}
-                />
-              </div>
-            </details>
+            <ParticipantResultEntrySection>
+              <ResultEntryForm
+                initialChips={loaderData.game.initialChips}
+                isSubmitting={isSubmitting}
+                outstandingRebuyCount={
+                  loaderData.participant.outstandingRebuyCount
+                }
+                remainingChips={loaderData.participant.remainingChips}
+                settlementRebuyCount={
+                  loaderData.participant.settlementRebuyCount
+                }
+                storyPhotoUrl={loaderData.ownStoryPhotoUrl}
+                storyPost={loaderData.ownStoryPost}
+                totalRebuyCount={loaderData.participant.totalRebuyCount}
+              />
+            </ParticipantResultEntrySection>
           )}
 
           <ParticipantLeaveControl isSubmitting={isSubmitting} />
@@ -966,7 +1087,11 @@ export function ParticipantRosterSheet({
 }
 
 
-function RebuyRulesSheet() {
+export function LocalRulesSheet({
+  sevenDeuceRuleEnabled,
+}: {
+  sevenDeuceRuleEnabled: boolean;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -999,25 +1124,27 @@ function RebuyRulesSheet() {
     triggerRef.current?.focus();
   }
 
+  const rules = buildLocalRules(sevenDeuceRuleEnabled);
+
   return (
-    <>
+    <div className="local-rules-entry">
       <button
-        aria-controls="rebuy-rules-dialog"
+        aria-controls="local-rules-dialog"
         aria-expanded={isOpen}
         aria-haspopup="dialog"
-        className="rebuy-rules-trigger"
+        className="rebuy-rules-trigger local-rules-trigger"
         onClick={() => setIsOpen(true)}
         ref={triggerRef}
         type="button"
       >
-        <span>返済ルールを確認</span>
+        <span>ローカルルールを確認</span>
         <span aria-hidden="true">›</span>
       </button>
       <dialog
-        aria-describedby="rebuy-rules-description"
-        aria-labelledby="rebuy-rules-title"
+        aria-describedby="local-rules-description"
+        aria-labelledby="local-rules-title"
         className="app-dialog participant-roster-dialog rebuy-rules-dialog"
-        id="rebuy-rules-dialog"
+        id="local-rules-dialog"
         onCancel={closeSheet}
         onClick={(event) => {
           if (event.target === event.currentTarget) closeSheet();
@@ -1028,11 +1155,11 @@ function RebuyRulesSheet() {
         <div className="participant-roster-sheet rebuy-rules-sheet">
           <header className="participant-roster-header">
             <div>
-              <p className="eyebrow">REBUY RULES</p>
-              <h2 id="rebuy-rules-title">100BB返済ルール</h2>
+              <p className="eyebrow">LOCAL RULES</p>
+              <h2 id="local-rules-title">ローカルルール</h2>
             </div>
             <button
-              aria-label="返済ルールを閉じる"
+              aria-label="ローカルルールを閉じる"
               className="participant-roster-close"
               onClick={closeSheet}
               type="button"
@@ -1043,36 +1170,35 @@ function RebuyRulesSheet() {
             </button>
           </header>
           <div
-            className="participant-roster-scroll rebuy-rules-content"
-            id="rebuy-rules-description"
+            className="participant-roster-scroll rebuy-rules-content local-rules-content"
+            id="local-rules-description"
           >
-            <ol className="rebuy-rules-list">
-              <li>
-                <strong>150BB超</strong>
-                <span>任意で100BBを返済できます</span>
-              </li>
-              <li>
-                <strong>300BB超</strong>
-                <span>100BBを返済してください</span>
-              </li>
-              <li>
-                <strong>返済後</strong>
-                <span>
-                  まだ300BBを超える場合は、未返済がある限り繰り返します
-                </span>
-              </li>
-              <li>
-                <strong>記録</strong>
-                <span>ポット精算後に本人が記録します</span>
-              </li>
-            </ol>
-            <p className="rebuy-rules-note">
-              現在のスタックをRiverCheckへ入力する必要はありません。
-            </p>
+            {rules.map((rule) => (
+              <section
+                className={`local-rule-card${rule.enabled ? "" : " is-disabled"}`}
+                key={rule.key}
+              >
+                <header>
+                  <h3>{rule.title}</h3>
+                  <span>{rule.enabled ? "適用中" : "OFF"}</span>
+                </header>
+                <ol className="rebuy-rules-list">
+                  {rule.steps.map((step) => (
+                    <li key={step.label}>
+                      <strong>{step.label}</strong>
+                      <span>{step.text}</span>
+                    </li>
+                  ))}
+                </ol>
+                {rule.note ? (
+                  <p className="rebuy-rules-note">{rule.note}</p>
+                ) : null}
+              </section>
+            ))}
           </div>
         </div>
       </dialog>
-    </>
+    </div>
   );
 }
 
@@ -1195,7 +1321,6 @@ function RebuyTracker({
           このリバイ記録は現在変更できません。
         </p>
       )}
-      <RebuyRulesSheet />
       {result?.ok === false ? (
         <p className="rebuy-action-error" role="alert">
           {result.error}
@@ -1231,6 +1356,8 @@ function ResultEntryForm({
   outstandingRebuyCount,
   remainingChips,
   settlementRebuyCount,
+  storyPhotoUrl,
+  storyPost,
   totalRebuyCount,
 }: {
   initialChips: number;
@@ -1238,12 +1365,21 @@ function ResultEntryForm({
   outstandingRebuyCount: number;
   remainingChips: number | null;
   settlementRebuyCount: number | null;
+  storyPhotoUrl: string | null;
+  storyPost: OwnGameStoryPost | null;
   totalRebuyCount: number | null;
 }) {
+  const submit = useSubmit();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [reportedCount, setReportedCount] = useState(
     settlementRebuyCount ?? outstandingRebuyCount,
   );
   const reportedCountEditedRef = useRef(settlementRebuyCount !== null);
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (settlementRebuyCount !== null) {
@@ -1256,9 +1392,63 @@ function ResultEntryForm({
     }
   }, [outstandingRebuyCount, settlementRebuyCount]);
 
+  useEffect(() => {
+    if (!selectedPhoto) {
+      setPreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(selectedPhoto);
+    setPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [selectedPhoto]);
+
+  async function handleStoryPhoto(file: File | undefined) {
+    if (!file) return;
+    setPhotoError(null);
+    setIsProcessingPhoto(true);
+    try {
+      setSelectedPhoto(await compressGamePhoto(file));
+      setRemovePhoto(false);
+    } catch (error) {
+      setSelectedPhoto(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setPhotoError(
+        error instanceof Error ? error.message : "写真を処理できませんでした。",
+      );
+    } finally {
+      setIsProcessingPhoto(false);
+    }
+  }
+
+  function handleResultSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isProcessingPhoto || photoError) return;
+    const formData = new FormData(event.currentTarget);
+    formData.delete("storyPhoto");
+    if (selectedPhoto) formData.set("storyPhoto", selectedPhoto);
+    void submit(formData, { encType: "multipart/form-data", method: "post" });
+  }
+
+  const visiblePhotoUrl = selectedPhoto
+    ? previewUrl
+    : removePhoto
+      ? null
+      : storyPhotoUrl;
+
   return (
-    <Form className="result-entry-form" method="post" noValidate reloadDocument>
+    <Form
+      className="result-entry-form"
+      encType="multipart/form-data"
+      method="post"
+      noValidate
+      onSubmit={handleResultSubmit}
+    >
       <input name="intent" type="hidden" value="save-input" />
+      <input
+        name="removeStoryPhoto"
+        type="hidden"
+        value={removePhoto ? "yes" : "no"}
+      />
       <label className="field">
         <span className="field-label">残りチップ（枚）</span>
         <input
@@ -1300,14 +1490,295 @@ function ResultEntryForm({
           settlementRebuyCount={reportedCount}
         />
       </div>
+      <section className="story-entry" aria-labelledby="story-entry-heading">
+        <div className="story-entry-heading">
+          <div>
+            <span className="field-label">TABLE STORIES</span>
+            <h4 id="story-entry-heading">今日の記録を残す</h4>
+          </div>
+          <span>任意</span>
+        </div>
+        <label className="field" htmlFor="storyBody">
+          <span className="field-label">ひとこと</span>
+          <textarea
+            defaultValue={storyPost?.body ?? ""}
+            id="storyBody"
+            maxLength={GAME_STORY_BODY_MAX_LENGTH}
+            name="storyBody"
+            placeholder="印象に残ったハンドや、今日のひとこと"
+            rows={3}
+          />
+          <span className="field-hint">
+            最大{GAME_STORY_BODY_MAX_LENGTH}文字・主催者確定後に公開
+          </span>
+        </label>
+        <div className="story-photo-field">
+          <span className="field-label">写真（1枚）</span>
+          {visiblePhotoUrl ? (
+            <div className="story-photo-preview">
+              <img alt="投稿写真のプレビュー" src={visiblePhotoUrl} />
+            </div>
+          ) : (
+            <div className="story-photo-empty">写真は未選択です</div>
+          )}
+          <label className="story-photo-picker">
+            <span>{isProcessingPhoto ? "写真を圧縮中…" : "写真を選択"}</span>
+            <input
+              accept="image/jpeg,image/png,image/webp"
+              disabled={isProcessingPhoto || isSubmitting}
+              name="storyPhoto"
+              onChange={(event) => void handleStoryPhoto(event.target.files?.[0])}
+              ref={fileInputRef}
+              type="file"
+            />
+          </label>
+          {selectedPhoto ? (
+            <button
+              className="text-button"
+              onClick={() => {
+                setSelectedPhoto(null);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
+              type="button"
+            >
+              選択を取り消す
+            </button>
+          ) : storyPhotoUrl ? (
+            <button
+              className="text-button danger-text"
+              onClick={() => setRemovePhoto((current) => !current)}
+              type="button"
+            >
+              {removePhoto ? "写真削除を取り消す" : "写真を削除"}
+            </button>
+          ) : null}
+          <span className="field-hint">
+            JPEG・PNG・WebP。自動圧縮後{formatBytes(GAME_PHOTO_MAX_BYTES)}以内
+          </span>
+          {photoError ? <span className="field-error">{photoError}</span> : null}
+        </div>
+      </section>
       <button
         className="button button-primary"
-        disabled={isSubmitting}
+        disabled={isSubmitting || isProcessingPhoto || Boolean(photoError)}
         type="submit"
       >
-        {isSubmitting ? "保存中…" : "結果を保存"}
+        {isProcessingPhoto
+          ? "写真を処理中…"
+          : isSubmitting
+            ? "保存中…"
+            : "結果を保存"}
       </button>
     </Form>
+  );
+}
+
+function FinalizedStoryEditor({
+  isSubmitting,
+  storyPhotoUrl,
+  storyPost,
+}: {
+  isSubmitting: boolean;
+  storyPhotoUrl: string | null;
+  storyPost: OwnGameStoryPost | null;
+}) {
+  const submit = useSubmit();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedPhoto) {
+      setPreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(selectedPhoto);
+    setPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [selectedPhoto]);
+
+  async function handleStoryPhoto(file: File | undefined) {
+    if (!file) return;
+    setPhotoError(null);
+    setIsProcessingPhoto(true);
+    try {
+      setSelectedPhoto(await compressGamePhoto(file));
+      setRemovePhoto(false);
+    } catch (error) {
+      setSelectedPhoto(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setPhotoError(
+        error instanceof Error ? error.message : "写真を処理できませんでした。",
+      );
+    } finally {
+      setIsProcessingPhoto(false);
+    }
+  }
+
+  function handleStorySubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isProcessingPhoto || photoError) return;
+    const formData = new FormData(event.currentTarget);
+    formData.delete("storyPhoto");
+    if (selectedPhoto) formData.set("storyPhoto", selectedPhoto);
+    void submit(formData, { encType: "multipart/form-data", method: "post" });
+  }
+
+  const visiblePhotoUrl = selectedPhoto
+    ? previewUrl
+    : removePhoto
+      ? null
+      : storyPhotoUrl;
+
+  return (
+    <section className="finalized-story-editor" aria-labelledby="past-story-heading">
+      <div>
+        <p className="form-brand-label">TABLE STORIES</p>
+        <h2 id="past-story-heading">
+          {storyPost ? "自分の投稿を編集" : "この開催の思い出を投稿"}
+        </h2>
+        <p>確定後でも、参加した開催へ文章や写真を残せます。</p>
+      </div>
+      <Form
+        encType="multipart/form-data"
+        method="post"
+        noValidate
+        onSubmit={handleStorySubmit}
+      >
+        <input name="intent" type="hidden" value="save-story-post" />
+        <input
+          name="removeStoryPhoto"
+          type="hidden"
+          value={removePhoto ? "yes" : "no"}
+        />
+        <label className="field" htmlFor="pastStoryBody">
+          <span className="field-label">ひとこと（任意）</span>
+          <textarea
+            defaultValue={storyPost?.body ?? ""}
+            id="pastStoryBody"
+            maxLength={GAME_STORY_BODY_MAX_LENGTH}
+            name="storyBody"
+            placeholder="印象に残ったハンドや、今日のひとこと"
+            rows={3}
+          />
+          <span className="field-hint">
+            最大{GAME_STORY_BODY_MAX_LENGTH}文字・保存後すぐに公開
+          </span>
+        </label>
+        <div className="story-photo-field">
+          <span className="field-label">写真（任意・1枚）</span>
+          {visiblePhotoUrl ? (
+            <div className="story-photo-preview">
+              <img alt="投稿写真のプレビュー" src={visiblePhotoUrl} />
+            </div>
+          ) : (
+            <div className="story-photo-empty">写真は未選択です</div>
+          )}
+          <label className="story-photo-picker">
+            <span>{isProcessingPhoto ? "写真を圧縮中…" : "写真を選択"}</span>
+            <input
+              accept="image/jpeg,image/png,image/webp"
+              disabled={isProcessingPhoto || isSubmitting}
+              name="storyPhoto"
+              onChange={(event) => void handleStoryPhoto(event.target.files?.[0])}
+              ref={fileInputRef}
+              type="file"
+            />
+          </label>
+          {selectedPhoto ? (
+            <button
+              className="text-button"
+              onClick={() => {
+                setSelectedPhoto(null);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
+              type="button"
+            >
+              選択を取り消す
+            </button>
+          ) : storyPhotoUrl ? (
+            <button
+              className="text-button danger-text"
+              onClick={() => setRemovePhoto((current) => !current)}
+              type="button"
+            >
+              {removePhoto ? "写真削除を取り消す" : "写真を削除"}
+            </button>
+          ) : null}
+          <span className="field-hint">
+            JPEG・PNG・WebP。自動圧縮後{formatBytes(GAME_PHOTO_MAX_BYTES)}以内
+          </span>
+          {photoError ? <span className="field-error">{photoError}</span> : null}
+        </div>
+        <button
+          className="button button-primary"
+          disabled={isSubmitting || isProcessingPhoto || Boolean(photoError)}
+          type="submit"
+        >
+          {isProcessingPhoto
+            ? "写真を処理中…"
+            : isSubmitting
+              ? "保存中…"
+              : "投稿を保存"}
+        </button>
+      </Form>
+    </section>
+  );
+}
+
+function OwnStoryPostPreview({
+  photoUrl,
+  post,
+}: {
+  photoUrl: string | null;
+  post: OwnGameStoryPost | null;
+}) {
+  return (
+    <div className="submitted-story-preview">
+      <div>
+        <span>TABLE STORIES</span>
+        <strong>今日の記録</strong>
+      </div>
+      {photoUrl ? <img alt="投稿した写真" src={photoUrl} /> : null}
+      {post?.body ? <p>{post.body}</p> : null}
+      {!post?.body && !photoUrl ? <p className="is-empty">投稿なし</p> : null}
+      <small>主催者確定後に開催詳細へ公開されます。</small>
+    </div>
+  );
+}
+
+function formatBytes(bytes: number): string {
+  return bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toLocaleString("ja-JP", {
+        maximumFractionDigits: 1,
+      })}MB`
+    : `${Math.ceil(bytes / 1024).toLocaleString("ja-JP")}KB`;
+}
+
+export function ParticipantResultEntrySection({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  return (
+    <section
+      aria-label="ゲーム終了時の入力"
+      className="participant-phase participant-phase-after participant-after-entry"
+    >
+      <div className="participant-phase-heading">
+        <span className="participant-phase-label">ゲーム終了後</span>
+        <div>
+          <h3>最終結果を入力</h3>
+          <p>
+            ゲームが終了したら、残りチップと手元のリバイ証を入力します。
+          </p>
+        </div>
+      </div>
+      <div className="participant-after-entry-body">{children}</div>
+    </section>
   );
 }
 
@@ -1315,6 +1786,8 @@ function getParticipantNotice(notice: string | null): string | null {
   const messages: Record<string, string> = {
     joined: "参加しました。ゲーム中の操作を開始できます。",
     saved: "最終結果を保存しました。",
+    "story-saved": "TABLE STORIESへの投稿を保存しました。",
+    "story-deleted": "投稿を削除しました。",
     left: "参加を取り消しました。",
     finalized: "結果を確定しました。",
     corrected: "開催情報と結果を更新しました。",

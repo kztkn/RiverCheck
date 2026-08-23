@@ -50,6 +50,10 @@ export async function getGamePhoto(
   return requireGamePhotosBucket().get(objectKey);
 }
 
+export async function deleteGamePhoto(objectKey: string): Promise<void> {
+  await requireGamePhotosBucket().delete(objectKey);
+}
+
 function requireGamePhotosBucket(): R2Bucket {
   const bucket = (env as GamePhotoStorageEnv).GAME_PHOTOS;
   if (!bucket) throw new Error("GAME_PHOTOS R2 binding is required");

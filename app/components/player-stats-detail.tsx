@@ -31,14 +31,21 @@ export function PlayerStatsOverview({
       <dl className="stats-core-metrics">
         <Stat label="参加回数" value={`${summary.gamesPlayed}回`} />
         <Stat label="優勝回数" value={`${summary.wins}回`} />
-        <Stat label="優勝率" value={formatPercent(summary.winRate)} />
         <Stat
-          label="平均順位"
-          value={
-            summary.gamesPlayed === 0
-              ? "—"
-              : formatDecimal(summary.averageRank)
-          }
+          detail={formatRateDetail(
+            summary.topThreeFinishes,
+            summary.gamesPlayed,
+          )}
+          label="TOP3率"
+          value={formatRate(summary.topThreeRate, summary.gamesPlayed)}
+        />
+        <Stat
+          detail={formatRateDetail(
+            summary.positiveFinishes,
+            summary.gamesPlayed,
+          )}
+          label="プラス収支率"
+          value={formatRate(summary.positiveRate, summary.gamesPlayed)}
         />
       </dl>
 
@@ -121,10 +128,12 @@ export function PlayerGameHistory({
 }
 
 function Stat({
+  detail,
   label,
   tone = "",
   value,
 }: {
+  detail?: string;
   label: string;
   tone?: string;
   value: string;
@@ -132,7 +141,10 @@ function Stat({
   return (
     <div>
       <dt>{label}</dt>
-      <dd className={tone}>{value}</dd>
+      <dd className={tone}>
+        {value}
+        {detail ? <small>{detail}</small> : null}
+      </dd>
     </div>
   );
 }
@@ -145,6 +157,14 @@ function formatRebuySummary(game: PlayerGameStat): string {
 
 function formatPercent(value: number): string {
   return `${formatDecimal(value)}%`;
+}
+
+function formatRate(value: number, gamesPlayed: number): string {
+  return gamesPlayed === 0 ? "—" : formatPercent(value);
+}
+
+function formatRateDetail(count: number, gamesPlayed: number): string | undefined {
+  return gamesPlayed === 0 ? undefined : `（${count}/${gamesPlayed}戦）`;
 }
 
 function formatDecimal(value: number): string {

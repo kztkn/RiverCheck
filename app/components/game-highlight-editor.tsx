@@ -87,8 +87,8 @@ export function GameHighlightEditor({
   return (
     <section className="game-highlight-editor" aria-labelledby="highlight-editor-heading">
       <div>
-        <h2 id="highlight-editor-heading">TABLE STORY</h2>
-        <p>主催者だけが編集できます。保存後は参加者の結果画面にも表示されます。</p>
+        <h2 id="highlight-editor-heading">主催者のTABLE STORY</h2>
+        <p>参加者の投稿と同じ一覧へ、投稿時刻順で表示されます。</p>
       </div>
 
       <Form
@@ -106,7 +106,7 @@ export function GameHighlightEditor({
         />
 
         <label className="field" htmlFor="highlightText">
-          <span className="field-label">ハイライト文</span>
+          <span className="field-label">投稿文</span>
           <textarea
             defaultValue={highlight?.text ?? ""}
             id="highlightText"
@@ -186,7 +186,7 @@ export function GameHighlightEditor({
               ? "写真を処理中…"
               : isSubmitting
                 ? "保存中…"
-                : "TABLE STORYを保存"}
+                : "投稿を保存"}
           </button>
         </div>
       </Form>

@@ -21,8 +21,10 @@ const summary: PlayerStatsSummary = {
   avatarUpdatedAt: null,
   gamesPlayed: 12,
   wins: 3,
-  winRate: 25,
-  averageRank: 2.5,
+  topThreeFinishes: 7,
+  topThreeRate: 700 / 12,
+  positiveFinishes: 6,
+  positiveRate: 50,
   totalNetBb: 298,
   averageNetBb: 24.83,
   maxWinBb: 142,
@@ -42,10 +44,14 @@ describe("PlayerStatsOverview", () => {
     expect(markup).toContain("12回");
     expect(markup).toContain("優勝回数");
     expect(markup).toContain("3回");
-    expect(markup).toContain("優勝率");
-    expect(markup).toContain("25%");
-    expect(markup).toContain("平均順位");
-    expect(markup).toContain("2.5");
+    expect(markup).toContain("TOP3率");
+    expect(markup).toContain("58.3%");
+    expect(markup).toContain("（7/12戦）");
+    expect(markup).toContain("プラス収支率");
+    expect(markup).toContain("50%");
+    expect(markup).toContain("（6/12戦）");
+    expect(markup).not.toContain("優勝率");
+    expect(markup).not.toContain("平均順位");
     expect(markup).toContain("平均損益");
     expect(markup).toContain("+24.83BB");
     expect(markup).toContain("最大勝ち");
@@ -55,15 +61,24 @@ describe("PlayerStatsOverview", () => {
     expect(markup).not.toContain("stats-kpi-card");
   });
 
-  it("shows an em dash for average rank before the first game", () => {
+  it("shows em dashes for rates before the first game", () => {
     const markup = renderToStaticMarkup(
       createElement(PlayerStatsOverview, {
-        summary: { ...summary, averageRank: 0, gamesPlayed: 0 },
+        summary: {
+          ...summary,
+          gamesPlayed: 0,
+          positiveFinishes: 0,
+          positiveRate: 0,
+          topThreeFinishes: 0,
+          topThreeRate: 0,
+        },
       }),
     );
 
-    expect(markup).toContain("平均順位");
-    expect(markup).toContain("—");
+    expect(markup).toContain("TOP3率");
+    expect(markup).toContain("プラス収支率");
+    expect(markup.match(/—/gu)).toHaveLength(2);
+    expect(markup).not.toContain("0/0戦");
   });
 });
 

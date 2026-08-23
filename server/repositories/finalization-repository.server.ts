@@ -27,6 +27,7 @@ interface GameRow {
   second_place_cost: string;
   third_place_cost: string;
   cost_shares: string[] | null;
+  seven_deuce_rule_enabled: boolean;
 }
 
 interface ParticipantRow {
@@ -68,7 +69,7 @@ export async function lockGameForFinalization(
       SELECT id, group_id, title, played_at, status, initial_chips,
              rebuy_chips, preview_participant_count, venue_cost,
              first_place_cost, second_place_cost, third_place_cost,
-             cost_shares
+             cost_shares, seven_deuce_rule_enabled
       FROM games
       WHERE id = $1 AND group_id = $2
       FOR UPDATE
@@ -249,6 +250,7 @@ function mapGame(row: GameRow): GameDetails {
     secondPlaceCost: Number(row.second_place_cost),
     thirdPlaceCost: Number(row.third_place_cost),
     costShares: row.cost_shares?.map((value) => Number(value)) ?? null,
+    sevenDeuceRuleEnabled: row.seven_deuce_rule_enabled,
   };
 }
 

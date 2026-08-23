@@ -11,8 +11,11 @@ const mocked = vi.hoisted(() => ({
   findGamePaymentAmountForPlayer: vi.fn(),
   findGroupByPublicCode: vi.fn(),
   findParticipantByGroupPlayerId: vi.fn(),
+  findParticipantByTokenHash: vi.fn(),
   getAuthenticatedPlayerProfile: vi.fn(),
   getGameHighlight: vi.fn(),
+  getOwnGameStoryPost: vi.fn(),
+  getPublishedGameStoryPosts: vi.fn(),
   isOrganizerAuthenticated: vi.fn(),
   joinAuthenticatedParticipant: vi.fn(),
   joinNewParticipant: vi.fn(),
@@ -24,8 +27,10 @@ const mocked = vi.hoisted(() => ({
   listRegisteredPlayersForGame: vi.fn(),
   listResultRevisions: vi.fn(),
   selectPlayerProfile: vi.fn(),
-  updateParticipantInput: vi.fn(),
-  updateParticipantInputByGroupPlayerId: vi.fn(),
+  saveParticipantCompletion: vi.fn(),
+  saveFinalizedGameStory: vi.fn(),
+  deleteGameStoryPostAsOrganizer: vi.fn(),
+  requireOrganizer: vi.fn(),
   recordOwnRebuyAction: vi.fn(),
   undoOwnRebuyAction: vi.fn(),
 }));
@@ -43,15 +48,13 @@ vi.mock("@server/repositories/finalization-repository.server", () => ({
 }));
 vi.mock("@server/repositories/participant-repository.server", () => ({
   findParticipantByGroupPlayerId: mocked.findParticipantByGroupPlayerId,
+  findParticipantByTokenHash: mocked.findParticipantByTokenHash,
   joinAuthenticatedParticipant: mocked.joinAuthenticatedParticipant,
   joinNewParticipant: mocked.joinNewParticipant,
   leaveGame: mocked.leaveGame,
   leaveGameByGroupPlayerId: mocked.leaveGameByGroupPlayerId,
   listCurrentGameParticipants: mocked.listCurrentGameParticipants,
   listRegisteredPlayersForGame: mocked.listRegisteredPlayersForGame,
-  updateParticipantInput: mocked.updateParticipantInput,
-  updateParticipantInputByGroupPlayerId:
-    mocked.updateParticipantInputByGroupPlayerId,
 }));
 vi.mock("@server/repositories/group-paypay-repository.server", () => ({
   findGamePaymentAmountForPlayer: mocked.findGamePaymentAmountForPlayer,
@@ -78,8 +81,17 @@ vi.mock("@server/services/game-highlight-service.server", () => ({
   buildGamePhotoUrl: vi.fn(() => null),
   getGameHighlight: mocked.getGameHighlight,
 }));
+vi.mock("@server/services/game-story-service.server", () => ({
+  buildGameStoryPhotoUrl: vi.fn(() => null),
+  deleteGameStoryPostAsOrganizer: mocked.deleteGameStoryPostAsOrganizer,
+  getOwnGameStoryPost: mocked.getOwnGameStoryPost,
+  getPublishedGameStoryPosts: mocked.getPublishedGameStoryPosts,
+  saveParticipantCompletion: mocked.saveParticipantCompletion,
+  saveFinalizedGameStory: mocked.saveFinalizedGameStory,
+}));
 vi.mock("@server/services/organizer-auth.server", () => ({
   isOrganizerAuthenticated: mocked.isOrganizerAuthenticated,
+  requireOrganizer: mocked.requireOrganizer,
 }));
 vi.mock("@domain/payment/paypay-link", () => ({
   isPayPayLinkActive: vi.fn(() => false),
@@ -90,8 +102,8 @@ vi.mock("../components/final-results", () => ({
 vi.mock("../components/player-avatar", () => ({
   PlayerAvatar: vi.fn(() => null),
 }));
-vi.mock("../components/game-highlight", () => ({
-  GameHighlight: vi.fn(() => null),
+vi.mock("../components/game-stories", () => ({
+  GameStories: vi.fn(() => null),
 }));
 vi.mock("~/components/site-menu", () => ({
   GroupSiteHeader: vi.fn(() => null),
@@ -100,6 +112,8 @@ vi.mock("~/components/site-menu", () => ({
 import {
   action,
   loader,
+  LocalRulesSheet,
+  ParticipantResultEntrySection,
   ParticipantRosterSheet,
 } from "./game-participant";
 
@@ -150,12 +164,18 @@ describe("game participant route", () => {
       profile,
     });
     mocked.findParticipantByGroupPlayerId.mockResolvedValue(null);
+    mocked.findParticipantByTokenHash.mockResolvedValue(null);
     mocked.listCurrentGameParticipants.mockResolvedValue([]);
     mocked.listRegisteredPlayersForGame.mockResolvedValue([]);
     mocked.listFinalResults.mockResolvedValue([]);
     mocked.listResultRevisions.mockResolvedValue([]);
     mocked.listGamesForGroup.mockResolvedValue([]);
     mocked.getGameHighlight.mockResolvedValue(null);
+    mocked.getOwnGameStoryPost.mockResolvedValue(null);
+    mocked.getPublishedGameStoryPosts.mockResolvedValue([]);
+    mocked.saveParticipantCompletion.mockResolvedValue({ ok: true });
+    mocked.saveFinalizedGameStory.mockResolvedValue({ ok: true });
+    mocked.deleteGameStoryPostAsOrganizer.mockResolvedValue(true);
     mocked.createParticipantCookie.mockReturnValue(
       "rc_participant_game=participant-token",
     );
@@ -277,6 +297,39 @@ describe("game participant route", () => {
     expect(mocked.listCurrentGameParticipants).not.toHaveBeenCalled();
   });
 
+  it("finalized開催では公開対象のTABLE STORY投稿を開催詳細へ返す", async () => {
+    mocked.findGameForGroup.mockResolvedValue({
+      ...openGame,
+      status: "finalized",
+    });
+    mocked.getPublishedGameStoryPosts.mockResolvedValue([
+      {
+        avatarUpdatedAt: null,
+        body: "楽しい会でした！",
+        createdAt: "2026-08-23T00:00:00.000Z",
+        displayName: "Alice",
+        groupPlayerId,
+        id: "55555555-5555-4555-8555-555555555555",
+        photo: null,
+        updatedAt: "2026-08-23T00:00:00.000Z",
+      },
+    ]);
+
+    const result = await loader(loaderArgs());
+
+    expect(mocked.getPublishedGameStoryPosts).toHaveBeenCalledWith(
+      group.id,
+      gameId,
+    );
+    expect(result.storyPosts).toEqual([
+      expect.objectContaining({
+        body: "楽しい会でした！",
+        displayName: "Alice",
+        photoUrl: null,
+      }),
+    ]);
+  });
+
   it("参加者入口と一覧には人数・全員の名前・本人表示だけを描画する", () => {
     const markup = renderToStaticMarkup(
       createElement(ParticipantRosterSheet, {
@@ -308,6 +361,104 @@ describe("game participant route", () => {
     );
 
     expect(markup).toContain("参加者はいません");
+  });
+
+  it("未入力の最終結果フォームを折りたたまず表示する", () => {
+    const markup = renderToStaticMarkup(
+      createElement(
+        ParticipantResultEntrySection,
+        null,
+        createElement("span", null, "入力フォーム"),
+      ),
+    );
+
+    expect(markup).toContain("最終結果を入力");
+    expect(markup).toContain(
+      "ゲームが終了したら、残りチップと手元のリバイ証を入力します。",
+    );
+    expect(markup).toContain("入力フォーム");
+    expect(markup).not.toContain("<details");
+    expect(markup).not.toContain("<summary");
+  });
+
+  it("最終結果と任意のTABLE STORY投稿をまとめて保存する", async () => {
+    mocked.findParticipantByGroupPlayerId.mockResolvedValue(participant);
+
+    const result = await action(
+      actionArgs({
+        intent: "save-input",
+        remainingChips: "25000",
+        settlementRebuyCount: "1",
+        storyBody: "リバーのチョップが面白かった！",
+      }),
+    );
+
+    expectRedirect(result);
+    expect(mocked.saveParticipantCompletion).toHaveBeenCalledWith(
+      group.id,
+      gameId,
+      expect.objectContaining({
+        body: "リバーのチョップが面白かった！",
+        photo: null,
+        remainingChips: 25_000,
+        settlementRebuyCount: 1,
+        target: { kind: "group-player-id", value: groupPlayerId },
+      }),
+    );
+  });
+
+  it("主催者は確定後も参加者投稿を削除できる", async () => {
+    mocked.findGameForGroup.mockResolvedValue({
+      ...openGame,
+      status: "finalized",
+    });
+    const postId = "55555555-5555-4555-8555-555555555555";
+
+    const result = await action(
+      actionArgs({ intent: "delete-story-post", postId }),
+    );
+
+    const response = expectRedirect(result);
+    expect(mocked.requireOrganizer).toHaveBeenCalledWith(
+      expect.any(Request),
+      "river-check",
+    );
+    expect(mocked.deleteGameStoryPostAsOrganizer).toHaveBeenCalledWith(
+      group.id,
+      gameId,
+      postId,
+    );
+    expect(response.headers.get("Location")).toBe(
+      `/g/river-check/games/${gameId}?notice=story-deleted`,
+    );
+  });
+
+  it("参加者は確定済み開催へあとからTABLE STORYを投稿できる", async () => {
+    mocked.findGameForGroup.mockResolvedValue({
+      ...openGame,
+      status: "finalized",
+    });
+
+    const result = await action(
+      actionArgs({
+        intent: "save-story-post",
+        storyBody: "あとから思い出を追記",
+      }),
+    );
+
+    const response = expectRedirect(result);
+    expect(mocked.saveFinalizedGameStory).toHaveBeenCalledWith(
+      group.id,
+      gameId,
+      expect.objectContaining({
+        body: "あとから思い出を追記",
+        photo: null,
+        target: { kind: "group-player-id", value: groupPlayerId },
+      }),
+    );
+    expect(response.headers.get("Location")).toBe(
+      `/g/river-check/games/${gameId}?notice=story-saved`,
+    );
   });
 
   it("join-self actionで認証済みの本人が参加し303で戻る", async () => {
@@ -473,6 +624,29 @@ describe("game participant route", () => {
       "rc_participant_game",
     );
     expect(response.headers.get("Set-Cookie")).toContain("rc_player_profile");
+  });
+});
+
+describe("LocalRulesSheet", () => {
+  it("適用中の72oルールと既存の100BB返済ルールを一緒に表示する", () => {
+    const html = renderToStaticMarkup(
+      createElement(LocalRulesSheet, { sevenDeuceRuleEnabled: true }),
+    );
+
+    expect(html).toContain("ローカルルールを確認");
+    expect(html).toContain("100BB返済ルール");
+    expect(html).toContain("72oボーナス");
+    expect(html).toContain("ほかの参加者全員から2.5BBずつ受け取ります");
+    expect(html).toContain("適用中");
+  });
+
+  it("開催設定が無効なら72oルールをOFFと表示する", () => {
+    const html = renderToStaticMarkup(
+      createElement(LocalRulesSheet, { sevenDeuceRuleEnabled: false }),
+    );
+
+    expect(html).toContain("この開催では適用しません。");
+    expect(html).toContain("OFF");
   });
 });
 

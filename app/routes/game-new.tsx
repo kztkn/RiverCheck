@@ -46,6 +46,7 @@ const defaults = {
   thirdPlaceCost: "1000",
   previewParticipantCount: "8",
   costShares: defaultCostShares.shares.map(String),
+  sevenDeuceRuleEnabled: true,
 };
 
 export default function NewGame({

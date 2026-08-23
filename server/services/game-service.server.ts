@@ -26,6 +26,7 @@ export interface GameSettingsFormValues {
   thirdPlaceCost: string;
   previewParticipantCount: string;
   costShares: string[];
+  sevenDeuceRuleEnabled: boolean;
 }
 
 export interface GameIdentityFormValues {
@@ -78,6 +79,8 @@ export function readGameSettingsForm(
     thirdPlaceCost: readString(formData, "thirdPlaceCost"),
     previewParticipantCount: readString(formData, "previewParticipantCount"),
     costShares: readStrings(formData, "costShare"),
+    sevenDeuceRuleEnabled:
+      readString(formData, "sevenDeuceRuleEnabled") === "yes",
   };
 }
 
@@ -280,6 +283,7 @@ export function validateGameSettingsForm(
       secondPlaceCost: secondPlaceCost!,
       thirdPlaceCost: thirdPlaceCost!,
       costShares,
+      sevenDeuceRuleEnabled: values.sevenDeuceRuleEnabled,
     },
   };
 }

@@ -417,6 +417,15 @@
   font-size: clamp(1.1rem, 3vw, 1.4rem);
 }
 
+.stats-core-metrics dd small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
 .stats-detail-metrics dd {
   font-size: clamp(0.95rem, 2.5vw, 1.2rem);
 }

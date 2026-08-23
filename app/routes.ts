@@ -19,6 +19,10 @@ export default [
   route("g/:groupCode/profile/claim/:claimToken", "routes/player-profile-claim.tsx"),
   route("g/:groupCode/games/new", "routes/game-new.tsx"),
   route("g/:groupCode/games/:gameId/photo", "routes/game-photo.ts"),
+  route(
+    "g/:groupCode/games/:gameId/stories/:postId/photo",
+    "routes/game-story-photo.ts",
+  ),
   route("g/:groupCode/games/:gameId", "routes/game-participant.tsx"),
   route("g/:groupCode/games/:gameId/admin", "routes/game-admin.tsx"),
   route("g/:groupCode/games/:gameId/admin/edit", "routes/game-edit.tsx"),

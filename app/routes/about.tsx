@@ -4,6 +4,9 @@ import { GroupSiteHeader } from "~/components/site-menu";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import type { Route } from "./+types/about";
 
+export const LINE_OPEN_CHAT_URL =
+  "https://line.me/ti/g2/8Bsonb9YK8YewGVvTNCp4vnCofI2PrXey7cVEg";
+
 export async function loader({ params }: Route.LoaderArgs) {
   const group = await findGroupByPublicCode(params.groupCode);
   if (!group) throw new Response("Group not found", { status: 404 });
@@ -26,25 +29,72 @@ export default function About({ loaderData }: Route.ComponentProps) {
         </p>
       </section>
 
+      <AboutOpenChatCard />
+
       <section className="about-guide" aria-label="RiverCheckの使い方">
         <AboutItem number="01" title="参加する">
-          OPEN GAMESから参加したい会を選択、もしくは主催者から届いた開催リンクを開き、自分の名前で参加します。終了時に残りチップとリバイ回数を入力してください。
+          OPEN GAMESまたは主催者から届いたリンクを開き、自分の名前で参加します。プレイ中はリバイと100BB返済を記録し、終了後に残りチップと手元のリバイ証を入力します。
         </AboutItem>
-        <AboutItem number="02" title="結果を見る">
-          主催者が結果を確定すると、順位、損益BB、会費の負担額を同じリンクから確認できます。
+        <AboutItem number="02" title="結果と精算を確認する">
+          主催者が確定すると、順位、損益BB、会費の負担額を同じリンクから確認できます。精算は結果画面からPayPayへ進めます。
         </AboutItem>
         <AboutItem number="03" title="戦績を振り返る">
-          ランキングと個人ページでは、過去の参加回数や累計損益BB、開催ごとの推移を確認できます。
+          ランキングでは累計・平均損益、最大勝ち、直近3戦、TOP3回数などを比較できます。個人ページでは開催ごとの成績と損益BBの推移を確認できます。
         </AboutItem>
         <AboutItem number="04" title="プロフィールを育てる">
-          本人用リンクで端末を紐付けると、名前、アイコン、ひとことを自分で編集できます。
+          自分のプロフィールでは、アイコン、ひとこと、マイハンドを編集できます。事前登録済みの場合は、主催者から届く本人用リンクで端末を紐付けます。
+        </AboutItem>
+        <AboutItem number="05" title="称号を集める">
+          確定した戦績に応じて称号を獲得できます。個人ページでコレクションを確認し、獲得済みから1つ選んでプロフィールやランキングに表示できます。
         </AboutItem>
       </section>
 
-      <section className="about-home-screen">
+      <AboutHomeScreenGuide />
+
+      <div className="about-meta-link">
+        <a href="/oss-licenses.md">OSSライセンス</a>
+        <Link to={`/g/${group.publicCode}`}>グループトップへ戻る</Link>
+      </div>
+    </main>
+  );
+}
+
+export function AboutOpenChatCard() {
+  return (
+    <aside className="about-community-card" aria-labelledby="open-chat-title">
+      <div>
+        <p className="about-community-label">LINE OPENCHAT</p>
+        <h2 id="open-chat-title">開催通知・当日の連絡</h2>
+        <p>
+          次回開催のお知らせや、集合時間などの当日連絡はこちらで案内します。
+        </p>
+      </div>
+      <a
+        className="about-community-link"
+        href={LINE_OPEN_CHAT_URL}
+        rel="noreferrer"
+        target="_blank"
+      >
+        オープンチャットを開く
+        <span aria-hidden="true">↗</span>
+      </a>
+    </aside>
+  );
+}
+
+export function AboutHomeScreenGuide() {
+  return (
+    <details className="about-home-screen">
+      <summary>
         <div>
-          <h2>ホーム画面からすぐ開く</h2>
+          <h2>ホーム画面に追加する</h2>
+          <p>よく使う場合の設定（任意）</p>
         </div>
+        <span className="about-home-screen-chevron" aria-hidden="true">
+          ⌄
+        </span>
+      </summary>
+      <div className="about-home-screen-body">
         <p>iPhoneではSafariでRiverCheckを開き、次の順に操作します。</p>
         <ol className="about-install-steps">
           <li>画面下の共有ボタンをタップ</li>
@@ -55,13 +105,8 @@ export default function About({ loaderData }: Route.ComponentProps) {
         <p>
           追加後は、ホーム画面のRCアイコンからRiverCheckをアプリのように開けます。「ホーム画面に追加」が見つからない場合は、共有メニュー下部の「アクションを編集」から追加できます。
         </p>
-      </section>
-
-      <div className="about-meta-link">
-        <a href="/oss-licenses.md">OSSライセンス</a>
-        <Link to={`/g/${group.publicCode}`}>グループトップへ戻る</Link>
       </div>
-    </main>
+    </details>
   );
 }
 

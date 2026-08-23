@@ -47,8 +47,10 @@ export interface PlayerStatsSummary {
   avatarUpdatedAt: string | null;
   gamesPlayed: number;
   wins: number;
-  winRate: number;
-  averageRank: number;
+  topThreeFinishes: number;
+  topThreeRate: number;
+  positiveFinishes: number;
+  positiveRate: number;
   totalNetBb: number;
   averageNetBb: number;
   maxWinBb: number;

@@ -9,8 +9,10 @@ describe("calculatePlayerStats", () => {
     expect(calculatePlayerStats([])).toEqual({
       gamesPlayed: 0,
       wins: 0,
-      winRate: 0,
-      averageRank: 0,
+      topThreeFinishes: 0,
+      topThreeRate: 0,
+      positiveFinishes: 0,
+      positiveRate: 0,
       totalNetBb: 0,
       averageNetBb: 0,
       maxWinBb: 0,
@@ -24,8 +26,10 @@ describe("calculatePlayerStats", () => {
     ).toEqual({
       gamesPlayed: 1,
       wins: 1,
-      winRate: 100,
-      averageRank: 1,
+      topThreeFinishes: 1,
+      topThreeRate: 100,
+      positiveFinishes: 1,
+      positiveRate: 100,
       totalNetBb: 25,
       averageNetBb: 25,
       maxWinBb: 25,
@@ -33,7 +37,7 @@ describe("calculatePlayerStats", () => {
     });
   });
 
-  it("複数開催のプラス・マイナス、平均、優勝率を集計する", () => {
+  it("複数開催のTOP3率、プラス収支率、損益を集計する", () => {
     expect(
       calculatePlayerStats([
         { gameId: "game-1", rank: 1, netBb: 60 },
@@ -43,12 +47,28 @@ describe("calculatePlayerStats", () => {
     ).toEqual({
       gamesPlayed: 3,
       wins: 1,
-      winRate: 100 / 3,
-      averageRank: 7 / 3,
+      topThreeFinishes: 2,
+      topThreeRate: 200 / 3,
+      positiveFinishes: 2,
+      positiveRate: 200 / 3,
       totalNetBb: 45,
       averageNetBb: 15,
       maxWinBb: 60,
       maxLossBb: -30,
+    });
+  });
+
+  it("0BBはプラス収支へ含めない", () => {
+    expect(
+      calculatePlayerStats([
+        { gameId: "game-1", rank: 3, netBb: 0 },
+        { gameId: "game-2", rank: 4, netBb: -10 },
+      ]),
+    ).toMatchObject({
+      positiveFinishes: 0,
+      positiveRate: 0,
+      topThreeFinishes: 1,
+      topThreeRate: 50,
     });
   });
 

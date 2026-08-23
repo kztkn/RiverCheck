@@ -22,6 +22,7 @@ export interface GameSettingsValues {
   thirdPlaceCost: string;
   previewParticipantCount: string;
   costShares: string[];
+  sevenDeuceRuleEnabled: boolean;
 }
 
 type AdjustmentMode = "top-three" | "individual";
@@ -247,12 +248,34 @@ export function GameSettingsFields({
               リバイ時も初期チップと同じチップを追加します。
             </p>
           </fieldset>
+
+          <fieldset className="form-section local-rule-create-section">
+            <legend>
+              <span>03</span>
+              ローカルルール
+            </legend>
+            <label className="local-rule-toggle-card">
+              <input
+                defaultChecked={values.sevenDeuceRuleEnabled}
+                name="sevenDeuceRuleEnabled"
+                type="checkbox"
+                value="yes"
+              />
+              <span className="local-rule-toggle-copy">
+                <strong>72oボーナス</strong>
+                <small>
+                  7と2のオフスートでポットを獲得したら、ほかの参加者全員から2.5BBずつ受け取ります。
+                </small>
+              </span>
+              <span aria-hidden="true" className="local-rule-switch" />
+            </label>
+          </fieldset>
         </>
       ) : null}
 
       <fieldset className="form-section form-section-settlement">
         <legend>
-          <span>03</span>
+          <span>{showCoreSettings ? "04" : "03"}</span>
           精算設定
         </legend>
         <Field

@@ -29,6 +29,7 @@ interface GameDetailsRow {
   second_place_cost: string;
   third_place_cost: string;
   cost_shares: string[] | null;
+  seven_deuce_rule_enabled: boolean;
 }
 
 interface FinalizedGamePublicRouteRow {
@@ -104,7 +105,8 @@ export async function findGameForGroup(
         first_place_cost,
         second_place_cost,
         third_place_cost,
-        cost_shares
+        cost_shares,
+        seven_deuce_rule_enabled
       FROM games
       WHERE id = $1 AND group_id = $2
     `,
@@ -127,6 +129,7 @@ export async function findGameForGroup(
     secondPlaceCost: Number(row.second_place_cost),
     thirdPlaceCost: Number(row.third_place_cost),
     costShares: mapCostShares(row.cost_shares),
+    sevenDeuceRuleEnabled: row.seven_deuce_rule_enabled,
   };
 }
 
@@ -167,9 +170,10 @@ export async function insertGame(
         second_place_cost,
         third_place_cost,
         preview_participant_count,
-        cost_shares
+        cost_shares,
+        seven_deuce_rule_enabled
       )
-      VALUES ($1, $2, $3, 'open', $4, $5, $6, 100, $7, $8, $9, $10, $11::BIGINT[])
+      VALUES ($1, $2, $3, 'open', $4, $5, $6, 100, $7, $8, $9, $10, $11::BIGINT[], $12)
       RETURNING id
     `,
     [
@@ -184,12 +188,32 @@ export async function insertGame(
       input.thirdPlaceCost,
       input.previewParticipantCount,
       input.costShares,
+      input.sevenDeuceRuleEnabled,
     ],
   );
 
   const id = result.rows[0]?.id;
   if (!id) throw new Error("Game creation did not return an id");
   return id;
+}
+
+export async function updateSevenDeuceRule(
+  groupId: string,
+  gameId: string,
+  enabled: boolean,
+): Promise<boolean> {
+  const result = await queryDatabase(
+    `
+      UPDATE games
+      SET seven_deuce_rule_enabled = $3,
+          updated_at = NOW()
+      WHERE id = $1
+        AND group_id = $2
+        AND status = 'open'
+    `,
+    [gameId, groupId, enabled],
+  );
+  return result.rowCount === 1;
 }
 
 function mapCostShares(values: string[] | null): number[] | null {

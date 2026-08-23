@@ -23,6 +23,7 @@ const validValues: GameSettingsFormValues = {
   thirdPlaceCost: "2300",
   previewParticipantCount: "5",
   costShares: ["1800", "2000", "2300", "2500", "2800"],
+  sevenDeuceRuleEnabled: true,
 };
 
 describe("game settings cost shares", () => {
@@ -36,12 +37,20 @@ describe("game settings cost shares", () => {
       "previewParticipantCount",
       validValues.previewParticipantCount,
     );
+    formData.set("sevenDeuceRuleEnabled", "yes");
     validValues.costShares.forEach((share) =>
       formData.append("costShare", share),
     );
 
-    expect(readGameSettingsForm(formData).costShares).toEqual(
-      validValues.costShares,
+    expect(readGameSettingsForm(formData)).toMatchObject({
+      costShares: validValues.costShares,
+      sevenDeuceRuleEnabled: true,
+    });
+  });
+
+  it("72oルールのチェックがなければOFFとして読み取る", () => {
+    expect(readGameSettingsForm(new FormData()).sevenDeuceRuleEnabled).toBe(
+      false,
     );
   });
 
@@ -55,6 +64,7 @@ describe("game settings cost shares", () => {
         secondPlaceCost: 2000,
         thirdPlaceCost: 2300,
         costShares: [1800, 2000, 2300, 2500, 2800],
+        sevenDeuceRuleEnabled: true,
       },
     });
   });

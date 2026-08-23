@@ -11,6 +11,7 @@ import {
 } from "react-router";
 import {
   findGameForGroup,
+  updateSevenDeuceRule,
 } from "@server/repositories/game-repository.server";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import {
@@ -147,6 +148,24 @@ export async function action({ request, params }: Route.ActionArgs) {
     );
   }
 
+  if (intent === "save-local-rules") {
+    const updated = await updateSevenDeuceRule(
+      authorized.group.id,
+      params.gameId,
+      readString(formData, "sevenDeuceRuleEnabled") === "yes",
+    );
+    if (!updated) {
+      return {
+        ok: false as const,
+        intent: "save-local-rules" as const,
+        error: "ローカルルールを保存できませんでした。画面を更新してください。",
+      };
+    }
+    return redirect(
+      `/g/${params.groupCode}/games/${params.gameId}/admin?notice=local-rules-saved`,
+    );
+  }
+
   const participantId = readString(formData, "participantId");
   if (!isUuid(participantId)) {
     throw new Response("Invalid participant", { status: 400 });
@@ -280,8 +299,18 @@ export default function GameAdmin({
     actionData?.ok === false && "values" in actionData ? actionData : null;
   const settingsAction =
     failedAction && "errors" in failedAction ? failedAction : null;
+  const localRulesError =
+    actionData?.ok === false &&
+    "intent" in actionData &&
+    actionData.intent === "save-local-rules"
+      ? actionData.error
+      : null;
   const finalizeError =
-    actionData?.ok === false && "error" in actionData ? actionData.error : null;
+    actionData?.ok === false &&
+    "error" in actionData &&
+    !("intent" in actionData && actionData.intent === "save-local-rules")
+      ? actionData.error
+      : null;
   const actionErrors = settingsAction?.errors ?? {};
   const values = failedAction?.values ?? gameToFormValues(loaderData.game);
   const [settlementParticipantCount, setSettlementParticipantCount] = useState(
@@ -893,6 +922,46 @@ export default function GameAdmin({
           )}
         </section>
 
+        <Form className="admin-local-rules" method="post">
+          <input name="intent" type="hidden" value="save-local-rules" />
+          <div>
+            <p className="form-brand-label">LOCAL RULES</p>
+            <h2>ローカルルール</h2>
+            <p>参加者画面の確認シートへ反映されます。</p>
+          </div>
+          <label className="local-rule-toggle-card">
+            <input
+              defaultChecked={loaderData.game.sevenDeuceRuleEnabled}
+              name="sevenDeuceRuleEnabled"
+              type="checkbox"
+              value="yes"
+            />
+            <span className="local-rule-toggle-copy">
+              <strong>72oボーナス</strong>
+              <small>
+                7と2のオフスートでポットを獲得したら、ほかの参加者全員から2.5BBずつ受け取ります。
+              </small>
+            </span>
+            <span aria-hidden="true" className="local-rule-switch" />
+          </label>
+          {localRulesError ? (
+            <p className="error-notice" role="alert">{localRulesError}</p>
+          ) : null}
+          <button
+            className="button button-secondary"
+            disabled={
+              navigation.state === "submitting" &&
+              navigation.formData?.get("intent") === "save-local-rules"
+            }
+            type="submit"
+          >
+            {navigation.state === "submitting" &&
+            navigation.formData?.get("intent") === "save-local-rules"
+              ? "保存中…"
+              : "ルール設定を保存"}
+          </button>
+        </Form>
+
         <Form
           className="game-form admin-finalization-form"
           id="admin-settlement"
@@ -1295,6 +1364,7 @@ function gameToFormValues(game: Route.ComponentProps["loaderData"]["game"]) {
         thirdPlaceCost: game.thirdPlaceCost,
       }).shares
     ).map(String),
+    sevenDeuceRuleEnabled: game.sevenDeuceRuleEnabled,
   };
 }
 
@@ -1345,6 +1415,7 @@ function statusLabel(status: "draft" | "open" | "finalized") {
 
 function noticeText(notice: string | null): string | null {
   if (notice === "finalized") return "結果を確定しました。";
+  if (notice === "local-rules-saved") return "ローカルルールを保存しました。";
   if (notice === "corrected") return "確定結果を訂正しました。";
   if (notice === "highlight-saved") return "ハイライトを保存しました。";
   return null;
