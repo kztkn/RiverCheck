@@ -6,6 +6,8 @@ import type { Route } from "./+types/about";
 
 export const LINE_OPEN_CHAT_URL =
   "https://line.me/ti/g2/8Bsonb9YK8YewGVvTNCp4vnCofI2PrXey7cVEg";
+export const ABOUT_DESCRIPTION =
+  "開催結果、会費の精算、個人戦績をひとつにまとめるポーカー会向けWebアプリです。";
 
 export async function loader({ params }: Route.LoaderArgs) {
   const group = await findGroupByPublicCode(params.groupCode);
@@ -23,31 +25,10 @@ export default function About({ loaderData }: Route.ComponentProps) {
       <section className="form-intro about-intro">
         <p className="eyebrow">ABOUT</p>
         <h1>RIVERCHECK</h1>
-        <p>
-          {group.name} の開催結果、会費の精算、個人戦績をひとつにまとめる
-          ポーカー会向けWebアプリです。
-        </p>
+        <p>{ABOUT_DESCRIPTION}</p>
       </section>
 
-      <AboutOpenChatCard />
-
-      <section className="about-guide" aria-label="RiverCheckの使い方">
-        <AboutItem number="01" title="参加する">
-          OPEN GAMESまたは主催者から届いたリンクを開き、自分の名前で参加します。プレイ中はリバイと100BB返済を記録し、終了後に残りチップと手元のリバイ証を入力します。
-        </AboutItem>
-        <AboutItem number="02" title="結果と精算を確認する">
-          主催者が確定すると、順位、損益BB、会費の負担額を同じリンクから確認できます。精算は結果画面からPayPayへ進めます。
-        </AboutItem>
-        <AboutItem number="03" title="戦績を振り返る">
-          ランキングでは累計・平均損益、最大勝ち、直近3戦、TOP3回数などを比較できます。個人ページでは開催ごとの成績と損益BBの推移を確認できます。
-        </AboutItem>
-        <AboutItem number="04" title="プロフィールを育てる">
-          自分のプロフィールでは、アイコン、ひとこと、マイハンドを編集できます。事前登録済みの場合は、主催者から届く本人用リンクで端末を紐付けます。
-        </AboutItem>
-        <AboutItem number="05" title="称号を集める">
-          確定した戦績に応じて称号を獲得できます。個人ページでコレクションを確認し、獲得済みから1つ選んでプロフィールやランキングに表示できます。
-        </AboutItem>
-      </section>
+      <AboutGuide />
 
       <AboutHomeScreenGuide />
 
@@ -56,6 +37,29 @@ export default function About({ loaderData }: Route.ComponentProps) {
         <Link to={`/g/${group.publicCode}`}>グループトップへ戻る</Link>
       </div>
     </main>
+  );
+}
+
+export function AboutGuide() {
+  return (
+    <section className="about-guide" aria-label="RiverCheckの使い方">
+      <AboutItem number="01" title="参加する">
+        OPEN GAMESまたは主催者から届いたリンクを開き、自分の名前で参加します。プレイ中はリバイと100BB返済を記録し、終了後に残りチップと手元のリバイ証を入力します。
+      </AboutItem>
+      <AboutOpenChatCard />
+      <AboutItem number="02" title="結果と精算を確認する">
+        主催者が確定すると、順位、損益BB、会費の負担額を同じリンクから確認できます。精算は結果画面からPayPayへ進めます。
+      </AboutItem>
+      <AboutItem number="03" title="戦績を振り返る">
+        ランキングでは累計・平均損益、最大勝ち、直近3戦、TOP3回数などを比較できます。個人ページでは開催ごとの成績と損益BBの推移を確認できます。
+      </AboutItem>
+      <AboutItem number="04" title="プロフィールを育てる">
+        プロフィール画面で自分の名前を選ぶと、この端末に紐付きます。アイコン、ひとこと、マイハンドを編集して、自分らしいプロフィールに育てられます。
+      </AboutItem>
+      <AboutItem number="05" title="称号を集める">
+        確定した戦績に応じて称号を獲得できます。個人ページでコレクションを確認し、獲得済みから1つ選んでプロフィールやランキングに表示できます。
+      </AboutItem>
+    </section>
   );
 }
 
