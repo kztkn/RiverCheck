@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { IconBrandLine } from "@tabler/icons-react";
 import { Link } from "react-router";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
@@ -28,9 +29,7 @@ export default function About({ loaderData }: Route.ComponentProps) {
         <p>{ABOUT_DESCRIPTION}</p>
       </section>
 
-      <AboutGuide />
-
-      <AboutHomeScreenGuide />
+      <AboutSections />
 
       <div className="about-meta-link">
         <a href="/oss-licenses.md">OSSライセンス</a>
@@ -40,13 +39,22 @@ export default function About({ loaderData }: Route.ComponentProps) {
   );
 }
 
+export function AboutSections() {
+  return (
+    <>
+      <AboutGuide />
+      <AboutOpenChatSection />
+      <AboutHomeScreenGuide />
+    </>
+  );
+}
+
 export function AboutGuide() {
   return (
     <section className="about-guide" aria-label="RiverCheckの使い方">
       <AboutItem number="01" title="参加する">
         OPEN GAMESまたは主催者から届いたリンクを開き、自分の名前で参加します。プレイ中はリバイと100BB返済を記録し、終了後に残りチップと手元のリバイ証を入力します。
       </AboutItem>
-      <AboutOpenChatCard />
       <AboutItem number="02" title="結果と精算を確認する">
         主催者が確定すると、順位、損益BB、会費の負担額を同じリンクから確認できます。精算は結果画面からPayPayへ進めます。
       </AboutItem>
@@ -63,14 +71,17 @@ export function AboutGuide() {
   );
 }
 
-export function AboutOpenChatCard() {
+export function AboutOpenChatSection() {
   return (
-    <aside className="about-community-card" aria-labelledby="open-chat-title">
-      <div>
-        <p className="about-community-label">LINE OPENCHAT</p>
-        <h2 id="open-chat-title">開催通知・当日の連絡</h2>
+    <aside className="about-community-section" aria-labelledby="open-chat-title">
+      <div className="about-community-mark" aria-hidden="true">
+        <IconBrandLine stroke={1.65} />
+      </div>
+      <div className="about-community-copy">
+        <p className="about-community-label">COMMUNITY / LINE OPENCHAT</p>
+        <h2 id="open-chat-title">次の開催も、ここから。</h2>
         <p>
-          次回開催のお知らせや、集合時間などの当日連絡はこちらで案内します。
+          開催通知や集合時間など、当日の連絡をオープンチャットで案内します。
         </p>
       </div>
       <a
@@ -79,8 +90,8 @@ export function AboutOpenChatCard() {
         rel="noreferrer"
         target="_blank"
       >
-        オープンチャットを開く
-        <span aria-hidden="true">↗</span>
+        <IconBrandLine aria-hidden="true" stroke={1.9} />
+        <span>LINEオープンチャットに参加</span>
       </a>
     </aside>
   );

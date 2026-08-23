@@ -23,26 +23,33 @@
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid rgba(233, 186, 90, 0.34);
-  background: rgba(233, 186, 90, 0.1);
-  color: var(--gold);
   cursor: pointer;
 }
 
 .game-story-compose-trigger {
   width: 46px;
   height: 46px;
+  border: 1px solid rgba(57, 222, 141, 0.42);
   border-radius: 14px;
+  background: rgba(57, 222, 141, 0.11);
+  color: var(--green);
 }
 
 .game-story-edit-trigger {
   width: 34px;
   height: 34px;
+  border: 1px solid rgba(233, 186, 90, 0.3);
   border-radius: 9px;
+  background: rgba(233, 186, 90, 0.08);
+  color: var(--gold);
 }
 
 .game-story-compose-trigger:hover,
-.game-story-compose-trigger:focus-visible,
+.game-story-compose-trigger:focus-visible {
+  border-color: var(--green);
+  background: rgba(57, 222, 141, 0.2);
+}
+
 .game-story-edit-trigger:hover,
 .game-story-edit-trigger:focus-visible {
   border-color: var(--gold);

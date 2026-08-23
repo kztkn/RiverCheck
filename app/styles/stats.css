@@ -43,14 +43,6 @@
   font-size: 2rem;
 }
 
-.stats-page {
-  width: min(100% - 32px, 960px);
-}
-
-.stats-player-page {
-  width: min(100% - 48px, 960px);
-}
-
 .stats-intro {
   padding: 58px 0 44px;
 }
@@ -613,10 +605,6 @@
     padding-bottom: 18px;
   }
 
-  .stats-player-page {
-    width: min(100% - 48px, 960px);
-  }
-
   .stats-profile-identity {
     width: 100%;
   }
@@ -698,14 +686,6 @@
 }
 
 @media (max-width: 380px) {
-  .stats-page {
-    width: min(100% - 24px, 960px);
-  }
-
-  .stats-player-page {
-    width: min(100% - 32px, 960px);
-  }
-
   .stats-sort a {
     min-width: 62px;
     padding-inline: 8px;

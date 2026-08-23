@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { IconEdit, IconPlus } from "@tabler/icons-react";
 import { Form, useNavigation, useSubmit } from "react-router";
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import { formatNetBb } from "@domain/score/bb-score";
@@ -63,14 +64,14 @@ export function GameStories({
           <p className="form-brand-label">TABLE STORIES</p>
           <h2 id="game-stories-heading">みんなで残す、今日のテーブル</h2>
         </div>
-        {canPost ? (
+        {canPost && !ownPost ? (
           <button
-            aria-label={ownPost ? "自分の投稿を編集" : "今日の記録を投稿"}
+            aria-label="今日の記録を投稿"
             className="game-story-compose-trigger"
             onClick={() => setIsEditorOpen(true)}
             type="button"
           >
-            <StoryEditIcon hasPost={Boolean(ownPost)} />
+            <IconPlus aria-hidden="true" stroke={2} />
           </button>
         ) : null}
       </header>
@@ -120,7 +121,7 @@ export function GameStories({
                           onClick={() => setIsEditorOpen(true)}
                           type="button"
                         >
-                          <StoryEditIcon hasPost />
+                          <IconEdit aria-hidden="true" stroke={1.9} />
                         </button>
                       ) : null}
                       {isOrganizer && entry.participantPostId ? (
@@ -152,18 +153,6 @@ export function GameStories({
         />
       ) : null}
     </section>
-  );
-}
-
-function StoryEditIcon({ hasPost }: { hasPost: boolean }) {
-  return hasPost ? (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M4 20h4l11-11-4-4L4 16v4Zm9.6-13.6 4 4" />
-    </svg>
-  ) : (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
   );
 }
 

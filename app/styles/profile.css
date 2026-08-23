@@ -28,10 +28,6 @@
   font-size: 1.8rem;
 }
 
-.profile-page {
-  width: min(100% - 32px, 760px);
-}
-
 .profile-intro {
   padding-bottom: 28px;
 }
@@ -794,10 +790,6 @@
 }
 
 @media (max-width: 639px) {
-  .profile-page {
-    width: min(100% - 24px, 760px);
-  }
-
   .stats-ranking-card {
     grid-template-columns: 36px minmax(0, 1fr) auto;
   }

@@ -134,6 +134,7 @@ describe("GameStories", () => {
       }),
     );
 
-    expect(markup.match(/aria-label="自分の投稿を編集"/gu)).toHaveLength(2);
+    expect(markup.match(/aria-label="自分の投稿を編集"/gu)).toHaveLength(1);
+    expect(markup).not.toContain('aria-label="今日の記録を投稿"');
   });
 });

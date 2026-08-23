@@ -132,7 +132,7 @@ fieldset {
 }
 
 .page-shell {
-  width: min(100% - 32px, 1080px);
+  width: min(100% - 32px, 900px);
   min-width: 0;
   min-height: 100vh;
   margin: 0 auto;
@@ -140,13 +140,12 @@ fieldset {
 
 .site-header {
   position: relative;
-  left: 50%;
+  z-index: 100;
   display: flex;
-  width: min(calc(100vw - 32px), 1080px);
+  width: 100%;
   min-height: 76px;
   align-items: center;
   justify-content: space-between;
-  transform: translateX(-50%);
   border-bottom: 1px solid var(--line);
 }
 
@@ -258,6 +257,7 @@ fieldset {
 
 .site-menu-panel {
   position: absolute;
+  z-index: 1;
   top: calc(100% + 16px);
   right: 0;
   display: grid;
@@ -411,7 +411,6 @@ fieldset {
 
 /* Group home */
 .group-home-page {
-  width: min(100% - 32px, 900px);
   padding-bottom: max(48px, env(safe-area-inset-bottom));
 }
 
@@ -996,7 +995,7 @@ textarea:focus-visible,
 }
 
 .global-site-footer {
-  width: min(100% - 32px, 1080px);
+  width: min(100% - 32px, 900px);
   align-items: center;
   margin: 0 auto;
 }
@@ -1012,7 +1011,6 @@ textarea:focus-visible,
 }
 
 .form-page {
-  width: min(100% - 32px, 820px);
   padding-bottom: 80px;
 }
 
@@ -2331,12 +2329,10 @@ input[aria-invalid="true"] {
 }
 
 .participant-page {
-  width: min(100% - 32px, 900px);
   padding-bottom: 80px;
 }
 
 .auth-page {
-  width: min(100% - 32px, 620px);
   padding-bottom: 80px;
 }
 
@@ -2645,11 +2641,7 @@ input[aria-invalid="true"] {
 
 @media (min-width: 640px) {
   .page-shell {
-    width: min(100% - 64px, 1080px);
-  }
-
-  .site-header {
-    width: min(calc(100vw - 64px), 1080px);
+    width: min(100% - 64px, 900px);
   }
 
   .hero-card:not(.group-hero-card) {
@@ -3037,7 +3029,6 @@ input[aria-invalid="true"] {
 }
 
 .about-page {
-  width: min(100% - 32px, 760px);
   padding-bottom: 72px;
 }
 
@@ -3055,33 +3046,47 @@ input[aria-invalid="true"] {
   line-height: 1.8;
 }
 
-.about-community-card {
+.about-community-section {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 24px;
-  margin: 0 0 28px;
-  border: 1px solid rgba(57, 222, 141, 0.3);
-  border-radius: 18px;
-  background: rgba(57, 222, 141, 0.07);
-  padding: 20px 22px;
+  gap: 22px;
+  margin-top: 34px;
+  border-top: 1px solid rgba(57, 222, 141, 0.28);
+  border-bottom: 1px solid rgba(57, 222, 141, 0.18);
+  background: linear-gradient(90deg, rgba(6, 199, 85, 0.09), transparent 72%);
+  padding: 27px 4px;
 }
 
-.about-community-card h2,
-.about-community-card p {
+.about-community-section h2,
+.about-community-section p {
   margin: 0;
 }
 
-.about-community-card h2 {
+.about-community-section h2 {
   margin-top: 5px;
-  font-size: 1.04rem;
+  font-size: clamp(1.14rem, 3vw, 1.45rem);
+  letter-spacing: -0.025em;
 }
 
-.about-community-card > div > p:last-child {
+.about-community-copy > p:last-child {
   margin-top: 7px;
   color: var(--muted);
   font-size: 0.82rem;
   line-height: 1.65;
+}
+
+.about-community-mark {
+  display: grid;
+  width: 50px;
+  height: 50px;
+  place-items: center;
+  color: #06c755;
+}
+
+.about-community-mark svg {
+  width: 44px;
+  height: 44px;
 }
 
 .about-community-label {
@@ -3093,22 +3098,26 @@ input[aria-invalid="true"] {
 
 .about-community-link {
   display: inline-flex;
-  min-height: 46px;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  border-radius: 12px;
-  background: #06c755;
-  color: #07150d;
+  gap: 8px;
+  border-bottom: 1px solid rgba(6, 199, 85, 0.6);
+  color: #39de8d;
   font-size: 0.8rem;
   font-weight: 850;
-  padding: 11px 15px;
+  padding: 9px 0 7px;
   white-space: nowrap;
+}
+
+.about-community-link svg {
+  width: 20px;
+  height: 20px;
 }
 
 .about-community-link:hover,
 .about-community-link:focus-visible {
-  background: #39de8d;
+  border-bottom-color: #8ff2bb;
+  color: #8ff2bb;
 }
 
 .about-guide {
@@ -3127,10 +3136,6 @@ input[aria-invalid="true"] {
 }
 
 .about-guide-item + .about-guide-item {
-  border-top: 1px solid var(--line);
-}
-
-.about-community-card + .about-guide-item {
   border-top: 1px solid var(--line);
 }
 
@@ -3239,14 +3244,25 @@ input[aria-invalid="true"] {
 }
 
 @media (max-width: 420px) {
-  .about-community-card {
-    grid-template-columns: 1fr;
-    gap: 16px;
-    padding: 19px 17px;
+  .about-community-section {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 10px 14px;
+    padding: 23px 2px;
+  }
+
+  .about-community-mark {
+    width: 40px;
+    height: 40px;
+  }
+
+  .about-community-mark svg {
+    width: 36px;
+    height: 36px;
   }
 
   .about-community-link {
-    width: 100%;
+    grid-column: 2;
+    justify-self: start;
   }
 
   .about-guide-item {
@@ -4334,7 +4350,6 @@ input[aria-invalid="true"] {
 
 /* Participant play surface */
 .participant-page {
-  width: min(100% - 32px, 720px);
   padding-bottom: max(64px, env(safe-area-inset-bottom));
 }
 
@@ -4633,12 +4648,6 @@ input[aria-invalid="true"] {
   text-align: right;
 }
 
-@media (max-width: 639px) {
-  .participant-selection-page {
-    width: min(100% - 24px, 720px);
-  }
-}
-
 @media (max-width: 420px) {
   .participant-session-header {
     gap: 12px;
@@ -4735,7 +4744,6 @@ input[aria-invalid="true"] {
 
 /* Editorial form system */
 .form-page {
-  width: min(100% - 32px, 760px);
   padding-bottom: max(72px, env(safe-area-inset-bottom));
 }
 
@@ -4903,7 +4911,6 @@ input[aria-invalid="true"] {
 
 /* Organizer home and history */
 .organizer-home-page {
-  width: min(100% - 32px, 860px);
   padding-bottom: max(72px, env(safe-area-inset-bottom));
 }
 
@@ -5051,10 +5058,6 @@ input[aria-invalid="true"] {
 }
 
 /* Organizer command center */
-.admin-page {
-  width: min(100% - 32px, 820px);
-}
-
 .admin-page .setup-intro {
   padding: clamp(34px, 7vw, 54px) 0 28px;
 }
@@ -6324,10 +6327,6 @@ input[aria-invalid="true"] {
   border-top: 1px solid var(--line);
   border-radius: 0;
   background: transparent;
-}
-
-.about-guide > .about-community-card {
-  margin: 0 2px 22px clamp(2px, 7vw, 54px);
 }
 
 .about-guide-item {
