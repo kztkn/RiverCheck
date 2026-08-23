@@ -5,13 +5,11 @@ import {
   useFetcher,
   useNavigation,
   useRevalidator,
-  useSubmit,
 } from "react-router";
 import {
   useEffect,
   useRef,
   useState,
-  type FormEvent,
   type ReactNode,
 } from "react";
 import {
@@ -32,6 +30,8 @@ import {
   leaveGameByGroupPlayerId,
   listCurrentGameParticipants,
   listRegisteredPlayersForGame,
+  updateParticipantInput,
+  updateParticipantInputByGroupPlayerId,
 } from "@server/repositories/participant-repository.server";
 import {
   clearParticipantCookie,
@@ -66,7 +66,7 @@ import {
 } from "@server/services/organizer-auth.server";
 import { isPayPayLinkActive } from "@domain/payment/paypay-link";
 import { findGamePaymentAmountForPlayer } from "@server/repositories/group-paypay-repository.server";
-import type { GameListItem } from "@shared-types/game";
+import type { GameListItem, GameStatus } from "@shared-types/game";
 import type { Route } from "./+types/game-participant";
 import { formatTokyoDateNumeric } from "@domain/date/format-tokyo-date";
 import { createCommandId } from "~/utils/create-command-id";
@@ -76,15 +76,8 @@ import {
   getOwnGameStoryPost,
   getPublishedGameStoryPosts,
   saveFinalizedGameStory,
-  saveParticipantCompletion,
 } from "@server/services/game-story-service.server";
-import { compressGamePhoto } from "~/utils/compress-game-photo";
-import {
-  GAME_PHOTO_MAX_BYTES,
-} from "@domain/highlight/validate-game-highlight";
-import { GAME_STORY_BODY_MAX_LENGTH } from "@domain/story/validate-game-story";
 import { buildLocalRules } from "@domain/rules/local-rules";
-import type { OwnGameStoryPost } from "@shared-types/game-story";
 
 type RebuyActionIntent = "record-rebuy" | "record-repayment" | "undo-rebuy";
 type RebuyActionData = RebuyServiceResult & { intent: RebuyActionIntent };
@@ -125,7 +118,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       ? await listRegisteredPlayersForGame(context.group.id, params.gameId)
       : [];
   const ownStoryPost =
-    participant
+    participant && context.game.status === "finalized"
       ? await getOwnGameStoryPost(
         context.group.id,
         params.gameId,
@@ -288,19 +281,29 @@ export async function action({ request, params }: Route.ActionArgs) {
       return { error: "この開催への参加状態を確認できませんでした。" };
     }
     const photoEntry = formData.get("storyPhoto");
+    const storyBody = readString(formData, "storyBody");
+    const removeStoryPhoto =
+      readString(formData, "removeStoryPhoto") === "yes";
+    const isDeletingOwnStory =
+      storyBody.trim() === "" &&
+      removeStoryPhoto &&
+      !(photoEntry instanceof File && photoEntry.size > 0);
     const result = await saveFinalizedGameStory(
       context.group.id,
       params.gameId,
       {
-        body: readString(formData, "storyBody"),
+        body: storyBody,
         photo:
           photoEntry instanceof File && photoEntry.size > 0 ? photoEntry : null,
-        removePhoto: readString(formData, "removeStoryPhoto") === "yes",
+        removePhoto: removeStoryPhoto,
         target,
       },
     );
     if (!result.ok) return { error: result.error };
-    return redirect(`${participantUrl}?notice=story-saved`, { status: 303 });
+    return redirect(
+      `${participantUrl}?notice=${isDeletingOwnStory ? "story-deleted" : "story-saved"}`,
+      { status: 303 },
+    );
   }
 
   if (intent === "join-self") {
@@ -446,21 +449,26 @@ export async function action({ request, params }: Route.ActionArgs) {
         error: "入力を保存できませんでした。受付状況を確認してください。",
       };
     }
-    const photoEntry = formData.get("storyPhoto");
-    const result = await saveParticipantCompletion(
-      context.group.id,
-      params.gameId,
-      {
-        body: readString(formData, "storyBody"),
-        photo:
-          photoEntry instanceof File && photoEntry.size > 0 ? photoEntry : null,
-        removePhoto: readString(formData, "removeStoryPhoto") === "yes",
+    const updated = target.kind === "group-player-id"
+      ? await updateParticipantInputByGroupPlayerId(
+        context.group.id,
+        params.gameId,
+        target.value,
         remainingChips,
         settlementRebuyCount,
-        target,
-      },
-    );
-    if (!result.ok) return { error: result.error };
+      )
+      : await updateParticipantInput(
+        context.group.id,
+        params.gameId,
+        target.value,
+        remainingChips,
+        settlementRebuyCount,
+      );
+    if (!updated) {
+      return {
+        error: "入力を保存できませんでした。受付状況を確認してください。",
+      };
+    }
     return redirect(`${participantUrl}?notice=saved`, { status: 303 });
   }
 
@@ -570,9 +578,12 @@ export default function GameParticipant({
         ) : null}
       </section>
 
-      <LocalRulesSheet
-        sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
-      />
+      {shouldShowLocalRules(loaderData.game.status) ? (
+        <LocalRulesSheet
+          bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
+          sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
+        />
+      ) : null}
 
       {loaderData.game.status === "finalized" && loaderData.pastGameNavigation ? (
         <PastGameNavigation
@@ -609,16 +620,12 @@ export default function GameParticipant({
             shareUrl={loaderData.shareUrl}
             showSharePanel={loaderData.isOrganizer}
           />
-          {loaderData.participant ? (
-            <FinalizedStoryEditor
-              isSubmitting={isSubmitting}
-              storyPhotoUrl={loaderData.ownStoryPhotoUrl}
-              storyPost={loaderData.ownStoryPost}
-            />
-          ) : null}
           <GameStories
+            canPost={Boolean(loaderData.participant)}
             initialChips={loaderData.game.initialChips}
             isOrganizer={loaderData.isOrganizer}
+            ownPhotoUrl={loaderData.ownStoryPhotoUrl}
+            ownPost={loaderData.ownStoryPost}
             posts={loaderData.storyPosts}
             results={loaderData.results}
           />
@@ -731,10 +738,6 @@ export default function GameParticipant({
                     loaderData.participant.settlementRebuyCount ?? 0
                   }
                 />
-                <OwnStoryPostPreview
-                  photoUrl={loaderData.ownStoryPhotoUrl}
-                  post={loaderData.ownStoryPost}
-                />
                 <button
                   className="button button-secondary"
                   onClick={() => setIsEditing(true)}
@@ -756,8 +759,6 @@ export default function GameParticipant({
                 settlementRebuyCount={
                   loaderData.participant.settlementRebuyCount
                 }
-                storyPhotoUrl={loaderData.ownStoryPhotoUrl}
-                storyPost={loaderData.ownStoryPost}
                 totalRebuyCount={loaderData.participant.totalRebuyCount}
               />
             </ParticipantResultEntrySection>
@@ -1072,8 +1073,10 @@ export function ParticipantRosterSheet({
 
 
 export function LocalRulesSheet({
+  bombPotRuleEnabled,
   sevenDeuceRuleEnabled,
 }: {
+  bombPotRuleEnabled: boolean;
   sevenDeuceRuleEnabled: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -1108,7 +1111,10 @@ export function LocalRulesSheet({
     triggerRef.current?.focus();
   }
 
-  const rules = buildLocalRules(sevenDeuceRuleEnabled);
+  const rules = buildLocalRules(
+    sevenDeuceRuleEnabled,
+    bombPotRuleEnabled,
+  );
 
   return (
     <div className="local-rules-entry">
@@ -1184,6 +1190,10 @@ export function LocalRulesSheet({
       </dialog>
     </div>
   );
+}
+
+export function shouldShowLocalRules(status: GameStatus): boolean {
+  return status !== "finalized";
 }
 
 function RebuyTracker({
@@ -1340,8 +1350,6 @@ function ResultEntryForm({
   outstandingRebuyCount,
   remainingChips,
   settlementRebuyCount,
-  storyPhotoUrl,
-  storyPost,
   totalRebuyCount,
 }: {
   initialChips: number;
@@ -1349,21 +1357,12 @@ function ResultEntryForm({
   outstandingRebuyCount: number;
   remainingChips: number | null;
   settlementRebuyCount: number | null;
-  storyPhotoUrl: string | null;
-  storyPost: OwnGameStoryPost | null;
   totalRebuyCount: number | null;
 }) {
-  const submit = useSubmit();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [reportedCount, setReportedCount] = useState(
     settlementRebuyCount ?? outstandingRebuyCount,
   );
   const reportedCountEditedRef = useRef(settlementRebuyCount !== null);
-  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
-  const [removePhoto, setRemovePhoto] = useState(false);
-  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
-  const [photoError, setPhotoError] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (settlementRebuyCount !== null) {
@@ -1376,63 +1375,13 @@ function ResultEntryForm({
     }
   }, [outstandingRebuyCount, settlementRebuyCount]);
 
-  useEffect(() => {
-    if (!selectedPhoto) {
-      setPreviewUrl(null);
-      return;
-    }
-    const objectUrl = URL.createObjectURL(selectedPhoto);
-    setPreviewUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [selectedPhoto]);
-
-  async function handleStoryPhoto(file: File | undefined) {
-    if (!file) return;
-    setPhotoError(null);
-    setIsProcessingPhoto(true);
-    try {
-      setSelectedPhoto(await compressGamePhoto(file));
-      setRemovePhoto(false);
-    } catch (error) {
-      setSelectedPhoto(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      setPhotoError(
-        error instanceof Error ? error.message : "写真を処理できませんでした。",
-      );
-    } finally {
-      setIsProcessingPhoto(false);
-    }
-  }
-
-  function handleResultSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (isProcessingPhoto || photoError) return;
-    const formData = new FormData(event.currentTarget);
-    formData.delete("storyPhoto");
-    if (selectedPhoto) formData.set("storyPhoto", selectedPhoto);
-    void submit(formData, { encType: "multipart/form-data", method: "post" });
-  }
-
-  const visiblePhotoUrl = selectedPhoto
-    ? previewUrl
-    : removePhoto
-      ? null
-      : storyPhotoUrl;
-
   return (
     <Form
       className="result-entry-form"
-      encType="multipart/form-data"
       method="post"
       noValidate
-      onSubmit={handleResultSubmit}
     >
       <input name="intent" type="hidden" value="save-input" />
-      <input
-        name="removeStoryPhoto"
-        type="hidden"
-        value={removePhoto ? "yes" : "no"}
-      />
       <label className="field">
         <span className="field-label">残りチップ（枚）</span>
         <input
@@ -1474,272 +1423,15 @@ function ResultEntryForm({
           settlementRebuyCount={reportedCount}
         />
       </div>
-      <section className="story-entry" aria-labelledby="story-entry-heading">
-        <div className="story-entry-heading">
-          <div>
-            <span className="field-label">TABLE STORIES</span>
-            <h4 id="story-entry-heading">今日の記録を残す</h4>
-          </div>
-          <span>任意</span>
-        </div>
-        <label className="field" htmlFor="storyBody">
-          <span className="field-label">ひとこと</span>
-          <textarea
-            defaultValue={storyPost?.body ?? ""}
-            id="storyBody"
-            maxLength={GAME_STORY_BODY_MAX_LENGTH}
-            name="storyBody"
-            placeholder="印象に残ったハンドや、今日のひとこと"
-            rows={3}
-          />
-          <span className="field-hint">
-            最大{GAME_STORY_BODY_MAX_LENGTH}文字・主催者確定後に公開
-          </span>
-        </label>
-        <div className="story-photo-field">
-          <span className="field-label">写真（1枚）</span>
-          {visiblePhotoUrl ? (
-            <div className="story-photo-preview">
-              <img alt="投稿写真のプレビュー" src={visiblePhotoUrl} />
-            </div>
-          ) : (
-            <div className="story-photo-empty">写真は未選択です</div>
-          )}
-          <label className="story-photo-picker">
-            <span>{isProcessingPhoto ? "写真を圧縮中…" : "写真を選択"}</span>
-            <input
-              accept="image/jpeg,image/png,image/webp"
-              disabled={isProcessingPhoto || isSubmitting}
-              name="storyPhoto"
-              onChange={(event) => void handleStoryPhoto(event.target.files?.[0])}
-              ref={fileInputRef}
-              type="file"
-            />
-          </label>
-          {selectedPhoto ? (
-            <button
-              className="text-button"
-              onClick={() => {
-                setSelectedPhoto(null);
-                if (fileInputRef.current) fileInputRef.current.value = "";
-              }}
-              type="button"
-            >
-              選択を取り消す
-            </button>
-          ) : storyPhotoUrl ? (
-            <button
-              className="text-button danger-text"
-              onClick={() => setRemovePhoto((current) => !current)}
-              type="button"
-            >
-              {removePhoto ? "写真削除を取り消す" : "写真を削除"}
-            </button>
-          ) : null}
-          <span className="field-hint">
-            JPEG・PNG・WebP。自動圧縮後{formatBytes(GAME_PHOTO_MAX_BYTES)}以内
-          </span>
-          {photoError ? <span className="field-error">{photoError}</span> : null}
-        </div>
-      </section>
       <button
         className="button button-primary"
-        disabled={isSubmitting || isProcessingPhoto || Boolean(photoError)}
+        disabled={isSubmitting}
         type="submit"
       >
-        {isProcessingPhoto
-          ? "写真を処理中…"
-          : isSubmitting
-            ? "保存中…"
-            : "結果を保存"}
+        {isSubmitting ? "保存中…" : "結果を保存"}
       </button>
     </Form>
   );
-}
-
-function FinalizedStoryEditor({
-  isSubmitting,
-  storyPhotoUrl,
-  storyPost,
-}: {
-  isSubmitting: boolean;
-  storyPhotoUrl: string | null;
-  storyPost: OwnGameStoryPost | null;
-}) {
-  const submit = useSubmit();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
-  const [removePhoto, setRemovePhoto] = useState(false);
-  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
-  const [photoError, setPhotoError] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!selectedPhoto) {
-      setPreviewUrl(null);
-      return;
-    }
-    const objectUrl = URL.createObjectURL(selectedPhoto);
-    setPreviewUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [selectedPhoto]);
-
-  async function handleStoryPhoto(file: File | undefined) {
-    if (!file) return;
-    setPhotoError(null);
-    setIsProcessingPhoto(true);
-    try {
-      setSelectedPhoto(await compressGamePhoto(file));
-      setRemovePhoto(false);
-    } catch (error) {
-      setSelectedPhoto(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      setPhotoError(
-        error instanceof Error ? error.message : "写真を処理できませんでした。",
-      );
-    } finally {
-      setIsProcessingPhoto(false);
-    }
-  }
-
-  function handleStorySubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (isProcessingPhoto || photoError) return;
-    const formData = new FormData(event.currentTarget);
-    formData.delete("storyPhoto");
-    if (selectedPhoto) formData.set("storyPhoto", selectedPhoto);
-    void submit(formData, { encType: "multipart/form-data", method: "post" });
-  }
-
-  const visiblePhotoUrl = selectedPhoto
-    ? previewUrl
-    : removePhoto
-      ? null
-      : storyPhotoUrl;
-
-  return (
-    <section className="finalized-story-editor" aria-labelledby="past-story-heading">
-      <div>
-        <p className="form-brand-label">TABLE STORIES</p>
-        <h2 id="past-story-heading">
-          {storyPost ? "自分の投稿を編集" : "この開催の思い出を投稿"}
-        </h2>
-        <p>確定後でも、参加した開催へ文章や写真を残せます。</p>
-      </div>
-      <Form
-        encType="multipart/form-data"
-        method="post"
-        noValidate
-        onSubmit={handleStorySubmit}
-      >
-        <input name="intent" type="hidden" value="save-story-post" />
-        <input
-          name="removeStoryPhoto"
-          type="hidden"
-          value={removePhoto ? "yes" : "no"}
-        />
-        <label className="field" htmlFor="pastStoryBody">
-          <span className="field-label">ひとこと（任意）</span>
-          <textarea
-            defaultValue={storyPost?.body ?? ""}
-            id="pastStoryBody"
-            maxLength={GAME_STORY_BODY_MAX_LENGTH}
-            name="storyBody"
-            placeholder="印象に残ったハンドや、今日のひとこと"
-            rows={3}
-          />
-          <span className="field-hint">
-            最大{GAME_STORY_BODY_MAX_LENGTH}文字・保存後すぐに公開
-          </span>
-        </label>
-        <div className="story-photo-field">
-          <span className="field-label">写真（任意・1枚）</span>
-          {visiblePhotoUrl ? (
-            <div className="story-photo-preview">
-              <img alt="投稿写真のプレビュー" src={visiblePhotoUrl} />
-            </div>
-          ) : (
-            <div className="story-photo-empty">写真は未選択です</div>
-          )}
-          <label className="story-photo-picker">
-            <span>{isProcessingPhoto ? "写真を圧縮中…" : "写真を選択"}</span>
-            <input
-              accept="image/jpeg,image/png,image/webp"
-              disabled={isProcessingPhoto || isSubmitting}
-              name="storyPhoto"
-              onChange={(event) => void handleStoryPhoto(event.target.files?.[0])}
-              ref={fileInputRef}
-              type="file"
-            />
-          </label>
-          {selectedPhoto ? (
-            <button
-              className="text-button"
-              onClick={() => {
-                setSelectedPhoto(null);
-                if (fileInputRef.current) fileInputRef.current.value = "";
-              }}
-              type="button"
-            >
-              選択を取り消す
-            </button>
-          ) : storyPhotoUrl ? (
-            <button
-              className="text-button danger-text"
-              onClick={() => setRemovePhoto((current) => !current)}
-              type="button"
-            >
-              {removePhoto ? "写真削除を取り消す" : "写真を削除"}
-            </button>
-          ) : null}
-          <span className="field-hint">
-            JPEG・PNG・WebP。自動圧縮後{formatBytes(GAME_PHOTO_MAX_BYTES)}以内
-          </span>
-          {photoError ? <span className="field-error">{photoError}</span> : null}
-        </div>
-        <button
-          className="button button-primary"
-          disabled={isSubmitting || isProcessingPhoto || Boolean(photoError)}
-          type="submit"
-        >
-          {isProcessingPhoto
-            ? "写真を処理中…"
-            : isSubmitting
-              ? "保存中…"
-              : "投稿を保存"}
-        </button>
-      </Form>
-    </section>
-  );
-}
-
-function OwnStoryPostPreview({
-  photoUrl,
-  post,
-}: {
-  photoUrl: string | null;
-  post: OwnGameStoryPost | null;
-}) {
-  return (
-    <div className="submitted-story-preview">
-      <div>
-        <span>TABLE STORIES</span>
-        <strong>今日の記録</strong>
-      </div>
-      {photoUrl ? <img alt="投稿した写真" src={photoUrl} /> : null}
-      {post?.body ? <p>{post.body}</p> : null}
-      {!post?.body && !photoUrl ? <p className="is-empty">投稿なし</p> : null}
-      <small>主催者確定後に開催詳細へ公開されます。</small>
-    </div>
-  );
-}
-
-function formatBytes(bytes: number): string {
-  return bytes >= 1024 * 1024
-    ? `${(bytes / (1024 * 1024)).toLocaleString("ja-JP", {
-        maximumFractionDigits: 1,
-      })}MB`
-    : `${Math.ceil(bytes / 1024).toLocaleString("ja-JP")}KB`;
 }
 
 export function ParticipantResultEntrySection({

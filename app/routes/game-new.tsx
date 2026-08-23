@@ -47,6 +47,7 @@ const defaults = {
   previewParticipantCount: "8",
   costShares: defaultCostShares.shares.map(String),
   sevenDeuceRuleEnabled: true,
+  bombPotRuleEnabled: true,
 };
 
 export default function NewGame({

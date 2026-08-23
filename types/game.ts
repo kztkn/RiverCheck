@@ -23,6 +23,7 @@ export interface GameDetails extends GameSummary {
   thirdPlaceCost: number;
   costShares: number[] | null;
   sevenDeuceRuleEnabled: boolean;
+  bombPotRuleEnabled: boolean;
 }
 
 export interface CreateGameInput {
@@ -37,4 +38,5 @@ export interface CreateGameInput {
   thirdPlaceCost: number;
   costShares: number[];
   sevenDeuceRuleEnabled: boolean;
+  bombPotRuleEnabled: boolean;
 }

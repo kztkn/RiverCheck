@@ -4,7 +4,6 @@ import {
   findOwnGameStoryPost,
   listPublishedGameStoryPosts,
   saveFinalizedGameStoryRecord,
-  saveParticipantCompletionRecord,
   softDeleteGameStoryPost,
   type GameStoryParticipantTarget,
 } from "@server/repositories/game-story-repository.server";
@@ -24,21 +23,14 @@ import type {
   PublishedGameStoryPost,
 } from "@shared-types/game-story";
 
-export interface SaveParticipantCompletionInput {
+export interface SaveFinalizedGameStoryInput {
   body: string;
   photo: File | null;
   removePhoto: boolean;
-  remainingChips: number;
-  settlementRebuyCount: number;
   target: GameStoryParticipantTarget;
 }
 
-export type SaveFinalizedGameStoryInput = Omit<
-  SaveParticipantCompletionInput,
-  "remainingChips" | "settlementRebuyCount"
->;
-
-export type SaveParticipantCompletionResult =
+export type SaveGameStoryResult =
   | { ok: true }
   | { ok: false; error: string };
 
@@ -67,31 +59,15 @@ export function buildGameStoryPhotoUrl(input: {
     : null;
 }
 
-export async function saveParticipantCompletion(
-  groupId: string,
-  gameId: string,
-  input: SaveParticipantCompletionInput,
-): Promise<SaveParticipantCompletionResult> {
-  return saveGameStoryWithPhoto(groupId, gameId, input, "open", (story) =>
-    saveParticipantCompletionRecord(groupId, gameId, {
-      ...story,
-      remainingChips: input.remainingChips,
-      settlementRebuyCount: input.settlementRebuyCount,
-      target: input.target,
-    }),
-  );
-}
-
 export async function saveFinalizedGameStory(
   groupId: string,
   gameId: string,
   input: SaveFinalizedGameStoryInput,
-): Promise<SaveParticipantCompletionResult> {
+): Promise<SaveGameStoryResult> {
   return saveGameStoryWithPhoto(
     groupId,
     gameId,
     input,
-    "finalized",
     (story) =>
       saveFinalizedGameStoryRecord(groupId, gameId, {
         ...story,
@@ -104,7 +80,6 @@ async function saveGameStoryWithPhoto(
   groupId: string,
   gameId: string,
   input: SaveFinalizedGameStoryInput,
-  gameStatus: "open" | "finalized",
   saveRecord: (story: {
     body: string | null;
     expectedPhotoObjectKey: string | null;
@@ -113,7 +88,7 @@ async function saveGameStoryWithPhoto(
     photoObjectKey: string | null;
     photoUploadedAt: string | null;
   }) => Promise<boolean>,
-): Promise<SaveParticipantCompletionResult> {
+): Promise<SaveGameStoryResult> {
   const bodyValidation = validateGameStoryBody(input.body);
   if (!bodyValidation.ok) return bodyValidation;
 
@@ -121,7 +96,6 @@ async function saveGameStoryWithPhoto(
     groupId,
     gameId,
     input.target,
-    gameStatus,
   );
   if (!current) {
     return { ok: false, error: "参加状態を確認できませんでした。" };

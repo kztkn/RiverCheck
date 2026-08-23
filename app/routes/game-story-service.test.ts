@@ -5,7 +5,6 @@ const mocked = vi.hoisted(() => ({
   findEditableGameStoryPost: vi.fn(),
   putGamePhoto: vi.fn(),
   saveFinalizedGameStoryRecord: vi.fn(),
-  saveParticipantCompletionRecord: vi.fn(),
   softDeleteGameStoryPost: vi.fn(),
   validateGamePhotoBytes: vi.fn(),
 }));
@@ -15,7 +14,6 @@ vi.mock("@server/repositories/game-story-repository.server", () => ({
   findEditableGameStoryPost: mocked.findEditableGameStoryPost,
   findOwnGameStoryPost: vi.fn(),
   listPublishedGameStoryPosts: vi.fn(),
-  saveParticipantCompletionRecord: mocked.saveParticipantCompletionRecord,
   saveFinalizedGameStoryRecord: mocked.saveFinalizedGameStoryRecord,
   softDeleteGameStoryPost: mocked.softDeleteGameStoryPost,
 }));
@@ -31,7 +29,6 @@ vi.mock("@domain/highlight/validate-game-highlight", () => ({
 import {
   deleteGameStoryPostAsOrganizer,
   saveFinalizedGameStory,
-  saveParticipantCompletion,
 } from "@server/services/game-story-service.server";
 
 const groupId = "11111111-1111-4111-8111-111111111111";
@@ -55,7 +52,6 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocked.findEditableGameStoryPost.mockResolvedValue(current);
   mocked.saveFinalizedGameStoryRecord.mockResolvedValue(true);
-  mocked.saveParticipantCompletionRecord.mockResolvedValue(true);
   mocked.validateGamePhotoBytes.mockReturnValue({
     contentType: "image/webp",
     ok: true,
@@ -63,61 +59,6 @@ beforeEach(() => {
 });
 
 describe("game story service", () => {
-  it("本文を整形し、既存写真を維持して終了時入力と一緒に保存する", async () => {
-    const result = await saveParticipantCompletion(groupId, gameId, {
-      body: "  今日のひとこと  ",
-      photo: null,
-      removePhoto: false,
-      remainingChips: 25_000,
-      settlementRebuyCount: 1,
-      target,
-    });
-
-    expect(result).toEqual({ ok: true });
-    expect(mocked.saveParticipantCompletionRecord).toHaveBeenCalledWith(
-      groupId,
-      gameId,
-      expect.objectContaining({
-        body: "今日のひとこと",
-        expectedPhotoObjectKey: current.photoObjectKey,
-        photoObjectKey: current.photoObjectKey,
-        remainingChips: 25_000,
-        settlementRebuyCount: 1,
-        target,
-      }),
-    );
-    expect(mocked.deleteGamePhoto).not.toHaveBeenCalled();
-  });
-
-  it("DB競合時は先に保存した未参照写真を削除する", async () => {
-    const uploaded = {
-      byteSize: 2_048,
-      contentType: "image/webp" as const,
-      etag: "etag",
-      objectKey: "groups/group/games/game/stories/new.webp",
-      uploadedAt: "2026-08-23T00:00:00.000Z",
-    };
-    mocked.putGamePhoto.mockResolvedValue(uploaded);
-    mocked.saveParticipantCompletionRecord.mockResolvedValue(false);
-
-    const result = await saveParticipantCompletion(groupId, gameId, {
-      body: "写真を更新",
-      photo: new File([new Uint8Array([1, 2, 3])], "story.webp", {
-        type: "image/webp",
-      }),
-      removePhoto: false,
-      remainingChips: 25_000,
-      settlementRebuyCount: 1,
-      target,
-    });
-
-    expect(result.ok).toBe(false);
-    expect(mocked.deleteGamePhoto).toHaveBeenCalledWith(uploaded.objectKey);
-    expect(mocked.deleteGamePhoto).not.toHaveBeenCalledWith(
-      current.photoObjectKey,
-    );
-  });
-
   it("主催者削除ではDBを非公開化してから写真を削除する", async () => {
     mocked.softDeleteGameStoryPost.mockResolvedValue({
       deleted: true,
@@ -154,13 +95,11 @@ describe("game story service", () => {
       groupId,
       gameId,
       target,
-      "finalized",
     );
     expect(mocked.saveFinalizedGameStoryRecord).toHaveBeenCalledWith(
       groupId,
       gameId,
       expect.objectContaining({ body: "あとから投稿", target }),
     );
-    expect(mocked.saveParticipantCompletionRecord).not.toHaveBeenCalled();
   });
 });

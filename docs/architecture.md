@@ -53,7 +53,7 @@ Workers はリクエストをまたいだネットワーク I/O の再利用を�
 
 TABLE STORIESは主催者を含む全投稿を`game_story_posts`へ保存し、`game_participant_id`の一意制約で1参加者1件にする。固定の主催者名義は作らず、投稿者のプレイヤー名、アイコン、開催結果を共通表示する。本文、写真メタデータ、作成・更新時刻に加え、主催者削除の`deleted_at`と`deleted_by_type`を保持する。画像本体はPostgreSQLへ保存しない。
 
-参加者の終了時入力actionは、本文検証と写真検証後に、`game_participants`の残りチップ・リバイ証・提出状態と`game_story_posts`を1つのPostgreSQLトランザクションで更新する。開催が`open`であることと本人のprofile sessionまたはparticipant tokenを行ロック時に再確認し、写真object keyの楽観ロックで別画面からの同時更新を検出する。`finalized`後の投稿専用actionも同じ本人確認と行ロックを行うが、`game_story_posts`だけを更新し、確定結果には触れない。公開一覧は全参加者投稿を作成時刻の古い順に並べる。
+参加者の終了時入力actionは`game_participants`の残りチップ・リバイ証・提出状態だけを更新し、投稿を扱わない。TABLE STORIESの投稿専用actionは`finalized`の参加者だけを対象に、本人のprofile sessionまたはparticipant tokenを再確認して`game_story_posts`だけを更新し、確定結果には触れない。写真object keyの楽観ロックで別画面からの同時更新を検出する。公開一覧は全参加者投稿を作成時刻の古い順に並べる。
 
 画像は専用resource routeからWorker経由で配信し、R2 bucket自体は公開しない。参加者投稿写真は`open`中は本人・主催者だけ、`finalized`後は開催詳細の閲覧者へ配信する。soft delete済みまたはDB参照が外れたobjectは配信しない。
 
@@ -87,8 +87,10 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 - `games.rounding_unit` は既存スキーマとの互換用に残すが、DB制約とrepositoryで100固定にする
 - `games.cost_shares` は検証済みの全順位負担額を`BIGINT[]`で保存する。移行前のNULLだけは1〜3位設定から従来計算する
 - `games.seven_deuce_rule_enabled` は72oボーナスの開催単位スナップショットとする。新規開催の既定値はONだが、導入前データは移行時にOFFとして過去開催へ遡及させない
-- ローカルルールの文言は`domain/rules/local-rules.ts`へ集約し、参加者画面は100BB返済ルールと72o設定を同じ参照用ボトムシートへ描画する。72oの成立や支払いはDBイベント化せず、表示だけを担当する
+- `games.bomb_pot_rule_enabled` はボムポットの開催単位スナップショットとする。新規開催の既定値はONだが、導入前データは移行時にOFFとして過去開催へ遡及させない
+- ローカルルールの文言は`domain/rules/local-rules.ts`へ集約し、受付中の参加者画面は100BB返済ルール、72o設定、ボムポット設定を同じ参照用ボトムシートへ描画する。確定結果では表示せず、各ルールの成立や支払いはDBイベント化しない
 - TABLE STORIESは投稿者の役割にかかわらず`game_story_posts`へ保存し、`game_participant_id`で一意にする
+- チップ終了入力とTABLE STORIES投稿を別ユースケースにし、投稿repositoryは`finalized`の参加者だけを更新対象にする
 
 ## 参加者のブラウザ識別
 

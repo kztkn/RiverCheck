@@ -24,6 +24,7 @@ const validValues: GameSettingsFormValues = {
   previewParticipantCount: "5",
   costShares: ["1800", "2000", "2300", "2500", "2800"],
   sevenDeuceRuleEnabled: true,
+  bombPotRuleEnabled: true,
 };
 
 describe("game settings cost shares", () => {
@@ -38,6 +39,7 @@ describe("game settings cost shares", () => {
       validValues.previewParticipantCount,
     );
     formData.set("sevenDeuceRuleEnabled", "yes");
+    formData.set("bombPotRuleEnabled", "yes");
     validValues.costShares.forEach((share) =>
       formData.append("costShare", share),
     );
@@ -45,6 +47,7 @@ describe("game settings cost shares", () => {
     expect(readGameSettingsForm(formData)).toMatchObject({
       costShares: validValues.costShares,
       sevenDeuceRuleEnabled: true,
+      bombPotRuleEnabled: true,
     });
   });
 
@@ -52,6 +55,10 @@ describe("game settings cost shares", () => {
     expect(readGameSettingsForm(new FormData()).sevenDeuceRuleEnabled).toBe(
       false,
     );
+  });
+
+  it("ボムポットのチェックがなければOFFとして読み取る", () => {
+    expect(readGameSettingsForm(new FormData()).bombPotRuleEnabled).toBe(false);
   });
 
   it("合計一致した全順位配分を保存用入力へ変換する", () => {
@@ -65,6 +72,7 @@ describe("game settings cost shares", () => {
         thirdPlaceCost: 2300,
         costShares: [1800, 2000, 2300, 2500, 2800],
         sevenDeuceRuleEnabled: true,
+        bombPotRuleEnabled: true,
       },
     });
   });

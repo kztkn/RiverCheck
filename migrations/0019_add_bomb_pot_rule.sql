@@ -1,0 +1,5 @@
+ALTER TABLE games
+ADD COLUMN bomb_pot_rule_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE games
+ALTER COLUMN bomb_pot_rule_enabled SET DEFAULT TRUE;

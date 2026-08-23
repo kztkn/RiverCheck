@@ -1,6 +1,6 @@
 export interface LocalRuleDefinition {
   enabled: boolean;
-  key: "rebuy-repayment" | "seven-deuce-bonus";
+  key: "rebuy-repayment" | "seven-deuce-bonus" | "bomb-pot";
   note: string | null;
   steps: Array<{ label: string; text: string }>;
   title: string;
@@ -8,6 +8,7 @@ export interface LocalRuleDefinition {
 
 export function buildLocalRules(
   sevenDeuceRuleEnabled: boolean,
+  bombPotRuleEnabled: boolean,
 ): LocalRuleDefinition[] {
   return [
     {
@@ -39,6 +40,26 @@ export function buildLocalRules(
         },
       ],
       title: "72oボーナス",
+    },
+    {
+      enabled: bombPotRuleEnabled,
+      key: "bomb-pot",
+      note: bombPotRuleEnabled ? null : "この開催では適用しません。",
+      steps: [
+        {
+          label: "参加",
+          text: "決められたタイミングで、全員が2.5BBを強制ベットします",
+        },
+        {
+          label: "プリフロップ",
+          text: "アクションは行わず、そのままフロップをオープンします",
+        },
+        {
+          label: "フロップ以降",
+          text: "通常どおりプレイします",
+        },
+      ],
+      title: "ボムポット",
     },
   ];
 }

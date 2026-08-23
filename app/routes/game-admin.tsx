@@ -11,7 +11,7 @@ import {
 } from "react-router";
 import {
   findGameForGroup,
-  updateSevenDeuceRule,
+  updateLocalRules,
 } from "@server/repositories/game-repository.server";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import {
@@ -149,10 +149,15 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   if (intent === "save-local-rules") {
-    const updated = await updateSevenDeuceRule(
+    const updated = await updateLocalRules(
       authorized.group.id,
       params.gameId,
-      readString(formData, "sevenDeuceRuleEnabled") === "yes",
+      {
+        sevenDeuceRuleEnabled:
+          readString(formData, "sevenDeuceRuleEnabled") === "yes",
+        bombPotRuleEnabled:
+          readString(formData, "bombPotRuleEnabled") === "yes",
+      },
     );
     if (!updated) {
       return {
@@ -944,6 +949,21 @@ export default function GameAdmin({
             </span>
             <span aria-hidden="true" className="local-rule-switch" />
           </label>
+          <label className="local-rule-toggle-card">
+            <input
+              defaultChecked={loaderData.game.bombPotRuleEnabled}
+              name="bombPotRuleEnabled"
+              type="checkbox"
+              value="yes"
+            />
+            <span className="local-rule-toggle-copy">
+              <strong>ボムポット</strong>
+              <small>
+                決められたタイミングで全員が2.5BBを強制ベットし、プリフロップを飛ばしてフロップからプレイします。
+              </small>
+            </span>
+            <span aria-hidden="true" className="local-rule-switch" />
+          </label>
           {localRulesError ? (
             <p className="error-notice" role="alert">{localRulesError}</p>
           ) : null}
@@ -1365,6 +1385,7 @@ function gameToFormValues(game: Route.ComponentProps["loaderData"]["game"]) {
       }).shares
     ).map(String),
     sevenDeuceRuleEnabled: game.sevenDeuceRuleEnabled,
+    bombPotRuleEnabled: game.bombPotRuleEnabled,
   };
 }
 

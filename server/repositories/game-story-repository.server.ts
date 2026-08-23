@@ -39,28 +39,20 @@ export interface EditableGameStoryPostRecord {
   updatedAt: string | null;
 }
 
-export interface SaveParticipantCompletionRecordInput {
+export interface SaveFinalizedGameStoryRecordInput {
   body: string | null;
   expectedPhotoObjectKey: string | null;
   photoObjectKey: string | null;
   photoContentType: GamePhotoContentType | null;
   photoByteSize: number | null;
   photoUploadedAt: string | null;
-  remainingChips: number;
-  settlementRebuyCount: number;
   target: GameStoryParticipantTarget;
 }
-
-export type SaveFinalizedGameStoryRecordInput = Omit<
-  SaveParticipantCompletionRecordInput,
-  "remainingChips" | "settlementRebuyCount"
->;
 
 export async function findEditableGameStoryPost(
   groupId: string,
   gameId: string,
   target: GameStoryParticipantTarget,
-  gameStatus: "open" | "finalized" = "open",
 ): Promise<EditableGameStoryPostRecord | null> {
   const targetColumn =
     target.kind === "group-player-id"
@@ -91,10 +83,10 @@ export async function findEditableGameStoryPost(
        AND post.deleted_at IS NULL
       WHERE game.id = $1
         AND game.group_id = $2
-        AND game.status = $4
+        AND game.status = 'finalized'
         AND ${targetColumn} = $3
     `,
-    [gameId, groupId, target.value, gameStatus],
+    [gameId, groupId, target.value],
   );
   const row = result.rows[0];
   return row ? mapEditable(row) : null;
@@ -182,44 +174,6 @@ export async function listPublishedGameStoryPosts(
         }]
       : [],
   );
-}
-
-export async function saveParticipantCompletionRecord(
-  groupId: string,
-  gameId: string,
-  input: SaveParticipantCompletionRecordInput,
-): Promise<boolean> {
-  try {
-    return await withTransaction(async (transaction) => {
-      const participantId = await lockEditableParticipant(
-        transaction,
-        groupId,
-        gameId,
-        input.target,
-        "open",
-      );
-      if (!participantId) return false;
-
-      await transaction.query(
-        `
-          UPDATE game_participants
-          SET remaining_chips = $2,
-              settlement_rebuy_count = $3,
-              status = 'submitted',
-              submitted_at = NOW(),
-              updated_at = NOW()
-          WHERE id = $1
-        `,
-        [participantId, input.remainingChips, input.settlementRebuyCount],
-      );
-
-      await writeGameStoryPost(transaction, participantId, input);
-      return true;
-    });
-  } catch (error) {
-    if (error instanceof StoryConflictError) return false;
-    throw error;
-  }
 }
 
 export async function saveFinalizedGameStoryRecord(

@@ -30,6 +30,7 @@ interface GameDetailsRow {
   third_place_cost: string;
   cost_shares: string[] | null;
   seven_deuce_rule_enabled: boolean;
+  bomb_pot_rule_enabled: boolean;
 }
 
 interface FinalizedGamePublicRouteRow {
@@ -106,7 +107,8 @@ export async function findGameForGroup(
         second_place_cost,
         third_place_cost,
         cost_shares,
-        seven_deuce_rule_enabled
+        seven_deuce_rule_enabled,
+        bomb_pot_rule_enabled
       FROM games
       WHERE id = $1 AND group_id = $2
     `,
@@ -130,6 +132,7 @@ export async function findGameForGroup(
     thirdPlaceCost: Number(row.third_place_cost),
     costShares: mapCostShares(row.cost_shares),
     sevenDeuceRuleEnabled: row.seven_deuce_rule_enabled,
+    bombPotRuleEnabled: row.bomb_pot_rule_enabled,
   };
 }
 
@@ -171,9 +174,10 @@ export async function insertGame(
         third_place_cost,
         preview_participant_count,
         cost_shares,
-        seven_deuce_rule_enabled
+        seven_deuce_rule_enabled,
+        bomb_pot_rule_enabled
       )
-      VALUES ($1, $2, $3, 'open', $4, $5, $6, 100, $7, $8, $9, $10, $11::BIGINT[], $12)
+      VALUES ($1, $2, $3, 'open', $4, $5, $6, 100, $7, $8, $9, $10, $11::BIGINT[], $12, $13)
       RETURNING id
     `,
     [
@@ -189,6 +193,7 @@ export async function insertGame(
       input.previewParticipantCount,
       input.costShares,
       input.sevenDeuceRuleEnabled,
+      input.bombPotRuleEnabled,
     ],
   );
 
@@ -197,21 +202,30 @@ export async function insertGame(
   return id;
 }
 
-export async function updateSevenDeuceRule(
+export async function updateLocalRules(
   groupId: string,
   gameId: string,
-  enabled: boolean,
+  rules: {
+    sevenDeuceRuleEnabled: boolean;
+    bombPotRuleEnabled: boolean;
+  },
 ): Promise<boolean> {
   const result = await queryDatabase(
     `
       UPDATE games
       SET seven_deuce_rule_enabled = $3,
+          bomb_pot_rule_enabled = $4,
           updated_at = NOW()
       WHERE id = $1
         AND group_id = $2
         AND status = 'open'
     `,
-    [gameId, groupId, enabled],
+    [
+      gameId,
+      groupId,
+      rules.sevenDeuceRuleEnabled,
+      rules.bombPotRuleEnabled,
+    ],
   );
   return result.rowCount === 1;
 }

@@ -10,7 +10,7 @@ vi.mock("@server/db/client.server", () => ({
 
 import {
   findFinalizedGamePublicRoute,
-  updateSevenDeuceRule,
+  updateLocalRules,
 } from "@server/repositories/game-repository.server";
 
 describe("game repository public result route", () => {
@@ -50,20 +50,25 @@ describe("game repository local rules", () => {
     vi.resetAllMocks();
   });
 
-  it("受付中の開催だけ72oルールを更新する", async () => {
+  it("受付中の開催だけ72oとボムポットを更新する", async () => {
     mocked.queryDatabase.mockResolvedValue({ rowCount: 1, rows: [] });
 
     await expect(
-      updateSevenDeuceRule("group-1", "game-1", true),
+      updateLocalRules("group-1", "game-1", {
+        sevenDeuceRuleEnabled: true,
+        bombPotRuleEnabled: false,
+      }),
     ).resolves.toBe(true);
 
     const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
     expect(sql).toContain("seven_deuce_rule_enabled = $3");
+    expect(sql).toContain("bomb_pot_rule_enabled = $4");
     expect(sql).toContain("status = 'open'");
     expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
       "game-1",
       "group-1",
       true,
+      false,
     ]);
   });
 
@@ -71,7 +76,10 @@ describe("game repository local rules", () => {
     mocked.queryDatabase.mockResolvedValue({ rowCount: 0, rows: [] });
 
     await expect(
-      updateSevenDeuceRule("group-1", "game-1", false),
+      updateLocalRules("group-1", "game-1", {
+        sevenDeuceRuleEnabled: false,
+        bombPotRuleEnabled: false,
+      }),
     ).resolves.toBe(false);
   });
 });

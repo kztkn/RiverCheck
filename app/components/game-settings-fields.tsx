@@ -23,6 +23,7 @@ export interface GameSettingsValues {
   previewParticipantCount: string;
   costShares: string[];
   sevenDeuceRuleEnabled: boolean;
+  bombPotRuleEnabled: boolean;
 }
 
 type AdjustmentMode = "top-three" | "individual";
@@ -265,6 +266,21 @@ export function GameSettingsFields({
                 <strong>72oボーナス</strong>
                 <small>
                   7と2のオフスートでポットを獲得したら、ほかの参加者全員から2.5BBずつ受け取ります。
+                </small>
+              </span>
+              <span aria-hidden="true" className="local-rule-switch" />
+            </label>
+            <label className="local-rule-toggle-card">
+              <input
+                defaultChecked={values.bombPotRuleEnabled}
+                name="bombPotRuleEnabled"
+                type="checkbox"
+                value="yes"
+              />
+              <span className="local-rule-toggle-copy">
+                <strong>ボムポット</strong>
+                <small>
+                  決められたタイミングで全員が2.5BBを強制ベットし、プリフロップを飛ばしてフロップからプレイします。
                 </small>
               </span>
               <span aria-hidden="true" className="local-rule-switch" />

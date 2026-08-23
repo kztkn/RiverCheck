@@ -26,12 +26,13 @@ const mocked = vi.hoisted(() => ({
   listRegisteredPlayersForGame: vi.fn(),
   listResultRevisions: vi.fn(),
   selectPlayerProfile: vi.fn(),
-  saveParticipantCompletion: vi.fn(),
   saveFinalizedGameStory: vi.fn(),
   deleteGameStoryPostAsOrganizer: vi.fn(),
   requireOrganizer: vi.fn(),
   recordOwnRebuyAction: vi.fn(),
   undoOwnRebuyAction: vi.fn(),
+  updateParticipantInput: vi.fn(),
+  updateParticipantInputByGroupPlayerId: vi.fn(),
 }));
 
 vi.mock("@server/repositories/game-repository.server", () => ({
@@ -54,6 +55,9 @@ vi.mock("@server/repositories/participant-repository.server", () => ({
   leaveGameByGroupPlayerId: mocked.leaveGameByGroupPlayerId,
   listCurrentGameParticipants: mocked.listCurrentGameParticipants,
   listRegisteredPlayersForGame: mocked.listRegisteredPlayersForGame,
+  updateParticipantInput: mocked.updateParticipantInput,
+  updateParticipantInputByGroupPlayerId:
+    mocked.updateParticipantInputByGroupPlayerId,
 }));
 vi.mock("@server/repositories/group-paypay-repository.server", () => ({
   findGamePaymentAmountForPlayer: mocked.findGamePaymentAmountForPlayer,
@@ -81,7 +85,6 @@ vi.mock("@server/services/game-story-service.server", () => ({
   deleteGameStoryPostAsOrganizer: mocked.deleteGameStoryPostAsOrganizer,
   getOwnGameStoryPost: mocked.getOwnGameStoryPost,
   getPublishedGameStoryPosts: mocked.getPublishedGameStoryPosts,
-  saveParticipantCompletion: mocked.saveParticipantCompletion,
   saveFinalizedGameStory: mocked.saveFinalizedGameStory,
 }));
 vi.mock("@server/services/organizer-auth.server", () => ({
@@ -110,6 +113,7 @@ import {
   LocalRulesSheet,
   ParticipantResultEntrySection,
   ParticipantRosterSheet,
+  shouldShowLocalRules,
 } from "./game-participant";
 
 const group = {
@@ -167,7 +171,8 @@ describe("game participant route", () => {
     mocked.listGamesForGroup.mockResolvedValue([]);
     mocked.getOwnGameStoryPost.mockResolvedValue(null);
     mocked.getPublishedGameStoryPosts.mockResolvedValue([]);
-    mocked.saveParticipantCompletion.mockResolvedValue({ ok: true });
+    mocked.updateParticipantInput.mockResolvedValue(true);
+    mocked.updateParticipantInputByGroupPlayerId.mockResolvedValue(true);
     mocked.saveFinalizedGameStory.mockResolvedValue({ ok: true });
     mocked.deleteGameStoryPostAsOrganizer.mockResolvedValue(true);
     mocked.createParticipantCookie.mockReturnValue(
@@ -375,7 +380,7 @@ describe("game participant route", () => {
     expect(markup).not.toContain("<summary");
   });
 
-  it("最終結果と任意のTABLE STORY投稿をまとめて保存する", async () => {
+  it("最終結果だけを保存し、TABLE STORYは更新しない", async () => {
     mocked.findParticipantByGroupPlayerId.mockResolvedValue(participant);
 
     const result = await action(
@@ -388,17 +393,14 @@ describe("game participant route", () => {
     );
 
     expectRedirect(result);
-    expect(mocked.saveParticipantCompletion).toHaveBeenCalledWith(
+    expect(mocked.updateParticipantInputByGroupPlayerId).toHaveBeenCalledWith(
       group.id,
       gameId,
-      expect.objectContaining({
-        body: "リバーのチョップが面白かった！",
-        photo: null,
-        remainingChips: 25_000,
-        settlementRebuyCount: 1,
-        target: { kind: "group-player-id", value: groupPlayerId },
-      }),
+      groupPlayerId,
+      25_000,
+      1,
     );
+    expect(mocked.saveFinalizedGameStory).not.toHaveBeenCalled();
   });
 
   it("主催者は確定後も参加者投稿を削除できる", async () => {
@@ -452,6 +454,31 @@ describe("game participant route", () => {
     );
     expect(response.headers.get("Location")).toBe(
       `/g/river-check/games/${gameId}?notice=story-saved`,
+    );
+  });
+
+  it("参加者は確定済み開催の自分の投稿を削除できる", async () => {
+    mocked.findGameForGroup.mockResolvedValue({
+      ...openGame,
+      status: "finalized",
+    });
+
+    const result = await action(
+      actionArgs({
+        intent: "save-story-post",
+        removeStoryPhoto: "yes",
+        storyBody: "",
+      }),
+    );
+
+    const response = expectRedirect(result);
+    expect(mocked.saveFinalizedGameStory).toHaveBeenCalledWith(
+      group.id,
+      gameId,
+      expect.objectContaining({ body: "", removePhoto: true }),
+    );
+    expect(response.headers.get("Location")).toBe(
+      `/g/river-check/games/${gameId}?notice=story-deleted`,
     );
   });
 
@@ -622,21 +649,34 @@ describe("game participant route", () => {
 });
 
 describe("LocalRulesSheet", () => {
+  it("確定結果ではローカルルールを表示しない", () => {
+    expect(shouldShowLocalRules("open")).toBe(true);
+    expect(shouldShowLocalRules("finalized")).toBe(false);
+  });
+
   it("適用中の72oルールと既存の100BB返済ルールを一緒に表示する", () => {
     const html = renderToStaticMarkup(
-      createElement(LocalRulesSheet, { sevenDeuceRuleEnabled: true }),
+      createElement(LocalRulesSheet, {
+        bombPotRuleEnabled: true,
+        sevenDeuceRuleEnabled: true,
+      }),
     );
 
     expect(html).toContain("ローカルルールを確認");
     expect(html).toContain("100BB返済ルール");
     expect(html).toContain("72oボーナス");
     expect(html).toContain("ほかの参加者全員から2.5BBずつ受け取ります");
+    expect(html).toContain("ボムポット");
+    expect(html).toContain("プリフロップ");
     expect(html).toContain("適用中");
   });
 
   it("開催設定が無効なら72oルールをOFFと表示する", () => {
     const html = renderToStaticMarkup(
-      createElement(LocalRulesSheet, { sevenDeuceRuleEnabled: false }),
+      createElement(LocalRulesSheet, {
+        bombPotRuleEnabled: false,
+        sevenDeuceRuleEnabled: false,
+      }),
     );
 
     expect(html).toContain("この開催では適用しません。");
