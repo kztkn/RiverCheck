@@ -536,17 +536,16 @@
 }
 
 .profile-edit-modal-card {
+  --profile-modal-padding: clamp(20px, 5vw, 30px);
   position: relative;
+  display: grid;
   width: min(calc(100% - 24px), 640px);
   max-height: calc(100dvh - 24px);
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: hidden;
   border: 1px solid rgba(57, 222, 141, 0.25);
   border-radius: 22px;
   background: #102119;
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.62);
-  padding: clamp(20px, 5vw, 30px);
 }
 
 .profile-edit-modal-close {
@@ -563,10 +562,14 @@
 }
 
 .profile-edit-modal .profile-editor {
+  max-height: calc(100dvh - 24px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   margin: 0;
   border: 0;
   background: transparent;
-  padding: 0;
+  padding: 0 var(--profile-modal-padding) var(--profile-modal-padding);
 }
 
 .profile-editor-modal-bar {
@@ -577,9 +580,10 @@
   grid-template-columns: 42px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  margin: 0 -2px 2px;
+  margin: 0 calc(-1 * var(--profile-modal-padding)) 2px;
+  border-bottom: 1px solid rgba(57, 222, 141, 0.14);
   background: #102119;
-  padding: 2px;
+  padding: var(--profile-modal-padding) var(--profile-modal-padding) 14px;
 }
 
 .profile-editor-modal-bar h2 {
