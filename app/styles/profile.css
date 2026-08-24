@@ -512,7 +512,7 @@
 
 .profile-edit-modal {
   position: fixed;
-  z-index: 80;
+  z-index: 160;
   inset: 0;
   display: grid;
   visibility: hidden;
@@ -570,11 +570,16 @@
 }
 
 .profile-editor-modal-bar {
+  position: sticky;
+  z-index: 2;
+  top: 0;
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  margin-bottom: 2px;
+  margin: 0 -2px 2px;
+  background: #102119;
+  padding: 2px;
 }
 
 .profile-editor-modal-bar h2 {
