@@ -12,6 +12,7 @@ import { GAME_STORY_BODY_MAX_LENGTH } from "@domain/story/validate-game-story";
 import { GAME_PHOTO_MAX_BYTES } from "@domain/highlight/validate-game-highlight";
 import { compressGamePhoto } from "~/utils/compress-game-photo";
 import { PlayerAvatar } from "./player-avatar";
+import { GameTimeline } from "./game-timeline";
 
 export interface GameStoryPostView extends PublishedGameStoryPost {
   avatarUrl: string | null;
@@ -36,7 +37,7 @@ export function GameStories({
   results: GameResultSummary[];
 }) {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
-  if (posts.length === 0 && !canPost) return null;
+  const showStories = posts.length > 0 || canPost;
   const resultByPlayer = new Map(
     results.map((result) => [result.groupPlayerId, result]),
   );
@@ -58,101 +59,106 @@ export function GameStories({
     );
 
   return (
-    <section className="game-stories-panel" aria-labelledby="game-stories-heading">
-      <header className="game-stories-heading">
-        <div>
-          <p className="form-brand-label">TABLE STORIES</p>
-          <h2 id="game-stories-heading">みんなで残す、今日のテーブル</h2>
-        </div>
-        {canPost && !ownPost ? (
-          <button
-            aria-label="今日の記録を投稿"
-            className="game-story-compose-trigger"
-            onClick={() => setIsEditorOpen(true)}
-            type="button"
-          >
-            <IconPlus aria-hidden="true" stroke={2} />
-          </button>
-        ) : null}
-      </header>
+    <>
+      <GameTimeline />
+      {showStories ? (
+        <section className="game-stories-panel" aria-labelledby="game-stories-heading">
+          <header className="game-stories-heading">
+            <div>
+              <p className="form-brand-label">TABLE STORIES</p>
+              <h2 id="game-stories-heading">みんなで残す、今日のテーブル</h2>
+            </div>
+            {canPost && !ownPost ? (
+              <button
+                aria-label="今日の記録を投稿"
+                className="game-story-compose-trigger"
+                onClick={() => setIsEditorOpen(true)}
+                type="button"
+              >
+                <IconPlus aria-hidden="true" stroke={2} />
+              </button>
+            ) : null}
+          </header>
 
-      {entries.length > 0 ? (
-        <div className="game-story-grid">
-          {entries.map((entry) => {
-            const result = entry.groupPlayerId
-              ? resultByPlayer.get(entry.groupPlayerId)
-              : null;
-            return (
-              <article className="game-story-card" key={entry.id}>
-                {entry.photoUrl ? (
-                  <figure>
-                    <img
-                      alt={`${entry.displayName}の投稿写真`}
-                      decoding="async"
-                      loading="lazy"
-                      src={entry.photoUrl}
-                    />
-                  </figure>
-                ) : null}
-                <div className="game-story-card-body">
-                  <header>
-                    <PlayerAvatar
-                      avatarUrl={entry.avatarUrl}
-                      displayName={entry.displayName}
-                    />
-                    <div>
-                      <strong>{entry.displayName}</strong>
-                      {result ? (
-                        <small>
-                          {formatOrdinal(result.rank)} ・ {formatNetBb({
-                            initialChips,
-                            score: result.score,
-                          })}
-                        </small>
-                      ) : entry.createdAt ? (
-                        <small>{formatStoryTimestamp(entry.createdAt)}</small>
-                      ) : null}
-                    </div>
-                    <div className="game-story-card-actions">
-                      {ownPost?.id === entry.participantPostId ? (
-                        <button
-                          aria-label="自分の投稿を編集"
-                          className="game-story-edit-trigger"
-                          onClick={() => setIsEditorOpen(true)}
-                          type="button"
-                        >
-                          <IconEdit aria-hidden="true" stroke={1.9} />
-                        </button>
-                      ) : null}
-                      {isOrganizer && entry.participantPostId ? (
-                        <StoryDeleteControl
-                          displayName={entry.displayName}
-                          postId={entry.participantPostId}
+          {entries.length > 0 ? (
+            <div className="game-story-grid">
+              {entries.map((entry) => {
+                const result = entry.groupPlayerId
+                  ? resultByPlayer.get(entry.groupPlayerId)
+                  : null;
+                return (
+                  <article className="game-story-card" key={entry.id}>
+                    {entry.photoUrl ? (
+                      <figure>
+                        <img
+                          alt={`${entry.displayName}の投稿写真`}
+                          decoding="async"
+                          loading="lazy"
+                          src={entry.photoUrl}
                         />
+                      </figure>
+                    ) : null}
+                    <div className="game-story-card-body">
+                      <header>
+                        <PlayerAvatar
+                          avatarUrl={entry.avatarUrl}
+                          displayName={entry.displayName}
+                        />
+                        <div>
+                          <strong>{entry.displayName}</strong>
+                          {result ? (
+                            <small>
+                              {formatOrdinal(result.rank)} ・ {formatNetBb({
+                                initialChips,
+                                score: result.score,
+                              })}
+                            </small>
+                          ) : entry.createdAt ? (
+                            <small>{formatStoryTimestamp(entry.createdAt)}</small>
+                          ) : null}
+                        </div>
+                        <div className="game-story-card-actions">
+                          {ownPost?.id === entry.participantPostId ? (
+                            <button
+                              aria-label="自分の投稿を編集"
+                              className="game-story-edit-trigger"
+                              onClick={() => setIsEditorOpen(true)}
+                              type="button"
+                            >
+                              <IconEdit aria-hidden="true" stroke={1.9} />
+                            </button>
+                          ) : null}
+                          {isOrganizer && entry.participantPostId ? (
+                            <StoryDeleteControl
+                              displayName={entry.displayName}
+                              postId={entry.participantPostId}
+                            />
+                          ) : null}
+                        </div>
+                      </header>
+                      {entry.body ? <p>{entry.body}</p> : null}
+                      {result && entry.createdAt ? (
+                        <time dateTime={entry.createdAt}>
+                          {formatStoryTimestamp(entry.createdAt)}
+                        </time>
                       ) : null}
                     </div>
-                  </header>
-                  {entry.body ? <p>{entry.body}</p> : null}
-                  {result && entry.createdAt ? (
-                    <time dateTime={entry.createdAt}>
-                      {formatStoryTimestamp(entry.createdAt)}
-                    </time>
-                  ) : null}
-                </div>
-              </article>
-            );
-          })}
-        </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : null}
+          {canPost && isEditorOpen ? (
+            <StoryEditorDialog
+              isOpen={isEditorOpen}
+              onClose={() => setIsEditorOpen(false)}
+              photoUrl={ownPhotoUrl}
+              post={ownPost}
+            />
+          ) : null}
+        </section>
       ) : null}
-      {canPost && isEditorOpen ? (
-        <StoryEditorDialog
-          isOpen={isEditorOpen}
-          onClose={() => setIsEditorOpen(false)}
-          photoUrl={ownPhotoUrl}
-          post={ownPost}
-        />
-      ) : null}
-    </section>
+    </>
   );
 }
 
