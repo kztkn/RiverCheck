@@ -1,0 +1,133 @@
+.game-timeline-panel {
+  display: grid;
+  gap: 22px;
+  margin: 46px 0 22px;
+  border-top: 1px solid rgba(233, 186, 90, 0.2);
+  padding: clamp(28px, 5vw, 38px) 0 10px;
+}
+
+.game-timeline-heading p,
+.game-timeline-heading h2 {
+  margin: 0;
+}
+
+.game-timeline-heading h2 {
+  margin-top: 6px;
+  font-size: clamp(1.28rem, 4vw, 1.75rem);
+  letter-spacing: -0.035em;
+}
+
+.game-timeline-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.game-timeline-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px 24px minmax(0, 1fr);
+  min-height: 66px;
+  align-items: start;
+  gap: 8px;
+}
+
+.game-timeline-item > time {
+  padding-top: 8px;
+  color: #82958b;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.game-timeline-item::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 63px;
+  width: 1px;
+  background: rgba(223, 236, 227, 0.14);
+  content: "";
+}
+
+.game-timeline-item:first-child::before {
+  top: 13px;
+}
+
+.game-timeline-item:last-child::before {
+  bottom: calc(100% - 14px);
+}
+
+.game-timeline-marker {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  margin: 4px auto 0;
+  place-items: center;
+  border: 1px solid rgba(233, 186, 90, 0.52);
+  border-radius: 50%;
+  background: #0b1813;
+}
+
+.game-timeline-marker::before {
+  width: 6px;
+  height: 6px;
+  border: 1px solid rgba(233, 186, 90, 0.48);
+  border-radius: 50%;
+  content: "";
+}
+
+.game-timeline-marker.is-repayment::before {
+  width: 8px;
+  height: 2px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(233, 186, 90, 0.62);
+}
+
+.game-timeline-event {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 0 0 18px;
+}
+
+.player-avatar.game-timeline-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+}
+
+.game-timeline-event > div {
+  min-width: 0;
+}
+
+.game-timeline-event strong {
+  display: block;
+  overflow: hidden;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-timeline-event p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 420px) {
+  .game-timeline-item {
+    grid-template-columns: 40px 22px minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  .game-timeline-item::before {
+    left: 57px;
+  }
+}
