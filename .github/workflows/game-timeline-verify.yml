@@ -9,7 +9,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -24,3 +24,56 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: Sync GAME TIMELINE docs
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          requirements = Path("docs/requirements.md")
+          requirements_text = requirements.read_text(encoding="utf-8")
+          requirements_text = requirements_text.replace(
+              "- 最終更新: 2026-08-23",
+              "- 最終更新: 2026-08-29",
+          )
+          requirements_heading = "## GAME TIMELINE（確定後の振り返り）"
+          if requirements_heading not in requirements_text:
+              requirements_text = requirements_text.rstrip() + """
+
+          ## GAME TIMELINE（確定後の振り返り）
+
+          finalized の開催結果画面では、通常操作として記録されたリバイと100BB返済を `recorded_at` の古い順に `GAME TIMELINE` として表示する。本人操作と主催者代理操作は区別せず、その参加者に起きた出来事として同じ表示にする。
+
+          `undo` は取り消し対象の元イベントごとタイムラインから除外し、救済修正用の `adjustment` も表示しない。表示対象が0件の場合はセクション自体を表示しない。受付中開催ではタイムラインを公開しない。
+
+          第一弾の表示は、時刻、縦ライン、小さなチップ風マーカー、参加者アバター、表示名、`リバイ` / `100BB返済` の文言で構成し、イベント種別を絵文字では表現しない。結果画面では主催者向け会費回収表示の後、TABLE STORIES の直前に配置する。
+          """.strip("\n") + "\n"
+          requirements.write_text(requirements_text, encoding="utf-8")
+
+          architecture = Path("docs/architecture.md")
+          architecture_text = architecture.read_text(encoding="utf-8")
+          architecture_heading = "## GAME TIMELINE"
+          if architecture_heading not in architecture_text:
+              architecture_text = architecture_text.rstrip() + """
+
+          ## GAME TIMELINE
+
+          確定結果の `GAME TIMELINE` は汎用イベントテーブルを追加せず、既存の `game_rebuy_events` を読み取り用に投影して生成する。対象は `rebuy` と `repayment` のみとし、`undo.reverts_event_id` から取り消された元イベントを除外する。`undo` 自身と `adjustment` は公開タイムラインへ出さない。`recorded_by_type` は監査情報として保持するが、本人操作と主催者代理操作は公開表示では区別しない。
+
+          repository の取得条件には対象 `game_id` / `group_id` に加えて `game.status = 'finalized'` を含め、受付中開催の他参加者リバイ情報を公開しない。結果画面では専用の読み取り resource route からイベントを取得し、参加者のアバターURLへ変換して表示コンポーネントへ渡す。DB migration は追加しない。
+
+          UI はアバターと縦ラインを軸にしたミニマルな時系列表示とし、リバイ・返済を派手な成功/失敗色や絵文字で意味付けしない。イベント0件ではセクションを描画しない。
+          """.strip("\n") + "\n"
+          architecture.write_text(architecture_text, encoding="utf-8")
+          PY
+
+          if git diff --quiet -- docs/requirements.md docs/architecture.md; then
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/requirements.md docs/architecture.md
+          git commit -m "GAME TIMELINEの設計を正本へ反映"
+          git push origin HEAD:feat/game-timeline-v1
