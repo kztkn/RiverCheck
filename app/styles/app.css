@@ -5071,6 +5071,131 @@ input[aria-invalid="true"] {
   font-size: clamp(1.9rem, 6vw, 3.2rem);
 }
 
+.admin-game-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.admin-game-title-row .title-with-status {
+  min-width: 0;
+}
+
+.admin-game-title-row h1 {
+  overflow-wrap: anywhere;
+}
+
+.admin-game-settings-trigger {
+  display: inline-flex;
+  min-height: 42px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(223, 236, 227, 0.14);
+  border-radius: 10px;
+  background: rgba(223, 236, 227, 0.035);
+  color: #aebdb5;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 8px 11px;
+}
+
+.admin-game-settings-trigger:hover,
+.admin-game-settings-trigger:focus-visible {
+  border-color: rgba(57, 222, 141, 0.34);
+  color: var(--green);
+}
+
+.admin-game-settings-trigger svg,
+.game-delete-trigger svg {
+  width: 17px;
+  height: 17px;
+}
+
+.game-management-dialog {
+  border-color: rgba(223, 236, 227, 0.2);
+}
+
+.game-title-edit-form {
+  display: grid;
+  gap: 20px;
+}
+
+.game-danger-zone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid rgba(255, 116, 108, 0.18);
+  padding-top: 20px;
+}
+
+.game-danger-zone strong {
+  color: #dfaaa5;
+  font-size: 0.76rem;
+}
+
+.game-danger-zone p {
+  margin-top: 4px !important;
+  color: #967f7d !important;
+  font-size: 0.66rem !important;
+  line-height: 1.55 !important;
+}
+
+.game-delete-trigger {
+  display: inline-flex;
+  min-height: 42px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 116, 108, 0.22);
+  border-radius: 10px;
+  background: rgba(255, 116, 108, 0.06);
+  color: #e59a94;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 8px 11px;
+}
+
+.game-delete-trigger:hover,
+.game-delete-trigger:focus-visible {
+  border-color: rgba(255, 116, 108, 0.46);
+  background: rgba(255, 116, 108, 0.1);
+}
+
+@media (max-width: 639px) {
+  .admin-game-title-row {
+    align-items: flex-start;
+  }
+
+  .admin-game-settings-trigger {
+    width: 42px;
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .admin-game-settings-trigger svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .admin-game-settings-trigger {
+    font-size: 0;
+  }
+
+  .game-danger-zone {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .game-delete-trigger {
+    justify-content: center;
+  }
+}
+
 .admin-command-summary {
   display: grid;
   gap: 18px;

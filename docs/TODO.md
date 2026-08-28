@@ -31,6 +31,8 @@
 - LINE用結果テキストの生成とコピー
 - 確定開催のTABLE STORIESと、非公開R2へ保存する投稿写真の管理・公開表示
 - 確定結果から永久獲得するプレイヤー実績、個人ページのコレクション、プロフィールへの実績1件装備
+- 本人プロフィールの開催通知ON/OFF、playerごとに最新1端末へ送る新規開催Web Push
+- 受付中開催の開催名変更と確認ダイアログ付き削除
 
 ## MVP 後
 
@@ -45,7 +47,7 @@
 ## 技術 TODO
 
 - 本番 PostgreSQL を決め、Cloudflare Hyperdrive binding と secret を構成する
-- migration / seed の CI 実行方針を決める
+- Cloudflare Workers Buildsへ`release:build`、`npx wrangler deploy`、本番DB直接接続URLのBuild Secretを設定する
 - 入力上限と PostgreSQL `BIGINT` → JavaScript number の変換境界を明示する
 - group code のルート既定値を seed 設定から安全に解決する（現在 `/` は `river-check` 固定）
 - アプリケーションログとエラー監視を導入する

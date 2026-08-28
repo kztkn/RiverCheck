@@ -1,5 +1,6 @@
 import { GroupSiteHeader } from "~/components/site-menu";
 import { consumeCompletedFetcherSubmission } from "~/utils/consume-completed-fetcher-submission";
+import { IconPencil, IconTrash } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import {
   Form,
@@ -20,7 +21,10 @@ import {
   removeParticipant,
   updateParticipantInputByGroupPlayerId,
 } from "@server/repositories/participant-repository.server";
-import { readParticipantToken } from "@server/services/participant-session.server";
+import {
+  clearParticipantCookie,
+  readParticipantToken,
+} from "@server/services/participant-session.server";
 import { hashToken } from "@server/services/token.server";
 import { requireOrganizer } from "@server/services/organizer-auth.server";
 import {
@@ -30,9 +34,12 @@ import {
   type RebuyServiceResult,
 } from "@server/services/rebuy-service.server";
 import {
+  removeOpenGameForGroup,
+  renameOpenGameForGroup,
   type GameSettingsFormValues,
   validateGameSettingsForm,
 } from "@server/services/game-service.server";
+import { GAME_TITLE_MAX_LENGTH } from "@domain/game/game-title";
 import {
   buildFinalizationState,
   finalizeGame,
@@ -169,6 +176,67 @@ export async function action({ request, params }: Route.ActionArgs) {
     return redirect(
       `/g/${params.groupCode}/games/${params.gameId}/admin?notice=local-rules-saved`,
     );
+  }
+
+  if (intent === "rename-game") {
+    const title = readString(formData, "title");
+    try {
+      const result = await renameOpenGameForGroup(
+        authorized.group.id,
+        params.gameId,
+        title,
+      );
+      if (!result.ok) {
+        return {
+          ...result,
+          intent: "rename-game" as const,
+          title,
+        };
+      }
+    } catch (error) {
+      console.error("Failed to rename open game", error);
+      return {
+        ok: false as const,
+        intent: "rename-game" as const,
+        error:
+          "開催名を変更できませんでした。画面を更新してもう一度お試しください。",
+        title,
+      };
+    }
+    return redirect(
+      `/g/${params.groupCode}/games/${params.gameId}/admin?notice=game-renamed`,
+      { status: 303 },
+    );
+  }
+
+  if (intent === "delete-game") {
+    try {
+      const result = await removeOpenGameForGroup(
+        authorized.group.id,
+        params.gameId,
+      );
+      if (!result.ok) {
+        return { ...result, intent: "delete-game" as const };
+      }
+    } catch (error) {
+      console.error("Failed to delete open game", error);
+      return {
+        ok: false as const,
+        intent: "delete-game" as const,
+        error:
+          "開催を削除できませんでした。画面を更新してもう一度お試しください。",
+      };
+    }
+    return redirect(`/g/${params.groupCode}/manage?notice=game-deleted`, {
+      status: 303,
+      headers: {
+        "Set-Cookie": clearParticipantCookie(
+          request,
+          params.groupCode,
+          params.gameId,
+        ),
+      },
+    });
   }
 
   const participantId = readString(formData, "participantId");
@@ -310,10 +378,28 @@ export default function GameAdmin({
     actionData.intent === "save-local-rules"
       ? actionData.error
       : null;
+  const renameAction =
+    actionData?.ok === false &&
+    "intent" in actionData &&
+    actionData.intent === "rename-game" &&
+    "title" in actionData
+      ? actionData
+      : null;
+  const deleteAction =
+    actionData?.ok === false &&
+    "intent" in actionData &&
+    actionData.intent === "delete-game"
+      ? actionData
+      : null;
   const finalizeError =
     actionData?.ok === false &&
     "error" in actionData &&
-    !("intent" in actionData && actionData.intent === "save-local-rules")
+    !(
+      "intent" in actionData &&
+      (actionData.intent === "save-local-rules" ||
+        actionData.intent === "rename-game" ||
+        actionData.intent === "delete-game")
+    )
       ? actionData.error
       : null;
   const actionErrors = settingsAction?.errors ?? {};
@@ -351,6 +437,14 @@ export default function GameAdmin({
   const rebuySubmissionPendingRef = useRef(false);
   const participantInputSubmissionPendingRef = useRef(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [gameSettingsOpen, setGameSettingsOpen] = useState(
+    Boolean(renameAction),
+  );
+  const [gameDeletionPending, setGameDeletionPending] = useState(
+    Boolean(deleteAction),
+  );
+  const gameSettingsDialogRef = useRef<HTMLDialogElement>(null);
+  const gameDeletionDialogRef = useRef<HTMLDialogElement>(null);
   const notice = noticeText(loaderData.notice);
   const visibleParticipants = optimisticallyRemoved
     ? loaderData.participants.filter(
@@ -488,6 +582,26 @@ export default function GameAdmin({
     return () => window.clearTimeout(timeoutId);
   }, [linkCopied]);
 
+  useEffect(() => {
+    const dialog = gameSettingsDialogRef.current;
+    if (!dialog) return;
+    if (gameSettingsOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!gameSettingsOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [gameSettingsOpen]);
+
+  useEffect(() => {
+    const dialog = gameDeletionDialogRef.current;
+    if (!dialog) return;
+    if (gameDeletionPending && !dialog.open) {
+      dialog.showModal();
+    } else if (!gameDeletionPending && dialog.open) {
+      dialog.close();
+    }
+  }, [gameDeletionPending]);
+
 
   useEffect(() => {
     const dialog = participantActionDialogRef.current;
@@ -602,16 +716,156 @@ export default function GameAdmin({
 
       <section className="form-intro setup-intro">
         <p className="eyebrow">ORGANIZER</p>
-        <div className="title-with-status">
-          <h1>{loaderData.game.title}</h1>
-          {loaderData.game.status !== "finalized" ? (
-            <span className={`status status-${loaderData.game.status}`}>
-              {statusLabel(loaderData.game.status)}
-            </span>
-          ) : null}
+        <div className="admin-game-title-row">
+          <div className="title-with-status">
+            <h1>{loaderData.game.title}</h1>
+            {loaderData.game.status !== "finalized" ? (
+              <span className={`status status-${loaderData.game.status}`}>
+                {statusLabel(loaderData.game.status)}
+              </span>
+            ) : null}
+          </div>
+          <button
+            aria-label="開催設定を開く"
+            className="admin-game-settings-trigger"
+            onClick={() => setGameSettingsOpen(true)}
+            type="button"
+          >
+            <IconPencil aria-hidden="true" stroke={1.8} />
+            開催設定
+          </button>
         </div>
         <p>条件・受付・参加者をまとめて管理できます。</p>
       </section>
+
+      <dialog
+        aria-labelledby="game-settings-dialog-title"
+        className="app-dialog game-management-dialog"
+        onCancel={() => setGameSettingsOpen(false)}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) setGameSettingsOpen(false);
+        }}
+        onClose={() => setGameSettingsOpen(false)}
+        ref={gameSettingsDialogRef}
+      >
+        <div className="dialog-card">
+          <div>
+            <p className="eyebrow">GAME SETTINGS</p>
+            <h2 id="game-settings-dialog-title">開催設定</h2>
+            <p>参加者用リンクはそのまま、開催名だけを変更できます。</p>
+          </div>
+          <Form className="game-title-edit-form" method="post" noValidate>
+            <input name="intent" type="hidden" value="rename-game" />
+            <label className="field">
+              <span className="field-label">開催名</span>
+              <input
+                aria-invalid={renameAction ? true : undefined}
+                autoComplete="off"
+                defaultValue={renameAction?.title ?? loaderData.game.title}
+                maxLength={GAME_TITLE_MAX_LENGTH}
+                name="title"
+                required
+                type="text"
+              />
+              {renameAction ? (
+                <span className="field-error">{renameAction.error}</span>
+              ) : null}
+            </label>
+            <div className="dialog-actions">
+              <button
+                className="button button-secondary"
+                onClick={() => setGameSettingsOpen(false)}
+                type="button"
+              >
+                キャンセル
+              </button>
+              <button
+                className="button button-primary"
+                disabled={
+                  navigation.state === "submitting" &&
+                  navigation.formData?.get("intent") === "rename-game"
+                }
+                type="submit"
+              >
+                {navigation.state === "submitting" &&
+                navigation.formData?.get("intent") === "rename-game"
+                  ? "保存中…"
+                  : "開催名を保存"}
+              </button>
+            </div>
+          </Form>
+          <div className="game-danger-zone">
+            <div>
+              <strong>この開催を削除</strong>
+              <p>参加者、チップ入力、リバイ履歴もすべて削除されます。</p>
+            </div>
+            <button
+              className="game-delete-trigger"
+              onClick={() => {
+                setGameSettingsOpen(false);
+                setGameDeletionPending(true);
+              }}
+              type="button"
+            >
+              <IconTrash aria-hidden="true" stroke={1.8} />
+              削除する
+            </button>
+          </div>
+        </div>
+      </dialog>
+
+      <dialog
+        aria-labelledby="game-deletion-dialog-title"
+        className="app-dialog"
+        onCancel={() => setGameDeletionPending(false)}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) {
+            setGameDeletionPending(false);
+          }
+        }}
+        onClose={() => setGameDeletionPending(false)}
+        ref={gameDeletionDialogRef}
+      >
+        <div className="dialog-card">
+          <span aria-hidden="true" className="dialog-danger-icon">×</span>
+          <div>
+            <p className="eyebrow">DELETE GAME</p>
+            <h2 id="game-deletion-dialog-title">開催を削除しますか？</h2>
+            <p>
+              <strong>{loaderData.game.title}</strong>
+              を削除します。参加者{loaderData.participants.length}人の入力と
+              リバイ履歴を含め、元に戻せません。
+            </p>
+          </div>
+          {deleteAction ? (
+            <p className="error-notice" role="alert">{deleteAction.error}</p>
+          ) : null}
+          <Form className="dialog-actions" method="post">
+            <input name="intent" type="hidden" value="delete-game" />
+            <button
+              autoFocus
+              className="button button-secondary"
+              onClick={() => setGameDeletionPending(false)}
+              type="button"
+            >
+              キャンセル
+            </button>
+            <button
+              className="button button-danger"
+              disabled={
+                navigation.state === "submitting" &&
+                navigation.formData?.get("intent") === "delete-game"
+              }
+              type="submit"
+            >
+              {navigation.state === "submitting" &&
+              navigation.formData?.get("intent") === "delete-game"
+                ? "削除中…"
+                : "開催を削除"}
+            </button>
+          </Form>
+        </div>
+      </dialog>
 
 
       <>
@@ -1437,6 +1691,7 @@ function statusLabel(status: "draft" | "open" | "finalized") {
 function noticeText(notice: string | null): string | null {
   if (notice === "finalized") return "結果を確定しました。";
   if (notice === "local-rules-saved") return "ローカルルールを保存しました。";
+  if (notice === "game-renamed") return "開催名を変更しました。";
   if (notice === "corrected") return "確定結果を訂正しました。";
   return null;
 }

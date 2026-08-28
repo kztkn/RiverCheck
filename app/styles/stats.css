@@ -183,6 +183,100 @@
   margin-left: -8px;
 }
 
+.profile-notification-setting {
+  display: flex;
+  min-height: 82px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 10px 0 16px;
+  border-block: 1px solid rgba(223, 236, 227, 0.1);
+  padding: 17px 0;
+}
+
+.profile-notification-copy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 14px;
+}
+
+.profile-notification-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(57, 222, 141, 0.24);
+  border-radius: 50%;
+  color: var(--green);
+}
+
+.profile-notification-copy h2 {
+  margin: 0 0 4px;
+  font-size: 0.94rem;
+  letter-spacing: -0.02em;
+}
+
+.profile-notification-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.profile-notification-switch {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(223, 236, 227, 0.2);
+  border-radius: 999px;
+  background: rgba(223, 236, 227, 0.1);
+  padding: 2px;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.profile-notification-switch > span:first-child {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #afbbb4;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.3);
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.profile-notification-switch[aria-checked="true"] {
+  border-color: rgba(57, 222, 141, 0.62);
+  background: rgba(57, 222, 141, 0.22);
+}
+
+.profile-notification-switch[aria-checked="true"] > span:first-child {
+  background: var(--green);
+  transform: translateX(20px);
+}
+
+.profile-notification-switch:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+}
+
+.profile-notification-switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.profile-notification-switch .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .stats-sort {
   display: flex;
   max-width: 100%;
@@ -703,6 +797,14 @@
 
   .stats-profile-copy h1 {
     font-size: clamp(1.6rem, 8vw, 2rem);
+  }
+
+  .profile-notification-setting {
+    gap: 14px;
+  }
+
+  .profile-notification-copy {
+    gap: 11px;
   }
 
   .stats-ranking-card {

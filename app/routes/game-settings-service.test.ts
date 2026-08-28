@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@server/repositories/game-repository.server", () => ({
+  deleteOpenGame: vi.fn(),
   insertGame: vi.fn(),
+  updateOpenGameTitle: vi.fn(),
 }));
 vi.mock("@server/repositories/group-repository.server", () => ({
   findGroupByPublicCode: vi.fn(),
+}));
+vi.mock("@server/services/push-notification-service.server", () => ({
+  notifyNewGameCreated: vi.fn(),
 }));
 
 import {

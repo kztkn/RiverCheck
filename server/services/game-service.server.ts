@@ -1,4 +1,8 @@
-import { insertGame } from "@server/repositories/game-repository.server";
+import {
+  deleteOpenGame,
+  insertGame,
+  updateOpenGameTitle,
+} from "@server/repositories/game-repository.server";
 import {
   countGameTitleCharacters,
   GAME_TITLE_MAX_LENGTH,
@@ -10,6 +14,7 @@ import {
   COST_ROUNDING_UNIT,
   MINIMUM_PARTICIPANT_COUNT,
 } from "@domain/cost-sharing/calculate-cost-shares";
+import { notifyNewGameCreated } from "@server/services/push-notification-service.server";
 
 import { validateCostSharePlan } from "@domain/cost-sharing/validate-cost-share-plan";
 
@@ -53,6 +58,10 @@ export type CreateGameResult =
       errors: CreateGameFormErrors;
       values: CreateGameFormValues;
     };
+
+export type OpenGameManagementResult =
+  | { ok: true }
+  | { ok: false; error: string };
 
 export function readCreateGameForm(formData: FormData): CreateGameFormValues {
   return readGameSettingsForm(formData);
@@ -110,7 +119,55 @@ export async function createGameForGroup(
   }
 
   const gameId = await insertGame(group.id, validation.input);
+  try {
+    await notifyNewGameCreated({
+      gameId,
+      groupId: group.id,
+      groupName: group.name,
+      groupPublicCode: group.publicCode,
+      playedAt: validation.input.playedAt,
+      title: validation.input.title,
+    });
+  } catch (error) {
+    // Notifications are an enhancement. A delivery problem must never roll
+    // back or hide a game that was created successfully.
+    console.error("Failed to notify players about a new game", {
+      errorType: error instanceof Error ? error.name : "unknown",
+      gameId,
+    });
+  }
   return { ok: true, gameId };
+}
+
+export async function renameOpenGameForGroup(
+  groupId: string,
+  gameId: string,
+  value: string,
+): Promise<OpenGameManagementResult> {
+  const title = value.trim();
+  const titleError = validateGameTitle(title);
+  if (titleError) return { ok: false, error: titleError };
+
+  const updated = await updateOpenGameTitle(groupId, gameId, title);
+  return updated
+    ? { ok: true }
+    : {
+        ok: false,
+        error: "開催名を変更できませんでした。画面を更新してください。",
+      };
+}
+
+export async function removeOpenGameForGroup(
+  groupId: string,
+  gameId: string,
+): Promise<OpenGameManagementResult> {
+  const deleted = await deleteOpenGame(groupId, gameId);
+  return deleted
+    ? { ok: true }
+    : {
+        ok: false,
+        error: "開催を削除できませんでした。確定済みでないか確認してください。",
+      };
 }
 
 export function validateGameIdentityForm(values: GameIdentityFormValues):
@@ -119,11 +176,8 @@ export function validateGameIdentityForm(values: GameIdentityFormValues):
   const errors: GameIdentityFormErrors = {};
   const title = values.title.trim();
 
-  if (!title) {
-    errors.title = "開催名を入力してください。";
-  } else if (countGameTitleCharacters(title) > GAME_TITLE_MAX_LENGTH) {
-    errors.title = `開催名は${GAME_TITLE_MAX_LENGTH}文字以内で入力してください。`;
-  }
+  const titleError = validateGameTitle(title);
+  if (titleError) errors.title = titleError;
 
   const playedAt = parseTokyoDate(values.playedAt);
   if (!playedAt) {
@@ -146,11 +200,8 @@ export function validateGameSettingsForm(
   const errors: GameSettingsFormErrors = {};
   const title = values.title.trim();
 
-  if (!title) {
-    errors.title = "開催名を入力してください。";
-  } else if (countGameTitleCharacters(title) > GAME_TITLE_MAX_LENGTH) {
-    errors.title = `開催名は${GAME_TITLE_MAX_LENGTH}文字以内で入力してください。`;
-  }
+  const titleError = validateGameTitle(title);
+  if (titleError) errors.title = titleError;
 
   const playedAt = parseTokyoDate(values.playedAt);
   if (!playedAt) {
@@ -290,6 +341,14 @@ export function validateGameSettingsForm(
       bombPotRuleEnabled: values.bombPotRuleEnabled,
     },
   };
+}
+
+function validateGameTitle(title: string): string | null {
+  if (!title) return "開催名を入力してください。";
+  if (countGameTitleCharacters(title) > GAME_TITLE_MAX_LENGTH) {
+    return `開催名は${GAME_TITLE_MAX_LENGTH}文字以内で入力してください。`;
+  }
+  return null;
 }
 
 function readString(formData: FormData, name: string): string {

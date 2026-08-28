@@ -40,6 +40,25 @@ self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") void self.skipWaiting();
 });
 
+self.addEventListener("push", (event) => {
+  const payload = readPushPayload(event.data);
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      badge: payload.badge,
+      body: payload.body,
+      data: payload.data,
+      icon: payload.icon,
+      tag: payload.tag,
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = resolveNotificationUrl(event.notification.data?.url);
+  event.waitUntil(openOrFocusWindow(targetUrl));
+});
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
@@ -80,4 +99,56 @@ async function cacheStaticAsset(request) {
   const response = await fetch(request);
   if (response.ok) await cache.put(request, response.clone());
   return response;
+}
+
+function readPushPayload(data) {
+  const fallback = {
+    title: "RiverCheck",
+    body: "新しい開催が作成されました。",
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    tag: "game-created",
+    data: { url: "/" },
+  };
+  if (!data) return fallback;
+  try {
+    const value = data.json();
+    if (!value || typeof value !== "object") return fallback;
+    return {
+      title: typeof value.title === "string" ? value.title : fallback.title,
+      body: typeof value.body === "string" ? value.body : fallback.body,
+      icon: typeof value.icon === "string" ? value.icon : fallback.icon,
+      badge: typeof value.badge === "string" ? value.badge : fallback.badge,
+      tag: typeof value.tag === "string" ? value.tag : fallback.tag,
+      data: value.data && typeof value.data === "object"
+        ? value.data
+        : fallback.data,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function resolveNotificationUrl(value) {
+  if (typeof value !== "string") return self.location.origin;
+  try {
+    const url = new URL(value, self.location.origin);
+    return url.origin === self.location.origin
+      ? url.href
+      : self.location.origin;
+  } catch {
+    return self.location.origin;
+  }
+}
+
+async function openOrFocusWindow(targetUrl) {
+  const windowClients = await self.clients.matchAll({
+    includeUncontrolled: true,
+    type: "window",
+  });
+  for (const client of windowClients) {
+    if ("navigate" in client) await client.navigate(targetUrl);
+    return client.focus();
+  }
+  return self.clients.openWindow(targetUrl);
 }

@@ -2,6 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import pg from "pg";
 import { requireDatabaseUrl } from "./load-env.node.js";
+import { acquireMigrationLock } from "./migration-lock.js";
 
 const { Client } = pg;
 const migrationsDirectory = resolve(process.cwd(), "migrations");
@@ -10,6 +11,8 @@ const client = new Client({ connectionString: requireDatabaseUrl() });
 await client.connect();
 
 try {
+  await acquireMigrationLock(client);
+
   await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       name TEXT PRIMARY KEY,

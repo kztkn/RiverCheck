@@ -48,6 +48,12 @@ describe("classifyRateLimitedRequest", () => {
         "/g/river-check/profile/claim/0123456789abcdef",
       ),
     ).toBe("participant-write");
+    expect(
+      classifyRateLimitedRequest(
+        "POST",
+        "/g/river-check/stats/1b233730-eecd-449a-b28b-c93b0a395815",
+      ),
+    ).toBe("participant-write");
   });
 
   it("対象外routeや紛らわしいパスは分類しない", () => {

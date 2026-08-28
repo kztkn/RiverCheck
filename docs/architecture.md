@@ -45,11 +45,21 @@ Service Workerはオフライン案内、manifest、PWAアイコンを事前キ�
 
 Service Workerの新versionはwaiting状態で通知し、利用者が更新操作を選んだ場合だけ`skipWaiting`して再読込する。結果入力中の自動更新は行わない。開発時はService Workerを登録せず、production buildまたは本番HTTPSで検証する。
 
+Service WorkerはWeb Pushの`push`イベントで通知を表示し、`notificationclick`ではpayload内の同一origin相対URLだけを開く。通知許可と`PushManager.subscribe()`は本人が個人ページの開催通知をONにした操作からだけ実行する。ブラウザが発行したendpoint・`p256dh`・`auth`は本人プロフィールCookieで認証したactionから保存し、HTMLへendpointそのものは返さずSHA-256だけで現在端末との一致を確認する。
+
+`player_push_subscriptions`は`player_id`を主キーとして1人1件だけ保持する。別端末からの登録は既存行を上書きし、同じendpointでプロフィールを切り替えた場合は新しいplayerへ付け替える。開催作成のINSERT成功後、同じgroupの有効メンバーの購読先へ少人数分を並列送信する。送信処理は完了を待つが、個別失敗や通知設定不足で開催作成を失敗させない。404・410は上書き競合を避けるためplayerとendpointが現在も一致する場合だけ削除する。Queues、送信履歴、複数端末管理は導入しない。
+
+VAPID公開鍵・秘密JWK・連絡先subjectはCloudflare Secretから取得する。秘密JWKをクライアント、HTML、Git、ログへ出さない。endpointはHTTPSかつApple・Google・Mozilla・Microsoftの既知Pushサービスhostだけを受け入れ、外部POST先として任意URLを登録できないようにする。Web Pushリクエストの暗号化とVAPID署名はWeb Crypto互換の`@pushforge/builder`へ閉じ込める。
+
 ## Cloudflare Workers と PostgreSQL
 
 ローカルでは `.dev.vars` の `DATABASE_URL` を `cloudflare:workers` の `env` から取得する。本番は同じ名前の secret、または Cloudflare Hyperdrive の `HYPERDRIVE.connectionString` を利用できる。Hyperdrive がある場合はそちらを優先する。
 
 `npm run dev` のHyperdrive bindingは `wrangler.jsonc` の `localConnectionString` でDocker PostgreSQLへ接続する。migrationとseedは無指定コマンドをローカルDB専用とし、Neonへ適用する場合だけ `:production` コマンドと `.env` を明示的に使用する。
+
+Cloudflare Workers Buildsでは`release:build`をBuild commandとして、型検査、テスト、production buildがすべて成功した後に本番migrationを適用し、別のDeploy commandでWorkerを公開する。Build環境の`DATABASE_URL`にはHyperdriveではなく本番PostgreSQLの直接接続URLをSecretとして設定する。migration runnerは`schema_migrations`によるファイル単位の冪等性に加え、全migrationを通してsession-level PostgreSQL advisory lockを保持し、再実行や並行buildを直列化する。接続終了時にlockは自動解放される。
+
+buildとdeployの間は旧Workerが新schemaへ接続し得るため、自動適用するmigrationは追加的かつ後方互換なものに限定する。カラムや制約の削除、rename、既存値と非互換な型変更は、旧コードからの利用を先に停止するexpand-contractの複数リリースで行う。
 
 `wrangler.jsonc` は `nodejs_compat` を有効にし、`pg` が必要とする Node.js 互換 API を Workers 上で利用する。Worker は Smart Placement を有効にし、外部 PostgreSQL に近い場所で実行できる構成とする。
 
@@ -136,6 +146,13 @@ PIN・合言葉と32文字以上の署名鍵はCloudflare Secretで受け取る�
 2. service が必須値、全順位件数、非負整数、100円単位、順位傾斜、精算総額との合計一致を検証する
 3. repository がパラメータ化 INSERT を実行する
 4. `open` の開催を作成し、開催の管理画面へ移動する
+5. 作成済み開催をロールバックせず、通知ONの有効メンバーへWeb Pushを送る
+
+## 受付中開催の管理
+
+開催名変更と開催削除は、主催者認証済みの開催管理actionからserviceを経由して実行する。repositoryの`UPDATE`と`DELETE`にも`group_id`と`status = 'open'`を含め、画面表示後に確定された場合や別グループIDが指定された場合は変更しない。開催名変更はgame IDを維持するため参加者用URLを変えず、作成時のWeb Pushは再送しない。
+
+開催削除は確認ダイアログを通した物理削除とする。`game_participants`はgamesへの`ON DELETE CASCADE`、リバイイベントとTABLE STORIESはparticipantへの`ON DELETE CASCADE`で従属データを削除する。TABLE STORIESはfinalized後だけ投稿でき、finalized開催は削除対象外のため、R2投稿写真を伴う開催削除は発生しない。`game_results`と訂正履歴の`ON DELETE RESTRICT`も、確定履歴を誤って削除しないDB側の防御として維持する。
 
 ## finalize
 

@@ -27,15 +27,15 @@ RiverCheck は、ポーカー会の開催、参加、結果、順位、チップ
 
 ## 開発実行環境
 
-- このリポジトリの開発コマンドは、WSL内のLinuxネイティブ環境で実行する。
-- Node.js、npm、React Router、Vite、Vitest、Wranglerなどは、WSL側にインストールされたLinux版を使用する。
+- このリポジトリの開発コマンドは、WSL内のLinuxネイティブ環境、または Codex 付属のLinuxネイティブ実行環境で実行する。
+- Node.js、npm、React Router、Vite、Vitest、Wranglerなどは、WSL側にインストールされたLinux版、または Codex 付属のLinux版を使用する。
 - 現在のWSL側Node.jsは `/home/kzt/.nvm/versions/node/v24.18.0/bin/node`、npmは同じディレクトリの `/home/kzt/.nvm/versions/node/v24.18.0/bin/npm` にある。NVMがシェルで初期化されず `command -v node` が失敗する場合は、利用不可と判断する前にこのパスの実行権限を確認し、`/home/kzt/.nvm/versions/node/v24.18.0/bin` を既存の `PATH` の先頭へ追加して開発コマンドを実行する。
 - Node.jsのバージョン更新で上記パスが存在しなくなった場合は、`/home/kzt/.nvm/versions/node/` 配下を深さ制限せず確認し、Linux版の `bin/node` と `bin/npm` を使用する。
-- `cmd.exe`、PowerShell、Windows版Node.js、Codex付属のWindows向けworkspace dependency runtimeを、開発コマンドの代替として使用しない。
+- `cmd.exe`、PowerShell、Windows版Node.js、Windows向けworkspace dependency runtimeを、開発コマンドの代替として使用しない。
 - `command -v node`や`command -v npm`でWindows側のパス（`/mnt/c/`配下など）が解決された場合は、そのまま実行せず、WSL側のNode.js設定、バージョン管理ツール、PATHを確認する。
-- WSL側のLinux版Node.jsを利用できない場合は、Windows側へフォールバックしたり依存を再構築したりせず、作業を停止してユーザーへ環境状態を報告する。
+- WSL側のLinux版Node.jsを利用できない場合は、Codex付属のLinux版Node.jsを使用してよい。どちらも利用できない場合は、Windows側へフォールバックしたり依存を再構築したりせず、作業を停止してユーザーへ環境状態を報告する。
 - `node_modules`はOSごとのネイティブ依存を含むため、Linux版とWindows版を交換、混在、上書きしない。検証のために別OS向け依存を一時インストールすることも禁止する。
-- `npm run typecheck`、`npm test`、`npm run build`を含む検証結果は、WSL内のLinux版Node.jsで実行したものだけを有効とする。
+- `npm run typecheck`、`npm test`、`npm run build`を含む検証結果は、WSL内または Codex 付属環境のLinux版Node.jsで実行したものだけを有効とする。
 
 ## アーキテクチャ原則
 

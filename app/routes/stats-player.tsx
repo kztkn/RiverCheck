@@ -1,6 +1,7 @@
 import { GroupSiteHeader } from "~/components/site-menu";
 import { useEffect, useState } from "react";
 import { Link, redirect, useNavigation } from "react-router";
+import { PushNotificationSetting } from "~/components/push-notification-setting";
 import { PlayerProfileEditor } from "~/components/player-profile-editor";
 import { PlayerPerformanceChart } from "~/components/player-performance-chart";
 import { PlayerAvatar } from "~/components/player-avatar";
@@ -14,7 +15,15 @@ import {
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { formatSignedBbValue } from "@domain/score/bb-score";
 import { getPlayerStatsDetail } from "@server/services/player-stats-service.server";
-import { getAuthenticatedPlayerProfile, savePlayerProfile } from "@server/services/player-profile-service.server";
+import {
+  getAuthenticatedPlayerProfile,
+  savePlayerProfile,
+} from "@server/services/player-profile-service.server";
+import {
+  disablePlayerPushSubscription,
+  getPlayerPushSettings,
+  savePlayerPushSubscription,
+} from "@server/services/push-notification-service.server";
 import type { Route } from "./+types/stats-player";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -23,10 +32,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     getAuthenticatedPlayerProfile(request, params.groupCode),
   ]);
   if (!overview) throw new Response("Player not found", { status: 404 });
+  const canEditProfile =
+    authenticated?.profile?.groupPlayerId === params.groupPlayerId;
   return {
     ...overview,
-    canEditProfile:
-      authenticated?.profile?.groupPlayerId === params.groupPlayerId,
+    canEditProfile,
+    pushNotificationSettings: canEditProfile && authenticated?.profile
+      ? await getPlayerPushSettings(authenticated.profile.playerId)
+      : null,
     profileSaved: new URL(request.url).searchParams.has("profileSaved"),
     profileEditorOpen:
       new URL(request.url).searchParams.get("editProfile") === "1",
@@ -34,16 +47,39 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  const authenticated = await getAuthenticatedPlayerProfile(request, params.groupCode);
-  if (!authenticated?.profile || authenticated.profile.groupPlayerId !== params.groupPlayerId) {
+  const authenticated = await getAuthenticatedPlayerProfile(
+    request,
+    params.groupCode,
+  );
+  if (
+    !authenticated?.profile ||
+    authenticated.profile.groupPlayerId !== params.groupPlayerId
+  ) {
     throw new Response("Forbidden", { status: 403 });
   }
   const formData = await request.formData();
-  if (readString(formData, "intent") !== "save-profile") {
+  const intent = readString(formData, "intent");
+  if (intent === "enable-push") {
+    const result = await savePlayerPushSubscription(
+      authenticated.profile.playerId,
+      {
+        endpoint: readString(formData, "endpoint"),
+        p256dh: readString(formData, "p256dh"),
+        auth: readString(formData, "auth"),
+      },
+    );
+    return { ...result, intent: "enable-push" as const };
+  }
+  if (intent === "disable-push") {
+    await disablePlayerPushSubscription(authenticated.profile.playerId);
+    return { ok: true as const, intent: "disable-push" as const };
+  }
+  if (intent !== "save-profile") {
     throw new Response("Bad Request", { status: 400 });
   }
   const avatarEntry = formData.get("avatar");
-  const avatar = avatarEntry instanceof File && avatarEntry.size > 0 ? avatarEntry : null;
+  const avatar =
+    avatarEntry instanceof File && avatarEntry.size > 0 ? avatarEntry : null;
   const result = await savePlayerProfile(authenticated.profile, {
     avatar,
     equippedAchievementId: readNullableString(formData, "equippedAchievementId"),
@@ -56,11 +92,17 @@ export async function action({ request, params }: Route.ActionArgs) {
     },
   });
   return result.ok
-    ? redirect(`/g/${params.groupCode}/stats/${params.groupPlayerId}?profileSaved=1`, { status: 303 })
-    : result;
+    ? redirect(
+        `/g/${params.groupCode}/stats/${params.groupPlayerId}?profileSaved=1`,
+        { status: 303 },
+      )
+    : { ...result, intent: "save-profile" as const };
 }
 
-export default function StatsPlayer({ loaderData, actionData }: Route.ComponentProps) {
+export default function StatsPlayer({
+  loaderData,
+  actionData,
+}: Route.ComponentProps) {
   const { achievements, group, playerStats } = loaderData;
   const { summary, games } = playerStats;
   const recentGames = [...games].reverse();
@@ -68,7 +110,10 @@ export default function StatsPlayer({ loaderData, actionData }: Route.ComponentP
   const [showProfileSavedToast, setShowProfileSavedToast] = useState(
     loaderData.profileSaved,
   );
-  const profileSaveFailure = actionData?.ok === false ? actionData : null;
+  const profileSaveFailure =
+    actionData?.intent === "save-profile" && actionData.ok === false
+      ? actionData
+      : null;
   const isSavingProfile =
     navigation.state === "submitting" &&
     navigation.formData?.get("intent") === "save-profile";
@@ -115,7 +160,9 @@ export default function StatsPlayer({ loaderData, actionData }: Route.ComponentP
               <p className="stats-brand-label">PLAYER PROFILE</p>
               <h1>{summary.displayName}</h1>
               {achievements.equippedAchievement ? (
-                <AchievementBadge achievement={achievements.equippedAchievement} />
+                <AchievementBadge
+                  achievement={achievements.equippedAchievement}
+                />
               ) : null}
             </div>
           </div>
@@ -149,6 +196,12 @@ export default function StatsPlayer({ loaderData, actionData }: Route.ComponentP
         </div>
       ) : null}
 
+      {loaderData.pushNotificationSettings ? (
+        <PushNotificationSetting
+          settings={loaderData.pushNotificationSettings}
+        />
+      ) : null}
+
       {loaderData.canEditProfile ? (
         <section
           aria-label="プロフィールを編集"
@@ -156,7 +209,11 @@ export default function StatsPlayer({ loaderData, actionData }: Route.ComponentP
           className={`profile-edit-modal${loaderData.profileEditorOpen || profileSaveFailure ? " is-open" : ""}`}
           role="dialog"
         >
-          <a aria-label="プロフィール編集を閉じる" className="profile-edit-modal-backdrop" href={profilePath} />
+          <a
+            aria-label="プロフィール編集を閉じる"
+            className="profile-edit-modal-backdrop"
+            href={profilePath}
+          />
           <div className="profile-edit-modal-card">
             <PlayerProfileEditor
               achievements={achievements.items

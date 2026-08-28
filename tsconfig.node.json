@@ -5,6 +5,7 @@
     "vitest.config.ts",
     "react-router.config.ts",
     "server/db/migrate.ts",
+    "server/db/migration-lock.ts",
     "server/db/seed.ts",
     "server/db/load-env.node.ts",
     "scripts/build-pwa.mjs",

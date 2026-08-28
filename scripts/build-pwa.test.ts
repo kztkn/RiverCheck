@@ -8,6 +8,11 @@ import {
   collectPrecacheEntries,
 } from "./build-pwa.mjs";
 
+const serviceWorkerTemplatePath = resolve(
+  process.cwd(),
+  "pwa/service-worker.template.js",
+);
+
 const temporaryDirectories: string[] = [];
 const requiredFiles = [
   "favicon.svg",
@@ -59,6 +64,15 @@ const entries = __PRECACHE_MANIFEST__;
     expect(source).not.toContain("private.data");
     expect(source).not.toContain("__BUILD_VERSION__");
     expect(source).not.toContain("__PRECACHE_MANIFEST__");
+  });
+
+  it("Push通知を表示し、クリック先を同一originへ制限する", async () => {
+    const template = await readFile(serviceWorkerTemplatePath, "utf8");
+
+    expect(template).toContain('self.addEventListener("push"');
+    expect(template).toContain('self.addEventListener("notificationclick"');
+    expect(template).toContain("showNotification");
+    expect(template).toContain("url.origin === self.location.origin");
   });
 });
 

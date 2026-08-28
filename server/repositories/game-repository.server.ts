@@ -230,6 +230,41 @@ export async function updateLocalRules(
   return result.rowCount === 1;
 }
 
+export async function updateOpenGameTitle(
+  groupId: string,
+  gameId: string,
+  title: string,
+): Promise<boolean> {
+  const result = await queryDatabase(
+    `
+      UPDATE games
+      SET title = $3,
+          updated_at = NOW()
+      WHERE id = $1
+        AND group_id = $2
+        AND status = 'open'
+    `,
+    [gameId, groupId, title],
+  );
+  return result.rowCount === 1;
+}
+
+export async function deleteOpenGame(
+  groupId: string,
+  gameId: string,
+): Promise<boolean> {
+  const result = await queryDatabase(
+    `
+      DELETE FROM games
+      WHERE id = $1
+        AND group_id = $2
+        AND status = 'open'
+    `,
+    [gameId, groupId],
+  );
+  return result.rowCount === 1;
+}
+
 function mapCostShares(values: string[] | null): number[] | null {
   return values?.map((value) => Number(value)) ?? null;
 }

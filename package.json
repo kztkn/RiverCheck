@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "react-router dev",
     "build": "npm run license:check && npm run pwa:icons && react-router build && npm run pwa:build",
+    "release:build": "npm run typecheck && npm test && npm run build && npm run db:migrate:production",
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",
     "typecheck": "react-router typegen && tsc -b",
@@ -25,6 +26,7 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
+    "@pushforge/builder": "2.0.5",
     "@tabler/icons-react": "^3.46.0",
     "isbot": "^5",
     "pg": "^8.16.3",

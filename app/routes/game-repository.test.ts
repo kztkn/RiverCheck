@@ -9,8 +9,10 @@ vi.mock("@server/db/client.server", () => ({
 }));
 
 import {
+  deleteOpenGame,
   findFinalizedGamePublicRoute,
   updateLocalRules,
+  updateOpenGameTitle,
 } from "@server/repositories/game-repository.server";
 
 describe("game repository public result route", () => {
@@ -81,5 +83,53 @@ describe("game repository local rules", () => {
         bombPotRuleEnabled: false,
       }),
     ).resolves.toBe(false);
+  });
+});
+
+describe("game repository open game management", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("同じグループの受付中開催だけ開催名を変更する", async () => {
+    mocked.queryDatabase.mockResolvedValue({ rowCount: 1, rows: [] });
+
+    await expect(
+      updateOpenGameTitle("group-1", "game-1", "9月のポーカー会"),
+    ).resolves.toBe(true);
+
+    const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
+    expect(sql).toContain("SET title = $3");
+    expect(sql).toContain("group_id = $2");
+    expect(sql).toContain("status = 'open'");
+    expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
+      "game-1",
+      "group-1",
+      "9月のポーカー会",
+    ]);
+  });
+
+  it("同じグループの受付中開催だけ削除する", async () => {
+    mocked.queryDatabase.mockResolvedValue({ rowCount: 1, rows: [] });
+
+    await expect(deleteOpenGame("group-1", "game-1")).resolves.toBe(true);
+
+    const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
+    expect(sql).toContain("DELETE FROM games");
+    expect(sql).toContain("group_id = $2");
+    expect(sql).toContain("status = 'open'");
+    expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
+      "game-1",
+      "group-1",
+    ]);
+  });
+
+  it("確定済みなど対象外の開催は変更・削除できない", async () => {
+    mocked.queryDatabase.mockResolvedValue({ rowCount: 0, rows: [] });
+
+    await expect(
+      updateOpenGameTitle("group-1", "game-1", "変更後"),
+    ).resolves.toBe(false);
+    await expect(deleteOpenGame("group-1", "game-1")).resolves.toBe(false);
   });
 });

@@ -1,4 +1,5 @@
 import { GroupSiteHeader } from "~/components/site-menu";
+import { AppToast } from "~/components/app-toast";
 import {
   IconPlus,
   IconSettings,
@@ -19,7 +20,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   await requireOrganizer(request, params.groupCode);
   const overview = await getGroupOverview(params.groupCode);
   if (!overview) throw new Response("Group not found", { status: 404 });
-  return overview;
+  return {
+    ...overview,
+    notice: new URL(request.url).searchParams.get("notice"),
+  };
 }
 
 export default function GroupManage({ loaderData }: Route.ComponentProps) {
@@ -52,6 +56,15 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
           </Link>
         </nav>
       </section>
+
+      <AppToast
+        message={
+          loaderData.notice === "game-deleted"
+            ? "開催を削除しました。"
+            : null
+        }
+        searchParam="notice"
+      />
 
       <section
         className="organizer-game-section"
