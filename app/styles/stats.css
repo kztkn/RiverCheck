@@ -1279,9 +1279,16 @@
 @media (max-width: 380px) {
   .stats-ranking-section .stats-ranking-card {
     grid-template-columns: 29px minmax(0, 1fr) auto;
+    gap: 7px;
+  }
+
+  .stats-ranking-section .stats-player-identity {
+    gap: 7px;
   }
 
   .stats-ranking-section .stats-player-identity .player-avatar {
-    display: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
   }
 }

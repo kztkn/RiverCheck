@@ -719,7 +719,7 @@ export default function GameAdmin({
         <div className="admin-game-title-row">
           <div className="title-with-status">
             <h1>{loaderData.game.title}</h1>
-            {loaderData.game.status !== "finalized" ? (
+            {loaderData.game.status === "draft" ? (
               <span className={`status status-${loaderData.game.status}`}>
                 {statusLabel(loaderData.game.status)}
               </span>
