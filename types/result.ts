@@ -17,3 +17,10 @@ export interface GameResultRevision {
   beforeResults: GameResultSummary[];
   afterResults: GameResultSummary[];
 }
+
+export interface GameCostShareReceipt {
+  groupPlayerId: string;
+  displayName: string;
+  costShare: number;
+  receivedAt: string | null;
+}

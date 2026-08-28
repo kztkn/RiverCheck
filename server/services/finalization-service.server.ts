@@ -22,6 +22,8 @@ import type { CreateGameInput, GameDetails } from "@shared-types/game";
 import type { GameParticipantSummary } from "@shared-types/player";
 import { awardAchievementsForPlayers } from "@server/services/achievement-service.server";
 import { notifyGameFinalized } from "@server/services/push-notification-service.server";
+import { clearChangedCostShareReceipts } from "@server/repositories/game-cost-share-receipt-repository.server";
+import { findChangedCostSharePlayerIds } from "@domain/payment/find-changed-cost-shares";
 
 export function buildFinalizationState(
   game: GameDetails,
@@ -373,6 +375,11 @@ export async function updateFinalizedGame(
       calculated.results,
     );
     await updateParticipantsForCorrection(transaction, gameId, participants);
+    await clearChangedCostShareReceipts(
+      transaction,
+      gameId,
+      findChangedCostSharePlayerIds(beforeResults, calculated.results),
+    );
     await replaceFinalResults(transaction, gameId, calculated.results);
 
     if (

@@ -78,6 +78,11 @@ import {
   saveFinalizedGameStory,
 } from "@server/services/game-story-service.server";
 import { buildLocalRules } from "@domain/rules/local-rules";
+import {
+  listGameCostShareReceipts,
+} from "@server/repositories/game-cost-share-receipt-repository.server";
+import { updateGameCostShareReceipt } from "@server/services/game-cost-share-receipt-service.server";
+import { OrganizerCostShareCollection } from "~/components/organizer-cost-share-collection";
 
 type RebuyActionIntent = "record-rebuy" | "record-repayment" | "undo-rebuy";
 type RebuyActionData = RebuyServiceResult & { intent: RebuyActionIntent };
@@ -128,6 +133,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const results =
     context.game.status === "finalized"
       ? await listFinalResults(context.group.id, params.gameId)
+      : [];
+  const costShareReceipts =
+    context.game.status === "finalized" && isOrganizer
+      ? await listGameCostShareReceipts(context.group.id, params.gameId)
       : [];
   const revisions =
     context.game.status === "finalized"
@@ -202,6 +211,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       }),
     })),
     results,
+    costShareReceipts,
     revisions,
     ownStoryPost,
     ownStoryPhotoUrl: ownStoryPost
@@ -246,6 +256,31 @@ export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const intent = readString(formData, "intent");
   const participantUrl = `/g/${params.groupCode}/games/${params.gameId}`;
+
+  if (intent === "update-cost-share-receipt") {
+    await requireOrganizer(request, params.groupCode);
+    const groupPlayerId = readString(formData, "groupPlayerId");
+    const receivedValue = readString(formData, "received");
+    if (
+      !isUuid(groupPlayerId) ||
+      (receivedValue !== "yes" && receivedValue !== "no")
+    ) {
+      throw new Response("Bad Request", { status: 400 });
+    }
+    const received = receivedValue === "yes";
+    const result = await updateGameCostShareReceipt(
+      context.group.id,
+      params.gameId,
+      groupPlayerId,
+      received,
+    );
+    return {
+      ...result,
+      intent: "update-cost-share-receipt" as const,
+      groupPlayerId,
+      received,
+    };
+  }
 
   if (intent === "delete-story-post") {
     await requireOrganizer(request, params.groupCode);
@@ -620,6 +655,11 @@ export default function GameParticipant({
             shareUrl={loaderData.shareUrl}
             showSharePanel={loaderData.isOrganizer}
           />
+          {loaderData.isOrganizer ? (
+            <OrganizerCostShareCollection
+              receipts={loaderData.costShareReceipts}
+            />
+          ) : null}
           <GameStories
             canPost={Boolean(loaderData.participant)}
             initialChips={loaderData.game.initialChips}

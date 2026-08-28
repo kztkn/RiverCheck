@@ -21,6 +21,7 @@ const mocked = vi.hoisted(() => ({
   leaveGame: vi.fn(),
   leaveGameByGroupPlayerId: vi.fn(),
   listFinalResults: vi.fn(),
+  listGameCostShareReceipts: vi.fn(),
   listGamesForGroup: vi.fn(),
   listCurrentGameParticipants: vi.fn(),
   listRegisteredPlayersForGame: vi.fn(),
@@ -33,6 +34,7 @@ const mocked = vi.hoisted(() => ({
   undoOwnRebuyAction: vi.fn(),
   updateParticipantInput: vi.fn(),
   updateParticipantInputByGroupPlayerId: vi.fn(),
+  updateGameCostShareReceipt: vi.fn(),
 }));
 
 vi.mock("@server/repositories/game-repository.server", () => ({
@@ -61,6 +63,12 @@ vi.mock("@server/repositories/participant-repository.server", () => ({
 }));
 vi.mock("@server/repositories/group-paypay-repository.server", () => ({
   findGamePaymentAmountForPlayer: mocked.findGamePaymentAmountForPlayer,
+}));
+vi.mock("@server/repositories/game-cost-share-receipt-repository.server", () => ({
+  listGameCostShareReceipts: mocked.listGameCostShareReceipts,
+}));
+vi.mock("@server/services/game-cost-share-receipt-service.server", () => ({
+  updateGameCostShareReceipt: mocked.updateGameCostShareReceipt,
 }));
 vi.mock("@server/services/rebuy-service.server", () => ({
   recordOwnRebuyAction: mocked.recordOwnRebuyAction,
@@ -167,6 +175,7 @@ describe("game participant route", () => {
     mocked.listCurrentGameParticipants.mockResolvedValue([]);
     mocked.listRegisteredPlayersForGame.mockResolvedValue([]);
     mocked.listFinalResults.mockResolvedValue([]);
+    mocked.listGameCostShareReceipts.mockResolvedValue([]);
     mocked.listResultRevisions.mockResolvedValue([]);
     mocked.listGamesForGroup.mockResolvedValue([]);
     mocked.getOwnGameStoryPost.mockResolvedValue(null);
@@ -175,6 +184,7 @@ describe("game participant route", () => {
     mocked.updateParticipantInputByGroupPlayerId.mockResolvedValue(true);
     mocked.saveFinalizedGameStory.mockResolvedValue({ ok: true });
     mocked.deleteGameStoryPostAsOrganizer.mockResolvedValue(true);
+    mocked.updateGameCostShareReceipt.mockResolvedValue({ ok: true });
     mocked.createParticipantCookie.mockReturnValue(
       "rc_participant_game=participant-token",
     );
@@ -329,6 +339,35 @@ describe("game participant route", () => {
     ]);
   });
 
+  it("会費回収状況は確定済み開催を管理者として見る場合だけ返す", async () => {
+    mocked.findGameForGroup.mockResolvedValue({
+      ...openGame,
+      status: "finalized",
+    });
+    mocked.isOrganizerAuthenticated.mockResolvedValue(true);
+    mocked.listGameCostShareReceipts.mockResolvedValue([
+      {
+        costShare: 500,
+        displayName: "Alice",
+        groupPlayerId,
+        receivedAt: null,
+      },
+    ]);
+
+    const organizerResult = await loader(loaderArgs());
+    expect(organizerResult.costShareReceipts).toHaveLength(1);
+    expect(mocked.listGameCostShareReceipts).toHaveBeenCalledWith(
+      group.id,
+      gameId,
+    );
+
+    mocked.isOrganizerAuthenticated.mockResolvedValue(false);
+    mocked.listGameCostShareReceipts.mockClear();
+    const publicResult = await loader(loaderArgs());
+    expect(publicResult.costShareReceipts).toEqual([]);
+    expect(mocked.listGameCostShareReceipts).not.toHaveBeenCalled();
+  });
+
   it("参加者入口と一覧には人数・全員の名前・本人表示だけを描画する", () => {
     const markup = renderToStaticMarkup(
       createElement(ParticipantRosterSheet, {
@@ -427,6 +466,38 @@ describe("game participant route", () => {
     expect(response.headers.get("Location")).toBe(
       `/g/river-check/games/${gameId}?notice=story-deleted`,
     );
+  });
+
+  it("主催者だけが会費を受取済みに更新できる", async () => {
+    mocked.findGameForGroup.mockResolvedValue({
+      ...openGame,
+      status: "finalized",
+    });
+
+    const result = await action(
+      actionArgs({
+        intent: "update-cost-share-receipt",
+        groupPlayerId,
+        received: "yes",
+      }),
+    );
+
+    expect(mocked.requireOrganizer).toHaveBeenCalledWith(
+      expect.any(Request),
+      "river-check",
+    );
+    expect(mocked.updateGameCostShareReceipt).toHaveBeenCalledWith(
+      group.id,
+      gameId,
+      groupPlayerId,
+      true,
+    );
+    expect(result).toEqual({
+      ok: true,
+      intent: "update-cost-share-receipt",
+      groupPlayerId,
+      received: true,
+    });
   });
 
   it("参加者は確定済み開催へあとからTABLE STORYを投稿できる", async () => {

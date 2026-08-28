@@ -2,7 +2,7 @@
 
 ポーカー会の開催、結果、順位、チップ総量、会費精算をスマートフォンから管理する Web アプリです。
 
-React Router v8 + Cloudflare Workers + PostgreSQLで、開催作成、共有URLからの自己参加、結果入力、チップ総量検算、順位・会費精算、結果確定、ランキング、TABLE STORIES、本人プロフィールまでのMVP主要フローを実装しています。投稿写真とプレイヤーアイコンは非公開のCloudflare R2へ保存し、Worker経由で配信します。
+React Router v8 + Cloudflare Workers + PostgreSQLで、開催作成、共有URLからの自己参加、結果入力、チップ総量検算、順位・会費精算、結果確定、主催者用の会費回収確認、ランキング、TABLE STORIES、本人プロフィールまでのMVP主要フローを実装しています。投稿写真とプレイヤーアイコンは非公開のCloudflare R2へ保存し、Worker経由で配信します。
 
 ## 必要な環境
 
