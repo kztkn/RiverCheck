@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { PlayerAvatar } from "./player-avatar";
 
 export interface GameTimelineEventView {
@@ -8,7 +9,47 @@ export interface GameTimelineEventView {
   avatarUrl: string | null;
 }
 
-export function GameTimeline({ events }: { events: GameTimelineEventView[] }) {
+interface GameTimelineResponse {
+  events: GameTimelineEventView[];
+}
+
+export function GameTimeline() {
+  const [events, setEvents] = useState<GameTimelineEventView[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const currentUrl = new URL(window.location.href);
+    currentUrl.pathname = `${currentUrl.pathname.replace(/\/$/, "")}/timeline`;
+    currentUrl.search = "";
+    currentUrl.hash = "";
+
+    void fetch(currentUrl, {
+      credentials: "same-origin",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return (await response.json()) as GameTimelineResponse;
+      })
+      .then((data) => {
+        if (data) setEvents(data.events);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setEvents([]);
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  return <GameTimelineView events={events} />;
+}
+
+export function GameTimelineView({
+  events,
+}: {
+  events: GameTimelineEventView[];
+}) {
   if (events.length === 0) return null;
 
   return (
