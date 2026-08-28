@@ -19,6 +19,7 @@ import "./styles/history.css";
 import "./styles/qr.css";
 import "./styles/profile.css";
 import "./styles/stats.css";
+import "./styles/timeline.css";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const groupCode = extractGroupCode(new URL(request.url).pathname);

@@ -172,3 +172,11 @@ repositoryは訂正前後のGameResultSummary配列をJSONBとしてgame_result_
 finalizedの開催ではgame_resultsを順位順に取得し、参加者用URLと主催者画面の共通コンポーネントで表示する。順位判定とDB保存は整数scoreのまま維持し、表示時にgames.initial_chipsを100BBとして初期スタック分を差し引いた損益BBへ換算する。共有操作は主催者画面だけに表示する。LINE用テキストはdomainの純粋関数で生成し、計算式は含めない。共有URLはgame UUIDを22文字のBase64URLへ可逆変換した`/r/:resultCode`を使用する。短縮routeは確定済み開催だけを既存の参加者用URLへredirectし、DBへの短縮コード保存や外部短縮サービスは使用しない。コピーはHTTPSまたはlocalhostではClipboard APIを優先し、同一LANのHTTPなど利用できない環境ではtextarea選択とcopy commandへフォールバックする。自動コピーが拒否された場合は選択状態にして手動コピーを案内する。
 
 会費回収確認は`game_cost_share_receipts`へ`game_id`と`group_player_id`の組み合わせ、および受取日時を保持する。公開結果のloaderでは主催者認証済みの場合だけ取得し、更新actionも主催者認証を必須とする。受取状態の更新では対象の確定結果行をロックし、0円または確定結果に存在しない参加者への登録を拒否する。結果訂正では会費負担額が変わった参加者の受取確認を、結果置換と同じトランザクション内で削除する。
+
+## GAME TIMELINE
+
+確定結果の `GAME TIMELINE` は汎用イベントテーブルを追加せず、既存の `game_rebuy_events` を読み取り用に投影して生成する。対象は `rebuy` と `repayment` のみとし、`undo.reverts_event_id` から取り消された元イベントを除外する。`undo` 自身と `adjustment` は公開タイムラインへ出さない。`recorded_by_type` は監査情報として保持するが、本人操作と主催者代理操作は公開表示では区別しない。
+
+repository の取得条件には対象 `game_id` / `group_id` に加えて `game.status = 'finalized'` を含め、受付中開催の他参加者リバイ情報を公開しない。結果画面では専用の読み取り resource route からイベントを取得し、参加者のアバターURLへ変換して表示コンポーネントへ渡す。DB migration は追加しない。
+
+UI はアバターと縦ラインを軸にしたミニマルな時系列表示とし、リバイ・返済を派手な成功/失敗色や絵文字で意味付けしない。イベント0件ではセクションを描画しない。
