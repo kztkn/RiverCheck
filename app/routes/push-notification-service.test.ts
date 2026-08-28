@@ -5,6 +5,7 @@ const mocked = vi.hoisted(() => ({
   deleteCurrent: vi.fn(),
   deletePlayer: vi.fn(),
   findPlayer: vi.fn(),
+  listGame: vi.fn(),
   listGroup: vi.fn(),
   runtimeEnv: {} as Record<string, string>,
   upsertPlayer: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock(
     deletePlayerPushSubscription: mocked.deletePlayer,
     deletePlayerPushSubscriptionIfCurrent: mocked.deleteCurrent,
     findPlayerPushSubscription: mocked.findPlayer,
+    listGameParticipantPushSubscriptions: mocked.listGame,
     listGroupPlayerPushSubscriptions: mocked.listGroup,
     upsertPlayerPushSubscription: mocked.upsertPlayer,
   }),
@@ -28,6 +30,7 @@ vi.mock(
 import {
   disablePlayerPushSubscription,
   getPlayerPushSettings,
+  notifyGameFinalized,
   notifyNewGameCreated,
   savePlayerPushSubscription,
   validatePushSubscription,
@@ -159,7 +162,7 @@ describe("push notification service", () => {
       expect.objectContaining({
         message: expect.objectContaining({
           payload: expect.objectContaining({
-            body: expect.stringContaining("8月のポーカー会"),
+            body: "8/30「8月のポーカー会」の参加受付が始まりました 🃏",
             data: {
               url: "/g/river-check/games/22222222-2222-4222-8222-222222222222",
             },
@@ -168,5 +171,53 @@ describe("push notification service", () => {
       }),
     );
     expect(mocked.deleteCurrent).toHaveBeenCalledWith(playerId, endpoint);
+  });
+
+  it("結果確定は開催参加者の通知先だけへ送り、結果画面を開く", async () => {
+    mocked.listGame.mockResolvedValue([
+      {
+        playerId,
+        ...validSubscription,
+        updatedAt: "2026-08-25T12:00:00.000Z",
+      },
+    ]);
+    mocked.buildPushHTTPRequest.mockResolvedValue({
+      endpoint,
+      headers: new Headers(),
+      body: new ArrayBuffer(0),
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(null, { status: 201 })),
+    );
+
+    await notifyGameFinalized({
+      gameId: "22222222-2222-4222-8222-222222222222",
+      groupId: "33333333-3333-4333-8333-333333333333",
+      groupName: "RiverCheck",
+      groupPublicCode: "river-check",
+      playedAt: "2026-08-30T00:00:00.000Z",
+      title: "8月のポーカー会",
+    });
+
+    expect(mocked.listGame).toHaveBeenCalledWith(
+      "33333333-3333-4333-8333-333333333333",
+      "22222222-2222-4222-8222-222222222222",
+    );
+    expect(mocked.listGroup).not.toHaveBeenCalled();
+    expect(mocked.buildPushHTTPRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.objectContaining({
+          payload: expect.objectContaining({
+            title: "RiverCheck｜結果確定",
+            body: "8/30「8月のポーカー会」の結果が確定しました 🃏",
+            tag: "game-finalized:22222222-2222-4222-8222-222222222222",
+            data: {
+              url: "/g/river-check/games/22222222-2222-4222-8222-222222222222",
+            },
+          }),
+        }),
+      }),
+    );
   });
 });

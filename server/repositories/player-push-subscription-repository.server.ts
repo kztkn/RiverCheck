@@ -56,6 +56,32 @@ export async function listGroupPlayerPushSubscriptions(
   return result.rows.map(mapPushSubscription);
 }
 
+export async function listGameParticipantPushSubscriptions(
+  groupId: string,
+  gameId: string,
+): Promise<PlayerPushSubscriptionRecord[]> {
+  const result = await queryDatabase<PushSubscriptionRow>(
+    `
+      SELECT
+        subscription.player_id,
+        subscription.endpoint,
+        subscription.p256dh,
+        subscription.auth,
+        subscription.updated_at
+      FROM game_participants AS participant
+      INNER JOIN group_players AS group_player
+        ON group_player.id = participant.group_player_id
+      INNER JOIN player_push_subscriptions AS subscription
+        ON subscription.player_id = group_player.player_id
+      WHERE participant.game_id = $1
+        AND group_player.group_id = $2
+      ORDER BY participant.joined_at ASC
+    `,
+    [gameId, groupId],
+  );
+  return result.rows.map(mapPushSubscription);
+}
+
 export async function upsertPlayerPushSubscription(
   playerId: string,
   input: { endpoint: string; p256dh: string; auth: string },

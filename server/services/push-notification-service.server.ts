@@ -4,6 +4,7 @@ import {
   deletePlayerPushSubscription,
   deletePlayerPushSubscriptionIfCurrent,
   findPlayerPushSubscription,
+  listGameParticipantPushSubscriptions,
   listGroupPlayerPushSubscriptions,
   upsertPlayerPushSubscription,
   type PlayerPushSubscriptionRecord,
@@ -111,6 +112,39 @@ export async function notifyNewGameCreated(input: {
   }
 }
 
+export async function notifyGameFinalized(input: {
+  gameId: string;
+  groupId: string;
+  groupName: string;
+  groupPublicCode: string;
+  playedAt: string;
+  title: string;
+}): Promise<void> {
+  const config = readWebPushConfig();
+  if (!config) return;
+  const subscriptions = await listGameParticipantPushSubscriptions(
+    input.groupId,
+    input.gameId,
+  );
+  if (subscriptions.length === 0) return;
+
+  const results = await Promise.allSettled(
+    subscriptions.map((subscription) =>
+      sendGameFinalizedNotification(config, subscription, input),
+    ),
+  );
+  const rejectedCount = results.filter(
+    (result) => result.status === "rejected",
+  ).length;
+  if (rejectedCount > 0) {
+    console.warn("Some game-finalized push notifications failed", {
+      attemptedCount: subscriptions.length,
+      gameId: input.gameId,
+      rejectedCount,
+    });
+  }
+}
+
 export function validatePushSubscription(input: {
   endpoint: string;
   p256dh: string;
@@ -176,10 +210,62 @@ async function sendGameCreatedNotification(
       },
       payload: {
         title: `${game.groupName}｜新しい開催`,
-        body: `${formatTokyoDate(game.playedAt)}「${game.title}」の参加受付が始まりました。`,
+        body: `${formatTokyoDate(game.playedAt)}「${game.title}」の参加受付が始まりました 🃏`,
         icon: "/icons/icon-192.png",
         badge: "/icons/icon-192.png",
         tag: `game-created:${game.gameId}`,
+        data: {
+          url: `/g/${encodeURIComponent(game.groupPublicCode)}/games/${game.gameId}`,
+        },
+      },
+    },
+  });
+  const response = await fetch(request.endpoint, {
+    method: "POST",
+    headers: request.headers,
+    body: request.body,
+  });
+  if (response.ok) return;
+  if (response.status === 404 || response.status === 410) {
+    await deletePlayerPushSubscriptionIfCurrent(
+      subscription.playerId,
+      subscription.endpoint,
+    );
+    return;
+  }
+  throw new Error(`Push service returned ${response.status}`);
+}
+
+async function sendGameFinalizedNotification(
+  config: WebPushConfig,
+  subscription: PlayerPushSubscriptionRecord,
+  game: {
+    gameId: string;
+    groupName: string;
+    groupPublicCode: string;
+    playedAt: string;
+    title: string;
+  },
+): Promise<void> {
+  const request = await buildPushHTTPRequest({
+    privateJWK: config.privateJwk,
+    subscription: {
+      endpoint: subscription.endpoint,
+      keys: { auth: subscription.auth, p256dh: subscription.p256dh },
+    },
+    message: {
+      adminContact: config.subject,
+      options: {
+        ttl: 24 * 60 * 60,
+        topic: game.gameId.replaceAll("-", ""),
+        urgency: "normal",
+      },
+      payload: {
+        title: `${game.groupName}｜結果確定`,
+        body: `${formatTokyoDate(game.playedAt)}「${game.title}」の結果が確定しました 🃏`,
+        icon: "/icons/icon-192.png",
+        badge: "/icons/icon-192.png",
+        tag: `game-finalized:${game.gameId}`,
         data: {
           url: `/g/${encodeURIComponent(game.groupPublicCode)}/games/${game.gameId}`,
         },

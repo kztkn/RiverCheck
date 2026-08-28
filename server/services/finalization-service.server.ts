@@ -21,6 +21,7 @@ import {
 import type { CreateGameInput, GameDetails } from "@shared-types/game";
 import type { GameParticipantSummary } from "@shared-types/player";
 import { awardAchievementsForPlayers } from "@server/services/achievement-service.server";
+import { notifyGameFinalized } from "@server/services/push-notification-service.server";
 
 export function buildFinalizationState(
   game: GameDetails,
@@ -83,15 +84,22 @@ export function buildFinalizationState(
   };
 }
 
+type FinalizeTransactionResult =
+  | { ok: false; error: string }
+  | {
+      ok: true;
+      notification: { playedAt: string; title: string };
+    };
+
 export async function finalizeGame(
-  groupId: string,
+  group: { id: string; name: string; publicCode: string },
   gameId: string,
   settings: CreateGameInput,
   differenceConfirmed: boolean,
   rebuyMismatchConfirmed: boolean,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  return withTransaction(async (transaction) => {
-    const game = await lockGameForFinalization(transaction, groupId, gameId);
+  const finalized = await withTransaction<FinalizeTransactionResult>(async (transaction) => {
+    const game = await lockGameForFinalization(transaction, group.id, gameId);
     if (!game) return { ok: false, error: "開催が見つかりません。" };
     if (game.status === "finalized") {
       return { ok: false, error: "この開催はすでに確定済みです。" };
@@ -170,7 +178,7 @@ export async function finalizeGame(
     if (
       !(await saveCostSettingsForFinalization(
         transaction,
-        groupId,
+        group.id,
         gameId,
         settings,
       ))
@@ -178,16 +186,40 @@ export async function finalizeGame(
       throw new Error("game settings changed during finalization");
     }
     await insertFinalResults(transaction, gameId, calculated.results);
-    if (!(await markGameFinalized(transaction, groupId, gameId))) {
+    if (!(await markGameFinalized(transaction, group.id, gameId))) {
       throw new Error("game status changed during finalization");
     }
     await awardAchievementsForPlayers(
       transaction,
-      groupId,
+      group.id,
       calculated.results.map((result) => result.groupPlayerId),
     );
-    return { ok: true };
+    return {
+      ok: true as const,
+      notification: {
+        playedAt: game.playedAt,
+        title: game.title,
+      },
+    };
   });
+  if (!finalized.ok) return finalized;
+
+  try {
+    await notifyGameFinalized({
+      gameId,
+      groupId: group.id,
+      groupName: group.name,
+      groupPublicCode: group.publicCode,
+      playedAt: finalized.notification.playedAt,
+      title: finalized.notification.title,
+    });
+  } catch (error) {
+    console.error("Failed to notify participants about finalized results", {
+      errorType: error instanceof Error ? error.name : "unknown",
+      gameId,
+    });
+  }
+  return { ok: true };
 }
 
 export interface ResultCorrectionInput {

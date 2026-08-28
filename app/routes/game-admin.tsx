@@ -143,7 +143,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       };
     }
     const result = await finalizeGame(
-      authorized.group.id,
+      authorized.group,
       params.gameId,
       validation.input,
       readString(formData, "confirmDifference") === "yes",

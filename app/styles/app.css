@@ -5174,6 +5174,7 @@ input[aria-invalid="true"] {
   .admin-game-settings-trigger {
     width: 42px;
     justify-content: center;
+    gap: 0;
     padding-inline: 0;
   }
 
