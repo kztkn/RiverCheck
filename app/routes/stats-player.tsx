@@ -27,6 +27,7 @@ import {
 import type { Route } from "./+types/stats-player";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
+  const url = new URL(request.url);
   const [overview, authenticated] = await Promise.all([
     getPlayerStatsDetail(params.groupCode, params.groupPlayerId),
     getAuthenticatedPlayerProfile(request, params.groupCode),
@@ -34,15 +35,16 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!overview) throw new Response("Player not found", { status: 404 });
   const canEditProfile =
     authenticated?.profile?.groupPlayerId === params.groupPlayerId;
+  const profileEditorOpen = url.searchParams.get("editProfile") === "1";
   return {
     ...overview,
     canEditProfile,
-    pushNotificationSettings: canEditProfile && authenticated?.profile
+    pushNotificationSettings:
+      canEditProfile && profileEditorOpen && authenticated?.profile
       ? await getPlayerPushSettings(authenticated.profile.playerId)
       : null,
-    profileSaved: new URL(request.url).searchParams.has("profileSaved"),
-    profileEditorOpen:
-      new URL(request.url).searchParams.get("editProfile") === "1",
+    profileSaved: url.searchParams.has("profileSaved"),
+    profileEditorOpen,
   };
 }
 
@@ -196,12 +198,6 @@ export default function StatsPlayer({
         </div>
       ) : null}
 
-      {loaderData.pushNotificationSettings ? (
-        <PushNotificationSetting
-          settings={loaderData.pushNotificationSettings}
-        />
-      ) : null}
-
       {loaderData.canEditProfile ? (
         <section
           aria-label="プロフィールを編集"
@@ -238,6 +234,11 @@ export default function StatsPlayer({
                 profileMessage: summary.profileMessage,
                 equippedAchievementId: achievements.equippedAchievement?.id ?? null,
               }}
+              notificationSetting={loaderData.pushNotificationSettings ? (
+                <PushNotificationSetting
+                  settings={loaderData.pushNotificationSettings}
+                />
+              ) : null}
               values={profileSaveFailure
                 ? {
                   ...profileSaveFailure.values,

@@ -143,31 +143,36 @@ export function PushNotificationSetting({
       aria-labelledby="push-notification-heading"
       className="profile-notification-setting"
     >
-      <div className="profile-notification-copy">
-        <span className="profile-notification-icon" aria-hidden="true">
-          {isOn ? (
-            <IconBell size={21} stroke={1.8} />
-          ) : (
-            <IconBellOff size={21} stroke={1.8} />
-          )}
-        </span>
-        <div>
-          <h2 id="push-notification-heading">開催通知</h2>
-          <p>{description}</p>
+      <div className="profile-notification-row">
+        <div className="profile-notification-copy">
+          <span className="profile-notification-icon" aria-hidden="true">
+            {isOn ? (
+              <IconBell size={21} stroke={1.8} />
+            ) : (
+              <IconBellOff size={21} stroke={1.8} />
+            )}
+          </span>
+          <div>
+            <h2 id="push-notification-heading">開催通知</h2>
+            <p>{description}</p>
+          </div>
         </div>
+        <button
+          aria-checked={isOn}
+          aria-label="この端末の開催通知"
+          className="profile-notification-switch"
+          disabled={isToggleDisabled}
+          onClick={() => void handleToggle()}
+          role="switch"
+          type="button"
+        >
+          <span aria-hidden="true" />
+          <span className="sr-only">{isOn ? "オン" : "オフ"}</span>
+        </button>
       </div>
-      <button
-        aria-checked={isOn}
-        aria-label="この端末の開催通知"
-        className="profile-notification-switch"
-        disabled={isToggleDisabled}
-        onClick={() => void handleToggle()}
-        role="switch"
-        type="button"
-      >
-        <span aria-hidden="true" />
-        <span className="sr-only">{isOn ? "オン" : "オフ"}</span>
-      </button>
+      <p className="profile-notification-note">
+        iPhone・iPadでは、ホーム画面に追加したRiverCheckからのみ通知を利用できます。
+      </p>
     </section>
   );
 }

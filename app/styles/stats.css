@@ -184,14 +184,18 @@
 }
 
 .profile-notification-setting {
+  display: grid;
+  gap: 11px;
+  margin: 0;
+  border-top: 1px solid var(--line);
+  padding: 22px 0 2px;
+}
+
+.profile-notification-row {
   display: flex;
-  min-height: 82px;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  margin: 10px 0 16px;
-  border-block: 1px solid rgba(223, 236, 227, 0.1);
-  padding: 17px 0;
 }
 
 .profile-notification-copy {
@@ -223,6 +227,13 @@
   color: var(--muted);
   font-size: 0.72rem;
   line-height: 1.55;
+}
+
+.profile-notification-note {
+  margin: 0 0 0 52px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.6;
 }
 
 .profile-notification-switch {
@@ -800,11 +811,19 @@
   }
 
   .profile-notification-setting {
+    gap: 10px;
+  }
+
+  .profile-notification-row {
     gap: 14px;
   }
 
   .profile-notification-copy {
     gap: 11px;
+  }
+
+  .profile-notification-note {
+    margin-left: 49px;
   }
 
   .stats-ranking-card {

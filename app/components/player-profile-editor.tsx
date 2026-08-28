@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { Form, Link, useSubmit } from "react-router";
 import { PlayerAvatar } from "./player-avatar";
 import { FavoriteHandPicker } from "./favorite-hand-picker";
@@ -16,6 +22,7 @@ export function PlayerProfileEditor({
   error,
   errors,
   isSubmitting,
+  notificationSetting,
   profile,
   modalCloseHref,
   values,
@@ -25,6 +32,7 @@ export function PlayerProfileEditor({
   error: string | null;
   errors: { favoriteCard1?: string; profileMessage?: string };
   isSubmitting: boolean;
+  notificationSetting?: ReactNode;
   profile: {
     displayName: string;
     favoriteCard1: string | null;
@@ -360,6 +368,7 @@ export function PlayerProfileEditor({
       </section>
 
       {error ? <p className="error-notice" role="alert">{error}</p> : null}
+      {notificationSetting}
       {!modalCloseHref ? (
         <div className="profile-editor-actions">
           <button
