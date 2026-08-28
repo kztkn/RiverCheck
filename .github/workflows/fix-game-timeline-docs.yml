@@ -1,0 +1,44 @@
+name: Fix Game Timeline Docs
+
+on:
+  push:
+    branches:
+      - feat/game-timeline-v1
+
+permissions:
+  contents: write
+
+jobs:
+  fix-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix GAME TIMELINE heading spacing
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path("docs/requirements.md"): (
+                  "プレビューする## GAME TIMELINE（確定後の振り返り）",
+                  "プレビューする\n\n## GAME TIMELINE（確定後の振り返り）",
+              ),
+              Path("docs/architecture.md"): (
+                  "削除する。## GAME TIMELINE",
+                  "削除する。\n\n## GAME TIMELINE",
+              ),
+          }
+
+          for path, (before, after) in replacements.items():
+              text = path.read_text(encoding="utf-8")
+              if before not in text:
+                  raise SystemExit(f"expected text not found: {path}")
+              path.write_text(text.replace(before, after, 1), encoding="utf-8")
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/requirements.md docs/architecture.md
+          git commit -m "GAME TIMELINE正本の見出しを整形"
+          git push origin HEAD:feat/game-timeline-v1
