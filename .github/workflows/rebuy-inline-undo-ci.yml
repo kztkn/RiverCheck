@@ -1,0 +1,55 @@
+name: Rebuy inline undo validation
+
+on:
+  push:
+    branches:
+      - fix/rebuy-inline-undo
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Apply patch
+        run: python scripts/apply_rebuy_inline_undo_patch.py
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Remove temporary validation files
+        run: git rm -f .github/workflows/rebuy-inline-undo-ci.yml scripts/apply_rebuy_inline_undo_patch.py
+
+      - name: Commit validated implementation
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No implementation changes to commit"
+            exit 0
+          fi
+          git commit -m 'リバイUNDOをインライン表示へ変更'
+          git push origin HEAD:fix/rebuy-inline-undo
