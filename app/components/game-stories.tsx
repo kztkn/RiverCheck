@@ -13,6 +13,10 @@ import { GAME_PHOTO_MAX_BYTES } from "@domain/highlight/validate-game-highlight"
 import { compressGamePhoto } from "~/utils/compress-game-photo";
 import { PlayerAvatar } from "./player-avatar";
 import { GameTimeline } from "./game-timeline";
+import {
+  GameStoryReactionBar,
+  GameStoryReactionProvider,
+} from "./game-story-reactions";
 
 export interface GameStoryPostView extends PublishedGameStoryPost {
   avatarUrl: string | null;
@@ -63,6 +67,7 @@ export function GameStories({
       <GameTimeline />
       {showStories ? (
         <section className="game-stories-panel" aria-labelledby="game-stories-heading">
+          <GameStoryReactionProvider>
           <header className="game-stories-heading">
             <div>
               <p className="form-brand-label">TABLE STORIES</p>
@@ -142,6 +147,7 @@ export function GameStories({
                           {formatStoryTimestamp(entry.createdAt)}
                         </time>
                       ) : null}
+                      <GameStoryReactionBar postId={entry.id} />
                     </div>
                   </article>
                 );
@@ -156,6 +162,7 @@ export function GameStories({
               post={ownPost}
             />
           ) : null}
+          </GameStoryReactionProvider>
         </section>
       ) : null}
     </>

@@ -22,6 +22,10 @@ export default [
     "g/:groupCode/games/:gameId/stories/:postId/photo",
     "routes/game-story-photo.ts",
   ),
+  route(
+    "g/:groupCode/games/:gameId/story-reactions",
+    "routes/game-story-reactions.ts",
+  ),
   route("g/:groupCode/games/:gameId/timeline", "routes/game-timeline.ts"),
   route("g/:groupCode/games/:gameId", "routes/game-participant.tsx"),
   route("g/:groupCode/games/:gameId/admin", "routes/game-admin.tsx"),

@@ -326,6 +326,115 @@
   opacity: 0;
 }
 
+
+.game-story-reactions {
+  display: grid;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.game-story-reaction-row,
+.game-story-reaction-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.game-story-reaction-chip,
+.game-story-reaction-add,
+.game-story-reaction-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 120ms ease,
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.game-story-reaction-chip {
+  min-height: 34px;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 4px 9px 4px 7px;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.game-story-reaction-chip.is-selected,
+.game-story-reaction-option.is-selected {
+  border-color: rgba(57, 222, 141, 0.5);
+  background: rgba(57, 222, 141, 0.11);
+  color: var(--green);
+}
+
+.game-story-reaction-chip:hover,
+.game-story-reaction-chip:focus-visible,
+.game-story-reaction-add:hover,
+.game-story-reaction-add:focus-visible,
+.game-story-reaction-option:hover,
+.game-story-reaction-option:focus-visible {
+  border-color: rgba(57, 222, 141, 0.45);
+  background: rgba(57, 222, 141, 0.08);
+}
+
+.game-story-reaction-chip:active,
+.game-story-reaction-option:active {
+  transform: scale(0.9);
+}
+
+.game-story-reaction-chip:disabled,
+.game-story-reaction-option:disabled {
+  cursor: default;
+}
+
+.game-story-reaction-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+
+.game-story-reaction-add {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  padding: 0;
+}
+
+.game-story-reaction-add svg {
+  width: 16px;
+  height: 16px;
+}
+
+.game-story-reaction-picker {
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid rgba(233, 186, 90, 0.2);
+  border-radius: 14px;
+  background: rgba(5, 16, 12, 0.94);
+  padding: 7px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+}
+
+.game-story-reaction-option {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  padding: 0;
+}
+
+.game-story-reaction-option .game-story-reaction-icon {
+  width: 27px;
+  height: 27px;
+}
+
 @media (max-width: 639px) {
   .game-story-grid {
     grid-template-columns: minmax(0, 1fr);
