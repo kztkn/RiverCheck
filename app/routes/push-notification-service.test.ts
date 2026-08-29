@@ -3,11 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocked = vi.hoisted(() => ({
   buildPushHTTPRequest: vi.fn(),
   deleteCurrent: vi.fn(),
-  deletePlayer: vi.fn(),
   findPlayer: vi.fn(),
+  getGroupEnabled: vi.fn(),
   listGame: vi.fn(),
   listGroup: vi.fn(),
   runtimeEnv: {} as Record<string, string>,
+  setGroupEnabled: vi.fn(),
   upsertPlayer: vi.fn(),
 }));
 
@@ -18,11 +19,12 @@ vi.mock("@pushforge/builder", () => ({
 vi.mock(
   "@server/repositories/player-push-subscription-repository.server",
   () => ({
-    deletePlayerPushSubscription: mocked.deletePlayer,
     deletePlayerPushSubscriptionIfCurrent: mocked.deleteCurrent,
     findPlayerPushSubscription: mocked.findPlayer,
+    isGroupPlayerPushEnabled: mocked.getGroupEnabled,
     listGameParticipantPushSubscriptions: mocked.listGame,
     listGroupPlayerPushSubscriptions: mocked.listGroup,
+    setGroupPlayerPushEnabled: mocked.setGroupEnabled,
     upsertPlayerPushSubscription: mocked.upsertPlayer,
   }),
 );
@@ -37,6 +39,7 @@ import {
 } from "@server/services/push-notification-service.server";
 
 const playerId = "11111111-1111-4111-8111-111111111111";
+const groupPlayerId = "44444444-4444-4444-8444-444444444444";
 const endpoint = "https://web.push.apple.com/valid-subscription";
 const validSubscription = {
   endpoint,
@@ -47,6 +50,7 @@ const validSubscription = {
 describe("push notification service", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocked.getGroupEnabled.mockResolvedValue(true);
     Object.keys(mocked.runtimeEnv).forEach(
       (key) => delete mocked.runtimeEnv[key],
     );
@@ -89,7 +93,7 @@ describe("push notification service", () => {
     ).toEqual({ ok: false, error: "通知先を確認できませんでした。" });
   });
 
-  it("現在の1端末分を保存し、設定確認ではendpoint自体を返さない", async () => {
+  it("通知先はplayer共通、ON/OFFはgroup_player単位で保存する", async () => {
     mocked.findPlayer.mockResolvedValue({
       playerId,
       ...validSubscription,
@@ -97,14 +101,15 @@ describe("push notification service", () => {
     });
 
     await expect(
-      savePlayerPushSubscription(playerId, validSubscription),
+      savePlayerPushSubscription(playerId, groupPlayerId, validSubscription),
     ).resolves.toEqual({ ok: true });
     expect(mocked.upsertPlayer).toHaveBeenCalledWith(
       playerId,
       validSubscription,
     );
+    expect(mocked.setGroupEnabled).toHaveBeenCalledWith(groupPlayerId, true);
 
-    const settings = await getPlayerPushSettings(playerId);
+    const settings = await getPlayerPushSettings(playerId, groupPlayerId);
     expect(settings).toMatchObject({
       available: true,
       enabled: true,
@@ -114,21 +119,37 @@ describe("push notification service", () => {
     expect(settings).not.toHaveProperty("endpoint");
   });
 
+  it("同じplayerに通知先があっても対象グループがOFFなら設定はOFF", async () => {
+    mocked.getGroupEnabled.mockResolvedValue(false);
+    mocked.findPlayer.mockResolvedValue({
+      playerId,
+      ...validSubscription,
+      updatedAt: "2026-08-25T12:00:00.000Z",
+    });
+
+    await expect(
+      getPlayerPushSettings(playerId, groupPlayerId),
+    ).resolves.toMatchObject({ enabled: false });
+  });
+
   it("VAPID未設定では購読テーブルを読まず準備中として返す", async () => {
     delete mocked.runtimeEnv.WEB_PUSH_VAPID_PRIVATE_JWK;
 
-    await expect(getPlayerPushSettings(playerId)).resolves.toEqual({
+    await expect(
+      getPlayerPushSettings(playerId, groupPlayerId),
+    ).resolves.toEqual({
       available: false,
       enabled: false,
       endpointHash: null,
       publicKey: null,
     });
     expect(mocked.findPlayer).not.toHaveBeenCalled();
+    expect(mocked.getGroupEnabled).not.toHaveBeenCalled();
   });
 
-  it("OFFではplayerの通知先を削除する", async () => {
-    await disablePlayerPushSubscription(playerId);
-    expect(mocked.deletePlayer).toHaveBeenCalledWith(playerId);
+  it("OFFでは他グループ用の通知先を消さず対象group_playerだけ無効化する", async () => {
+    await disablePlayerPushSubscription(groupPlayerId);
+    expect(mocked.setGroupEnabled).toHaveBeenCalledWith(groupPlayerId, false);
   });
 
   it("新規開催を購読者へ送り、期限切れの現在通知先だけ削除する", async () => {
