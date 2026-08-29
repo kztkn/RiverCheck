@@ -77,6 +77,10 @@ TABLE STORIESは主催者を含む全投稿を`game_story_posts`へ保存し、`
 
 R2とPostgreSQLをまたぐ分散トランザクションは作らない。参加者投稿はR2へ新画像を保存してからDB参照を更新し、DB更新失敗時の新画像と更新成功後の旧画像をbest effortで削除する。主催者削除ではDBを先にsoft deleteして即座に非公開化し、その後でR2 objectをbest effortで削除する。R2削除失敗時も表示は復活させず、DB参照を正とする。
 
+TABLE STORIESのリアクションは`game_story_reactions`へ分離し、投稿、リアクションした`group_player`、固定のreaction typeを保持する。同一投稿・同一プレイヤー・同一種別を一意制約にし、1投稿への複数種別を許可する。開催参加者ではなくプロフィール認証済みのグループメンバーを操作主体とするため、`game_participant_id`ではなく`group_player_id`を参照する。
+
+リアクション一覧と更新は専用resource routeを使用し、TABLE STORIES本体のloaderを再実行しない。クライアントはタップ時に件数と選択状態を先に更新するOptimistic UIとし、種別ごとに独立してPOSTする。サーバーは`active`の最終状態を受け取り、INSERTは`ON CONFLICT DO NOTHING`、解除はDELETEとして冪等に保存する。保存後はその種別の最新件数を返し、失敗時だけクライアントが直前状態へ戻す。
+
 ## Worker入口のRate Limiting
 
 POSTリクエストはReact Routerへ渡す前にパスを分類し、Workers Rate Limiting bindingで同一IP単位の回数を確認する。主催者PIN入力、主催者変更操作、参加者の参加・入力操作でnamespaceと上限を分け、超過時はDB接続やmultipart解析前に429を返す。GETは通常の閲覧を妨げないため対象外とする。
