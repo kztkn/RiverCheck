@@ -5,15 +5,16 @@ import {
   listGroups,
   listGroupsForPlayer,
 } from "@server/repositories/group-repository.server";
+import {
+  validateGroupIdentity,
+  type GroupIdentityErrors,
+  type GroupIdentityValues,
+} from "@domain/group/validate-group";
 import type { GameListItem } from "@shared-types/game";
 import type {
   GroupDirectoryItem,
   GroupSummary,
 } from "@shared-types/group";
-
-const GROUP_NAME_MAX_LENGTH = 60;
-const GROUP_PUBLIC_CODE_MAX_LENGTH = 48;
-const GROUP_PUBLIC_CODE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 
 export interface GroupOverview {
   group: GroupSummary;
@@ -25,12 +26,8 @@ export interface GroupDirectory {
   groups: GroupDirectoryItem[];
 }
 
-export interface CreateGroupFormValues {
-  name: string;
-  publicCode: string;
-}
-
-type CreateGroupErrors = Partial<Record<keyof CreateGroupFormValues, string>>;
+export type CreateGroupFormValues = GroupIdentityValues;
+type CreateGroupErrors = GroupIdentityErrors;
 
 export type CreateGroupResult =
   | { ok: true; group: GroupSummary }
@@ -95,43 +92,11 @@ export function readCreateGroupForm(formData: FormData): CreateGroupFormValues {
   };
 }
 
-export function validateCreateGroupForm(
-  values: CreateGroupFormValues,
-): { ok: true; values: CreateGroupFormValues } | {
-  ok: false;
-  errors: CreateGroupErrors;
-  values: CreateGroupFormValues;
-} {
-  const normalized = {
-    name: values.name.trim(),
-    publicCode: values.publicCode.trim().toLowerCase(),
-  };
-  const errors: CreateGroupErrors = {};
-
-  if (!normalized.name) {
-    errors.name = "グループ名を入力してください。";
-  } else if (Array.from(normalized.name).length > GROUP_NAME_MAX_LENGTH) {
-    errors.name = `グループ名は${GROUP_NAME_MAX_LENGTH}文字以内で入力してください。`;
-  }
-
-  if (!normalized.publicCode) {
-    errors.publicCode = "URL用コードを入力してください。";
-  } else if (normalized.publicCode.length > GROUP_PUBLIC_CODE_MAX_LENGTH) {
-    errors.publicCode = `URL用コードは${GROUP_PUBLIC_CODE_MAX_LENGTH}文字以内で入力してください。`;
-  } else if (!GROUP_PUBLIC_CODE_PATTERN.test(normalized.publicCode)) {
-    errors.publicCode = "半角英小文字・数字・ハイフンで入力してください。";
-  }
-
-  return Object.keys(errors).length > 0
-    ? { ok: false, errors, values: normalized }
-    : { ok: true, values: normalized };
-}
-
 export async function createGroup(
   values: CreateGroupFormValues,
   initialPlayerId: string | null,
 ): Promise<CreateGroupResult> {
-  const validation = validateCreateGroupForm(values);
+  const validation = validateGroupIdentity(values);
   if (!validation.ok) return validation;
 
   if (await findGroupByPublicCode(validation.values.publicCode)) {
