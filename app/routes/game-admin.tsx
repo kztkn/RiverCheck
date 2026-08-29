@@ -452,8 +452,22 @@ export default function GameAdmin({
   const [gameDeletionPending, setGameDeletionPending] = useState(
     Boolean(deleteAction),
   );
+  const [sevenDeuceRuleEnabled, setSevenDeuceRuleEnabled] = useState(
+    loaderData.game.sevenDeuceRuleEnabled,
+  );
+  const [bombPotRuleEnabled, setBombPotRuleEnabled] = useState(
+    loaderData.game.bombPotRuleEnabled,
+  );
   const gameSettingsDialogRef = useRef<HTMLDialogElement>(null);
   const gameDeletionDialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    setSevenDeuceRuleEnabled(loaderData.game.sevenDeuceRuleEnabled);
+    setBombPotRuleEnabled(loaderData.game.bombPotRuleEnabled);
+  }, [
+    loaderData.game.bombPotRuleEnabled,
+    loaderData.game.sevenDeuceRuleEnabled,
+  ]);
+
   const notice = noticeText(loaderData.notice);
   const visibleParticipants = optimisticallyRemoved
     ? loaderData.participants.filter(
@@ -1192,57 +1206,76 @@ export default function GameAdmin({
 
         <Form className="admin-local-rules" method="post">
           <input name="intent" type="hidden" value="save-local-rules" />
-          <div>
-            <p className="form-brand-label">LOCAL RULES</p>
-            <h2>ローカルルール</h2>
-            <p>参加者画面の確認シートへ反映されます。</p>
-          </div>
-          <label className="local-rule-toggle-card">
-            <input
-              defaultChecked={loaderData.game.sevenDeuceRuleEnabled}
-              name="sevenDeuceRuleEnabled"
-              type="checkbox"
-              value="yes"
-            />
-            <span className="local-rule-toggle-copy">
-              <strong>72oボーナス</strong>
-              <small>
-                7と2のオフスートでポットを獲得したら、ほかの参加者全員から2.5BBずつ受け取ります。
-              </small>
-            </span>
-            <span aria-hidden="true" className="local-rule-switch" />
-          </label>
-          <label className="local-rule-toggle-card">
-            <input
-              defaultChecked={loaderData.game.bombPotRuleEnabled}
-              name="bombPotRuleEnabled"
-              type="checkbox"
-              value="yes"
-            />
-            <span className="local-rule-toggle-copy">
-              <strong>ボムポット</strong>
-              <small>
-                決められたタイミングで全員が2.5BBを強制ベットし、プリフロップを飛ばしてフロップからプレイします。
-              </small>
-            </span>
-            <span aria-hidden="true" className="local-rule-switch" />
-          </label>
-          {localRulesError ? (
-            <p className="error-notice" role="alert">{localRulesError}</p>
-          ) : null}
-          <button
-            className="button button-secondary"
-            disabled={
-              navigation.state === "submitting" &&
-              navigation.formData?.get("intent") === "save-local-rules"
-            }
-            type="submit"
+          <details
+            className="local-rules-disclosure"
+            open={localRulesError ? true : undefined}
           >
-            {navigation.state === "submitting" &&
-            navigation.formData?.get("intent") === "save-local-rules"
-              ? "保存中…"
-              : "ルール設定を保存"}
-          </button>
+            <summary className="local-rules-disclosure-summary">
+              <div>
+                <p className="form-brand-label">LOCAL RULES</p>
+                <h2>ローカルルール</h2>
+              </div>
+              <span className="local-rules-summary-status">
+                72o {sevenDeuceRuleEnabled ? "ON" : "OFF"} ・ ボムポット {bombPotRuleEnabled ? "ON" : "OFF"}
+              </span>
+              <span aria-hidden="true" className="local-rules-summary-chevron">›</span>
+            </summary>
+            <div className="local-rules-disclosure-body">
+              <p className="local-rules-description">
+                参加者画面の確認シートへ反映されます。
+              </p>
+              <label className="local-rule-toggle-card">
+                <input
+                  checked={sevenDeuceRuleEnabled}
+                  name="sevenDeuceRuleEnabled"
+                  onChange={(event) =>
+                    setSevenDeuceRuleEnabled(event.target.checked)
+                  }
+                  type="checkbox"
+                  value="yes"
+                />
+                <span className="local-rule-toggle-copy">
+                  <strong>72oボーナス</strong>
+                  <small>
+                    7と2のオフスートでポットを獲得したら、ほかの参加者全員から2.5BBずつ受け取ります。
+                  </small>
+                </span>
+                <span aria-hidden="true" className="local-rule-switch" />
+              </label>
+              <label className="local-rule-toggle-card">
+                <input
+                  checked={bombPotRuleEnabled}
+                  name="bombPotRuleEnabled"
+                  onChange={(event) => setBombPotRuleEnabled(event.target.checked)}
+                  type="checkbox"
+                  value="yes"
+                />
+                <span className="local-rule-toggle-copy">
+                  <strong>ボムポット</strong>
+                  <small>
+                    決められたタイミングで全員が2.5BBを強制ベットし、プリフロップを飛ばしてフロップからプレイします。
+                  </small>
+                </span>
+                <span aria-hidden="true" className="local-rule-switch" />
+              </label>
+              {localRulesError ? (
+                <p className="error-notice" role="alert">{localRulesError}</p>
+              ) : null}
+              <button
+                className="button button-secondary"
+                disabled={
+                  navigation.state === "submitting" &&
+                  navigation.formData?.get("intent") === "save-local-rules"
+                }
+                type="submit"
+              >
+                {navigation.state === "submitting" &&
+                navigation.formData?.get("intent") === "save-local-rules"
+                  ? "保存中…"
+                  : "ルール設定を保存"}
+              </button>
+            </div>
+          </details>
         </Form>
 
         <Form

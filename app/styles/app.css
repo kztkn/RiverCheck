@@ -6757,3 +6757,103 @@ input[aria-invalid="true"] {
 .settlement-draft-indicator .text-button {
   font-size: 0.7rem;
 }
+
+
+/* Collapsible local-rule settings */
+.local-rules-disclosure {
+  min-width: 0;
+}
+
+.local-rules-disclosure > summary {
+  display: grid;
+  min-width: 0;
+  min-height: 48px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  list-style: none;
+  padding: 4px 2px;
+}
+
+.local-rules-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.local-rules-disclosure > summary:hover,
+.local-rules-disclosure > summary:focus-visible {
+  color: var(--green);
+}
+
+.local-rules-summary-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.local-rules-summary-status {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.local-rules-summary-chevron {
+  color: var(--muted);
+  font-size: 1.35rem;
+  line-height: 1;
+  transition: transform 160ms ease;
+}
+
+.local-rules-disclosure[open] > summary .local-rules-summary-chevron {
+  transform: rotate(90deg);
+}
+
+.local-rules-disclosure-body {
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.local-rules-description {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.55;
+}
+
+.admin-local-rules .local-rules-disclosure-summary h2,
+.admin-local-rules .local-rules-disclosure-summary p {
+  margin: 0;
+}
+
+.admin-local-rules .local-rules-disclosure-summary h2 {
+  margin-top: 4px;
+  font-size: 1.1rem;
+}
+
+.admin-local-rules .local-rules-disclosure-body > .button {
+  justify-self: end;
+}
+
+@media (max-width: 520px) {
+  .local-rules-disclosure > summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 10px;
+  }
+
+  .local-rules-summary-status {
+    grid-column: 1;
+    grid-row: 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .local-rules-summary-chevron {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+}
