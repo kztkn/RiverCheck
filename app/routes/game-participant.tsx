@@ -87,6 +87,11 @@ import { OrganizerCostShareCollection } from "~/components/organizer-cost-share-
 type RebuyActionIntent = "record-rebuy" | "record-repayment" | "undo-rebuy";
 type RebuyActionData = RebuyServiceResult & { intent: RebuyActionIntent };
 
+export type UndoableRebuyAction = {
+  eventId: string;
+  intent: "record-rebuy" | "record-repayment";
+};
+
 export async function loader({ request, params }: Route.LoaderArgs) {
   const context = await requireGame(params.groupCode, params.gameId);
   const [isOrganizer, profileOverview] = await Promise.all([
@@ -1250,29 +1255,18 @@ function RebuyTracker({
   const isPending = fetcher.state !== "idle";
   const result = fetcher.data;
   const submissionPendingRef = useRef(false);
-  const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [undoableAction, setUndoableAction] =
+    useState<UndoableRebuyAction | null>(null);
 
   useEffect(() => {
     if (fetcher.state === "idle") submissionPendingRef.current = false;
   }, [fetcher.state]);
 
   useEffect(() => {
-    if (!result?.ok) {
-      setFeedbackVisible(false);
-      return;
-    }
-    setFeedbackVisible(true);
-    const timeoutId = window.setTimeout(
-      () => setFeedbackVisible(false),
-      4_000,
+    setUndoableAction((current) =>
+      resolveUndoableRebuyAction(current, result),
     );
-    return () => window.clearTimeout(timeoutId);
   }, [result]);
-
-  const canUndo =
-    result?.ok === true &&
-    result.intent !== "undo-rebuy" &&
-    Boolean(result.eventId);
 
   function submit(intent: "record-rebuy" | "record-repayment") {
     if (submissionPendingRef.current) return;
@@ -1284,14 +1278,13 @@ function RebuyTracker({
   }
 
   function undo() {
-    if (!result?.ok || !result.eventId) return;
+    if (!undoableAction) return;
     if (submissionPendingRef.current) return;
-    setFeedbackVisible(false);
     submissionPendingRef.current = true;
     void fetcher.submit(
       {
         commandId: createCommandId(),
-        eventId: result.eventId,
+        eventId: undoableAction.eventId,
         intent: "undo-rebuy",
       },
       { method: "post" },
@@ -1299,13 +1292,11 @@ function RebuyTracker({
   }
 
   const feedbackMessage =
-    result?.ok === true
-      ? result.intent === "record-rebuy"
-        ? "リバイを記録しました。"
-        : result.intent === "record-repayment"
-          ? "100BBの返済を記録しました。"
-          : "直前の操作を元に戻しました。"
-      : null;
+    undoableAction?.intent === "record-rebuy"
+      ? "直前：＋ リバイ"
+      : undoableAction?.intent === "record-repayment"
+        ? "直前：100BB返済"
+        : null;
 
   return (
     <section className="rebuy-tracker" aria-labelledby="rebuy-tracker-title">
@@ -1360,28 +1351,39 @@ function RebuyTracker({
           {result.error}
         </p>
       ) : null}
-      {feedbackMessage && feedbackVisible ? (
+      {feedbackMessage ? (
         <div
           aria-live="polite"
-          className="app-toast rebuy-action-toast"
+          className="rebuy-action-feedback"
           role="status"
         >
-          <span aria-hidden="true">✓</span>
-          <strong>{feedbackMessage}</strong>
-          {canUndo ? (
-            <button
-              className="rebuy-toast-undo"
-              disabled={isPending}
-              onClick={undo}
-              type="button"
-            >
-              元に戻す
-            </button>
-          ) : null}
+          <span className="rebuy-action-feedback-copy">
+            <span aria-hidden="true">✓</span>
+            <strong>{feedbackMessage}</strong>
+          </span>
+          <button
+            className="rebuy-inline-undo"
+            disabled={isPending}
+            onClick={undo}
+            type="button"
+          >
+            <span aria-hidden="true">↶</span>
+            元に戻す
+          </button>
         </div>
       ) : null}
     </section>
   );
+}
+
+export function resolveUndoableRebuyAction(
+  current: UndoableRebuyAction | null,
+  result: RebuyActionData | undefined,
+): UndoableRebuyAction | null {
+  if (!result?.ok) return current;
+  if (result.intent === "undo-rebuy") return null;
+  if (!result.eventId) return current;
+  return { eventId: result.eventId, intent: result.intent };
 }
 
 function ResultEntryForm({

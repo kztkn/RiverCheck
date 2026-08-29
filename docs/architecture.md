@@ -65,6 +65,10 @@ buildとdeployの間は旧Workerが新schemaへ接続し得るため、自動適
 
 Workers はリクエストをまたいだネットワーク I/O の再利用を許可しないため、DB 問い合わせごとに新しい pg Client を作成して同じ処理内で閉じる。本番で Hyperdrive を利用する場合、PostgreSQL への接続プールは Hyperdrive が管理する。SQL は repository 内でプレースホルダーを使って実行する。
 
+## リバイUNDOの操作フィードバック
+
+参加者のリバイ・100BB返済は既存の`useFetcher`による1操作1保存を維持する。成功後のUNDO導線は画面下部の時間制限付きtoastへ置かず、`RebuyTracker`内の操作ボタン直下に「直前の操作」として表示する。成功した直前イベントIDをクライアントstateへ保持し、時間経過では失効させない。次のリバイ・返済が成功した場合だけ新しいイベントへ置き換え、操作失敗時は既存のUNDO対象を保持する。UNDO成功、ページ再読込、ページ遷移でクライアントstateを破棄する。サーバー側の「直前のイベントだけUNDO可能」という既存制約を正とする。
+
 ## TABLE STORIESとCloudflare R2
 
 TABLE STORIESは主催者を含む全投稿を`game_story_posts`へ保存し、`game_participant_id`の一意制約で1参加者1件にする。固定の主催者名義は作らず、投稿者のプレイヤー名、アイコン、開催結果を共通表示する。本文、写真メタデータ、作成・更新時刻に加え、主催者削除の`deleted_at`と`deleted_by_type`を保持する。画像本体はPostgreSQLへ保存しない。
