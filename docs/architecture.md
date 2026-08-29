@@ -81,6 +81,10 @@ TABLE STORIESのリアクションは`game_story_reactions`へ分離し、投稿
 
 リアクション一覧と更新は専用resource routeを使用し、TABLE STORIES本体のloaderを再実行しない。クライアントはタップ時に件数と選択状態を先に更新するOptimistic UIとし、種別ごとに独立してPOSTする。サーバーは`active`の最終状態を受け取り、INSERTは`ON CONFLICT DO NOTHING`、解除はDELETEとして冪等に保存する。保存後はその種別の最新件数を返し、失敗時だけクライアントが直前状態へ戻す。
 
+## 会費回収の即時更新
+
+確定結果画面の会費回収トグルは、表示上の受取状態と集計人数をタップ直後にOptimistic UIで更新する。保存は参加者ごとに独立したリクエストとして`/g/:groupCode/games/:gameId/cost-share-receipts`へPOSTし、同じ参加者の保存中だけ再操作を止める。他参加者の操作は並列に続けられる。resource routeは既存の会費回収serviceを呼び、結果画面のloader全体を再実行しない。保存失敗時は対象参加者の表示だけを直前状態へ戻す。JavaScript無効時は従来どおり開催詳細actionへ通常form送信できる。
+
 ## Worker入口のRate Limiting
 
 POSTリクエストはReact Routerへ渡す前にパスを分類し、Workers Rate Limiting bindingで同一IP単位の回数を確認する。主催者PIN入力、主催者変更操作、参加者の参加・入力操作でnamespaceと上限を分け、超過時はDB接続やmultipart解析前に429を返す。GETは通常の閲覧を妨げないため対象外とする。
