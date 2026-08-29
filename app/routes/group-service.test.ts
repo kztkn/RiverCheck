@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { validateCreateGroupForm } from "@server/services/group-service.server";
+import { validateGroupIdentity } from "@domain/group/validate-group";
 
-describe("validateCreateGroupForm", () => {
+describe("validateGroupIdentity", () => {
   it("グループ名をtrimしURL用コードを小文字へ正規化する", () => {
     expect(
-      validateCreateGroupForm({
+      validateGroupIdentity({
         name: "  ボドゲ会  ",
         publicCode: "BoardGame-2026",
       }),
@@ -18,7 +18,7 @@ describe("validateCreateGroupForm", () => {
   });
 
   it("URL用コードに使用できない文字を拒否する", () => {
-    const result = validateCreateGroupForm({
+    const result = validateGroupIdentity({
       name: "ボドゲ会",
       publicCode: "ボドゲ会",
     });
