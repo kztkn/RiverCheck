@@ -1,11 +1,12 @@
 import { buildPushHTTPRequest } from "@pushforge/builder";
 import { env } from "cloudflare:workers";
 import {
-  deletePlayerPushSubscription,
   deletePlayerPushSubscriptionIfCurrent,
   findPlayerPushSubscription,
+  isGroupPlayerPushEnabled,
   listGameParticipantPushSubscriptions,
   listGroupPlayerPushSubscriptions,
+  setGroupPlayerPushEnabled,
   upsertPlayerPushSubscription,
   type PlayerPushSubscriptionRecord,
 } from "@server/repositories/player-push-subscription-repository.server";
@@ -39,6 +40,7 @@ export type SavePushSubscriptionResult =
 
 export async function getPlayerPushSettings(
   playerId: string,
+  groupPlayerId: string,
 ): Promise<PlayerPushSettings> {
   const config = readWebPushConfig();
   if (!config) {
@@ -49,10 +51,13 @@ export async function getPlayerPushSettings(
       publicKey: null,
     };
   }
-  const subscription = await findPlayerPushSubscription(playerId);
+  const [subscription, groupEnabled] = await Promise.all([
+    findPlayerPushSubscription(playerId),
+    isGroupPlayerPushEnabled(groupPlayerId),
+  ]);
   return {
-    available: config !== null,
-    enabled: subscription !== null,
+    available: true,
+    enabled: groupEnabled && subscription !== null,
     endpointHash: subscription
       ? await hashToken(subscription.endpoint)
       : null,
@@ -62,6 +67,7 @@ export async function getPlayerPushSettings(
 
 export async function savePlayerPushSubscription(
   playerId: string,
+  groupPlayerId: string,
   input: { endpoint: string; p256dh: string; auth: string },
 ): Promise<SavePushSubscriptionResult> {
   if (!readWebPushConfig()) {
@@ -73,13 +79,16 @@ export async function savePlayerPushSubscription(
   const validation = validatePushSubscription(input);
   if (!validation.ok) return validation;
   await upsertPlayerPushSubscription(playerId, validation.subscription);
+  await setGroupPlayerPushEnabled(groupPlayerId, true);
   return { ok: true };
 }
 
 export async function disablePlayerPushSubscription(
-  playerId: string,
+  groupPlayerId: string,
 ): Promise<void> {
-  await deletePlayerPushSubscription(playerId);
+  // Push endpoint is shared by the player across groups. Turning one group off
+  // must not disable notifications for the player's other memberships.
+  await setGroupPlayerPushEnabled(groupPlayerId, false);
 }
 
 export async function notifyNewGameCreated(input: {
