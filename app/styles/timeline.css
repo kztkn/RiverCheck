@@ -30,8 +30,8 @@
 
 .game-timeline-heading strong {
   overflow: hidden;
-  font-size: clamp(1.08rem, 3.6vw, 1.34rem);
-  letter-spacing: -0.03em;
+  font-size: clamp(1.28rem, 4vw, 1.75rem);
+  letter-spacing: -0.035em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -179,9 +179,5 @@
 
   .game-timeline-item::before {
     left: 48px;
-  }
-
-  .game-timeline-heading strong {
-    font-size: 1.04rem;
   }
 }
