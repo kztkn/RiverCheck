@@ -27,6 +27,10 @@ export default [
     "routes/game-story-reactions.ts",
   ),
   route("g/:groupCode/games/:gameId/timeline", "routes/game-timeline.ts"),
+  route(
+    "g/:groupCode/games/:gameId/cost-share-receipts",
+    "routes/game-cost-share-receipts.ts",
+  ),
   route("g/:groupCode/games/:gameId", "routes/game-participant.tsx"),
   route("g/:groupCode/games/:gameId/admin", "routes/game-admin.tsx"),
   route("g/:groupCode/games/:gameId/admin/edit", "routes/game-edit.tsx"),

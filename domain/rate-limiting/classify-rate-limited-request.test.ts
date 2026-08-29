@@ -30,6 +30,12 @@ describe("classifyRateLimitedRequest", () => {
         "/g/river-check/games/1b233730-eecd-449a-b28b-c93b0a395815/admin",
       ),
     ).toBe("admin-write");
+    expect(
+      classifyRateLimitedRequest(
+        "POST",
+        "/g/river-check/games/1b233730-eecd-449a-b28b-c93b0a395815/cost-share-receipts",
+      ),
+    ).toBe("admin-write");
   });
 
   it("参加・チップ入力のPOSTを参加者制限へ分類する", () => {
