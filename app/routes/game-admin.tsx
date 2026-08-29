@@ -46,6 +46,7 @@ import {
 } from "@server/services/finalization-service.server";
 import { calculateCostShares } from "@domain/cost-sharing/calculate-cost-shares";
 import { GameSettingsFields } from "../components/game-settings-fields";
+import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-preview-draft";
 import { ParticipantLinkQr } from "../components/participant-link-qr";
 import type { GameParticipantSummary } from "@shared-types/player";
 import type { Route } from "./+types/game-admin";
@@ -227,16 +228,19 @@ export async function action({ request, params }: Route.ActionArgs) {
           "開催を削除できませんでした。画面を更新してもう一度お試しください。",
       };
     }
-    return redirect(`/g/${params.groupCode}/manage?notice=game-deleted`, {
-      status: 303,
-      headers: {
-        "Set-Cookie": clearParticipantCookie(
-          request,
-          params.groupCode,
-          params.gameId,
-        ),
+    return redirect(
+      `/g/${params.groupCode}/manage?notice=game-deleted&deletedGameId=${params.gameId}`,
+      {
+        status: 303,
+        headers: {
+          "Set-Cookie": clearParticipantCookie(
+            request,
+            params.groupCode,
+            params.gameId,
+          ),
+        },
       },
-    });
+    );
   }
 
   const participantId = readString(formData, "participantId");
@@ -403,7 +407,12 @@ export default function GameAdmin({
       ? actionData.error
       : null;
   const actionErrors = settingsAction?.errors ?? {};
-  const values = failedAction?.values ?? gameToFormValues(loaderData.game);
+  const settlementDraftBaseValues = gameToFormValues(loaderData.game);
+  const values = failedAction?.values ?? settlementDraftBaseValues;
+  const settlementDraftStorageKey = buildSettlementPreviewDraftStorageKey(
+    loaderData.group.publicCode,
+    loaderData.game.id,
+  );
   const [settlementParticipantCount, setSettlementParticipantCount] = useState(
     values.previewParticipantCount,
   );
@@ -1247,6 +1256,8 @@ export default function GameAdmin({
             actualParticipantCount={loaderData.participants.length}
             errors={actionErrors}
             onParticipantCountChange={setSettlementParticipantCount}
+            settlementDraftBaseValues={settlementDraftBaseValues}
+            settlementDraftStorageKey={settlementDraftStorageKey}
             showCoreSettings={false}
             values={values}
           />

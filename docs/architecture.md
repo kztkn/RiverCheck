@@ -170,6 +170,12 @@ PIN・合言葉と32文字以上の署名鍵はCloudflare Secretで受け取る�
 
 service が `pg` の client を取得して `BEGIN` し、gameと参加者行をロックする。全員の入力と4人以上の参加を確認し、domain関数で検算、点数、順位、負担額を計算する。差分がある場合は主催者の確認を必須にする。game_resultsへのINSERT、gameのfinalized更新、現在の確定済み履歴に基づく実績同期を同一transactionで実行し、途中失敗時はrollbackする。
 
+## 精算プレビューのローカル下書き
+
+確定前の精算プレビューは正式な`games`更新とは分離し、主催者のブラウザ`localStorage`だけへ保存する。保存キーはgroup codeとgame IDを含むバージョン付きキーとし、会費、想定人数、順位別負担額、おすすめ配分モード、調整モードをJSONで保持する。`GameSettingsFields`は下書き用propsが渡された開催管理画面だけで復元・自動保存を有効にし、新規開催画面では利用しない。壊れたJSONや未知のversion/modeは無視して削除する。
+
+正式な開催設定と金額・人数・配分が同じ状態では下書きを保持せず、「元の設定に戻す」でlocalStorageを削除して正式値へ戻す。finalize成功後は結果画面への`notice=finalized`遷移時に、受付中開催の削除成功後は管理ホームへのredirectで渡す削除game IDを使って該当キーを削除する。localStorageが利用できない場合でも確定・削除などサーバー処理は失敗させない。
+
 ## 確定後の結果訂正
 
 主催者routeは既存参加者全員の残りチップ・リバイ回数を配列で受け取り、serviceがgame、game_participants、game_resultsをロックする。対象参加者集合が確定時から変わっていないことを検証し、既存のdomain関数で全順位・会費を再計算する。

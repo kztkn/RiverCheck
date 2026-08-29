@@ -83,6 +83,7 @@ import {
 } from "@server/repositories/game-cost-share-receipt-repository.server";
 import { updateGameCostShareReceipt } from "@server/services/game-cost-share-receipt-service.server";
 import { OrganizerCostShareCollection } from "~/components/organizer-cost-share-collection";
+import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-preview-draft";
 
 type RebuyActionIntent = "record-rebuy" | "record-repayment" | "undo-rebuy";
 type RebuyActionData = RebuyServiceResult & { intent: RebuyActionIntent };
@@ -573,6 +574,24 @@ export default function GameParticipant({
       window.removeEventListener("focus", refresh);
     };
   }, [loaderData.game.status, revalidator]);
+
+  useEffect(() => {
+    if (loaderData.notice !== "finalized") return;
+    try {
+      window.localStorage.removeItem(
+        buildSettlementPreviewDraftStorageKey(
+          loaderData.group.publicCode,
+          loaderData.game.id,
+        ),
+      );
+    } catch {
+      // Finalization already succeeded; blocked local storage must not affect results.
+    }
+  }, [
+    loaderData.game.id,
+    loaderData.group.publicCode,
+    loaderData.notice,
+  ]);
 
   useEffect(() => {
     if (!noticeMessage) {

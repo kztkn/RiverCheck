@@ -11,6 +11,11 @@ import {
   recommendTopCostsForAttendance,
   type RecommendationMode,
 } from "@domain/cost-sharing/recommend-top-costs";
+import {
+  hasSameSettlementPreviewValues,
+  parseSettlementPreviewDraft,
+  type SettlementPreviewDraft,
+} from "~/utils/settlement-preview-draft";
 
 export interface GameSettingsValues {
   title: string;
@@ -35,6 +40,8 @@ interface GameSettingsFieldsProps {
   errors: SettingsErrors;
   onValidityChange?: (valid: boolean) => void;
   onParticipantCountChange?: (value: string) => void;
+  settlementDraftBaseValues?: GameSettingsValues;
+  settlementDraftStorageKey?: string;
   showCoreSettings?: boolean;
   values: GameSettingsValues;
 }
@@ -44,6 +51,8 @@ export function GameSettingsFields({
   errors,
   onValidityChange,
   onParticipantCountChange,
+  settlementDraftBaseValues,
+  settlementDraftStorageKey,
   showCoreSettings = true,
   values,
 }: GameSettingsFieldsProps) {
@@ -62,6 +71,8 @@ export function GameSettingsFields({
   const [recommendationNotice, setRecommendationNotice] = useState<
     string | null
   >(null);
+  const [draftReady, setDraftReady] = useState(!settlementDraftStorageKey);
+  const [draftSaved, setDraftSaved] = useState(false);
 
   const analysis = useMemo(
     () => analyzeSettlement(venueCost, participantCountInput, shareValues),
@@ -71,6 +82,82 @@ export function GameSettingsFields({
   useEffect(() => {
     onValidityChange?.(analysis.isValid);
   }, [analysis.isValid, onValidityChange]);
+
+  useEffect(() => {
+    if (!settlementDraftStorageKey) {
+      setDraftReady(true);
+      setDraftSaved(false);
+      return;
+    }
+
+    setDraftReady(false);
+    try {
+      const raw = window.localStorage.getItem(settlementDraftStorageKey);
+      const draft = parseSettlementPreviewDraft(raw);
+      if (!draft) {
+        if (raw) window.localStorage.removeItem(settlementDraftStorageKey);
+        setDraftSaved(false);
+        return;
+      }
+      setVenueCost(draft.venueCost);
+      setParticipantCountInput(draft.participantCount);
+      onParticipantCountChange?.(draft.participantCount);
+      setShareValues([...draft.shareValues]);
+      setRecommendationMode(draft.recommendationMode);
+      setAdjustmentMode(draft.adjustmentMode);
+      setEditingRank(null);
+      setRecommendationNotice(null);
+      setDraftSaved(true);
+    } catch {
+      setDraftSaved(false);
+    } finally {
+      setDraftReady(true);
+    }
+  }, [settlementDraftStorageKey]);
+
+  useEffect(() => {
+    if (!settlementDraftStorageKey || !draftReady) return;
+
+    const draft: SettlementPreviewDraft = {
+      version: 1,
+      venueCost,
+      participantCount: participantCountInput,
+      shareValues: [...shareValues],
+      recommendationMode,
+      adjustmentMode,
+    };
+    const baseValues = settlementDraftBaseValues ?? values;
+    const baseline: SettlementPreviewDraft = {
+      version: 1,
+      venueCost: baseValues.venueCost,
+      participantCount: normalizeParticipantCount(baseValues.previewParticipantCount),
+      shareValues: buildInitialShares(baseValues),
+      recommendationMode: "standard",
+      adjustmentMode: "top-three",
+    };
+
+    try {
+      if (hasSameSettlementPreviewValues(draft, baseline)) {
+        window.localStorage.removeItem(settlementDraftStorageKey);
+        setDraftSaved(false);
+        return;
+      }
+      window.localStorage.setItem(settlementDraftStorageKey, JSON.stringify(draft));
+      setDraftSaved(true);
+    } catch {
+      setDraftSaved(false);
+    }
+  }, [
+    adjustmentMode,
+    draftReady,
+    participantCountInput,
+    recommendationMode,
+    settlementDraftBaseValues,
+    settlementDraftStorageKey,
+    shareValues,
+    values,
+    venueCost,
+  ]);
 
   const recommendationAvailable = useMemo(() => {
     try {
@@ -202,6 +289,29 @@ export function GameSettingsFields({
     });
   }
 
+  function resetSettlementDraft() {
+    const baseValues = settlementDraftBaseValues ?? values;
+    const participantCount = normalizeParticipantCount(
+      baseValues.previewParticipantCount,
+    );
+    setVenueCost(baseValues.venueCost);
+    setParticipantCountInput(participantCount);
+    onParticipantCountChange?.(participantCount);
+    setShareValues(buildInitialShares(baseValues));
+    setRecommendationMode("standard");
+    setAdjustmentMode("top-three");
+    setEditingRank(null);
+    setRecommendationNotice(null);
+    if (settlementDraftStorageKey) {
+      try {
+        window.localStorage.removeItem(settlementDraftStorageKey);
+      } catch {
+        // The in-memory reset still succeeds even when browser storage is blocked.
+      }
+    }
+    setDraftSaved(false);
+  }
+
   return (
     <>
       {showCoreSettings ? (
@@ -325,6 +435,18 @@ export function GameSettingsFields({
           <div className="cost-preview-heading">
             <div>
               <h2>精算プレビュー</h2>
+              {settlementDraftStorageKey && draftSaved ? (
+                <div className="settlement-draft-indicator">
+                  <span role="status">● 下書き保存済み</span>
+                  <button
+                    className="text-button"
+                    onClick={resetSettlementDraft}
+                    type="button"
+                  >
+                    元の設定に戻す
+                  </button>
+                </div>
+              ) : null}
             </div>
             <Field
               containerClassName="preview-count-field"
@@ -586,6 +708,14 @@ function parseParticipantCount(value: string): number {
   const parsed = parsePreviewInteger(value);
   if (parsed < 4) throw new RangeError("participant count is too small");
   return parsed;
+}
+
+function normalizeParticipantCount(value: string): string {
+  try {
+    return String(parseParticipantCount(value));
+  } catch {
+    return "4";
+  }
 }
 
 function buildInitialShares(values: GameSettingsValues): string[] {
