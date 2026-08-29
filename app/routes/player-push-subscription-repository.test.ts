@@ -9,14 +9,28 @@ vi.mock("@server/db/client.server", () => ({
   withTransaction: vi.fn(),
 }));
 
-import { listGameParticipantPushSubscriptions } from "@server/repositories/player-push-subscription-repository.server";
+import {
+  listGameParticipantPushSubscriptions,
+  listGroupPlayerPushSubscriptions,
+} from "@server/repositories/player-push-subscription-repository.server";
 
 describe("player push subscription repository", () => {
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  it("開催参加者かつ通知購読があるplayerだけを取得する", async () => {
+  it("新規開催通知は所属中かつ通知ONのplayerだけを取得する", async () => {
+    mocked.queryDatabase.mockResolvedValue({ rows: [] });
+
+    await listGroupPlayerPushSubscriptions("group-1");
+
+    const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
+    expect(sql).toContain("group_player.group_id = $1");
+    expect(sql).toContain("group_player.is_active = TRUE");
+    expect(sql).toContain("group_player.push_notifications_enabled = TRUE");
+  });
+
+  it("結果確定通知は開催参加者かつグループ通知ONのplayerだけを取得する", async () => {
     mocked.queryDatabase.mockResolvedValue({
       rows: [
         {
@@ -46,6 +60,7 @@ describe("player push subscription repository", () => {
     expect(sql).toContain("INNER JOIN player_push_subscriptions AS subscription");
     expect(sql).toContain("participant.game_id = $1");
     expect(sql).toContain("group_player.group_id = $2");
+    expect(sql).toContain("group_player.push_notifications_enabled = TRUE");
     expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
       "game-1",
       "group-1",
