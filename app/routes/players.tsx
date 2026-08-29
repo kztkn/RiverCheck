@@ -1,9 +1,11 @@
 import { GroupSiteHeader } from "~/components/site-menu";
+import { ReusablePlayerPicker } from "~/components/reusable-player-picker";
 import { Form, Link, redirect, useNavigation } from "react-router";
 import { PlayerAvatar } from "~/components/player-avatar";
 import { AppToast } from "~/components/app-toast";
 import { IconEdit, IconPlus } from "@tabler/icons-react";
 import {
+  addExistingPlayerForGroup,
   addPlayerForGroup,
   getPlayerManagement,
   readAddPlayerForm,
@@ -19,6 +21,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const management = await getPlayerManagement(params.groupCode);
   if (!management) throw new Response("Group not found", { status: 404 });
 
+  const url = new URL(request.url);
   return {
     ...management,
     players: management.players.map((player) => ({
@@ -29,8 +32,20 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         groupPlayerId: player.id,
       }),
     })),
-    added: new URL(request.url).searchParams.has("added"),
-    renamed: new URL(request.url).searchParams.has("renamed"),
+    reusablePlayers: management.reusablePlayers.map((player) => ({
+      ...player,
+      avatarUrl:
+        player.sourceGroupCode && player.sourceGroupPlayerId
+          ? buildPlayerAvatarUrl({
+              avatarUpdatedAt: player.avatarUpdatedAt,
+              groupCode: player.sourceGroupCode,
+              groupPlayerId: player.sourceGroupPlayerId,
+            })
+          : null,
+    })),
+    added: url.searchParams.has("added"),
+    linked: url.searchParams.has("linked"),
+    renamed: url.searchParams.has("renamed"),
   };
 }
 
@@ -38,6 +53,20 @@ export async function action({ request, params }: Route.ActionArgs) {
   await requireOrganizer(request, params.groupCode);
   const formData = await request.formData();
   const intent = readString(formData, "intent") || "add-player";
+
+  if (intent === "add-existing-player") {
+    const playerId = readString(formData, "playerId");
+    if (!isUuid(playerId)) {
+      return {
+        ok: false as const,
+        intent,
+        error: "プロフィールを確認できません。",
+      };
+    }
+    const result = await addExistingPlayerForGroup(params.groupCode, playerId);
+    if (!result.ok) return { ...result, intent };
+    return redirect(`/g/${params.groupCode}/players?linked=1`);
+  }
 
   if (intent === "rename-player") {
     const groupPlayerId = readString(formData, "groupPlayerId");
@@ -79,6 +108,12 @@ export default function Players({
     "values" in actionData
     ? actionData
     : null;
+  const existingFailure = actionData?.ok === false &&
+    "intent" in actionData &&
+    actionData.intent === "add-existing-player" &&
+    "error" in actionData
+    ? actionData
+    : null;
   const renameFailure = actionData?.ok === false &&
     "intent" in actionData &&
     actionData.intent === "rename-player"
@@ -86,6 +121,7 @@ export default function Players({
     : null;
   const errors = addFailure?.errors ?? {};
   const displayName = addFailure?.values.displayName ?? "";
+  const actionUrl = `/g/${loaderData.group.publicCode}/players`;
 
   return (
     <main className="page-shell form-page">
@@ -94,12 +130,19 @@ export default function Players({
       <section className="form-intro member-management-intro">
         <p className="eyebrow">MEMBERS</p>
         <h1>メンバー管理</h1>
-        <p>参加するプレイヤーの登録と表示名を管理します。</p>
+        <p>
+          このグループのメンバーを管理します。表示名やアイコンなどのプロフィールはグループ間で共通です。
+        </p>
       </section>
 
       <AppToast
-        message={loaderData.added ? "メンバーを追加しました。" : null}
+        message={loaderData.added ? "新しいメンバーを追加しました。" : null}
         searchParam="added"
+      />
+
+      <AppToast
+        message={loaderData.linked ? "既存プロフィールをこのグループに追加しました。" : null}
+        searchParam="linked"
       />
 
       <AppToast
@@ -108,8 +151,17 @@ export default function Players({
       />
 
       <div className="member-management">
+        <ReusablePlayerPicker
+          action={actionUrl}
+          currentMemberCount={loaderData.players.length}
+          players={loaderData.reusablePlayers}
+        />
+        {existingFailure ? (
+          <p className="error-notice" role="alert">{existingFailure.error}</p>
+        ) : null}
+
         <Form
-          action={`/g/${loaderData.group.publicCode}/players`}
+          action={actionUrl}
           className="member-add-form"
           method="post"
           noValidate
@@ -119,8 +171,8 @@ export default function Players({
           <div className="member-add-heading">
             <span aria-hidden="true"><IconPlus /></span>
             <div>
-              <h2>メンバーを追加</h2>
-              <p>開催に参加する名前を名簿へ登録します。</p>
+              <h2>新しいメンバーを追加</h2>
+              <p>ほかのグループにいない人だけ、新しいプロフィールとして登録します。</p>
             </div>
           </div>
 
@@ -149,7 +201,7 @@ export default function Players({
             disabled={isSubmitting}
             type="submit"
           >
-            {isSubmitting && submittingIntent === "add-player" ? "追加中…" : "メンバーを追加"}
+            {isSubmitting && submittingIntent === "add-player" ? "追加中…" : "新規プロフィールを追加"}
           </button>
         </Form>
 
@@ -184,7 +236,7 @@ export default function Players({
                       </span>
                     </summary>
                     <Form
-                      action={`/g/${loaderData.group.publicCode}/players`}
+                      action={actionUrl}
                       className="member-rename-form"
                       method="post"
                       noValidate
@@ -204,6 +256,9 @@ export default function Players({
                           name="displayName"
                           required
                         />
+                        <span className="field-hint">
+                          表示名は同じプロフィールを使うすべてのグループに反映されます。
+                        </span>
                       </label>
                       {renameFailure?.groupPlayerId === player.id ? (
                         <p className="field-error" role="alert">{renameFailure.error}</p>
@@ -212,7 +267,7 @@ export default function Players({
                         <Link
                           className="button button-ghost"
                           reloadDocument
-                          to={`/g/${loaderData.group.publicCode}/players`}
+                          to={actionUrl}
                         >
                           キャンセル
                         </Link>
