@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -13,6 +14,7 @@ import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-s
 import { isOrganizerAuthenticated } from "@server/services/organizer-auth.server";
 import { extractGroupCode } from "@domain/routing/extract-group-code";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
+import { rememberLastVisitedGroup } from "~/utils/last-visited-group";
 import "./styles/app.css";
 import "./styles/groups.css";
 import "./styles/highlight.css";
@@ -26,6 +28,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const groupCode = extractGroupCode(new URL(request.url).pathname);
   if (!groupCode) {
     return {
+      activeGroupCode: null,
       authenticatedPlayerAvatarUrl: null,
       authenticatedPlayerGroupPlayerId: null,
       authenticatedPlayerName: null,
@@ -39,6 +42,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   ]);
   const profile = overview?.profile ?? null;
   return {
+    activeGroupCode: overview?.group.publicCode ?? null,
     authenticatedPlayerAvatarUrl: profile
       ? buildPlayerAvatarUrl({
           avatarUpdatedAt: profile.avatarUploadedAt,
@@ -90,7 +94,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App() {
+export default function App({ loaderData }: Route.ComponentProps) {
+  useEffect(() => {
+    if (!loaderData.activeGroupCode) return;
+    rememberLastVisitedGroup(window.localStorage, loaderData.activeGroupCode);
+  }, [loaderData.activeGroupCode]);
+
   return <Outlet />;
 }
 
