@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - feat/multi-group-core
-      - feat/multi-group-navigation-final
 
 permissions:
   contents: read
