@@ -5,6 +5,7 @@ export default [
   route("error", "routes/error.tsx"),
   route("r/:resultCode", "routes/result-short-link.ts"),
   route("g/:groupCode", "routes/group-top.tsx"),
+  route("g/:groupCode/groups", "routes/group-directory.tsx"),
   route("g/:groupCode/about", "routes/about.tsx"),
   route("g/:groupCode/stats", "routes/stats-index.tsx"),
   route("g/:groupCode/stats/:groupPlayerId", "routes/stats-player.tsx"),
