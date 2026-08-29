@@ -6652,3 +6652,88 @@ input[aria-invalid="true"] {
   background: rgba(57, 222, 141, 0.025);
   padding: 24px 2px;
 }
+
+
+/* Keep the latest rebuy action undoable in context instead of a timed toast. */
+.rebuy-action-feedback {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 2px;
+  border-top: 1px solid rgba(223, 236, 227, 0.12);
+  padding: 10px 2px 0;
+}
+
+.rebuy-action-feedback-copy {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+}
+
+.rebuy-action-feedback-copy > span {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(57, 222, 141, 0.14);
+  color: var(--green);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.rebuy-action-feedback-copy strong {
+  overflow: hidden;
+  color: #c8d4cd;
+  font-size: 0.74rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rebuy-inline-undo {
+  display: inline-flex;
+  min-height: 40px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 6px 8px;
+}
+
+.rebuy-inline-undo:hover,
+.rebuy-inline-undo:focus-visible {
+  background: rgba(57, 222, 141, 0.08);
+  color: var(--green);
+}
+
+.rebuy-inline-undo:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+@media (max-width: 360px) {
+  .rebuy-action-feedback {
+    gap: 7px;
+  }
+
+  .rebuy-action-feedback-copy strong {
+    font-size: 0.7rem;
+  }
+
+  .rebuy-inline-undo {
+    padding-inline: 5px;
+    font-size: 0.72rem;
+  }
+}

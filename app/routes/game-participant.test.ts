@@ -121,6 +121,7 @@ import {
   LocalRulesSheet,
   ParticipantResultEntrySection,
   ParticipantRosterSheet,
+  resolveUndoableRebuyAction,
   shouldShowLocalRules,
 } from "./game-participant";
 
@@ -716,6 +717,55 @@ describe("game participant route", () => {
       "rc_participant_game",
     );
     expect(response.headers.get("Set-Cookie")).toContain("rc_player_profile");
+  });
+});
+
+describe("resolveUndoableRebuyAction", () => {
+  const first = {
+    eventId: "66666666-6666-4666-8666-666666666666",
+    intent: "record-rebuy" as const,
+  };
+
+  it("成功したリバイを時間制限なしの直前操作として保持する", () => {
+    expect(
+      resolveUndoableRebuyAction(null, {
+        ok: true,
+        eventId: first.eventId,
+        intent: "record-rebuy",
+        state: { totalRebuyCount: 1, outstandingRebuyCount: 1 },
+      }),
+    ).toEqual(first);
+  });
+
+  it("次の操作が失敗しても直前の成功操作をUNDO対象として残す", () => {
+    expect(
+      resolveUndoableRebuyAction(first, {
+        ok: false,
+        error: "未返済のリバイはありません。",
+        intent: "record-repayment",
+      }),
+    ).toEqual(first);
+  });
+
+  it("次の成功操作でUNDO対象を置き換え、UNDO成功時に消す", () => {
+    const repayment = resolveUndoableRebuyAction(first, {
+      ok: true,
+      eventId: "77777777-7777-4777-8777-777777777777",
+      intent: "record-repayment",
+      state: { totalRebuyCount: 1, outstandingRebuyCount: 0 },
+    });
+    expect(repayment).toEqual({
+      eventId: "77777777-7777-4777-8777-777777777777",
+      intent: "record-repayment",
+    });
+    expect(
+      resolveUndoableRebuyAction(repayment, {
+        ok: true,
+        eventId: null,
+        intent: "undo-rebuy",
+        state: { totalRebuyCount: 1, outstandingRebuyCount: 1 },
+      }),
+    ).toBeNull();
   });
 });
 
