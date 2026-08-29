@@ -211,16 +211,15 @@ jobs:
               '自分の名前を選ぶと、そのまま今回のゲームへ参加します。',
               '自分の名前を選び、確認して今回のゲームへ参加します。',
           )
-          old = '''                  <PlayerChoiceList
-                    actionLabel="参加"
-                    intent="join-existing"'''
-          new = '''                  <PlayerChoiceList
-                    actionLabel="参加"
-                    confirmBeforeSubmit
-                    intent="join-existing"'''
-          if old not in text:
-              raise SystemExit('PlayerChoiceList usage not found')
-          path.write_text(text.replace(old, new, 1))
+          needle = '                    intent="join-existing"\n'
+          if needle not in text:
+              raise SystemExit('join-existing intent not found')
+          text = text.replace(
+              needle,
+              '                    confirmBeforeSubmit\n' + needle,
+              1,
+          )
+          path.write_text(text)
 
           path = Path('docs/requirements.md')
           text = path.read_text()
