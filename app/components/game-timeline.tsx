@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router";
 import { PlayerAvatar } from "./player-avatar";
 
 export interface GameTimelineEventView {
@@ -16,10 +15,13 @@ interface GameTimelineResponse {
 
 export function GameTimeline() {
   const [events, setEvents] = useState<GameTimelineEventView[]>([]);
-  const { pathname } = useLocation();
-  const timelinePath = buildGameTimelinePath(pathname);
+  const timelinePath =
+    typeof window === "undefined"
+      ? null
+      : buildGameTimelinePath(window.location.pathname);
 
   useEffect(() => {
+    if (!timelinePath) return;
     const controller = new AbortController();
     setEvents([]);
 
