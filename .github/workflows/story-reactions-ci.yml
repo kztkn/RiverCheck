@@ -28,6 +28,39 @@ jobs:
       - name: Apply reaction patch
         run: python scripts/apply_story_reactions_patch.py
 
+      - name: Keep domain reaction type self-contained
+        run: |
+          cat > domain/story/game-story-reaction.ts <<'EOF'
+          export const GAME_STORY_REACTION_TYPES = [
+            "laugh",
+            "fire",
+            "shock",
+            "nice",
+            "respect",
+          ] as const;
+
+          export type GameStoryReactionType =
+            (typeof GAME_STORY_REACTION_TYPES)[number];
+
+          export function isGameStoryReactionType(
+            value: string,
+          ): value is GameStoryReactionType {
+            return GAME_STORY_REACTION_TYPES.some((type) => type === value);
+          }
+          EOF
+          cat > types/game-story-reaction.ts <<'EOF'
+          import type { GameStoryReactionType } from "@domain/story/game-story-reaction";
+
+          export type { GameStoryReactionType } from "@domain/story/game-story-reaction";
+
+          export interface GameStoryReactionSummary {
+            postId: string;
+            type: GameStoryReactionType;
+            count: number;
+            reactedByCurrentPlayer: boolean;
+          }
+          EOF
+
       - name: Install dependencies
         run: npm ci
 
