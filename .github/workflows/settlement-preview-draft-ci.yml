@@ -21,9 +21,11 @@ jobs:
           node-version: 24
           cache: npm
       - name: Apply patch
-        run: python scripts/apply_settlement_preview_draft.py
+        run: |
+          python scripts/apply_settlement_preview_draft.py
+          python scripts/fix_settlement_preview_draft_test.py
       - name: Remove temporary tooling
-        run: rm scripts/apply_settlement_preview_draft.py .github/workflows/settlement-preview-draft-ci.yml
+        run: rm scripts/apply_settlement_preview_draft.py scripts/fix_settlement_preview_draft_test.py .github/workflows/settlement-preview-draft-ci.yml
       - name: Install dependencies
         run: npm ci
       - name: Typecheck
