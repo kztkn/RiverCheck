@@ -14,6 +14,7 @@ import { isOrganizerAuthenticated } from "@server/services/organizer-auth.server
 import { extractGroupCode } from "@domain/routing/extract-group-code";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import "./styles/app.css";
+import "./styles/groups.css";
 import "./styles/highlight.css";
 import "./styles/history.css";
 import "./styles/qr.css";
