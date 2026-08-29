@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router";
 import { PlayerAvatar } from "./player-avatar";
 
 export interface GameTimelineEventView {
@@ -15,15 +16,14 @@ interface GameTimelineResponse {
 
 export function GameTimeline() {
   const [events, setEvents] = useState<GameTimelineEventView[]>([]);
+  const { pathname } = useLocation();
+  const timelinePath = buildGameTimelinePath(pathname);
 
   useEffect(() => {
     const controller = new AbortController();
-    const currentUrl = new URL(window.location.href);
-    currentUrl.pathname = `${currentUrl.pathname.replace(/\/$/, "")}/timeline`;
-    currentUrl.search = "";
-    currentUrl.hash = "";
+    setEvents([]);
 
-    void fetch(currentUrl, {
+    void fetch(timelinePath, {
       credentials: "same-origin",
       signal: controller.signal,
     })
@@ -40,7 +40,7 @@ export function GameTimeline() {
       });
 
     return () => controller.abort();
-  }, []);
+  }, [timelinePath]);
 
   return <GameTimelineView events={events} />;
 }
@@ -53,11 +53,17 @@ export function GameTimelineView({
   if (events.length === 0) return null;
 
   return (
-    <section className="game-timeline-panel" aria-labelledby="game-timeline-heading">
-      <header className="game-timeline-heading">
-        <p className="form-brand-label">GAME TIMELINE</p>
-        <h2 id="game-timeline-heading">リバイと返済の記録</h2>
-      </header>
+    <details className="game-timeline-panel">
+      <summary className="game-timeline-summary">
+        <span className="game-timeline-heading">
+          <span className="form-brand-label">GAME TIMELINE</span>
+          <strong>リバイと返済の記録</strong>
+        </span>
+        <span className="game-timeline-summary-meta">
+          <span className="game-timeline-count">{events.length}件</span>
+          <span aria-hidden="true" className="game-timeline-toggle" />
+        </span>
+      </summary>
 
       <ol className="game-timeline-list">
         {events.map((event) => (
@@ -83,8 +89,12 @@ export function GameTimelineView({
           </li>
         ))}
       </ol>
-    </section>
+    </details>
   );
+}
+
+export function buildGameTimelinePath(pathname: string): string {
+  return `${pathname.replace(/\/+$/u, "")}/timeline`;
 }
 
 function formatTimelineTime(value: string): string {
