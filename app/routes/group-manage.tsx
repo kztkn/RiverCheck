@@ -5,10 +5,12 @@ import {
   IconSettings,
   IconUsers,
 } from "@tabler/icons-react";
+import { useEffect } from "react";
 import { Link } from "react-router";
 import { getGroupOverview } from "@server/services/group-service.server";
 import { requireOrganizer } from "@server/services/organizer-auth.server";
 import type { Route } from "./+types/group-manage";
+import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-preview-draft";
 
 const statusLabels = {
   draft: "準備中",
@@ -20,9 +22,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   await requireOrganizer(request, params.groupCode);
   const overview = await getGroupOverview(params.groupCode);
   if (!overview) throw new Response("Group not found", { status: 404 });
+  const url = new URL(request.url);
   return {
     ...overview,
-    notice: new URL(request.url).searchParams.get("notice"),
+    notice: url.searchParams.get("notice"),
+    deletedGameId: url.searchParams.get("deletedGameId"),
   };
 }
 
@@ -30,6 +34,33 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
   const { group, games } = loaderData;
   const activeGames = games.filter((game) => game.status !== "finalized");
   const pastGames = games.filter((game) => game.status === "finalized");
+
+  useEffect(() => {
+    if (loaderData.notice !== "game-deleted" || !loaderData.deletedGameId) {
+      return;
+    }
+    try {
+      window.localStorage.removeItem(
+        buildSettlementPreviewDraftStorageKey(
+          group.publicCode,
+          loaderData.deletedGameId,
+        ),
+      );
+    } catch {
+      // Deletion already succeeded; blocked local storage needs no recovery.
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.delete("deletedGameId");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  }, [
+    group.publicCode,
+    loaderData.deletedGameId,
+    loaderData.notice,
+  ]);
 
   return (
     <main className="page-shell organizer-home-page">

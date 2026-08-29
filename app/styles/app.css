@@ -6737,3 +6737,23 @@ input[aria-invalid="true"] {
     font-size: 0.72rem;
   }
 }
+
+
+/* Settlement preview local draft */
+.settlement-draft-indicator {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.settlement-draft-indicator > span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.settlement-draft-indicator .text-button {
+  font-size: 0.7rem;
+}

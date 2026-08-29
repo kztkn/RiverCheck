@@ -107,7 +107,7 @@ describe("game admin management action", () => {
     const response = result as Response;
     expect(response.status).toBe(303);
     expect(response.headers.get("Location")).toBe(
-      "/g/river-check/manage?notice=game-deleted",
+      `/g/river-check/manage?notice=game-deleted&deletedGameId=${game.id}`,
     );
     expect(response.headers.get("Set-Cookie")).toContain("Max-Age=0");
   });
