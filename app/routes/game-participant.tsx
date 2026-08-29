@@ -850,13 +850,14 @@ export default function GameParticipant({
                   </div>
                 </div>
                 <p className="muted-copy">
-                  自分の名前を選ぶと、そのまま今回のゲームへ参加します。
+                  自分の名前を選び、確認して今回のゲームへ参加します。
                 </p>
                 {loaderData.players.length === 0 ? (
                   <p className="muted-copy">登録済みメンバーはまだいません。</p>
                 ) : (
                   <PlayerChoiceList
                     actionLabel="参加"
+                    confirmBeforeSubmit
                     intent="join-existing"
                     isSubmitting={isSubmitting}
                     players={loaderData.players}
