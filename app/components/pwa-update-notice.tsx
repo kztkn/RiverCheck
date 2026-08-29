@@ -14,6 +14,14 @@ export function PwaUpdateNotice() {
     let registration: ServiceWorkerRegistration | null = null;
     let installingWorker: ServiceWorker | null = null;
 
+    const checkForUpdate = () => {
+      if (disposed) return;
+      void requestServiceWorkerUpdate(registration);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") checkForUpdate();
+    };
+    const handlePageShow = () => checkForUpdate();
     const handleInstallingStateChange = () => {
       if (
         !disposed &&
@@ -44,6 +52,9 @@ export function PwaUpdateNotice() {
       "controllerchange",
       handleControllerChange,
     );
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pageshow", handlePageShow);
+
     void navigator.serviceWorker
       .register(SERVICE_WORKER_URL, {
         scope: "/",
@@ -56,6 +67,7 @@ export function PwaUpdateNotice() {
           setWaitingWorker(registration.waiting);
         }
         registration.addEventListener("updatefound", handleUpdateFound);
+        checkForUpdate();
       })
       .catch(() => {
         // PWA enhancements must never block the normal web application.
@@ -72,6 +84,8 @@ export function PwaUpdateNotice() {
         "controllerchange",
         handleControllerChange,
       );
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pageshow", handlePageShow);
     };
   }, []);
 
@@ -98,4 +112,15 @@ export function PwaUpdateNotice() {
       </button>
     </aside>
   );
+}
+
+export async function requestServiceWorkerUpdate(
+  registration: Pick<ServiceWorkerRegistration, "update"> | null,
+): Promise<void> {
+  if (!registration) return;
+  try {
+    await registration.update();
+  } catch {
+    // Update checks are best effort and must not disrupt the application.
+  }
 }

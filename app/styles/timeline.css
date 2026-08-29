@@ -1,25 +1,70 @@
 .game-timeline-panel {
-  display: grid;
-  gap: 22px;
-  margin: 46px 0 22px;
+  margin: 34px 0 18px;
   border-top: 1px solid rgba(233, 186, 90, 0.2);
-  padding: clamp(28px, 5vw, 38px) 0 10px;
+  padding: 20px 0 6px;
 }
 
-.game-timeline-heading p,
-.game-timeline-heading h2 {
+.game-timeline-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.game-timeline-summary::-webkit-details-marker {
+  display: none;
+}
+
+.game-timeline-heading {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.game-timeline-heading .form-brand-label,
+.game-timeline-heading strong {
   margin: 0;
 }
 
-.game-timeline-heading h2 {
-  margin-top: 6px;
-  font-size: clamp(1.28rem, 4vw, 1.75rem);
-  letter-spacing: -0.035em;
+.game-timeline-heading strong {
+  overflow: hidden;
+  font-size: clamp(1.08rem, 3.6vw, 1.34rem);
+  letter-spacing: -0.03em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-timeline-summary-meta {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+}
+
+.game-timeline-count {
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-timeline-toggle {
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 160ms ease;
+}
+
+.game-timeline-panel[open] .game-timeline-toggle {
+  transform: rotate(225deg) translate(-1px, -1px);
 }
 
 .game-timeline-list {
   display: grid;
-  margin: 0;
+  margin: 15px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -27,16 +72,16 @@
 .game-timeline-item {
   position: relative;
   display: grid;
-  grid-template-columns: 44px 24px minmax(0, 1fr);
-  min-height: 66px;
+  grid-template-columns: 38px 20px minmax(0, 1fr);
+  min-height: 48px;
   align-items: start;
-  gap: 8px;
+  gap: 6px;
 }
 
 .game-timeline-item > time {
-  padding-top: 8px;
+  padding-top: 5px;
   color: #82958b;
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -45,27 +90,27 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 63px;
+  left: 53px;
   width: 1px;
   background: rgba(223, 236, 227, 0.14);
   content: "";
 }
 
 .game-timeline-item:first-child::before {
-  top: 13px;
+  top: 11px;
 }
 
 .game-timeline-item:last-child::before {
-  bottom: calc(100% - 14px);
+  bottom: calc(100% - 12px);
 }
 
 .game-timeline-marker {
   position: relative;
   z-index: 1;
   display: grid;
-  width: 18px;
-  height: 18px;
-  margin: 4px auto 0;
+  width: 16px;
+  height: 16px;
+  margin: 2px auto 0;
   place-items: center;
   border: 1px solid rgba(233, 186, 90, 0.52);
   border-radius: 50%;
@@ -73,15 +118,15 @@
 }
 
 .game-timeline-marker::before {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border: 1px solid rgba(233, 186, 90, 0.48);
   border-radius: 50%;
   content: "";
 }
 
 .game-timeline-marker.is-repayment::before {
-  width: 8px;
+  width: 7px;
   height: 2px;
   border: 0;
   border-radius: 999px;
@@ -92,15 +137,15 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
-  padding: 0 0 18px;
+  gap: 8px;
+  padding: 0 0 10px;
 }
 
 .player-avatar.game-timeline-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  font-size: 0.78rem;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  font-size: 0.7rem;
 }
 
 .game-timeline-event > div {
@@ -110,24 +155,33 @@
 .game-timeline-event strong {
   display: block;
   overflow: hidden;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .game-timeline-event p {
-  margin: 3px 0 0;
+  margin: 2px 0 0;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 @media (max-width: 420px) {
+  .game-timeline-panel {
+    margin-top: 30px;
+    padding-top: 18px;
+  }
+
   .game-timeline-item {
-    grid-template-columns: 40px 22px minmax(0, 1fr);
-    gap: 7px;
+    grid-template-columns: 34px 18px minmax(0, 1fr);
+    gap: 6px;
   }
 
   .game-timeline-item::before {
-    left: 57px;
+    left: 48px;
+  }
+
+  .game-timeline-heading strong {
+    font-size: 1.04rem;
   }
 }
