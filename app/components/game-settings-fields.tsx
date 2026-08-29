@@ -73,6 +73,17 @@ export function GameSettingsFields({
   >(null);
   const [draftReady, setDraftReady] = useState(!settlementDraftStorageKey);
   const [draftSaved, setDraftSaved] = useState(false);
+  const [sevenDeuceRuleEnabled, setSevenDeuceRuleEnabled] = useState(
+    values.sevenDeuceRuleEnabled,
+  );
+  const [bombPotRuleEnabled, setBombPotRuleEnabled] = useState(
+    values.bombPotRuleEnabled,
+  );
+
+  useEffect(() => {
+    setSevenDeuceRuleEnabled(values.sevenDeuceRuleEnabled);
+    setBombPotRuleEnabled(values.bombPotRuleEnabled);
+  }, [values.bombPotRuleEnabled, values.sevenDeuceRuleEnabled]);
 
   const analysis = useMemo(
     () => analyzeSettlement(venueCost, participantCountInput, shareValues),
@@ -365,36 +376,51 @@ export function GameSettingsFields({
               <span>03</span>
               ローカルルール
             </legend>
-            <label className="local-rule-toggle-card">
-              <input
-                defaultChecked={values.sevenDeuceRuleEnabled}
-                name="sevenDeuceRuleEnabled"
-                type="checkbox"
-                value="yes"
-              />
-              <span className="local-rule-toggle-copy">
-                <strong>72oボーナス</strong>
-                <small>
-                  7と2のオフスートでポットを獲得したら、ほかの参加者全員から2.5BBずつ受け取ります。
-                </small>
-              </span>
-              <span aria-hidden="true" className="local-rule-switch" />
-            </label>
-            <label className="local-rule-toggle-card">
-              <input
-                defaultChecked={values.bombPotRuleEnabled}
-                name="bombPotRuleEnabled"
-                type="checkbox"
-                value="yes"
-              />
-              <span className="local-rule-toggle-copy">
-                <strong>ボムポット</strong>
-                <small>
-                  決められたタイミングで全員が2.5BBを強制ベットし、プリフロップを飛ばしてフロップからプレイします。
-                </small>
-              </span>
-              <span aria-hidden="true" className="local-rule-switch" />
-            </label>
+            <details className="local-rules-disclosure">
+              <summary className="local-rules-disclosure-summary">
+                <span className="local-rules-summary-title">設定を確認・変更</span>
+                <span className="local-rules-summary-status">
+                  72o {sevenDeuceRuleEnabled ? "ON" : "OFF"} ・ ボムポット {bombPotRuleEnabled ? "ON" : "OFF"}
+                </span>
+                <span aria-hidden="true" className="local-rules-summary-chevron">›</span>
+              </summary>
+              <div className="local-rules-disclosure-body">
+                <label className="local-rule-toggle-card">
+                  <input
+                    checked={sevenDeuceRuleEnabled}
+                    name="sevenDeuceRuleEnabled"
+                    onChange={(event) =>
+                      setSevenDeuceRuleEnabled(event.target.checked)
+                    }
+                    type="checkbox"
+                    value="yes"
+                  />
+                  <span className="local-rule-toggle-copy">
+                    <strong>72oボーナス</strong>
+                    <small>
+                      7と2のオフスートでポットを獲得したら、ほかの参加者全員から2.5BBずつ受け取ります。
+                    </small>
+                  </span>
+                  <span aria-hidden="true" className="local-rule-switch" />
+                </label>
+                <label className="local-rule-toggle-card">
+                  <input
+                    checked={bombPotRuleEnabled}
+                    name="bombPotRuleEnabled"
+                    onChange={(event) => setBombPotRuleEnabled(event.target.checked)}
+                    type="checkbox"
+                    value="yes"
+                  />
+                  <span className="local-rule-toggle-copy">
+                    <strong>ボムポット</strong>
+                    <small>
+                      決められたタイミングで全員が2.5BBを強制ベットし、プリフロップを飛ばしてフロップからプレイします。
+                    </small>
+                  </span>
+                  <span aria-hidden="true" className="local-rule-switch" />
+                </label>
+              </div>
+            </details>
           </fieldset>
         </>
       ) : null}
