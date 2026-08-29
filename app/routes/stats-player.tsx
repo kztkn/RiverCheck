@@ -41,7 +41,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     canEditProfile,
     pushNotificationSettings:
       canEditProfile && profileEditorOpen && authenticated?.profile
-      ? await getPlayerPushSettings(authenticated.profile.playerId)
+      ? await getPlayerPushSettings(
+          authenticated.profile.playerId,
+          authenticated.profile.groupPlayerId,
+        )
       : null,
     profileSaved: url.searchParams.has("profileSaved"),
     profileEditorOpen,
@@ -64,6 +67,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "enable-push") {
     const result = await savePlayerPushSubscription(
       authenticated.profile.playerId,
+      authenticated.profile.groupPlayerId,
       {
         endpoint: readString(formData, "endpoint"),
         p256dh: readString(formData, "p256dh"),
@@ -73,7 +77,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     return { ...result, intent: "enable-push" as const };
   }
   if (intent === "disable-push") {
-    await disablePlayerPushSubscription(authenticated.profile.playerId);
+    await disablePlayerPushSubscription(authenticated.profile.groupPlayerId);
     return { ok: true as const, intent: "disable-push" as const };
   }
   if (intent !== "save-profile") {
@@ -236,6 +240,7 @@ export default function StatsPlayer({
               }}
               notificationSetting={loaderData.pushNotificationSettings ? (
                 <PushNotificationSetting
+                  groupName={group.name}
                   settings={loaderData.pushNotificationSettings}
                 />
               ) : null}
