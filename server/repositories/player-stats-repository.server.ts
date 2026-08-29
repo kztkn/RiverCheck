@@ -160,7 +160,7 @@ export async function listPlayerStatsRanking(
          AND equipped_unlock.achievement_id = group_player.equipped_achievement_id
         LEFT JOIN achievements AS equipped_achievement
           ON equipped_achievement.id = equipped_unlock.achievement_id
-        LEFT JOIN finalized_results AS finalized_result
+        INNER JOIN finalized_results AS finalized_result
           ON finalized_result.group_player_id = group_player.id
         WHERE group_player.group_id = $1
         GROUP BY group_player.id, player.display_name, player.avatar_uploaded_at,
