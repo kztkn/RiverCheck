@@ -875,3 +875,21 @@ function expectRedirect(result: Awaited<ReturnType<typeof action>>): Response {
   expect(response.status).toBe(303);
   return response;
 }
+
+describe("finalized game invite-only access", () => {
+  it("未所属ゲストは確定済み開催を閲覧できない", async () => {
+    vi.resetAllMocks();
+    mocked.findGroupByPublicCode.mockResolvedValue(group);
+    mocked.findGameForGroup.mockResolvedValue({
+      ...openGame,
+      status: "finalized",
+    });
+    mocked.isOrganizerAuthenticated.mockResolvedValue(false);
+    mocked.getAuthenticatedPlayerProfile.mockResolvedValue({
+      group,
+      profile: null,
+    });
+
+    await expect(loader(loaderArgs())).rejects.toMatchObject({ status: 403 });
+  });
+});

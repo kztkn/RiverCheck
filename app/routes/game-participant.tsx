@@ -89,6 +89,7 @@ import {
 import { updateGameCostShareReceipt } from "@server/services/game-cost-share-receipt-service.server";
 import { OrganizerCostShareCollection } from "~/components/organizer-cost-share-collection";
 import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-preview-draft";
+import { INVITE_REQUIRED_RESPONSE_TEXT } from "@domain/routing/public-group-entry";
 
 type RebuyActionIntent = "record-rebuy" | "record-repayment" | "undo-rebuy";
 type RebuyActionData = RebuyServiceResult & { intent: RebuyActionIntent };
@@ -104,6 +105,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     isOrganizerAuthenticated(request),
     getAuthenticatedPlayerProfile(request, params.groupCode),
   ]);
+
+  if (
+    context.game.status !== "open" &&
+    !isOrganizer &&
+    !profileOverview?.profile
+  ) {
+    throw new Response(INVITE_REQUIRED_RESPONSE_TEXT, { status: 403 });
+  }
+
   const url = new URL(request.url);
   const participantToken = readParticipantToken(request, params.gameId);
   const participantTokenHash = participantToken

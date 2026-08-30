@@ -214,3 +214,12 @@ finalizedの開催ではgame_resultsを順位順に取得し、参加者用URL�
 repository の取得条件には対象 `game_id` / `group_id` に加えて `game.status = 'finalized'` を含め、受付中開催の他参加者リバイ情報を公開しない。結果画面では専用の読み取り resource route からイベントを取得し、参加者のアバターURLへ変換して表示コンポーネントへ渡す。DB migration は追加しない。
 
 UI はアバターと縦ラインを軸にしたミニマルな時系列表示とし、リバイ・返済を派手な成功/失敗色や絵文字で意味付けしない。イベント0件ではセクションを描画しない。
+
+## 招待制エントリとルートガード
+
+- `/` は既定グループを持たない。profile sessionからglobal player identityを解決し、一般プレイヤーはactiveな所属グループ、app-level organizerは管理可能な全グループを候補として返す
+- clientはlocalStorageの最終訪問group codeを候補集合に対して検証し、有効ならreplace navigationする。候補が1件だけなら自動遷移し、複数かつ最終訪問先を解決できなければ選択画面を表示する
+- 候補が0件なら公開グループへフォールバックせず、open開催の招待URLを要求する
+- root loaderは未所属・非主催者のgroup routeを原則403にし、open開催の入口として必要なgame participant route、organizer login、profile claim、avatar routeだけを例外として通す
+- game participant loaderは同一URLをstatusで分岐し、openは未所属者にも参加導線を許可する一方、draft/finalizedはgroup memberまたはorganizerだけへ公開する
+- `/r/:resultCode` はfinalized gameのcanonical participant routeへredirectする短縮URLであり、redirect後は同じgroup access guardに従う
