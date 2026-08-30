@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import {
@@ -17,6 +17,7 @@ export function FinalResults({
   lineText,
   editUrl,
   initialChips,
+  linkPlayerProfiles = true,
   playedAt,
   payPay,
   results,
@@ -28,6 +29,7 @@ export function FinalResults({
   lineText: string;
   editUrl?: string;
   initialChips: number;
+  linkPlayerProfiles?: boolean;
   playedAt: string;
   payPay: { link: string; paymentAmount: number | null } | null;
   results: GameResultSummary[];
@@ -147,10 +149,12 @@ export function FinalResults({
         </p>
       ) : null}
       {winner ? (
-        <Link
-          aria-label={`${winner.displayName}の戦績を見る`}
+        <ResultPlayerContainer
+          ariaLabel={`${winner.displayName}の戦績を見る`}
           className="result-winner"
-          to={`/g/${groupCode}/stats/${winner.groupPlayerId}`}
+          groupCode={groupCode}
+          groupPlayerId={winner.groupPlayerId}
+          link={linkPlayerProfiles}
         >
           <div className="result-winner-copy">
             <span>WINNER</span>
@@ -167,17 +171,19 @@ export function FinalResults({
               {formatNumber(winner.costShare)}円
             </strong>
           </div>
-        </Link>
+        </ResultPlayerContainer>
       ) : null}
       <div className="result-list">
         {results.filter((result) => result.rank !== 1).map((result) => (
-          <Link
-            aria-label={`${result.displayName}の戦績を見る`}
+          <ResultPlayerContainer
+            ariaLabel={`${result.displayName}の戦績を見る`}
             className={`result-row result-row-rank-${result.rank}${
               result.rank <= 3 ? " is-top-three" : ""
             }`}
+            groupCode={groupCode}
+            groupPlayerId={result.groupPlayerId}
             key={result.groupPlayerId}
-            to={`/g/${groupCode}/stats/${result.groupPlayerId}`}
+            link={linkPlayerProfiles}
           >
             <span className={`rank-badge rank-${result.rank}`}>
               {formatOrdinal(result.rank)}
@@ -196,7 +202,7 @@ export function FinalResults({
                 {formatNumber(result.costShare)}円
               </strong>
             </div>
-          </Link>
+          </ResultPlayerContainer>
         ))}
       </div>
       <div className="result-settlement-footer">
@@ -363,4 +369,32 @@ function formatPlayedAt(playedAt: string): string {
 
 function formatNumber(value: number): string {
   return value.toLocaleString("ja-JP");
+}
+
+function ResultPlayerContainer({
+  ariaLabel,
+  children,
+  className,
+  groupCode,
+  groupPlayerId,
+  link,
+}: {
+  ariaLabel: string;
+  children: ReactNode;
+  className: string;
+  groupCode: string;
+  groupPlayerId: string;
+  link: boolean;
+}) {
+  return link ? (
+    <Link
+      aria-label={ariaLabel}
+      className={className}
+      to={`/g/${groupCode}/stats/${groupPlayerId}`}
+    >
+      {children}
+    </Link>
+  ) : (
+    <div className={className}>{children}</div>
+  );
 }

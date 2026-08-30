@@ -89,6 +89,7 @@ import {
 import { updateGameCostShareReceipt } from "@server/services/game-cost-share-receipt-service.server";
 import { OrganizerCostShareCollection } from "~/components/organizer-cost-share-collection";
 import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-preview-draft";
+import { INVITE_REQUIRED_RESPONSE_TEXT } from "@domain/routing/public-group-entry";
 
 type RebuyActionIntent = "record-rebuy" | "record-repayment" | "undo-rebuy";
 type RebuyActionData = RebuyServiceResult & { intent: RebuyActionIntent };
@@ -129,6 +130,19 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         .catch(() => ({ available: false, participants: [] }))
       : Promise.resolve({ available: true, participants: [] }),
   ]);
+
+  const canBrowseGroup = Boolean(profileOverview?.profile) || isOrganizer;
+  const isPublicResultViewer =
+    context.game.status === "finalized" && !canBrowseGroup && !participant;
+
+  if (
+    context.game.status === "draft" &&
+    !canBrowseGroup &&
+    !participant
+  ) {
+    throw new Response(INVITE_REQUIRED_RESPONSE_TEXT, { status: 403 });
+  }
+
   const groupInvitePlayer =
     context.game.status === "open" &&
     !participant &&
@@ -160,21 +174,22 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       ? await listResultRevisions(context.group.id, params.gameId)
       : [];
   const storyPosts =
-    context.game.status === "finalized"
+    context.game.status === "finalized" && !isPublicResultViewer
       ? await getPublishedGameStoryPosts(context.group.id, params.gameId)
       : [];
   const finalizedGames =
-    context.game.status === "finalized"
+    context.game.status === "finalized" && canBrowseGroup
       ? (await listGamesForGroup(context.group.id)).filter(
         (game) => game.status === "finalized",
       )
       : [];
-  const payPayRecipientLink = isPayPayLinkActive({
-    link: context.group.payPayRecipientLink,
-    registeredAt: context.group.payPayLinkRegisteredAt,
-  })
-    ? context.group.payPayRecipientLink
-    : null;
+  const payPayRecipientLink =
+    canBrowseGroup && isPayPayLinkActive({
+      link: context.group.payPayRecipientLink,
+      registeredAt: context.group.payPayLinkRegisteredAt,
+    })
+      ? context.group.payPayRecipientLink
+      : null;
   const payPayPaymentAmount =
     context.game.status === "finalized" &&
       payPayRecipientLink &&
@@ -188,7 +203,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return {
     group: { name: context.group.name, publicCode: context.group.publicCode },
     game: context.game,
+    canBrowseGroup,
     isOrganizer,
+    isPublicResultViewer,
     groupInvitePlayer: groupInvitePlayer
       ? { displayName: groupInvitePlayer.displayName }
       : null,
@@ -645,6 +662,7 @@ export default function GameParticipant({
     >
       <GroupSiteHeader
         groupCode={loaderData.group.publicCode}
+        hideNavigation={!loaderData.canBrowseGroup}
         organizer={loaderData.isOrganizer}
       />
 
@@ -698,6 +716,7 @@ export default function GameParticipant({
                 : undefined
             }
             initialChips={loaderData.game.initialChips}
+            linkPlayerProfiles={loaderData.canBrowseGroup}
             playedAt={loaderData.game.playedAt}
             payPay={loaderData.payPay}
             results={loaderData.results}
@@ -710,15 +729,17 @@ export default function GameParticipant({
               receipts={loaderData.costShareReceipts}
             />
           ) : null}
-          <GameStories
-            canPost={Boolean(loaderData.participant)}
-            initialChips={loaderData.game.initialChips}
-            isOrganizer={loaderData.isOrganizer}
-            ownPhotoUrl={loaderData.ownStoryPhotoUrl}
-            ownPost={loaderData.ownStoryPost}
-            posts={loaderData.storyPosts}
-            results={loaderData.results}
-          />
+          {loaderData.isPublicResultViewer ? null : (
+            <GameStories
+              canPost={Boolean(loaderData.participant)}
+              initialChips={loaderData.game.initialChips}
+              isOrganizer={loaderData.isOrganizer}
+              ownPhotoUrl={loaderData.ownStoryPhotoUrl}
+              ownPost={loaderData.ownStoryPost}
+              posts={loaderData.storyPosts}
+              results={loaderData.results}
+            />
+          )}
         </>
       ) : loaderData.game.status === "draft" ? (
         <section className="participant-panel waiting-panel">

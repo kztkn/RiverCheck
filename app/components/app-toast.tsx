@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 
 export function AppToast({
   message,
@@ -8,6 +9,8 @@ export function AppToast({
   searchParam?: string;
 }) {
   const [visible, setVisible] = useState(Boolean(message));
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!message) {
@@ -17,18 +20,31 @@ export function AppToast({
 
     setVisible(true);
     if (searchParam) {
-      const url = new URL(window.location.href);
-      url.searchParams.delete(searchParam);
-      window.history.replaceState(
-        window.history.state,
-        "",
-        `${url.pathname}${url.search}${url.hash}`,
-      );
+      const search = new URLSearchParams(location.search);
+      if (search.has(searchParam)) {
+        search.delete(searchParam);
+        const nextSearch = search.toString();
+        void navigate(
+          {
+            pathname: location.pathname,
+            search: nextSearch ? `?${nextSearch}` : "",
+            hash: location.hash,
+          },
+          { preventScrollReset: true, replace: true },
+        );
+      }
     }
 
     const timer = window.setTimeout(() => setVisible(false), 3000);
     return () => window.clearTimeout(timer);
-  }, [message, searchParam]);
+  }, [
+    location.hash,
+    location.pathname,
+    location.search,
+    message,
+    navigate,
+    searchParam,
+  ]);
 
   if (!message || !visible) return null;
 

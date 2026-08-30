@@ -1,4 +1,4 @@
-import { Form, useNavigation } from "react-router";
+import { useState } from "react";
 import { PlayerAvatar } from "~/components/player-avatar";
 
 export interface ReusablePlayerChoice {
@@ -18,14 +18,8 @@ export function ReusablePlayerPicker({
   currentMemberCount: number;
   players: ReusablePlayerChoice[];
 }) {
-  const navigation = useNavigation();
+  const [pendingPlayerId, setPendingPlayerId] = useState<string | null>(null);
   if (players.length === 0) return null;
-
-  const pendingPlayerId =
-    navigation.state === "submitting" &&
-    navigation.formData?.get("intent") === "add-existing-player"
-      ? navigation.formData.get("playerId")
-      : null;
 
   return (
     <section className="member-reuse-section" aria-labelledby="reuse-members-heading">
@@ -56,17 +50,21 @@ export function ReusablePlayerPicker({
                   {player.hasProfileAccess ? " ・ 本人端末設定済み" : ""}
                 </small>
               </span>
-              <Form action={action} method="post" reloadDocument>
+              <form
+                action={action}
+                method="post"
+                onSubmit={() => setPendingPlayerId(player.playerId)}
+              >
                 <input name="intent" type="hidden" value="add-existing-player" />
                 <input name="playerId" type="hidden" value={player.playerId} />
                 <button
                   className="button button-secondary button-small"
-                  disabled={pendingPlayerId === player.playerId}
+                  disabled={pendingPlayerId !== null}
                   type="submit"
                 >
                   {pendingPlayerId === player.playerId ? "追加中…" : "追加"}
                 </button>
-              </Form>
+              </form>
             </li>
           ))}
         </ul>

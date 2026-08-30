@@ -19,10 +19,12 @@ export interface SiteMenuItem {
 
 export function GroupSiteHeader({
   groupCode,
+  hideNavigation = false,
   organizer = false,
   status,
 }: {
   groupCode: string;
+  hideNavigation?: boolean;
   organizer?: boolean;
   status?: ReactNode;
 }) {
@@ -48,13 +50,23 @@ export function GroupSiteHeader({
 
   return (
     <header className="site-header">
-      <Link className="brand" to={`/g/${groupCode}`}>
-        <span className="brand-mark">RC</span>
-        <span className="brand-copy">
-          <span>RiverCheck</span>
-          {activeGroupName ? <small>{activeGroupName}</small> : null}
+      {hideNavigation ? (
+        <span className="brand">
+          <span className="brand-mark">RC</span>
+          <span className="brand-copy">
+            <span>RiverCheck</span>
+            {activeGroupName ? <small>{activeGroupName}</small> : null}
+          </span>
         </span>
-      </Link>
+      ) : (
+        <Link className="brand" to={`/g/${groupCode}`}>
+          <span className="brand-mark">RC</span>
+          <span className="brand-copy">
+            <span>RiverCheck</span>
+            {activeGroupName ? <small>{activeGroupName}</small> : null}
+          </span>
+        </Link>
+      )}
       <div className="header-actions">
         {status}
         <span
@@ -80,13 +92,15 @@ export function GroupSiteHeader({
             {playerLabel}
           </span>
         </span>
-        <GroupSiteMenu
-          groupCode={groupCode}
-          hasPlayer={Boolean(authenticatedPlayerName)}
-          groupPlayerId={authenticatedPlayerGroupPlayerId}
-          hasMultipleGroups={hasMultipleGroups}
-          organizer={isOrganizer}
-        />
+        {hideNavigation ? null : (
+          <GroupSiteMenu
+            groupCode={groupCode}
+            hasPlayer={Boolean(authenticatedPlayerName)}
+            groupPlayerId={authenticatedPlayerGroupPlayerId}
+            hasMultipleGroups={hasMultipleGroups}
+            organizer={isOrganizer}
+          />
+        )}
       </div>
     </header>
   );
@@ -108,16 +122,15 @@ export function GroupSiteMenu({
   const basePath = `/g/${groupCode}`;
   const items: SiteMenuItem[] = [
     { icon: "stats", label: "ランキング", to: `${basePath}/stats` },
-    {
-      icon: "profile",
-      label: hasPlayer && groupPlayerId
-        ? "プロフィール"
-        : "プレイヤーを選択",
-      to: hasPlayer && groupPlayerId
-        ? `${basePath}/stats/${groupPlayerId}`
-        : `${basePath}/profile`,
-    },
   ];
+
+  if (hasPlayer && groupPlayerId) {
+    items.push({
+      icon: "profile",
+      label: "プロフィール",
+      to: `${basePath}/stats/${groupPlayerId}`,
+    });
+  }
 
   if (hasMultipleGroups || organizer) {
     items.push({
