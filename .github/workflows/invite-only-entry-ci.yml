@@ -20,6 +20,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: node scripts/patch-invite-only-entry.mjs
+      - run: node scripts/refine-invite-result-access.mjs
       - run: git diff --check
       - run: npm ci
       - run: npm run typecheck
