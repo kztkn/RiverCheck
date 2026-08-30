@@ -1,4 +1,4 @@
-import { queryDatabase } from "@server/db/client.server";
+import { queryDatabase, withTransaction } from "@server/db/client.server";
 import type {
   CurrentGameParticipant,
   GameParticipantSummary,
@@ -329,6 +329,75 @@ export async function joinNewParticipant(
   return row
     ? { playerId: row.player_id, groupPlayerId: row.group_player_id }
     : null;
+}
+
+export async function joinExistingPlayerToGroupGame(
+  groupId: string,
+  gameId: string,
+  playerId: string,
+  tokenHash: string,
+): Promise<string | null> {
+  return withTransaction(async (transaction) => {
+    const game = await transaction.query<{ id: string }>(
+      `
+        SELECT id
+        FROM games
+        WHERE id = $1
+          AND group_id = $2
+          AND status = 'open'
+        FOR UPDATE
+      `,
+      [gameId, groupId],
+    );
+    if (!game.rows[0]) return null;
+
+    const membership = await transaction.query<{ id: string }>(
+      `
+        WITH existing_membership AS (
+          SELECT id
+          FROM group_players
+          WHERE group_id = $1
+            AND player_id = $2
+            AND is_active = TRUE
+        ),
+        inserted_membership AS (
+          INSERT INTO group_players (group_id, player_id)
+          SELECT $1, player.id
+          FROM players AS player
+          WHERE player.id = $2
+            AND NOT EXISTS (
+              SELECT 1
+              FROM group_players AS existing
+              WHERE existing.group_id = $1
+                AND existing.player_id = $2
+            )
+          ON CONFLICT (group_id, player_id) DO NOTHING
+          RETURNING id
+        )
+        SELECT id FROM existing_membership
+        UNION ALL
+        SELECT id FROM inserted_membership
+        LIMIT 1
+      `,
+      [groupId, playerId],
+    );
+    const groupPlayerId = membership.rows[0]?.id;
+    if (!groupPlayerId) return null;
+
+    await transaction.query(
+      `
+        INSERT INTO game_participants (
+          game_id,
+          group_player_id,
+          participant_token_hash
+        )
+        VALUES ($1, $2, $3)
+        ON CONFLICT (game_id, group_player_id) DO NOTHING
+      `,
+      [gameId, groupPlayerId, tokenHash],
+    );
+    return groupPlayerId;
+  });
 }
 
 export async function updateParticipantInput(

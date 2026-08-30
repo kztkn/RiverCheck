@@ -1,8 +1,12 @@
 import {
   findParticipantByGroupPlayerId,
   joinAuthenticatedParticipant,
+  joinExistingPlayerToGroupGame,
 } from "@server/repositories/participant-repository.server";
-import { getAuthenticatedPlayerProfile } from "./player-profile-service.server";
+import {
+  getAuthenticatedPlayerIdentity,
+  getAuthenticatedPlayerProfile,
+} from "./player-profile-service.server";
 import { generateOpaqueToken, hashToken } from "./token.server";
 
 export async function joinSelfParticipant(
@@ -47,4 +51,37 @@ export async function joinSelfParticipant(
       ok: false,
       error: "参加できませんでした。受付状況またはプロフィールを確認してください。",
     };
+}
+
+export async function joinCurrentProfileToGroupGame(
+  request: Request,
+  input: { gameId: string; groupId: string },
+): Promise<
+  | { ok: true; displayName: string; groupPlayerId: string }
+  | { ok: false; error: string }
+> {
+  const identity = await getAuthenticatedPlayerIdentity(request);
+  if (!identity) {
+    return {
+      ok: false,
+      error: "保存済みの本人プロフィールを確認できません。画面を更新してください。",
+    };
+  }
+
+  const groupPlayerId = await joinExistingPlayerToGroupGame(
+    input.groupId,
+    input.gameId,
+    identity.playerId,
+    await hashToken(generateOpaqueToken()),
+  );
+  return groupPlayerId
+    ? {
+        ok: true,
+        displayName: identity.displayName,
+        groupPlayerId,
+      }
+    : {
+        ok: false,
+        error: "このプロフィールではグループに参加できません。主催者に確認してください。",
+      };
 }

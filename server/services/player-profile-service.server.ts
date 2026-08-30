@@ -3,6 +3,7 @@ import {
   consumePlayerProfileClaim,
   createPlayerProfileSession,
   findPlayerAvatarRecord,
+  findPlayerIdentityBySession,
   findPlayerProfileBySession,
   findValidPlayerProfileClaim,
   issuePlayerProfileClaim,
@@ -114,6 +115,11 @@ export async function createNewPlayerProfileSessionCredentials(): Promise<{
     token,
     tokenHash: await hashToken(token),
   };
+}
+
+export async function getAuthenticatedPlayerIdentity(request: Request) {
+  const token = readPlayerProfileToken(request);
+  return token ? findPlayerIdentityBySession(await hashToken(token)) : null;
 }
 
 export async function selectPlayerProfile(

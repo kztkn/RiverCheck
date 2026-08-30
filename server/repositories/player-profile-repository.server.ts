@@ -27,6 +27,16 @@ interface ClaimRow {
   expires_at: Date;
 }
 
+interface PlayerSessionIdentityRow {
+  player_id: string;
+  display_name: string;
+}
+
+export interface PlayerSessionIdentity {
+  playerId: string;
+  displayName: string;
+}
+
 export interface PlayerProfileRecord {
   playerId: string;
   groupPlayerId: string;
@@ -48,6 +58,25 @@ export interface PlayerProfileClaimRecord {
   groupPlayerId: string;
   displayName: string;
   expiresAt: string;
+}
+
+export async function findPlayerIdentityBySession(
+  tokenHash: string,
+): Promise<PlayerSessionIdentity | null> {
+  const result = await queryDatabase<PlayerSessionIdentityRow>(
+    `
+      SELECT player.id AS player_id, player.display_name
+      FROM player_profile_sessions AS profile_session
+      INNER JOIN players AS player ON player.id = profile_session.player_id
+      WHERE profile_session.token_hash = $1
+        AND profile_session.revoked_at IS NULL
+        AND profile_session.expires_at > NOW()
+      LIMIT 1
+    `,
+    [tokenHash],
+  );
+  const row = result.rows[0];
+  return row ? { playerId: row.player_id, displayName: row.display_name } : null;
 }
 
 export async function findPlayerProfileBySession(
