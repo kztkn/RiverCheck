@@ -1,3 +1,28 @@
+.brand-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.brand-copy > span,
+.brand-copy > small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand-copy > span {
+  font-size: 0.92rem;
+}
+
+.brand-copy > small {
+  max-width: min(34vw, 220px);
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
 .group-directory-page {
   padding-bottom: max(56px, env(safe-area-inset-bottom));
 }
@@ -144,6 +169,50 @@
   justify-content: flex-end;
 }
 
+.group-name-settings {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 26px;
+  border-top: 1px solid rgba(57, 222, 141, 0.28);
+  border-bottom: 1px solid var(--line);
+  padding: 20px 0 24px;
+}
+
+.group-name-settings-heading {
+  display: grid;
+  gap: 5px;
+}
+
+.group-name-settings-heading h2,
+.group-name-settings-heading p {
+  margin: 0;
+}
+
+.group-name-settings-heading h2 {
+  font-size: 1rem;
+}
+
+.group-name-settings-heading p {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.6;
+}
+
+.group-name-settings-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.group-name-settings-form .field {
+  margin: 0;
+}
+
+.group-name-settings-form .button {
+  min-width: 96px;
+}
+
 .member-reuse-section {
   display: grid;
   gap: 12px;
@@ -216,8 +285,20 @@
 }
 
 @media (max-width: 480px) {
+  .brand-copy > small {
+    max-width: 27vw;
+  }
+
   .group-directory-row {
     min-height: 68px;
+  }
+
+  .group-name-settings-form {
+    grid-template-columns: 1fr;
+  }
+
+  .group-name-settings-form .button {
+    width: 100%;
   }
 
   .member-reuse-list > li {
