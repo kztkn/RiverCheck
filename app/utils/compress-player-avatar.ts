@@ -70,19 +70,9 @@ async function loadImage(file: File): Promise<{
   source: CanvasImageSource;
   width: number;
 }> {
-  if ("createImageBitmap" in window) {
-    try {
-      const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-      return {
-        dispose: () => bitmap.close(),
-        height: bitmap.height,
-        source: bitmap,
-        width: bitmap.width,
-      };
-    } catch {
-      // Fall back for Safari versions with partial createImageBitmap support.
-    }
-  }
+  // Avatar images are small enough that the HTMLImageElement path is preferable
+  // to createImageBitmap here. WebKit has had Blob/orientation and decode issues
+  // around createImageBitmap, which can leave the canvas with incomplete pixels.
   const objectUrl = URL.createObjectURL(file);
   const image = new Image();
   image.src = objectUrl;
