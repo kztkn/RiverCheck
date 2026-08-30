@@ -6,6 +6,7 @@ import {
   getGroupSettings,
   renameGroup,
 } from "@server/services/group-service.server";
+import { saveGroupLineOpenChatUrl } from "@server/services/group-community-service.server";
 import { saveGroupPayPayRecipientLink } from "@server/services/group-paypay-service.server";
 import { requireOrganizer } from "@server/services/organizer-auth.server";
 import type { Route } from "./+types/group-settings";
@@ -38,6 +39,19 @@ export async function action({ request, params }: Route.ActionArgs) {
       : { ...result, intent: "rename-group" as const };
   }
 
+  if (intent === "save-openchat-link") {
+    const result = await saveGroupLineOpenChatUrl(
+      group.id,
+      readString(formData, "lineOpenChatUrl"),
+    );
+    return result.ok
+      ? redirect(
+          `/g/${params.groupCode}/settings?notice=openchat-saved`,
+          { status: 303 },
+        )
+      : { ...result, intent: "save-openchat-link" as const };
+  }
+
   if (intent === "save-paypay-link") {
     const result = await saveGroupPayPayRecipientLink(
       group.id,
@@ -64,6 +78,10 @@ export default function GroupSettings({
     actionData?.ok === false && actionData.intent === "rename-group"
       ? actionData
       : null;
+  const openChatAction =
+    actionData?.ok === false && actionData.intent === "save-openchat-link"
+      ? actionData
+      : null;
   const payPayAction =
     actionData?.ok === false && actionData.intent === "save-paypay-link"
       ? actionData
@@ -71,15 +89,20 @@ export default function GroupSettings({
   const isGroupNameSubmitting =
     navigation.state === "submitting" &&
     navigation.formData?.get("intent") === "rename-group";
+  const isOpenChatSubmitting =
+    navigation.state === "submitting" &&
+    navigation.formData?.get("intent") === "save-openchat-link";
   const isPayPaySubmitting =
     navigation.state === "submitting" &&
     navigation.formData?.get("intent") === "save-paypay-link";
   const toastMessage =
     loaderData.notice === "group-name-saved"
       ? "グループ名を変更しました。"
-      : loaderData.notice === "paypay-saved"
-        ? "PayPay受取リンクを保存しました。"
-        : null;
+      : loaderData.notice === "openchat-saved"
+        ? "オープンチャットURLを保存しました。"
+        : loaderData.notice === "paypay-saved"
+          ? "PayPay受取リンクを保存しました。"
+          : null;
 
   return (
     <main className="page-shell form-page">
@@ -131,6 +154,49 @@ export default function GroupSettings({
             type="submit"
           >
             {isGroupNameSubmitting ? "保存中…" : "名前を変更"}
+          </button>
+        </Form>
+      </section>
+
+      <section className="group-name-settings" aria-labelledby="openchat-heading">
+        <div className="group-name-settings-heading">
+          <h2 id="openchat-heading">LINEオープンチャット</h2>
+          <p>
+            URLを設定したグループだけ「このアプリについて」に参加導線を表示します。使わない場合は空欄にしてください。
+          </p>
+        </div>
+        <Form className="group-name-settings-form" method="post" noValidate>
+          <input name="intent" type="hidden" value="save-openchat-link" />
+          <label className="field">
+            <span className="field-label">招待URL</span>
+            <input
+              aria-invalid={Boolean(openChatAction?.error)}
+              autoCapitalize="none"
+              autoCorrect="off"
+              defaultValue={
+                openChatAction?.value ?? loaderData.group.lineOpenChatUrl ?? ""
+              }
+              inputMode="url"
+              maxLength={500}
+              name="lineOpenChatUrl"
+              placeholder="https://line.me/ti/g2/..."
+              spellCheck={false}
+              type="url"
+            />
+            {openChatAction?.error ? (
+              <span className="field-error">{openChatAction.error}</span>
+            ) : (
+              <span className="field-hint">
+                空欄で保存すると、このグループではオープンチャット導線を表示しません。
+              </span>
+            )}
+          </label>
+          <button
+            className="button button-secondary"
+            disabled={isOpenChatSubmitting}
+            type="submit"
+          >
+            {isOpenChatSubmitting ? "保存中…" : "OpenChat設定を保存"}
           </button>
         </Form>
       </section>
