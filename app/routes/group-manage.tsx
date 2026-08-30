@@ -174,57 +174,60 @@ export default function GroupManage({
           </p>
         ) : (
           <div className="organizer-game-list">
-            {activeGames.map((game) => (
-              <div className="organizer-game-entry" key={game.id}>
-                <ManageGameRow game={game} groupCode={group.publicCode} />
-                <details
-                  className="organizer-game-schedule"
-                  open={scheduleAction?.gameId === game.id || undefined}
-                >
-                  <summary>開催日を変更</summary>
-                  <Form className="organizer-game-schedule-form" method="post">
-                    <input name="intent" type="hidden" value="reschedule-game" />
-                    <input name="gameId" type="hidden" value={game.id} />
-                    <label className="field">
-                      <span className="field-label">開催日</span>
-                      <input
-                        aria-invalid={
-                          scheduleAction?.gameId === game.id ? true : undefined
+            {activeGames.map((game) => {
+              const gameScheduleError =
+                scheduleAction && scheduleAction.gameId === game.id
+                  ? scheduleAction
+                  : null;
+              return (
+                <div className="organizer-game-entry" key={game.id}>
+                  <ManageGameRow game={game} groupCode={group.publicCode} />
+                  <details
+                    className="organizer-game-schedule"
+                    open={gameScheduleError ? true : undefined}
+                  >
+                    <summary>開催日を変更</summary>
+                    <Form className="organizer-game-schedule-form" method="post">
+                      <input name="intent" type="hidden" value="reschedule-game" />
+                      <input name="gameId" type="hidden" value={game.id} />
+                      <label className="field">
+                        <span className="field-label">開催日</span>
+                        <input
+                          aria-invalid={gameScheduleError ? true : undefined}
+                          defaultValue={
+                            gameScheduleError?.playedAt ??
+                            toDateInputValue(game.playedAt)
+                          }
+                          name="playedAt"
+                          required
+                          type="date"
+                        />
+                      </label>
+                      {gameScheduleError ? (
+                        <p className="field-error" role="alert">
+                          {gameScheduleError.error}
+                        </p>
+                      ) : null}
+                      <button
+                        className="button button-secondary button-small"
+                        disabled={
+                          navigation.state === "submitting" &&
+                          navigation.formData?.get("intent") === "reschedule-game" &&
+                          navigation.formData?.get("gameId") === game.id
                         }
-                        defaultValue={
-                          scheduleAction?.gameId === game.id
-                            ? scheduleAction.playedAt
-                            : toDateInputValue(game.playedAt)
-                        }
-                        name="playedAt"
-                        required
-                        type="date"
-                      />
-                    </label>
-                    {scheduleAction?.gameId === game.id ? (
-                      <p className="field-error" role="alert">
-                        {scheduleAction.error}
-                      </p>
-                    ) : null}
-                    <button
-                      className="button button-secondary button-small"
-                      disabled={
-                        navigation.state === "submitting" &&
+                        type="submit"
+                      >
+                        {navigation.state === "submitting" &&
                         navigation.formData?.get("intent") === "reschedule-game" &&
                         navigation.formData?.get("gameId") === game.id
-                      }
-                      type="submit"
-                    >
-                      {navigation.state === "submitting" &&
-                      navigation.formData?.get("intent") === "reschedule-game" &&
-                      navigation.formData?.get("gameId") === game.id
-                        ? "変更中…"
-                        : "日付を保存"}
-                    </button>
-                  </Form>
-                </details>
-              </div>
-            ))}
+                          ? "変更中…"
+                          : "日付を保存"}
+                      </button>
+                    </Form>
+                  </details>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
@@ -300,7 +303,7 @@ function toDateInputValue(playedAt: string): string {
     day: "2-digit",
     timeZone: "Asia/Tokyo",
   }).formatToParts(new Date(playedAt));
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
+  const part = (type: "year" | "month" | "day") =>
     parts.find((entry) => entry.type === type)?.value ?? "";
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
