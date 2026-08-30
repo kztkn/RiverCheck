@@ -7,6 +7,16 @@ export interface GroupPlayerSummary {
   hasProfileAccess: boolean;
 }
 
+export interface ReusablePlayerSummary {
+  playerId: string;
+  displayName: string;
+  avatarUpdatedAt: string | null;
+  hasProfileAccess: boolean;
+  groupNames: string[];
+  sourceGroupCode: string | null;
+  sourceGroupPlayerId: string | null;
+}
+
 export interface PlayerProfile {
   playerId: string;
   groupPlayerId: string;

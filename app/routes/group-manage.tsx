@@ -92,7 +92,9 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
         message={
           loaderData.notice === "game-deleted"
             ? "開催を削除しました。"
-            : null
+            : loaderData.notice === "group-created"
+              ? "グループを作成しました。"
+              : null
         }
         searchParam="notice"
       />

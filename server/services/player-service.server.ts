@@ -1,16 +1,22 @@
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
 import {
+  attachExistingPlayerToGroup,
   insertPlayerForGroup,
   listGroupPlayers,
+  listReusablePlayersForGroup,
   updatePlayerDisplayNameForGroup,
 } from "@server/repositories/player-repository.server";
 import type { GroupSummary } from "@shared-types/group";
-import type { GroupPlayerSummary } from "@shared-types/player";
+import type {
+  GroupPlayerSummary,
+  ReusablePlayerSummary,
+} from "@shared-types/player";
 
 export interface PlayerManagement {
   group: GroupSummary;
   players: GroupPlayerSummary[];
+  reusablePlayers: ReusablePlayerSummary[];
 }
 
 export interface AddPlayerFormValues {
@@ -27,13 +33,17 @@ export type AddPlayerResult =
       values: AddPlayerFormValues;
     };
 
+export type AddExistingPlayerResult =
+  | { ok: true; groupPlayerId: string }
+  | { ok: false; error: string };
+
 export type RenamePlayerResult =
   | { ok: true }
   | {
       ok: false;
       error: string;
       value: string;
-  };
+    };
 
 export async function getPlayerManagement(
   publicCode: string,
@@ -41,9 +51,14 @@ export async function getPlayerManagement(
   const group = await findGroupByPublicCode(publicCode);
   if (!group) return null;
 
+  const [players, reusablePlayers] = await Promise.all([
+    listGroupPlayers(group.id),
+    listReusablePlayersForGroup(group.id),
+  ]);
   return {
     group,
-    players: await listGroupPlayers(group.id),
+    players,
+    reusablePlayers,
   };
 }
 
@@ -87,6 +102,22 @@ export async function addPlayerForGroup(
 
   const groupPlayerId = await insertPlayerForGroup(group.id, displayName);
   return { ok: true, groupPlayerId };
+}
+
+export async function addExistingPlayerForGroup(
+  publicCode: string,
+  playerId: string,
+): Promise<AddExistingPlayerResult> {
+  const group = await findGroupByPublicCode(publicCode);
+  if (!group) return { ok: false, error: "グループが見つかりません。" };
+
+  const groupPlayerId = await attachExistingPlayerToGroup(group.id, playerId);
+  return groupPlayerId
+    ? { ok: true, groupPlayerId }
+    : {
+        ok: false,
+        error: "このプロフィールはすでに追加済みか、確認できませんでした。",
+      };
 }
 
 export async function renamePlayerForGroup(

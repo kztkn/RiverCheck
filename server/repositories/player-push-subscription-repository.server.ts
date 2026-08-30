@@ -33,6 +33,34 @@ export async function findPlayerPushSubscription(
   return result.rows[0] ? mapPushSubscription(result.rows[0]) : null;
 }
 
+export async function isGroupPlayerPushEnabled(
+  groupPlayerId: string,
+): Promise<boolean> {
+  const result = await queryDatabase<{ push_notifications_enabled: boolean }>(
+    `
+      SELECT push_notifications_enabled
+      FROM group_players
+      WHERE id = $1
+    `,
+    [groupPlayerId],
+  );
+  return result.rows[0]?.push_notifications_enabled ?? false;
+}
+
+export async function setGroupPlayerPushEnabled(
+  groupPlayerId: string,
+  enabled: boolean,
+): Promise<void> {
+  await queryDatabase(
+    `
+      UPDATE group_players
+      SET push_notifications_enabled = $2
+      WHERE id = $1
+    `,
+    [groupPlayerId, enabled],
+  );
+}
+
 export async function listGroupPlayerPushSubscriptions(
   groupId: string,
 ): Promise<PlayerPushSubscriptionRecord[]> {
@@ -49,6 +77,7 @@ export async function listGroupPlayerPushSubscriptions(
         ON group_player.player_id = subscription.player_id
       WHERE group_player.group_id = $1
         AND group_player.is_active = TRUE
+        AND group_player.push_notifications_enabled = TRUE
       ORDER BY subscription.updated_at ASC
     `,
     [groupId],
@@ -75,6 +104,7 @@ export async function listGameParticipantPushSubscriptions(
         ON subscription.player_id = group_player.player_id
       WHERE participant.game_id = $1
         AND group_player.group_id = $2
+        AND group_player.push_notifications_enabled = TRUE
       ORDER BY participant.joined_at ASC
     `,
     [gameId, groupId],

@@ -1,0 +1,232 @@
+.group-directory-page {
+  padding-bottom: max(56px, env(safe-area-inset-bottom));
+}
+
+.group-directory-intro {
+  margin-bottom: 20px;
+}
+
+.group-directory-list {
+  border-top: 1px solid rgba(57, 222, 141, 0.28);
+  border-bottom: 1px solid var(--line);
+}
+
+.group-directory-heading,
+.member-reuse-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.group-directory-heading {
+  padding: 18px 0 12px;
+}
+
+.group-directory-heading h2,
+.member-reuse-heading h2 {
+  margin: 0;
+  font-size: clamp(1.1rem, 4vw, 1.35rem);
+  letter-spacing: -0.035em;
+}
+
+.group-directory-rows {
+  display: grid;
+}
+
+.group-directory-row {
+  display: flex;
+  min-width: 0;
+  min-height: 74px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-top: 1px solid var(--line);
+  padding: 14px 2px;
+  transition: background 140ms ease, padding 140ms ease;
+}
+
+.group-directory-row:hover,
+.group-directory-row:focus-visible {
+  background: rgba(57, 222, 141, 0.055);
+  padding-inline: 10px;
+}
+
+.group-directory-row.is-current {
+  background: linear-gradient(90deg, rgba(57, 222, 141, 0.07), transparent 72%);
+}
+
+.group-directory-row-copy {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.group-directory-row-copy strong {
+  overflow: hidden;
+  font-size: 0.98rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-directory-row-copy small {
+  color: #748a7e;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+}
+
+.group-directory-current {
+  flex: 0 0 auto;
+  border: 1px solid rgba(57, 222, 141, 0.32);
+  border-radius: 999px;
+  color: var(--green);
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 5px 9px;
+}
+
+.group-directory-arrow {
+  color: #81968a;
+  font-size: 1.05rem;
+}
+
+.group-create-disclosure {
+  margin-top: 26px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.group-create-disclosure > summary,
+.member-reuse-disclosure > summary {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: #dbe6df;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 800;
+  list-style: none;
+}
+
+.group-create-disclosure > summary::-webkit-details-marker,
+.member-reuse-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.group-create-disclosure[open] > summary,
+.member-reuse-disclosure[open] > summary {
+  color: var(--green);
+}
+
+.group-create-form {
+  display: grid;
+  gap: 18px;
+  border-top: 1px solid var(--line);
+  padding: 22px 0 28px;
+}
+
+.group-create-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.group-create-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.65;
+}
+
+.group-create-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.member-reuse-section {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid rgba(57, 222, 141, 0.25);
+  border-bottom: 1px solid var(--line);
+  padding: 18px 0 0;
+}
+
+.member-reuse-heading > div {
+  min-width: 0;
+}
+
+.member-reuse-heading p:last-child {
+  max-width: 620px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.6;
+}
+
+.member-reuse-disclosure {
+  border-top: 1px solid var(--line);
+}
+
+.member-reuse-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+
+.member-reuse-list > li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  border-bottom: 1px solid var(--line);
+  padding: 10px 0;
+}
+
+.member-reuse-list > li:last-child {
+  border-bottom: 0;
+}
+
+.member-reuse-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.member-reuse-copy strong {
+  overflow: hidden;
+  font-size: 0.86rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-reuse-copy small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.69rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-reuse-list form {
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .group-directory-row {
+    min-height: 68px;
+  }
+
+  .member-reuse-list > li {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 9px;
+  }
+
+  .member-reuse-list .button-small {
+    min-width: 58px;
+    padding-inline: 10px;
+  }
+}

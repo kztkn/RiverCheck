@@ -29,8 +29,10 @@ type PushSettingActionData =
     };
 
 export function PushNotificationSetting({
+  groupName,
   settings,
 }: {
+  groupName: string;
   settings: PushNotificationSettingsView;
 }) {
   const fetcher = useFetcher<PushSettingActionData>();
@@ -69,14 +71,7 @@ export function PushNotificationSetting({
       return;
     }
     setError(null);
-    if (pendingIntent === "enable-push") {
-      setStatus("on");
-      return;
-    }
-    const currentSubscription = localSubscriptionRef.current;
-    localSubscriptionRef.current = null;
-    void currentSubscription?.unsubscribe().catch(() => false);
-    setStatus("off");
+    setStatus(pendingIntent === "enable-push" ? "on" : "off");
   }, [fetcher.data, fetcher.state]);
 
   const isWorking = fetcher.state !== "idle" || status === "checking";
@@ -87,7 +82,7 @@ export function PushNotificationSetting({
     status === "denied" ||
     status === "unsupported" ||
     status === "unconfigured";
-  const description = getDescription(status, error);
+  const description = getDescription(status, error, groupName);
 
   async function handleToggle() {
     if (isToggleDisabled) return;
@@ -159,7 +154,7 @@ export function PushNotificationSetting({
         </div>
         <button
           aria-checked={isOn}
-          aria-label="この端末の開催通知"
+          aria-label={`${groupName}の開催通知`}
           className="profile-notification-switch"
           disabled={isToggleDisabled}
           onClick={() => void handleToggle()}
@@ -171,7 +166,7 @@ export function PushNotificationSetting({
         </button>
       </div>
       <p className="profile-notification-note">
-        iPhone・iPadでは、ホーム画面に追加したRiverCheckからのみ通知を利用できます。
+        グループごとにON/OFFできます。iPhone・iPadでは、ホーム画面に追加したRiverCheckからのみ通知を利用できます。
       </p>
     </section>
   );
@@ -223,10 +218,14 @@ async function inspectCurrentDevice(
   }
 }
 
-function getDescription(status: SettingStatus, error: string | null): string {
-  if (status === "on") return "新しい開催をこの端末へお知らせします。";
+function getDescription(
+  status: SettingStatus,
+  error: string | null,
+  groupName: string,
+): string {
+  if (status === "on") return `${groupName}の開催や結果確定をこの端末へお知らせします。`;
   if (status === "other-device") {
-    return "別の端末で通知中です。ONにするとこの端末へ切り替わります。";
+    return `${groupName}は別の端末で通知中です。ONにするとこの端末へ切り替わります。`;
   }
   if (status === "install-required") {
     return "ホーム画面に追加したRiverCheckから設定できます。";
@@ -243,8 +242,8 @@ function getDescription(status: SettingStatus, error: string | null): string {
   if (status === "error") {
     return error ?? "通知状態を確認できませんでした。";
   }
-  if (status === "checking") return "この端末の通知状態を確認しています。";
-  return "新しい開催をこの端末へお知らせします。";
+  if (status === "checking") return "このグループの通知状態を確認しています。";
+  return `${groupName}の開催や結果確定をこの端末へお知らせします。`;
 }
 
 function decodeBase64Url(value: string): Uint8Array<ArrayBuffer> {

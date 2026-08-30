@@ -2,7 +2,13 @@ import { Fragment, type ReactNode } from "react";
 import { Form, Link, useRouteLoaderData } from "react-router";
 import { PlayerAvatar } from "~/components/player-avatar";
 
-type SiteMenuIcon = "about" | "logout" | "organizer" | "profile" | "stats";
+type SiteMenuIcon =
+  | "about"
+  | "groups"
+  | "logout"
+  | "organizer"
+  | "profile"
+  | "stats";
 
 export interface SiteMenuItem {
   icon: SiteMenuIcon;
@@ -90,27 +96,37 @@ export function GroupSiteMenu({
   organizer?: boolean;
 }) {
   const basePath = `/g/${groupCode}`;
+  const items: SiteMenuItem[] = [];
+  if (hasPlayer || organizer) {
+    items.push({
+      icon: "groups",
+      label: "グループを切り替える",
+      to: `${basePath}/groups`,
+    });
+  }
+  items.push(
+    { icon: "stats", label: "ランキング", to: `${basePath}/stats` },
+    {
+      icon: "profile",
+      label: hasPlayer && groupPlayerId
+        ? "プロフィール"
+        : "プレイヤーを選択",
+      to: hasPlayer && groupPlayerId
+        ? `${basePath}/stats/${groupPlayerId}`
+        : `${basePath}/profile`,
+    },
+    { icon: "about", label: "このアプリについて", to: `${basePath}/about` },
+    {
+      icon: "organizer",
+      label: "主催者画面へ",
+      reloadDocument: true,
+      to: `${basePath}/manage`,
+    },
+  );
+
   return (
     <SiteMenu
-      items={[
-        { icon: "stats", label: "ランキング", to: `${basePath}/stats` },
-        {
-          icon: "profile",
-          label: hasPlayer && groupPlayerId
-            ? "プロフィール"
-            : "プレイヤーを選択",
-          to: hasPlayer && groupPlayerId
-            ? `${basePath}/stats/${groupPlayerId}`
-            : `${basePath}/profile`,
-        },
-        { icon: "about", label: "このアプリについて", to: `${basePath}/about` },
-        {
-          icon: "organizer",
-          label: "主催者画面へ",
-          reloadDocument: true,
-          to: `${basePath}/manage`,
-        },
-      ]}
+      items={items}
       organizerLogoutAction={
         organizer ? `${basePath}/organizer-logout` : undefined
       }
@@ -143,7 +159,7 @@ export function SiteMenu({
       </summary>
       <nav aria-label="サイトメニュー" className="site-menu-panel">
         <span className="site-menu-heading">MENU</span>
-        {items.map((item, index) => (
+        {items.map((item) => (
           <Fragment key={`${item.to}-${item.label}`}>
             <Link
               className="site-menu-link"
@@ -153,7 +169,7 @@ export function SiteMenu({
               <SiteMenuItemIcon name={item.icon} />
               <span>{item.label}</span>
             </Link>
-            {index === 1 && accountLogoutAction ? (
+            {item.icon === "profile" && accountLogoutAction ? (
               <Form
                 action={accountLogoutAction}
                 method="post"
@@ -196,6 +212,13 @@ function SiteMenuItemIcon({ name }: { name: SiteMenuIcon }) {
         <circle cx="12" cy="12" r="9" />
         <path d="M12 11v5" />
         <path d="M12 8h.01" />
+      </>
+    ),
+    groups: (
+      <>
+        <rect height="6" rx="1.5" width="8" x="3" y="4" />
+        <rect height="6" rx="1.5" width="8" x="13" y="4" />
+        <rect height="6" rx="1.5" width="8" x="8" y="14" />
       </>
     ),
     logout: (

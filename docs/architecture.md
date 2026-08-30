@@ -37,6 +37,20 @@ React Router が UI と HTTP 境界を担当する。MVP では別 REST API を�
 - `workers`: Cloudflare Worker entry point
 - `docs`: 要件、構成、業務ルール、TODO
 
+## 複数グループとプレイヤーID
+
+`players`はRiverCheck全体で共通の人物・プロフィールを表し、`group_players`はそのplayerが各groupへ所属している状態を表す。`UNIQUE(group_id, player_id)`により同じplayerの同一groupへの重複所属を防ぎ、同じplayer_idを複数groupへ紐づけることでプロフィールを再利用する。
+
+表示名、プロフィール文、アイコン、MY HAND、プロフィールセッションはplayer単位とする。一方、開催参加、game_results、ランキング集計、player_achievements、`group_players.equipped_achievement_id`はgroup_player単位とし、戦績・実績・装備称号をグループ間で混在させない。プロフィールセッションから本人を解決するときは、セッションのplayer_idに加えて現在URLのgroup_idに所属するgroup_playerをJOINする。
+
+グループ作成は既存の`groups`と`group_players`を利用する。主催者端末がplayerとして認証済みの場合は新group作成transaction内でそのplayerのgroup_playerも作成する。メンバー管理から他groupの既存playerを追加する場合もplayersを複製せずgroup_playersだけを追加する。
+
+主催者認証は現時点ではgroup_idを持たないアプリ全体の署名済みセッションであり、同じ主催者PINで全groupを管理する。グループごとに別主催者を持たせる場合は、今後主催者membershipまたはgroup-scoped sessionへ拡張する。
+
+`player_push_subscriptions`はplayer_id単位で端末のPush購読を保持し、`group_players.push_notifications_enabled`でグループ別の通知ON/OFFを保持する。開催通知・結果確定通知の送信対象はgroup membership / game_participantsに加えてこのフラグで絞り込む。グループごとにOFFへしてもPush購読自体は削除せず、全所属グループでOFFになった場合でも再ONを容易にするため購読は保持する。
+
+最後に正常表示したgroupCodeはブラウザlocalStorageへUI状態として保存する。`/`はクライアントで保存値を読み、妥当なコードなら`/g/:groupCode`へ置き換え遷移し、利用できない場合は`river-check`へフォールバックする。DB上の所属・権限の正本には使用しない。
+
 ## PWAとクライアントキャッシュ
 
 Web App Manifestは`id`、`start_url`、`scope`を`/`で固定し、通常・maskable・Apple用アイコンを提供する。production build後にNode.jsスクリプトがクライアントJS/CSSの内容からversionを生成し、Service Workerテンプレートへ注入する。新しいrouteやchunkはversionへ自動反映し、機能追加ごとのキャッシュ一覧更新を不要にする。
