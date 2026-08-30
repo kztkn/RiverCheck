@@ -10,16 +10,18 @@ vi.mock("~/components/site-menu", () => ({
 }));
 import {
   ABOUT_DESCRIPTION,
-  AboutGuide,
   AboutHomeScreenGuide,
   AboutOpenChatSection,
   AboutSections,
-  LINE_OPEN_CHAT_URL,
 } from "./about";
 
+const OPEN_CHAT_URL = "https://line.me/ti/g2/exampleInvite";
+
 describe("about page sections", () => {
-  it("案内文ではグループ名を付けず、オープンチャットを01〜05の後に置く", () => {
-    const markup = renderToStaticMarkup(createElement(AboutSections));
+  it("OpenChat URL設定時は01〜05の後にコミュニティ導線を置く", () => {
+    const markup = renderToStaticMarkup(
+      createElement(AboutSections, { lineOpenChatUrl: OPEN_CHAT_URL }),
+    );
 
     expect(ABOUT_DESCRIPTION).toBe(
       "開催結果、会費の精算、個人戦績をひとつにまとめるポーカー会向けWebアプリです。",
@@ -34,11 +36,23 @@ describe("about page sections", () => {
     expect(markup).not.toContain("本人用リンク");
   });
 
-  it("開催通知・当日連絡用のLINEオープンチャットへ案内する", () => {
-    const markup = renderToStaticMarkup(createElement(AboutOpenChatSection));
+  it("OpenChat URL未設定時はコミュニティ導線を表示しない", () => {
+    const markup = renderToStaticMarkup(
+      createElement(AboutSections, { lineOpenChatUrl: null }),
+    );
+
+    expect(markup).not.toContain("LINE OPENCHAT");
+    expect(markup).not.toContain("LINEオープンチャットに参加");
+    expect(markup).toContain("ホーム画面に追加する");
+  });
+
+  it("設定されたLINEオープンチャットへ案内する", () => {
+    const markup = renderToStaticMarkup(
+      createElement(AboutOpenChatSection, { url: OPEN_CHAT_URL }),
+    );
 
     expect(markup).toContain("次の開催も、ここから。");
-    expect(markup).toContain(`href="${LINE_OPEN_CHAT_URL}"`);
+    expect(markup).toContain(`href="${OPEN_CHAT_URL}"`);
     expect(markup).toContain("LINEオープンチャットに参加");
     expect(markup).not.toContain("↗");
   });
