@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const updateOpenGamePlayedAt = vi.fn();
-const findGroupByPublicCode = vi.fn();
+const { findGroupByPublicCode, updateOpenGamePlayedAt } = vi.hoisted(() => ({
+  findGroupByPublicCode: vi.fn(),
+  updateOpenGamePlayedAt: vi.fn(),
+}));
 
 vi.mock("@server/repositories/game-schedule-repository.server", () => ({
   updateOpenGamePlayedAt,
