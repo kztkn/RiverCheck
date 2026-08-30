@@ -34,5 +34,7 @@ describe("group site menu access", () => {
     });
     expect(html).toContain("プロフィール");
     expect(html).toContain("/g/river-check/stats/33333333-3333-4333-8333-333333333333");
+    expect(html).not.toContain("/g/river-check/logout");
+    expect(html).not.toContain(">ログアウト<");
   });
 });

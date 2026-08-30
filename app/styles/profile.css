@@ -992,3 +992,91 @@
     border-radius: 22px;
   }
 }
+
+.stats-player-page .stats-history {
+  padding-bottom: 28px;
+}
+
+.stats-device-player-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 0 56px;
+  border-top: 1px solid rgba(223, 236, 227, 0.08);
+  padding-top: 18px;
+}
+
+.stats-device-player-switch > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.stats-device-player-switch span {
+  color: #72877c;
+  font-size: 0.65rem;
+}
+
+.stats-device-player-switch strong {
+  overflow: hidden;
+  color: #9aaba2;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-device-player-switch-link {
+  flex: 0 0 auto;
+  color: #859990;
+  font-size: 0.7rem;
+  font-weight: 750;
+  text-decoration: underline;
+  text-decoration-color: rgba(133, 153, 144, 0.36);
+  text-underline-offset: 4px;
+}
+
+.stats-device-player-switch-link:hover,
+.stats-device-player-switch-link:focus-visible {
+  color: var(--ink);
+}
+
+.device-player-switch-card {
+  max-height: calc(100dvh - 24px);
+  gap: 18px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--profile-modal-padding);
+}
+
+.device-player-switch-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.device-player-switch-heading h2,
+.device-player-switch-heading p,
+.device-player-switch-description {
+  margin: 0;
+}
+
+.device-player-switch-heading h2 {
+  margin-top: 5px;
+  font-size: clamp(1.05rem, 4vw, 1.3rem);
+  letter-spacing: -0.03em;
+}
+
+.device-player-switch-description {
+  line-height: 1.65;
+}
+
+@media (max-width: 520px) {
+  .stats-device-player-switch {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+}

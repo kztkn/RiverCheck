@@ -15,9 +15,17 @@ export function buildPlayerJoinConfirmation(displayName: string) {
   };
 }
 
+export function buildPlayerSwitchConfirmation(displayName: string) {
+  return {
+    description: `変更すると、この端末では次回から${displayName}として開きます。現在のプロフィールや戦績は削除されません。`,
+    title: `この端末を${displayName}に変更しますか？`,
+  };
+}
+
 export function PlayerChoiceList({
   actionLabel,
   confirmBeforeSubmit = false,
+  confirmationKind = "join",
   intent,
   isSubmitting,
   players,
@@ -25,6 +33,7 @@ export function PlayerChoiceList({
 }: {
   actionLabel: string;
   confirmBeforeSubmit?: boolean;
+  confirmationKind?: "join" | "switch";
   intent: string;
   isSubmitting: boolean;
   players: PlayerChoice[];
@@ -55,7 +64,9 @@ export function PlayerChoiceList({
   }
 
   const confirmation = selectedPlayer
-    ? buildPlayerJoinConfirmation(selectedPlayer.displayName)
+    ? confirmationKind === "switch"
+      ? buildPlayerSwitchConfirmation(selectedPlayer.displayName)
+      : buildPlayerJoinConfirmation(selectedPlayer.displayName)
     : null;
 
   return (
@@ -133,7 +144,9 @@ export function PlayerChoiceList({
                     displayName={selectedPlayer.displayName}
                   />
                   <div>
-                    <p className="eyebrow">JOIN THE TABLE</p>
+                    <p className="eyebrow">
+                      {confirmationKind === "switch" ? "DEVICE PLAYER" : "JOIN THE TABLE"}
+                    </p>
                     <h2 id="player-choice-confirm-title">
                       {confirmation.title}
                     </h2>
@@ -163,7 +176,13 @@ export function PlayerChoiceList({
                       disabled={isSubmitting}
                       type="submit"
                     >
-                      {isSubmitting ? "参加中…" : "参加"}
+                      {isSubmitting
+                        ? confirmationKind === "switch"
+                          ? "変更中…"
+                          : "参加中…"
+                        : confirmationKind === "switch"
+                          ? "変更する"
+                          : "参加"}
                     </button>
                   </Form>
                 </div>

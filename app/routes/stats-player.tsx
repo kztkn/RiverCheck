@@ -5,6 +5,7 @@ import { PushNotificationSetting } from "~/components/push-notification-setting"
 import { PlayerProfileEditor } from "~/components/player-profile-editor";
 import { PlayerPerformanceChart } from "~/components/player-performance-chart";
 import { PlayerAvatar } from "~/components/player-avatar";
+import { PlayerChoiceList } from "~/components/player-choice-list";
 import { FavoriteHandDisplay } from "~/components/playing-card";
 import { AchievementBadge } from "~/components/achievement-badge";
 import { PlayerAchievementCollectionView } from "~/components/player-achievement-collection";
@@ -18,7 +19,10 @@ import { getPlayerStatsDetail } from "@server/services/player-stats-service.serv
 import {
   getAuthenticatedPlayerProfile,
   savePlayerProfile,
+  selectPlayerProfile,
 } from "@server/services/player-profile-service.server";
+import { getPlayerManagement } from "@server/services/player-service.server";
+import { createPlayerProfileCookie } from "@server/services/player-profile-session.server";
 import {
   disablePlayerPushSubscription,
   getPlayerPushSettings,
@@ -36,6 +40,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const canEditProfile =
     authenticated?.profile?.groupPlayerId === params.groupPlayerId;
   const profileEditorOpen = url.searchParams.get("editProfile") === "1";
+  const switchPlayerOpen =
+    canEditProfile && url.searchParams.get("switchPlayer") === "1";
+  const switchManagement = switchPlayerOpen
+    ? await getPlayerManagement(params.groupCode)
+    : null;
   return {
     ...overview,
     canEditProfile,
@@ -48,6 +57,21 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       : null,
     profileSaved: url.searchParams.has("profileSaved"),
     profileEditorOpen,
+    switchPlayerOpen,
+    switchPlayers: (switchManagement?.players ?? [])
+      .filter(
+        (player) =>
+          player.isActive && player.id !== authenticated?.profile?.groupPlayerId,
+      )
+      .map((player) => ({
+        id: player.id,
+        displayName: player.displayName,
+        avatarUrl: buildPlayerAvatarUrl({
+          avatarUpdatedAt: player.avatarUpdatedAt,
+          groupCode: params.groupCode,
+          groupPlayerId: player.id,
+        }),
+      })),
   };
 }
 
@@ -64,6 +88,40 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
   const formData = await request.formData();
   const intent = readString(formData, "intent");
+  if (intent === "switch-player") {
+    const groupPlayerId = readString(formData, "groupPlayerId");
+    if (!isUuid(groupPlayerId)) {
+      return {
+        ok: false as const,
+        intent: "switch-player" as const,
+        error: "変更先のプレイヤーを選んでください。",
+      };
+    }
+    if (groupPlayerId === authenticated.profile.groupPlayerId) {
+      return {
+        ok: false as const,
+        intent: "switch-player" as const,
+        error: "現在この端末で使っているプレイヤーです。",
+      };
+    }
+    const selected = await selectPlayerProfile(params.groupCode, groupPlayerId);
+    if (!selected.ok) {
+      return {
+        ok: false as const,
+        intent: "switch-player" as const,
+        error: selected.error,
+      };
+    }
+    return redirect(
+      `/g/${params.groupCode}/stats/${selected.profile.groupPlayerId}`,
+      {
+        status: 303,
+        headers: {
+          "Set-Cookie": createPlayerProfileCookie(request, selected.sessionToken),
+        },
+      },
+    );
+  }
   if (intent === "enable-push") {
     const result = await savePlayerPushSubscription(
       authenticated.profile.playerId,
@@ -120,6 +178,13 @@ export default function StatsPlayer({
     actionData?.intent === "save-profile" && actionData.ok === false
       ? actionData
       : null;
+  const switchPlayerFailure =
+    actionData?.intent === "switch-player" && actionData.ok === false
+      ? actionData
+      : null;
+  const isSwitchingPlayer =
+    navigation.state === "submitting" &&
+    navigation.formData?.get("intent") === "switch-player";
   const isSavingProfile =
     navigation.state === "submitting" &&
     navigation.formData?.get("intent") === "save-profile";
@@ -282,6 +347,73 @@ export default function StatsPlayer({
         games={recentGames}
         groupCode={group.publicCode}
       />
+
+      {loaderData.canEditProfile ? (
+        <section className="stats-device-player-switch">
+          <div>
+            <span>この端末で使うプレイヤー</span>
+            <strong>{summary.displayName}</strong>
+          </div>
+          <Link
+            className="stats-device-player-switch-link"
+            to={`${profilePath}?switchPlayer=1`}
+          >
+            この端末のプレイヤーを変更
+          </Link>
+        </section>
+      ) : null}
+
+      {loaderData.canEditProfile ? (
+        <section
+          aria-label="この端末のプレイヤーを変更"
+          aria-modal="true"
+          className={`profile-edit-modal device-player-switch-modal${
+            loaderData.switchPlayerOpen || switchPlayerFailure ? " is-open" : ""
+          }`}
+          role="dialog"
+        >
+          <a
+            aria-label="プレイヤー変更を閉じる"
+            className="profile-edit-modal-backdrop"
+            href={profilePath}
+          />
+          <div className="profile-edit-modal-card device-player-switch-card">
+            <header className="device-player-switch-heading">
+              <div>
+                <p className="eyebrow">DEVICE PLAYER</p>
+                <h2>この端末のプレイヤーを変更</h2>
+              </div>
+              <Link
+                aria-label="プレイヤー変更を閉じる"
+                className="profile-edit-modal-close"
+                to={profilePath}
+              >
+                ×
+              </Link>
+            </header>
+            <p className="muted-copy device-player-switch-description">
+              名前を間違えて選択した場合などの変更用です。変更先を確定するまでは、現在のプレイヤーのままです。
+            </p>
+            {switchPlayerFailure ? (
+              <p className="error-notice" role="alert">
+                {switchPlayerFailure.error}
+              </p>
+            ) : null}
+            {loaderData.switchPlayers.length > 0 ? (
+              <PlayerChoiceList
+                actionLabel="変更"
+                confirmBeforeSubmit
+                confirmationKind="switch"
+                intent="switch-player"
+                isSubmitting={isSwitchingPlayer}
+                players={loaderData.switchPlayers}
+              />
+            ) : (
+              <p className="muted-copy">変更できるほかのプレイヤーがいません。</p>
+            )}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }
@@ -298,4 +430,8 @@ function readString(formData: FormData, name: string): string {
 function readNullableString(formData: FormData, name: string): string | null {
   const value = readString(formData, name).trim();
   return value === "" ? null : value;
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value);
 }
