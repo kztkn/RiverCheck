@@ -1,5 +1,6 @@
 import { Link, useRouteLoaderData } from "react-router";
 import { GroupSiteHeader } from "~/components/site-menu";
+import { orderActiveGamesBySchedule } from "@domain/game/order-active-games";
 import { getGroupOverview } from "@server/services/group-service.server";
 import type { GameListItem } from "@shared-types/game";
 import type { Route } from "./+types/group-top";
@@ -29,13 +30,10 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
     ? `stats/${rootData.authenticatedPlayerGroupPlayerId}`
     : "profile";
 
-  const activeGames = games.filter((game) => game.status !== "finalized");
+  const activeGames = orderActiveGamesBySchedule(games);
   const pastGames = games.filter((game) => game.status === "finalized");
-  const primaryGame =
-    activeGames.find((game) => game.status === "open") ?? activeGames[0];
-  const otherActiveGames = primaryGame
-    ? activeGames.filter((game) => game.id !== primaryGame.id)
-    : [];
+  const primaryGame = activeGames[0];
+  const otherActiveGames = activeGames.slice(1);
 
   return (
     <main className="page-shell group-home-page">
@@ -53,8 +51,8 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
       >
         <div className="home-section-heading">
           <div>
-            <p className="home-section-kicker">OPEN TABLE</p>
-            <h2 id="current-game-heading">受付中のゲーム</h2>
+            <p className="home-section-kicker">NEXT TABLE</p>
+            <h2 id="current-game-heading">開催予定</h2>
           </div>
           <span className="home-section-count">{activeGames.length}件</span>
         </div>
@@ -88,7 +86,7 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
             </article>
             {otherActiveGames.length > 0 ? (
               <div
-                aria-label="その他の受付中ゲーム"
+                aria-label="その他の開催予定"
                 className="home-other-games"
               >
                 {otherActiveGames.map((game) => (
@@ -103,7 +101,7 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
           </>
         ) : (
           <div className="home-current-empty">
-            <p>受付中のゲームはありません。</p>
+            <p>開催予定はありません。</p>
             {getCreateGameUrl(0, isOrganizer, false) ? (
               <Link className="button button-secondary" to="games/new">
                 新しい会を作成
