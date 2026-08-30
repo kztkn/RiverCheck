@@ -20,6 +20,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: node scripts/refine-public-result-view.mjs
+      - run: node scripts/fix-site-menu-access-test.mjs
       - run: git diff --check
       - run: npm ci
       - run: npm run typecheck
