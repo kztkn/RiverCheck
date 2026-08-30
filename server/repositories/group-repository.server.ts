@@ -100,6 +100,21 @@ export async function insertGroup(
   });
 }
 
+export async function updateGroupName(
+  groupId: string,
+  name: string,
+): Promise<boolean> {
+  const result = await queryDatabase(
+    `
+      UPDATE groups
+      SET name = $2
+      WHERE id = $1
+    `,
+    [groupId, name],
+  );
+  return result.rowCount === 1;
+}
+
 function mapGroup(row: GroupRow): GroupSummary {
   return {
     id: row.id,
