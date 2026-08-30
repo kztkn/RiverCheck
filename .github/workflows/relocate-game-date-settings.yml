@@ -21,6 +21,19 @@ jobs:
           node-version: 24
           cache: npm
       - run: python scripts/relocate-game-date-settings.py
+      - name: Normalize edited files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          for name in (
+              "app/routes/game-admin.tsx",
+              "app/routes/group-manage.tsx",
+              "app/routes/game-admin-management.test.ts",
+              "app/styles/groups.css",
+          ):
+              path = Path(name)
+              path.write_text(path.read_text().rstrip() + "\n")
+          PY
       - run: git diff --check
       - run: npm ci
       - run: npm run typecheck
