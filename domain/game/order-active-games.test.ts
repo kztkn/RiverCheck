@@ -1,20 +1,18 @@
 import { describe, expect, it } from "vitest";
-import type { GameListItem } from "../../types/game";
 import { orderActiveGamesBySchedule } from "./order-active-games";
+
+type TestGame = {
+  id: string;
+  playedAt: string;
+  status: "draft" | "open" | "finalized";
+};
 
 function game(
   id: string,
   playedAt: string,
-  status: GameListItem["status"] = "open",
-): GameListItem {
-  return {
-    id,
-    title: id,
-    playedAt,
-    status,
-    participantCount: 0,
-    winnerName: null,
-  };
+  status: TestGame["status"] = "open",
+): TestGame {
+  return { id, playedAt, status };
 }
 
 describe("orderActiveGamesBySchedule", () => {
