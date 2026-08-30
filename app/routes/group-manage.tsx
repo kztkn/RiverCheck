@@ -7,9 +7,8 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { useEffect } from "react";
-import { Form, Link, redirect, useNavigation } from "react-router";
+import { Link } from "react-router";
 import { getGroupOverview } from "@server/services/group-service.server";
-import { rescheduleOpenGameForGroup } from "@server/services/game-schedule-service.server";
 import { requireOrganizer } from "@server/services/organizer-auth.server";
 import type { Route } from "./+types/group-manage";
 import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-preview-draft";
@@ -32,57 +31,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   };
 }
 
-export async function action({ request, params }: Route.ActionArgs) {
-  await requireOrganizer(request, params.groupCode);
-  const formData = await request.formData();
-  const intent = readString(formData, "intent");
-  if (intent !== "reschedule-game") {
-    throw new Response("Unknown action", { status: 400 });
-  }
-
-  const gameId = readString(formData, "gameId");
-  const playedAt = readString(formData, "playedAt");
-  try {
-    const result = await rescheduleOpenGameForGroup(
-      params.groupCode,
-      gameId,
-      playedAt,
-    );
-    if (!result.ok) {
-      return {
-        ...result,
-        intent: "reschedule-game" as const,
-        gameId,
-      };
-    }
-  } catch (error) {
-    console.error("Failed to reschedule open game", error);
-    return {
-      ok: false as const,
-      intent: "reschedule-game" as const,
-      gameId,
-      playedAt,
-      error: "開催日を変更できませんでした。画面を更新してもう一度お試しください。",
-    };
-  }
-
-  return redirect(`/g/${params.groupCode}/manage?notice=game-rescheduled`, {
-    status: 303,
-  });
-}
-
-export default function GroupManage({
-  loaderData,
-  actionData,
-}: Route.ComponentProps) {
+export default function GroupManage({ loaderData }: Route.ComponentProps) {
   const { group, games } = loaderData;
-  const navigation = useNavigation();
   const activeGames = orderActiveGamesBySchedule(games);
   const pastGames = games.filter((game) => game.status === "finalized");
-  const scheduleAction =
-    actionData?.ok === false && actionData.intent === "reschedule-game"
-      ? actionData
-      : null;
 
   useEffect(() => {
     if (loaderData.notice !== "game-deleted" || !loaderData.deletedGameId) {
@@ -141,11 +93,9 @@ export default function GroupManage({
         message={
           loaderData.notice === "game-deleted"
             ? "開催を削除しました。"
-            : loaderData.notice === "game-rescheduled"
-              ? "開催日を変更しました。"
-              : loaderData.notice === "group-created"
-                ? "グループを作成しました。"
-                : null
+            : loaderData.notice === "group-created"
+              ? "グループを作成しました。"
+              : null
         }
         searchParam="notice"
       />
@@ -174,60 +124,13 @@ export default function GroupManage({
           </p>
         ) : (
           <div className="organizer-game-list">
-            {activeGames.map((game) => {
-              const gameScheduleError =
-                scheduleAction && scheduleAction.gameId === game.id
-                  ? scheduleAction
-                  : null;
-              return (
-                <div className="organizer-game-entry" key={game.id}>
-                  <ManageGameRow game={game} groupCode={group.publicCode} />
-                  <details
-                    className="organizer-game-schedule"
-                    open={gameScheduleError ? true : undefined}
-                  >
-                    <summary>開催日を変更</summary>
-                    <Form className="organizer-game-schedule-form" method="post">
-                      <input name="intent" type="hidden" value="reschedule-game" />
-                      <input name="gameId" type="hidden" value={game.id} />
-                      <label className="field">
-                        <span className="field-label">開催日</span>
-                        <input
-                          aria-invalid={gameScheduleError ? true : undefined}
-                          defaultValue={
-                            gameScheduleError?.playedAt ??
-                            toDateInputValue(game.playedAt)
-                          }
-                          name="playedAt"
-                          required
-                          type="date"
-                        />
-                      </label>
-                      {gameScheduleError ? (
-                        <p className="field-error" role="alert">
-                          {gameScheduleError.error}
-                        </p>
-                      ) : null}
-                      <button
-                        className="button button-secondary button-small"
-                        disabled={
-                          navigation.state === "submitting" &&
-                          navigation.formData?.get("intent") === "reschedule-game" &&
-                          navigation.formData?.get("gameId") === game.id
-                        }
-                        type="submit"
-                      >
-                        {navigation.state === "submitting" &&
-                        navigation.formData?.get("intent") === "reschedule-game" &&
-                        navigation.formData?.get("gameId") === game.id
-                          ? "変更中…"
-                          : "日付を保存"}
-                      </button>
-                    </Form>
-                  </details>
-                </div>
-              );
-            })}
+            {activeGames.map((game) => (
+              <ManageGameRow
+                game={game}
+                groupCode={group.publicCode}
+                key={game.id}
+              />
+            ))}
           </div>
         )}
       </section>
@@ -294,21 +197,4 @@ function formatGameDate(playedAt: string): string {
     day: "numeric",
     timeZone: "Asia/Tokyo",
   }).format(new Date(playedAt));
-}
-
-function toDateInputValue(playedAt: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    timeZone: "Asia/Tokyo",
-  }).formatToParts(new Date(playedAt));
-  const part = (type: "year" | "month" | "day") =>
-    parts.find((entry) => entry.type === type)?.value ?? "";
-  return `${part("year")}-${part("month")}-${part("day")}`;
-}
-
-function readString(formData: FormData, name: string): string {
-  const value = formData.get(name);
-  return typeof value === "string" ? value : "";
 }
