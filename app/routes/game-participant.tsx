@@ -47,10 +47,14 @@ import { PlayerAvatar } from "../components/player-avatar";
 import { PlayerChoiceList } from "~/components/player-choice-list";
 import {
   createNewPlayerProfileSessionCredentials,
+  getAuthenticatedPlayerIdentity,
   getAuthenticatedPlayerProfile,
   selectPlayerProfile,
 } from "@server/services/player-profile-service.server";
-import { joinSelfParticipant } from "@server/services/participant-service.server";
+import {
+  joinCurrentProfileToGroupGame,
+  joinSelfParticipant,
+} from "@server/services/participant-service.server";
 import {
   recordOwnRebuyAction,
   undoOwnRebuyAction,
@@ -60,6 +64,7 @@ import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar
 import { createPlayerProfileCookie } from "@server/services/player-profile-session.server";
 import { GameStories } from "../components/game-stories";
 import { GroupSiteHeader } from "~/components/site-menu";
+import { GroupInviteJoinPanel } from "~/components/group-invite-join-panel";
 import {
   isOrganizerAuthenticated,
   requireOrganizer,
@@ -124,8 +129,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         .catch(() => ({ available: false, participants: [] }))
       : Promise.resolve({ available: true, participants: [] }),
   ]);
+  const groupInvitePlayer =
+    context.game.status === "open" &&
+    !participant &&
+    !profileOverview?.profile
+      ? await getAuthenticatedPlayerIdentity(request)
+      : null;
   const players =
-    context.game.status === "open" && !participant
+    context.game.status === "open" && !participant && !groupInvitePlayer
       ? await listRegisteredPlayersForGame(context.group.id, params.gameId)
       : [];
   const ownStoryPost =
@@ -178,6 +189,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     group: { name: context.group.name, publicCode: context.group.publicCode },
     game: context.game,
     isOrganizer,
+    groupInvitePlayer: groupInvitePlayer
+      ? { displayName: groupInvitePlayer.displayName }
+      : null,
     authenticatedPlayer: profileOverview?.profile
       ? {
         avatarUrl: buildPlayerAvatarUrl({
@@ -345,6 +359,18 @@ export async function action({ request, params }: Route.ActionArgs) {
       `${participantUrl}?notice=${isDeletingOwnStory ? "story-deleted" : "story-saved"}`,
       { status: 303 },
     );
+  }
+
+  if (intent === "join-current-profile-to-group") {
+    if (context.game.status !== "open") {
+      return { error: "現在は参加を受け付けていません。" };
+    }
+    const joined = await joinCurrentProfileToGroupGame(request, {
+      gameId: params.gameId,
+      groupId: context.group.id,
+    });
+    if (!joined.ok) return { error: joined.error };
+    return redirect(participantUrl + "?notice=group-joined", { status: 303 });
   }
 
   if (intent === "join-self") {
@@ -833,7 +859,9 @@ export default function GameParticipant({
       ) : (
         <div
           className={
-            loaderData.authenticatedPlayer ? "join-grid" : "player-selection"
+            loaderData.authenticatedPlayer || loaderData.groupInvitePlayer
+              ? "join-grid"
+              : "player-selection"
           }
         >
           {loaderData.authenticatedPlayer ? (
@@ -859,6 +887,12 @@ export default function GameParticipant({
                 </button>
               </Form>
             </section>
+          ) : loaderData.groupInvitePlayer ? (
+            <GroupInviteJoinPanel
+              displayName={loaderData.groupInvitePlayer.displayName}
+              groupName={loaderData.group.name}
+              isSubmitting={isSubmitting}
+            />
           ) : (
             <>
               <section className="player-selection-primary">
@@ -1523,6 +1557,7 @@ export function ParticipantResultEntrySection({
 function getParticipantNotice(notice: string | null): string | null {
   const messages: Record<string, string> = {
     joined: "参加しました。ゲーム中の操作を開始できます。",
+    "group-joined": "グループに参加し、この開催へ登録しました。",
     saved: "最終結果を保存しました。",
     "story-saved": "TABLE STORIESへの投稿を保存しました。",
     "story-deleted": "投稿を削除しました。",

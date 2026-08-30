@@ -28,12 +28,14 @@ export function GroupSiteHeader({
 }) {
   const rootData = useRouteLoaderData("root") as
     | {
+      activeGroupName: string | null;
       authenticatedPlayerAvatarUrl: string | null;
       authenticatedPlayerName: string | null;
       authenticatedPlayerGroupPlayerId: string | null;
       isOrganizer: boolean;
     }
     | undefined;
+  const activeGroupName = rootData?.activeGroupName ?? null;
   const authenticatedPlayerName = rootData?.authenticatedPlayerName ?? null;
   const authenticatedPlayerGroupPlayerId =
     rootData?.authenticatedPlayerGroupPlayerId ?? null;
@@ -46,7 +48,10 @@ export function GroupSiteHeader({
     <header className="site-header">
       <Link className="brand" to={`/g/${groupCode}`}>
         <span className="brand-mark">RC</span>
-        <span>RiverCheck</span>
+        <span className="brand-copy">
+          <span>RiverCheck</span>
+          {activeGroupName ? <small>{activeGroupName}</small> : null}
+        </span>
       </Link>
       <div className="header-actions">
         {status}

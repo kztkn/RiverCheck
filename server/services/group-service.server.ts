@@ -4,6 +4,7 @@ import {
   insertGroup,
   listGroups,
   listGroupsForPlayer,
+  updateGroupName,
 } from "@server/repositories/group-repository.server";
 import {
   validateGroupIdentity,
@@ -36,6 +37,10 @@ export type CreateGroupResult =
       errors: CreateGroupErrors;
       values: CreateGroupFormValues;
     };
+
+export type RenameGroupResult =
+  | { ok: true; name: string }
+  | { ok: false; error: string; value: string };
 
 export async function getGroupOverview(
   publicCode: string,
@@ -120,6 +125,41 @@ export async function createGroup(
       ok: false,
       errors: { publicCode: "グループを作成できませんでした。別のコードでお試しください。" },
       values: validation.values,
+    };
+  }
+}
+
+export async function renameGroup(
+  group: GroupSummary,
+  name: string,
+): Promise<RenameGroupResult> {
+  const validation = validateGroupIdentity({
+    name,
+    publicCode: group.publicCode,
+  });
+  if (!validation.ok) {
+    return {
+      ok: false,
+      error: validation.errors.name ?? "グループ名を確認してください。",
+      value: name,
+    };
+  }
+
+  try {
+    const saved = await updateGroupName(group.id, validation.values.name);
+    return saved
+      ? { ok: true, name: validation.values.name }
+      : {
+          ok: false,
+          error: "グループ名を保存できませんでした。画面を更新してください。",
+          value: validation.values.name,
+        };
+  } catch (error) {
+    console.error("Failed to rename group", error);
+    return {
+      ok: false,
+      error: "グループ名を保存できませんでした。時間をおいて再度お試しください。",
+      value: validation.values.name,
     };
   }
 }

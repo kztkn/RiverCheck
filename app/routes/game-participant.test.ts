@@ -12,11 +12,13 @@ const mocked = vi.hoisted(() => ({
   findGroupByPublicCode: vi.fn(),
   findParticipantByGroupPlayerId: vi.fn(),
   findParticipantByTokenHash: vi.fn(),
+  getAuthenticatedPlayerIdentity: vi.fn(),
   getAuthenticatedPlayerProfile: vi.fn(),
   getOwnGameStoryPost: vi.fn(),
   getPublishedGameStoryPosts: vi.fn(),
   isOrganizerAuthenticated: vi.fn(),
   joinAuthenticatedParticipant: vi.fn(),
+  joinExistingPlayerToGroupGame: vi.fn(),
   joinNewParticipant: vi.fn(),
   leaveGame: vi.fn(),
   leaveGameByGroupPlayerId: vi.fn(),
@@ -52,6 +54,7 @@ vi.mock("@server/repositories/participant-repository.server", () => ({
   findParticipantByGroupPlayerId: mocked.findParticipantByGroupPlayerId,
   findParticipantByTokenHash: mocked.findParticipantByTokenHash,
   joinAuthenticatedParticipant: mocked.joinAuthenticatedParticipant,
+  joinExistingPlayerToGroupGame: mocked.joinExistingPlayerToGroupGame,
   joinNewParticipant: mocked.joinNewParticipant,
   leaveGame: mocked.leaveGame,
   leaveGameByGroupPlayerId: mocked.leaveGameByGroupPlayerId,
@@ -82,6 +85,7 @@ vi.mock("@server/services/participant-session.server", () => ({
 vi.mock("@server/services/player-profile-service.server", () => ({
   createNewPlayerProfileSessionCredentials:
     mocked.createNewPlayerProfileSessionCredentials,
+  getAuthenticatedPlayerIdentity: mocked.getAuthenticatedPlayerIdentity,
   getAuthenticatedPlayerProfile: mocked.getAuthenticatedPlayerProfile,
   selectPlayerProfile: mocked.selectPlayerProfile,
 }));
@@ -167,10 +171,12 @@ describe("game participant route", () => {
     mocked.findGroupByPublicCode.mockResolvedValue(group);
     mocked.findGameForGroup.mockResolvedValue(openGame);
     mocked.isOrganizerAuthenticated.mockResolvedValue(false);
+    mocked.getAuthenticatedPlayerIdentity.mockResolvedValue(null);
     mocked.getAuthenticatedPlayerProfile.mockResolvedValue({
       group,
       profile,
     });
+    mocked.joinExistingPlayerToGroupGame.mockResolvedValue(groupPlayerId);
     mocked.findParticipantByGroupPlayerId.mockResolvedValue(null);
     mocked.findParticipantByTokenHash.mockResolvedValue(null);
     mocked.listCurrentGameParticipants.mockResolvedValue([]);
@@ -276,6 +282,19 @@ describe("game participant route", () => {
       available: true,
       items: [{ displayName: "Alice", isCurrentUser: false }],
     });
+  });
+
+  it("別グループの本人プロフィールがある場合は共有リンクから参加候補として返す", async () => {
+    mocked.getAuthenticatedPlayerProfile.mockResolvedValue({ group, profile: null });
+    mocked.getAuthenticatedPlayerIdentity.mockResolvedValue({
+      displayName: "Alice",
+      playerId,
+    });
+
+    const result = await loader(loaderArgs());
+
+    expect(result.groupInvitePlayer).toEqual({ displayName: "Alice" });
+    expect(mocked.listRegisteredPlayersForGame).not.toHaveBeenCalled();
   });
 
   it("参加者一覧の取得失敗だけでは開催ページをエラーにしない", async () => {
@@ -551,6 +570,28 @@ describe("game participant route", () => {
     );
     expect(response.headers.get("Location")).toBe(
       `/g/river-check/games/${gameId}?notice=story-deleted`,
+    );
+  });
+
+  it("開催共有リンクから既存プロフィールのまま新グループと開催へ参加できる", async () => {
+    mocked.getAuthenticatedPlayerIdentity.mockResolvedValue({
+      displayName: "Alice",
+      playerId,
+    });
+
+    const result = await action(
+      actionArgs({ intent: "join-current-profile-to-group" }),
+    );
+
+    const response = expectRedirect(result);
+    expect(response.headers.get("Location")).toBe(
+      "/g/river-check/games/" + gameId + "?notice=group-joined",
+    );
+    expect(mocked.joinExistingPlayerToGroupGame).toHaveBeenCalledWith(
+      group.id,
+      gameId,
+      playerId,
+      expect.stringMatching(/^[0-9a-f]{64}$/u),
     );
   });
 
