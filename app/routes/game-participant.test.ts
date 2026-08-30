@@ -877,7 +877,7 @@ function expectRedirect(result: Awaited<ReturnType<typeof action>>): Response {
 }
 
 describe("finalized game invite-only access", () => {
-  it("未所属ゲストは確定済み開催を閲覧できない", async () => {
+  it("未所属ゲストでもURLを知っていれば確定結果だけ閲覧できる", async () => {
     vi.resetAllMocks();
     mocked.findGroupByPublicCode.mockResolvedValue(group);
     mocked.findGameForGroup.mockResolvedValue({
@@ -889,6 +889,34 @@ describe("finalized game invite-only access", () => {
       group,
       profile: null,
     });
+    mocked.findParticipantByTokenHash.mockResolvedValue(null);
+    mocked.listFinalResults.mockResolvedValue([]);
+    mocked.listResultRevisions.mockResolvedValue([]);
+
+    const result = await loader(loaderArgs());
+
+    expect(result.isPublicResultViewer).toBe(true);
+    expect(result.canBrowseGroup).toBe(false);
+    expect(result.pastGameNavigation).toBeNull();
+    expect(result.payPay).toBeNull();
+    expect(result.storyPosts).toEqual([]);
+    expect(mocked.listGamesForGroup).not.toHaveBeenCalled();
+    expect(mocked.getPublishedGameStoryPosts).not.toHaveBeenCalled();
+  });
+
+  it("未所属ゲストはdraft開催を閲覧できない", async () => {
+    vi.resetAllMocks();
+    mocked.findGroupByPublicCode.mockResolvedValue(group);
+    mocked.findGameForGroup.mockResolvedValue({
+      ...openGame,
+      status: "draft",
+    });
+    mocked.isOrganizerAuthenticated.mockResolvedValue(false);
+    mocked.getAuthenticatedPlayerProfile.mockResolvedValue({
+      group,
+      profile: null,
+    });
+    mocked.findParticipantByTokenHash.mockResolvedValue(null);
 
     await expect(loader(loaderArgs())).rejects.toMatchObject({ status: 403 });
   });
