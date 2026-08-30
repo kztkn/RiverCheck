@@ -16,4 +16,4 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - run: npx vitest run app/components/reusable-player-picker.test.tsx app/components/site-menu.test.tsx
+      - run: npx vitest run app/routes/reusable-player-picker.test.tsx app/components/site-menu.test.tsx
