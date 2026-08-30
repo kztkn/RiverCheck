@@ -29,6 +29,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!groupCode) {
     return {
       activeGroupCode: null,
+      activeGroupName: null,
       authenticatedPlayerAvatarUrl: null,
       authenticatedPlayerGroupPlayerId: null,
       authenticatedPlayerName: null,
@@ -43,6 +44,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const profile = overview?.profile ?? null;
   return {
     activeGroupCode: overview?.group.publicCode ?? null,
+    activeGroupName: overview?.group.name ?? null,
     authenticatedPlayerAvatarUrl: profile
       ? buildPlayerAvatarUrl({
           avatarUpdatedAt: profile.avatarUploadedAt,
