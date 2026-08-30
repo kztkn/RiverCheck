@@ -32,6 +32,7 @@ export function GroupSiteHeader({
       authenticatedPlayerAvatarUrl: string | null;
       authenticatedPlayerName: string | null;
       authenticatedPlayerGroupPlayerId: string | null;
+      hasMultipleGroups: boolean;
       isOrganizer: boolean;
     }
     | undefined;
@@ -41,6 +42,7 @@ export function GroupSiteHeader({
     rootData?.authenticatedPlayerGroupPlayerId ?? null;
   const authenticatedPlayerAvatarUrl =
     rootData?.authenticatedPlayerAvatarUrl ?? null;
+  const hasMultipleGroups = rootData?.hasMultipleGroups ?? false;
   const isOrganizer = organizer || (rootData?.isOrganizer ?? false);
   const playerLabel = authenticatedPlayerName ?? "ゲスト";
 
@@ -82,6 +84,7 @@ export function GroupSiteHeader({
           groupCode={groupCode}
           hasPlayer={Boolean(authenticatedPlayerName)}
           groupPlayerId={authenticatedPlayerGroupPlayerId}
+          hasMultipleGroups={hasMultipleGroups}
           organizer={isOrganizer}
         />
       </div>
@@ -93,23 +96,17 @@ export function GroupSiteMenu({
   groupCode,
   hasPlayer = false,
   groupPlayerId = null,
+  hasMultipleGroups = false,
   organizer = false,
 }: {
   groupCode: string;
   hasPlayer?: boolean;
   groupPlayerId?: string | null;
+  hasMultipleGroups?: boolean;
   organizer?: boolean;
 }) {
   const basePath = `/g/${groupCode}`;
-  const items: SiteMenuItem[] = [];
-  if (hasPlayer || organizer) {
-    items.push({
-      icon: "groups",
-      label: "グループを切り替える",
-      to: `${basePath}/groups`,
-    });
-  }
-  items.push(
+  const items: SiteMenuItem[] = [
     { icon: "stats", label: "ランキング", to: `${basePath}/stats` },
     {
       icon: "profile",
@@ -120,6 +117,17 @@ export function GroupSiteMenu({
         ? `${basePath}/stats/${groupPlayerId}`
         : `${basePath}/profile`,
     },
+  ];
+
+  if (hasMultipleGroups || organizer) {
+    items.push({
+      icon: "groups",
+      label: hasMultipleGroups ? "グループを切り替える" : "グループを管理",
+      to: `${basePath}/groups`,
+    });
+  }
+
+  items.push(
     { icon: "about", label: "このアプリについて", to: `${basePath}/about` },
     {
       icon: "organizer",
