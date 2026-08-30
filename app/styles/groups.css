@@ -284,56 +284,6 @@
   margin: 0;
 }
 
-.organizer-game-entry {
-  border-bottom: 1px solid var(--line);
-}
-
-.organizer-game-entry .organizer-game-row {
-  border-bottom: 0;
-}
-
-.organizer-game-schedule {
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.organizer-game-schedule > summary {
-  display: flex;
-  min-height: 42px;
-  align-items: center;
-  justify-content: flex-end;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 0.72rem;
-  font-weight: 800;
-  list-style: none;
-  padding: 0 4px;
-}
-
-.organizer-game-schedule > summary::-webkit-details-marker {
-  display: none;
-}
-
-.organizer-game-schedule[open] > summary {
-  color: var(--green);
-}
-
-.organizer-game-schedule-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 10px;
-  padding: 0 2px 14px;
-}
-
-.organizer-game-schedule-form .field {
-  margin: 0;
-}
-
-.organizer-game-schedule-form .field-error {
-  grid-column: 1 / -1;
-  margin: 0;
-}
-
 @media (max-width: 480px) {
   .brand-copy > small {
     max-width: 27vw;
@@ -359,13 +309,5 @@
   .member-reuse-list .button-small {
     min-width: 58px;
     padding-inline: 10px;
-  }
-
-  .organizer-game-schedule-form {
-    grid-template-columns: 1fr;
-  }
-
-  .organizer-game-schedule-form .button {
-    width: 100%;
   }
 }
