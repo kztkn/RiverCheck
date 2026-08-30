@@ -22,6 +22,10 @@ jobs:
           cache: npm
       - run: python scripts/combine-game-settings-save.py
       - run: git diff --check
+      - name: Show relevant generated lines
+        run: |
+          nl -ba app/routes/game-admin.tsx | sed -n '535,550p'
+          nl -ba app/routes/game-admin.tsx | sed -n '1324,1338p'
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
