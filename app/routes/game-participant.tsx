@@ -105,15 +105,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     isOrganizerAuthenticated(request),
     getAuthenticatedPlayerProfile(request, params.groupCode),
   ]);
-
-  if (
-    context.game.status !== "open" &&
-    !isOrganizer &&
-    !profileOverview?.profile
-  ) {
-    throw new Response(INVITE_REQUIRED_RESPONSE_TEXT, { status: 403 });
-  }
-
   const url = new URL(request.url);
   const participantToken = readParticipantToken(request, params.gameId);
   const participantTokenHash = participantToken
@@ -139,6 +130,16 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         .catch(() => ({ available: false, participants: [] }))
       : Promise.resolve({ available: true, participants: [] }),
   ]);
+
+  if (
+    context.game.status !== "open" &&
+    !isOrganizer &&
+    !profileOverview?.profile &&
+    !participant
+  ) {
+    throw new Response(INVITE_REQUIRED_RESPONSE_TEXT, { status: 403 });
+  }
+
   const groupInvitePlayer =
     context.game.status === "open" &&
     !participant &&
