@@ -1,14 +1,17 @@
-import type { GameListItem } from "../../types/game";
-
 const TOKYO_TIME_ZONE = "Asia/Tokyo";
 
-export function orderActiveGamesBySchedule(
-  games: GameListItem[],
+type SchedulableGame = {
+  playedAt: string;
+  status: "draft" | "open" | "finalized";
+};
+
+export function orderActiveGamesBySchedule<T extends SchedulableGame>(
+  games: T[],
   now: Date = new Date(),
-): GameListItem[] {
+): T[] {
   const today = formatTokyoDateKey(now);
-  const upcoming: GameListItem[] = [];
-  const overdue: GameListItem[] = [];
+  const upcoming: T[] = [];
+  const overdue: T[] = [];
 
   for (const game of games) {
     if (game.status === "finalized") continue;
@@ -22,11 +25,11 @@ export function orderActiveGamesBySchedule(
   return [...upcoming, ...overdue];
 }
 
-function comparePlayedAtAscending(a: GameListItem, b: GameListItem): number {
+function comparePlayedAtAscending<T extends SchedulableGame>(a: T, b: T): number {
   return Date.parse(a.playedAt) - Date.parse(b.playedAt);
 }
 
-function comparePlayedAtDescending(a: GameListItem, b: GameListItem): number {
+function comparePlayedAtDescending<T extends SchedulableGame>(a: T, b: T): number {
   return Date.parse(b.playedAt) - Date.parse(a.playedAt);
 }
 
