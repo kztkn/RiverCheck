@@ -8,12 +8,17 @@ import {
   ScrollRestoration,
 } from "react-router";
 import { AppErrorPage } from "~/components/error-page";
+import { InviteRequiredPage } from "~/components/invite-required-page";
 import { PwaUpdateNotice } from "~/components/pwa-update-notice";
 import type { Route } from "./+types/root";
 import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
 import { hasMultipleActiveGroupsForPlayer } from "@server/repositories/group-repository.server";
 import { isOrganizerAuthenticated } from "@server/services/organizer-auth.server";
 import { extractGroupCode } from "@domain/routing/extract-group-code";
+import {
+  INVITE_REQUIRED_RESPONSE_TEXT,
+  isPublicGroupEntryPath,
+} from "@domain/routing/public-group-entry";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { rememberLastVisitedGroup } from "~/utils/last-visited-group";
 import "./styles/app.css";
@@ -26,7 +31,8 @@ import "./styles/stats.css";
 import "./styles/timeline.css";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const groupCode = extractGroupCode(new URL(request.url).pathname);
+  const url = new URL(request.url);
+  const groupCode = extractGroupCode(url.pathname);
   if (!groupCode) {
     return {
       activeGroupCode: null,
@@ -44,6 +50,15 @@ export async function loader({ request }: Route.LoaderArgs) {
     isOrganizerAuthenticated(request),
   ]);
   const profile = overview?.profile ?? null;
+
+  if (
+    !profile &&
+    !isOrganizer &&
+    !isPublicGroupEntryPath(url.pathname, groupCode)
+  ) {
+    throw new Response(INVITE_REQUIRED_RESPONSE_TEXT, { status: 403 });
+  }
+
   const hasMultipleGroups = profile
     ? await hasMultipleActiveGroupsForPlayer(profile.playerId)
     : false;
@@ -112,6 +127,13 @@ export default function App({ loaderData }: Route.ComponentProps) {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  if (
+    isRouteErrorResponse(error) &&
+    error.status === 403 &&
+    error.data === INVITE_REQUIRED_RESPONSE_TEXT
+  ) {
+    return <InviteRequiredPage title="このグループにはまだ参加していません" />;
+  }
   const status = isRouteErrorResponse(error) ? error.status : 500;
   return <AppErrorPage status={status} />;
 }
