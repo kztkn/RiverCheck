@@ -5,8 +5,7 @@ const mocked = vi.hoisted(() => ({
   findGameForGroup: vi.fn(),
   findGroupByPublicCode: vi.fn(),
   removeOpenGameForGroup: vi.fn(),
-  renameOpenGameForGroup: vi.fn(),
-  rescheduleOpenGameForGroup: vi.fn(),
+  updateOpenGameIdentityForGroup: vi.fn(),
   requireOrganizer: vi.fn(),
 }));
 
@@ -40,11 +39,8 @@ vi.mock("@server/services/rebuy-service.server", () => ({
 }));
 vi.mock("@server/services/game-service.server", () => ({
   removeOpenGameForGroup: mocked.removeOpenGameForGroup,
-  renameOpenGameForGroup: mocked.renameOpenGameForGroup,
+  updateOpenGameIdentityForGroup: mocked.updateOpenGameIdentityForGroup,
   validateGameSettingsForm: vi.fn(),
-}));
-vi.mock("@server/services/game-schedule-service.server", () => ({
-  rescheduleOpenGameForGroup: mocked.rescheduleOpenGameForGroup,
 }));
 vi.mock("@server/services/finalization-service.server", () => ({
   buildFinalizationState: vi.fn(),
@@ -74,47 +70,31 @@ describe("game admin management action", () => {
     mocked.findGameForGroup.mockResolvedValue(game);
   });
 
-  it("主催者認証後に開催名を変更して管理画面へ戻る", async () => {
-    mocked.renameOpenGameForGroup.mockResolvedValue({ ok: true });
+  it("開催設定の保存1回で開催名と開催日をまとめて更新する", async () => {
+    mocked.updateOpenGameIdentityForGroup.mockResolvedValue({ ok: true });
 
     const result = await action(
-      actionArgs({ intent: "rename-game", title: "9月の会" }),
+      actionArgs({
+        intent: "update-game-identity",
+        title: "9月の会",
+        playedAt: "2026-09-11",
+      }),
     );
 
     expect(mocked.requireOrganizer).toHaveBeenCalledWith(
       expect.any(Request),
       "river-check",
     );
-    expect(mocked.renameOpenGameForGroup).toHaveBeenCalledWith(
+    expect(mocked.updateOpenGameIdentityForGroup).toHaveBeenCalledWith(
       group.id,
       game.id,
-      "9月の会",
+      { title: "9月の会", playedAt: "2026-09-11" },
     );
     expect(result).toBeInstanceOf(Response);
     const response = result as Response;
     expect(response.status).toBe(303);
     expect(response.headers.get("Location")).toBe(
-      `/g/river-check/games/${game.id}/admin?notice=game-renamed`,
-    );
-  });
-
-  it("開催設定から開催日を変更して管理画面へ戻る", async () => {
-    mocked.rescheduleOpenGameForGroup.mockResolvedValue({ ok: true });
-
-    const result = await action(
-      actionArgs({ intent: "reschedule-game", playedAt: "2026-09-11" }),
-    );
-
-    expect(mocked.rescheduleOpenGameForGroup).toHaveBeenCalledWith(
-      "river-check",
-      game.id,
-      "2026-09-11",
-    );
-    expect(result).toBeInstanceOf(Response);
-    const response = result as Response;
-    expect(response.status).toBe(303);
-    expect(response.headers.get("Location")).toBe(
-      `/g/river-check/games/${game.id}/admin?notice=game-rescheduled`,
+      `/g/river-check/games/${game.id}/admin?notice=game-settings-updated`,
     );
   });
 

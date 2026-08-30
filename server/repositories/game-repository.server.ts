@@ -249,6 +249,26 @@ export async function updateOpenGameTitle(
   return result.rowCount === 1;
 }
 
+export async function updateOpenGameIdentity(
+  groupId: string,
+  gameId: string,
+  values: { title: string; playedAt: string },
+): Promise<boolean> {
+  const result = await queryDatabase(
+    `
+      UPDATE games
+      SET title = $3,
+          played_at = $4,
+          updated_at = NOW()
+      WHERE id = $1
+        AND group_id = $2
+        AND status = 'open'
+    `,
+    [gameId, groupId, values.title, values.playedAt],
+  );
+  return result.rowCount === 1;
+}
+
 export async function deleteOpenGame(
   groupId: string,
   gameId: string,
