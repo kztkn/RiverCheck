@@ -65,6 +65,21 @@ export async function listGroupsForPlayer(
   return result.rows.map(mapDirectoryItem);
 }
 
+export async function hasMultipleActiveGroupsForPlayer(
+  playerId: string,
+): Promise<boolean> {
+  const result = await queryDatabase<{ has_multiple_groups: boolean }>(
+    `
+      SELECT COUNT(*) > 1 AS has_multiple_groups
+      FROM group_players
+      WHERE player_id = $1
+        AND is_active = TRUE
+    `,
+    [playerId],
+  );
+  return result.rows[0]?.has_multiple_groups ?? false;
+}
+
 export async function insertGroup(
   name: string,
   publicCode: string,
