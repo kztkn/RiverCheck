@@ -5,15 +5,19 @@ import { GroupSiteHeader } from "~/components/site-menu";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import type { Route } from "./+types/about";
 
-export const LINE_OPEN_CHAT_URL =
-  "https://line.me/ti/g2/8Bsonb9YK8YewGVvTNCp4vnCofI2PrXey7cVEg";
 export const ABOUT_DESCRIPTION =
   "開催結果、会費の精算、個人戦績をひとつにまとめるポーカー会向けWebアプリです。";
 
 export async function loader({ params }: Route.LoaderArgs) {
   const group = await findGroupByPublicCode(params.groupCode);
   if (!group) throw new Response("Group not found", { status: 404 });
-  return { group: { name: group.name, publicCode: group.publicCode } };
+  return {
+    group: {
+      lineOpenChatUrl: group.lineOpenChatUrl,
+      name: group.name,
+      publicCode: group.publicCode,
+    },
+  };
 }
 
 export default function About({ loaderData }: Route.ComponentProps) {
@@ -29,7 +33,7 @@ export default function About({ loaderData }: Route.ComponentProps) {
         <p>{ABOUT_DESCRIPTION}</p>
       </section>
 
-      <AboutSections />
+      <AboutSections lineOpenChatUrl={group.lineOpenChatUrl} />
 
       <div className="about-meta-link">
         <a href="/oss-licenses.md">OSSライセンス</a>
@@ -39,11 +43,15 @@ export default function About({ loaderData }: Route.ComponentProps) {
   );
 }
 
-export function AboutSections() {
+export function AboutSections({
+  lineOpenChatUrl = null,
+}: {
+  lineOpenChatUrl?: string | null;
+}) {
   return (
     <>
       <AboutGuide />
-      <AboutOpenChatSection />
+      {lineOpenChatUrl ? <AboutOpenChatSection url={lineOpenChatUrl} /> : null}
       <AboutHomeScreenGuide />
     </>
   );
@@ -71,7 +79,7 @@ export function AboutGuide() {
   );
 }
 
-export function AboutOpenChatSection() {
+export function AboutOpenChatSection({ url }: { url: string }) {
   return (
     <aside className="about-community-section" aria-labelledby="open-chat-title">
       <div className="about-community-mark" aria-hidden="true">
@@ -86,7 +94,7 @@ export function AboutOpenChatSection() {
       </div>
       <a
         className="about-community-link"
-        href={LINE_OPEN_CHAT_URL}
+        href={url}
         rel="noreferrer"
         target="_blank"
       >
