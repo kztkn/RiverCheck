@@ -1,4 +1,4 @@
-import type { GameListItem } from "@shared-types/game";
+import type { GameListItem } from "../../shared-types/game";
 
 const TOKYO_TIME_ZONE = "Asia/Tokyo";
 
@@ -37,7 +37,7 @@ function formatTokyoDateKey(date: Date): string {
     day: "2-digit",
     timeZone: TOKYO_TIME_ZONE,
   }).formatToParts(date);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
+  const part = (type: "year" | "month" | "day") =>
     parts.find((entry) => entry.type === type)?.value ?? "";
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
