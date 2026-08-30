@@ -1,4 +1,4 @@
-import type { GameListItem } from "../../shared-types/game";
+import type { GameListItem } from "../../types/game";
 
 const TOKYO_TIME_ZONE = "Asia/Tokyo";
 
