@@ -1,0 +1,111 @@
+name: reusable-player-http-diagnostic
+
+on:
+  push:
+    branches:
+      - feat/device-player-switch
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rivercheck
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rivercheck"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/device-player-switch
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run db:migrate
+      - name: Seed diagnostic groups and players
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d rivercheck -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO groups (name, public_code) VALUES ('Group A', 'group-a');
+          INSERT INTO groups (name, public_code) VALUES ('Group B', 'group-b');
+          WITH new_player AS (
+            INSERT INTO players (display_name) VALUES ('Alice') RETURNING id
+          )
+          INSERT INTO group_players (group_id, player_id)
+          SELECT groups.id, new_player.id FROM groups, new_player WHERE groups.public_code = 'group-a';
+          WITH new_player AS (
+            INSERT INTO players (display_name) VALUES ('Bob') RETURNING id
+          )
+          INSERT INTO group_players (group_id, player_id)
+          SELECT groups.id, new_player.id FROM groups, new_player WHERE groups.public_code = 'group-a';
+          SQL
+      - name: Configure local organizer auth
+        run: |
+          cat > .dev.vars <<'EOF'
+          ORGANIZER_PIN=246810
+          ORGANIZER_SESSION_SECRET=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          EOF
+      - name: Start app
+        run: |
+          npm run dev -- --host 127.0.0.1 > /tmp/rivercheck-dev.log 2>&1 &
+          echo $! > /tmp/rivercheck-dev.pid
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/g/group-b/organizer-login >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/rivercheck-dev.log
+          exit 1
+      - name: Login organizer and POST reusable players as browser documents
+        env:
+          PGPASSWORD: postgres
+        run: |
+          curl -sS -D /tmp/login-headers -o /tmp/login-body -c /tmp/cookies \
+            -X POST \
+            -H 'Accept: text/html,application/xhtml+xml' \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            --data 'pin=246810&returnTo=%2Fg%2Fgroup-b%2Fplayers' \
+            http://127.0.0.1:5173/g/group-b/organizer-login
+          cat /tmp/login-headers
+          grep -q '^set-cookie: rc_organizer_session=' <(tr '[:upper:]' '[:lower:]' < /tmp/login-headers)
+
+          ALICE_ID=$(psql -h 127.0.0.1 -U postgres -d rivercheck -Atc "SELECT p.id FROM players p WHERE p.display_name='Alice'")
+          BOB_ID=$(psql -h 127.0.0.1 -U postgres -d rivercheck -Atc "SELECT p.id FROM players p WHERE p.display_name='Bob'")
+
+          FIRST_STATUS=$(curl -sS -o /tmp/first-body -D /tmp/first-headers -b /tmp/cookies \
+            -X POST \
+            -H 'Accept: text/html,application/xhtml+xml' \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            --data-urlencode 'intent=add-existing-player' \
+            --data-urlencode "playerId=$ALICE_ID" \
+            -w '%{http_code}' \
+            http://127.0.0.1:5173/g/group-b/players)
+          echo "first=$FIRST_STATUS"
+          cat /tmp/first-headers
+          if [ "$FIRST_STATUS" -ge 400 ]; then cat /tmp/first-body; cat /tmp/rivercheck-dev.log; exit 1; fi
+
+          SECOND_STATUS=$(curl -sS -o /tmp/second-body -D /tmp/second-headers -b /tmp/cookies \
+            -X POST \
+            -H 'Accept: text/html,application/xhtml+xml' \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            --data-urlencode 'intent=add-existing-player' \
+            --data-urlencode "playerId=$BOB_ID" \
+            -w '%{http_code}' \
+            http://127.0.0.1:5173/g/group-b/players)
+          echo "second=$SECOND_STATUS"
+          cat /tmp/second-headers
+          if [ "$SECOND_STATUS" -ge 400 ]; then cat /tmp/second-body; cat /tmp/rivercheck-dev.log; exit 1; fi
+
+          COUNT=$(psql -h 127.0.0.1 -U postgres -d rivercheck -Atc "SELECT COUNT(*) FROM group_players gp JOIN groups g ON g.id=gp.group_id WHERE g.public_code='group-b'")
+          test "$COUNT" = "2"
