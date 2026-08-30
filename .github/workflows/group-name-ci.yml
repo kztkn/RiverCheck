@@ -1,0 +1,32 @@
+name: group-name-ci
+
+on:
+  push:
+    branches:
+      - feat/game-link-group-invite
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: node scripts/patch-group-name-docs.mjs
+      - run: git diff --check
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Commit canonical docs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/requirements.md docs/architecture.md
+          git commit -m "グループ名変更仕様を正本文書へ反映 [skip ci]" || exit 0
+          git push
