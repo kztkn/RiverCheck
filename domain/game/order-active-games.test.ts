@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { GameListItem } from "@shared-types/game";
+import type { GameListItem } from "../../shared-types/game";
 import { orderActiveGamesBySchedule } from "./order-active-games";
 
-function game(id: string, playedAt: string, status: GameListItem["status"] = "open"): GameListItem {
+function game(
+  id: string,
+  playedAt: string,
+  status: GameListItem["status"] = "open",
+): GameListItem {
   return {
     id,
     title: id,
