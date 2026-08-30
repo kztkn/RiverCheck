@@ -156,7 +156,6 @@ export function GroupSiteMenu({
       organizerLogoutAction={
         organizer ? `${basePath}/organizer-logout` : undefined
       }
-      accountLogoutAction={hasPlayer ? `${basePath}/logout` : undefined}
     />
   );
 }
