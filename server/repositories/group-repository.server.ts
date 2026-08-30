@@ -11,6 +11,7 @@ interface GroupRow {
   id: string;
   name: string;
   public_code: string;
+  line_open_chat_url: string | null;
   paypay_recipient_link: string | null;
   paypay_link_registered_at: Date | null;
 }
@@ -26,7 +27,7 @@ export async function findGroupByPublicCode(
 ): Promise<GroupSummary | null> {
   const result = await queryDatabase<GroupRow>(
     `
-      SELECT id, name, public_code,
+      SELECT id, name, public_code, line_open_chat_url,
              paypay_recipient_link, paypay_link_registered_at
       FROM groups
       WHERE public_code = $1
@@ -90,7 +91,7 @@ export async function insertGroup(
       `
         INSERT INTO groups (name, public_code)
         VALUES ($1, $2)
-        RETURNING id, name, public_code,
+        RETURNING id, name, public_code, line_open_chat_url,
                   paypay_recipient_link, paypay_link_registered_at
       `,
       [name, publicCode],
@@ -135,6 +136,7 @@ function mapGroup(row: GroupRow): GroupSummary {
     id: row.id,
     name: row.name,
     publicCode: row.public_code,
+    lineOpenChatUrl: row.line_open_chat_url,
     payPayRecipientLink: row.paypay_recipient_link,
     payPayLinkRegisteredAt:
       row.paypay_link_registered_at?.toISOString() ?? null,

@@ -3,11 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocked = vi.hoisted(() => ({
   getGroupSettings: vi.fn(),
   requireOrganizer: vi.fn(),
+  saveGroupLineOpenChatUrl: vi.fn(),
   saveGroupPayPayRecipientLink: vi.fn(),
 }));
 
 vi.mock("@server/services/group-service.server", () => ({
   getGroupSettings: mocked.getGroupSettings,
+}));
+vi.mock("@server/services/group-community-service.server", () => ({
+  saveGroupLineOpenChatUrl: mocked.saveGroupLineOpenChatUrl,
 }));
 vi.mock("@server/services/group-paypay-service.server", () => ({
   saveGroupPayPayRecipientLink: mocked.saveGroupPayPayRecipientLink,
@@ -26,6 +30,7 @@ import { action } from "./group-settings";
 
 const group = {
   id: "11111111-1111-4111-8111-111111111111",
+  lineOpenChatUrl: null,
   name: "River Check",
   payPayLinkRegisteredAt: null,
   payPayRecipientLink: null,
@@ -36,6 +41,28 @@ describe("group settings action", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocked.getGroupSettings.mockResolvedValue(group);
+  });
+
+  it("主催者認証後にOpenChat URLを保存して設定画面へ戻る", async () => {
+    mocked.saveGroupLineOpenChatUrl.mockResolvedValue({ ok: true });
+
+    const result = await action(
+      actionArgs({
+        intent: "save-openchat-link",
+        lineOpenChatUrl: "https://line.me/ti/g2/exampleInvite",
+      }),
+    );
+
+    expect(mocked.saveGroupLineOpenChatUrl).toHaveBeenCalledWith(
+      group.id,
+      "https://line.me/ti/g2/exampleInvite",
+    );
+    expect(result).toBeInstanceOf(Response);
+    const response = result as Response;
+    expect(response.status).toBe(303);
+    expect(response.headers.get("Location")).toBe(
+      "/g/river-check/settings?notice=openchat-saved",
+    );
   });
 
   it("主催者認証後にPayPay受取リンクを保存して設定画面へ戻る", async () => {
@@ -100,6 +127,7 @@ describe("group settings action", () => {
       ),
     ).rejects.toBeInstanceOf(Response);
     expect(mocked.getGroupSettings).not.toHaveBeenCalled();
+    expect(mocked.saveGroupLineOpenChatUrl).not.toHaveBeenCalled();
     expect(mocked.saveGroupPayPayRecipientLink).not.toHaveBeenCalled();
   });
 });

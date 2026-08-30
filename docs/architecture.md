@@ -162,7 +162,7 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 
 ## 主催者導線と認証
 
-主催者ホームは `/g/:groupCode/manage` とする。ホーム上部はメンバー管理とグループ設定への導線に絞り、開催作成は開催管理セクション内の操作として配置する。`/g/:groupCode/settings` はPayPay受取リンクなど開催をまたぐ共通設定を扱い、設定が増えても各開催管理へ混在させない。
+主催者ホームは `/g/:groupCode/manage` とする。ホーム上部はメンバー管理とグループ設定への導線に絞り、開催作成は開催管理セクション内の操作として配置する。`/g/:groupCode/settings` はグループ名、LINEオープンチャット招待URL、PayPay受取リンクなど開催をまたぐ共通設定を扱い、設定が増えても各開催管理へ混在させない。LINEオープンチャットURLは`groups.line_open_chat_url`へnullableで保持し、About routeは値がある場合だけコミュニティ導線を描画する。既存`river-check`は移行で現在のURLを引き継ぎ、新規groupはNULLで開始する。
 
 主催者ホーム、開催作成、メンバー管理、グループ設定、各開催管理のloader/actionは共通のサーバー認証を通し、未認証時は `/g/:groupCode/organizer-login` へ移動する。グループ設定の更新はserviceで入力検証・保存し、Workersの主催者変更用Rate Limiting対象となるPOST actionからだけ実行する。参加者向け画面からもこの認証入口を経由して主催者画面へ戻れる。
 
