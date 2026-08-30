@@ -1,6 +1,7 @@
 import {
   deleteOpenGame,
   insertGame,
+  updateOpenGameIdentity,
   updateOpenGameTitle,
 } from "@server/repositories/game-repository.server";
 import {
@@ -137,6 +138,40 @@ export async function createGameForGroup(
     });
   }
   return { ok: true, gameId };
+}
+
+export async function updateOpenGameIdentityForGroup(
+  groupId: string,
+  gameId: string,
+  values: GameIdentityFormValues,
+): Promise<
+  | { ok: true }
+  | { ok: false; errors: GameIdentityFormErrors; error: string }
+> {
+  const validation = validateGameIdentityForm(values);
+  if (!validation.ok) {
+    return {
+      ok: false,
+      errors: validation.errors,
+      error:
+        validation.errors.title ??
+        validation.errors.playedAt ??
+        "開催設定を確認してください。",
+    };
+  }
+
+  const updated = await updateOpenGameIdentity(
+    groupId,
+    gameId,
+    validation.input,
+  );
+  return updated
+    ? { ok: true }
+    : {
+        ok: false,
+        errors: {},
+        error: "開催設定を保存できませんでした。画面を更新してください。",
+      };
 }
 
 export async function renameOpenGameForGroup(

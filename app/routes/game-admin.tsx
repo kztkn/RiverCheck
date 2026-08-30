@@ -35,12 +35,11 @@ import {
 } from "@server/services/rebuy-service.server";
 import {
   removeOpenGameForGroup,
-  renameOpenGameForGroup,
   type GameSettingsFormValues,
+  updateOpenGameIdentityForGroup,
   validateGameSettingsForm,
 } from "@server/services/game-service.server";
 import { GAME_TITLE_MAX_LENGTH } from "@domain/game/game-title";
-import { rescheduleOpenGameForGroup } from "@server/services/game-schedule-service.server";
 import {
   buildFinalizationState,
   finalizeGame,
@@ -180,63 +179,37 @@ export async function action({ request, params }: Route.ActionArgs) {
     );
   }
 
-  if (intent === "rename-game") {
+  if (intent === "update-game-identity") {
     const title = readString(formData, "title");
-    try {
-      const result = await renameOpenGameForGroup(
-        authorized.group.id,
-        params.gameId,
-        title,
-      );
-      if (!result.ok) {
-        return {
-          ...result,
-          intent: "rename-game" as const,
-          title,
-        };
-      }
-    } catch (error) {
-      console.error("Failed to rename open game", error);
-      return {
-        ok: false as const,
-        intent: "rename-game" as const,
-        error:
-          "開催名を変更できませんでした。画面を更新してもう一度お試しください。",
-        title,
-      };
-    }
-    return redirect(
-      `/g/${params.groupCode}/games/${params.gameId}/admin?notice=game-renamed`,
-      { status: 303 },
-    );
-  }
-
-  if (intent === "reschedule-game") {
     const playedAt = readString(formData, "playedAt");
     try {
-      const result = await rescheduleOpenGameForGroup(
-        params.groupCode,
+      const result = await updateOpenGameIdentityForGroup(
+        authorized.group.id,
         params.gameId,
-        playedAt,
+        { title, playedAt },
       );
       if (!result.ok) {
         return {
           ...result,
-          intent: "reschedule-game" as const,
+          intent: "update-game-identity" as const,
+          title,
+          playedAt,
         };
       }
     } catch (error) {
-      console.error("Failed to reschedule open game", error);
+      console.error("Failed to update open game identity", error);
       return {
         ok: false as const,
-        intent: "reschedule-game" as const,
+        intent: "update-game-identity" as const,
+        title,
         playedAt,
+        errors: {},
         error:
-          "開催日を変更できませんでした。画面を更新してもう一度お試しください。",
+          "開催設定を保存できませんでした。画面を更新してもう一度お試しください。",
       };
     }
     return redirect(
-      `/g/${params.groupCode}/games/${params.gameId}/admin?notice=game-rescheduled`,
+      `/g/${params.groupCode}/games/${params.gameId}/admin?notice=game-settings-updated`,
       { status: 303 },
     );
   }
@@ -413,17 +386,11 @@ export default function GameAdmin({
     actionData.intent === "save-local-rules"
       ? actionData.error
       : null;
-  const renameAction =
+  const gameIdentityAction =
     actionData?.ok === false &&
     "intent" in actionData &&
-    actionData.intent === "rename-game" &&
-    "title" in actionData
-      ? actionData
-      : null;
-  const scheduleAction =
-    actionData?.ok === false &&
-    "intent" in actionData &&
-    actionData.intent === "reschedule-game" &&
+    actionData.intent === "update-game-identity" &&
+    "title" in actionData &&
     "playedAt" in actionData
       ? actionData
       : null;
@@ -439,8 +406,7 @@ export default function GameAdmin({
     !(
       "intent" in actionData &&
       (actionData.intent === "save-local-rules" ||
-        actionData.intent === "rename-game" ||
-        actionData.intent === "reschedule-game" ||
+        actionData.intent === "update-game-identity" ||
         actionData.intent === "delete-game")
     )
       ? actionData.error
@@ -486,7 +452,7 @@ export default function GameAdmin({
   const participantInputSubmissionPendingRef = useRef(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [gameSettingsOpen, setGameSettingsOpen] = useState(
-    Boolean(renameAction || scheduleAction),
+    Boolean(gameIdentityAction),
   );
   const [gameDeletionPending, setGameDeletionPending] = useState(
     Boolean(deleteAction),
@@ -545,6 +511,9 @@ export default function GameAdmin({
 
   useEffect(() => {
     if (!notice) return;
+    if (loaderData.notice === "game-settings-updated") {
+      setGameSettingsOpen(false);
+    }
     setToast({ id: Date.now(), message: notice, tone: "success" });
     const url = new URL(window.location.href);
     url.searchParams.delete("notice");
@@ -553,7 +522,7 @@ export default function GameAdmin({
       "",
       `${url.pathname}${url.search}${url.hash}`,
     );
-  }, [notice]);
+  }, [loaderData.notice, notice]);
 
   useEffect(() => {
     setSettlementParticipantCount(values.previewParticipantCount);
@@ -819,62 +788,45 @@ export default function GameAdmin({
             <p>参加者用リンクはそのまま、開催名と開催日を変更できます。</p>
           </div>
           <Form className="game-title-edit-form" method="post" noValidate>
-            <input name="intent" type="hidden" value="rename-game" />
+            <input name="intent" type="hidden" value="update-game-identity" />
             <label className="field">
               <span className="field-label">開催名</span>
               <input
-                aria-invalid={renameAction ? true : undefined}
+                aria-invalid={gameIdentityAction?.errors.title ? true : undefined}
                 autoComplete="off"
-                defaultValue={renameAction?.title ?? loaderData.game.title}
+                defaultValue={gameIdentityAction?.title ?? loaderData.game.title}
                 maxLength={GAME_TITLE_MAX_LENGTH}
                 name="title"
                 required
                 type="text"
               />
-              {renameAction ? (
-                <span className="field-error">{renameAction.error}</span>
+              {gameIdentityAction?.errors.title ? (
+                <span className="field-error">{gameIdentityAction.errors.title}</span>
               ) : null}
             </label>
-            <div className="dialog-actions">
-              <button
-                className="button button-secondary"
-                onClick={() => setGameSettingsOpen(false)}
-                type="button"
-              >
-                キャンセル
-              </button>
-              <button
-                className="button button-primary"
-                disabled={
-                  navigation.state === "submitting" &&
-                  navigation.formData?.get("intent") === "rename-game"
-                }
-                type="submit"
-              >
-                {navigation.state === "submitting" &&
-                navigation.formData?.get("intent") === "rename-game"
-                  ? "保存中…"
-                  : "開催名を保存"}
-              </button>
-            </div>
-          </Form>
-          <Form className="game-title-edit-form" method="post" noValidate>
-            <input name="intent" type="hidden" value="reschedule-game" />
             <label className="field">
               <span className="field-label">開催日</span>
               <input
-                aria-invalid={scheduleAction ? true : undefined}
+                aria-invalid={gameIdentityAction?.errors.playedAt ? true : undefined}
                 defaultValue={
-                  scheduleAction?.playedAt ?? toDateInputValue(loaderData.game.playedAt)
+                  gameIdentityAction?.playedAt ??
+                  toDateInputValue(loaderData.game.playedAt)
                 }
                 name="playedAt"
                 required
                 type="date"
               />
-              {scheduleAction ? (
-                <span className="field-error">{scheduleAction.error}</span>
+              {gameIdentityAction?.errors.playedAt ? (
+                <span className="field-error">
+                  {gameIdentityAction.errors.playedAt}
+                </span>
               ) : null}
             </label>
+            {gameIdentityAction?.error ? (
+              <p className="error-notice" role="alert">
+                {gameIdentityAction.error}
+              </p>
+            ) : null}
             <div className="dialog-actions">
               <button
                 className="button button-secondary"
@@ -887,14 +839,14 @@ export default function GameAdmin({
                 className="button button-primary"
                 disabled={
                   navigation.state === "submitting" &&
-                  navigation.formData?.get("intent") === "reschedule-game"
+                  navigation.formData?.get("intent") === "update-game-identity"
                 }
                 type="submit"
               >
                 {navigation.state === "submitting" &&
-                navigation.formData?.get("intent") === "reschedule-game"
+                navigation.formData?.get("intent") === "update-game-identity"
                   ? "保存中…"
-                  : "開催日を保存"}
+                  : "保存"}
               </button>
             </div>
           </Form>
@@ -1828,8 +1780,7 @@ function toDateInputValue(playedAt: string): string {
 function noticeText(notice: string | null): string | null {
   if (notice === "finalized") return "結果を確定しました。";
   if (notice === "local-rules-saved") return "ローカルルールを保存しました。";
-  if (notice === "game-renamed") return "開催名を変更しました。";
-  if (notice === "game-rescheduled") return "開催日を変更しました。";
+  if (notice === "game-settings-updated") return "開催設定を保存しました。";
   if (notice === "corrected") return "確定結果を訂正しました。";
   return null;
 }
