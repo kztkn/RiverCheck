@@ -11,6 +11,7 @@ import { AppErrorPage } from "~/components/error-page";
 import { PwaUpdateNotice } from "~/components/pwa-update-notice";
 import type { Route } from "./+types/root";
 import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
+import { hasMultipleActiveGroupsForPlayer } from "@server/repositories/group-repository.server";
 import { isOrganizerAuthenticated } from "@server/services/organizer-auth.server";
 import { extractGroupCode } from "@domain/routing/extract-group-code";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
@@ -33,6 +34,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       authenticatedPlayerAvatarUrl: null,
       authenticatedPlayerGroupPlayerId: null,
       authenticatedPlayerName: null,
+      hasMultipleGroups: false,
       isOrganizer: false,
     };
   }
@@ -42,6 +44,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     isOrganizerAuthenticated(request),
   ]);
   const profile = overview?.profile ?? null;
+  const hasMultipleGroups = profile
+    ? await hasMultipleActiveGroupsForPlayer(profile.playerId)
+    : false;
   return {
     activeGroupCode: overview?.group.publicCode ?? null,
     activeGroupName: overview?.group.name ?? null,
@@ -54,6 +59,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       : null,
     authenticatedPlayerGroupPlayerId: profile?.groupPlayerId ?? null,
     authenticatedPlayerName: profile?.displayName ?? null,
+    hasMultipleGroups,
     isOrganizer,
   };
 }
