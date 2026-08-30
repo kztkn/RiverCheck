@@ -1,0 +1,37 @@
+name: invite-only-entry-ci
+
+on:
+  push:
+    branches:
+      - feat/invite-only-entry
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/invite-only-entry
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: node scripts/patch-invite-only-entry.mjs
+      - run: git diff --check
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Commit patched implementation
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/routes/game-participant.tsx app/routes/game-participant.test.ts app/styles/app.css docs/requirements.md docs/architecture.md
+          git commit -m "招待制入口と閲覧ガードを実装"
+          git push origin HEAD:feat/invite-only-entry
