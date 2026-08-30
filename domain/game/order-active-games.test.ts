@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { GameListItem } from "../../shared-types/game";
+import type { GameListItem } from "../../types/game";
 import { orderActiveGamesBySchedule } from "./order-active-games";
 
 function game(
