@@ -66,6 +66,25 @@ describe("reopenFinalizedGame", () => {
     );
   });
 
+  it("locks final results before checking blockers", async () => {
+    const callOrder: string[] = [];
+    mocked.lockFinalResults.mockImplementationOnce(async () => {
+      callOrder.push("results");
+      return ids.map((id, index) => ({ groupPlayerId: id, rank: index + 1 }));
+    });
+    mocked.getFinalizationReopenBlockers.mockImplementationOnce(async () => {
+      callOrder.push("blockers");
+      return {
+        hasResultRevisions: false,
+        hasCostShareReceipts: false,
+        hasStoryPosts: false,
+      };
+    });
+
+    await reopenFinalizedGame("group-1", "game-1");
+    expect(callOrder).toEqual(["results", "blockers"]);
+  });
+
   it.each([
     ["hasResultRevisions", "結果訂正履歴"],
     ["hasCostShareReceipts", "会費受取記録"],

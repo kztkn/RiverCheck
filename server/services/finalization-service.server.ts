@@ -243,6 +243,10 @@ export async function reopenFinalizedGame(
     }
 
     const participants = await lockParticipantsForFinalization(transaction, gameId);
+    // Lock result rows before checking post-finalization side effects.
+    // Cost-share receipt writes also lock these rows, so this ordering closes the
+    // race where a receipt could be inserted after the blocker check.
+    const results = await lockFinalResults(transaction, gameId);
     const blockers = await getFinalizationReopenBlockers(transaction, gameId);
     const blockerLabels = [
       blockers.hasResultRevisions ? "結果訂正履歴" : null,
@@ -256,7 +260,6 @@ export async function reopenFinalizedGame(
       };
     }
 
-    const results = await lockFinalResults(transaction, gameId);
     const participantIds = new Set(
       participants.map((participant) => participant.group_player_id),
     );
