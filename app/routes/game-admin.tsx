@@ -1781,6 +1781,7 @@ function noticeText(notice: string | null): string | null {
   if (notice === "finalized") return "結果を確定しました。";
   if (notice === "local-rules-saved") return "ローカルルールを保存しました。";
   if (notice === "game-settings-updated") return "開催設定を保存しました。";
+  if (notice === "finalization-reopened") return "結果確定を取り消しました。";
   if (notice === "corrected") return "確定結果を訂正しました。";
   return null;
 }

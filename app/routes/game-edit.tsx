@@ -1,4 +1,5 @@
-import { redirect, useNavigation } from "react-router";
+import { Form, redirect, useNavigation } from "react-router";
+import { useEffect, useRef, useState } from "react";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { GameIdentityEditor } from "~/components/game-identity-editor";
 import { ResultCorrectionPanel } from "~/components/result-correction-panel";
@@ -11,6 +12,7 @@ import {
   validateGameIdentityForm,
 } from "@server/services/game-service.server";
 import {
+  reopenFinalizedGame,
   updateFinalizedGame,
   type ResultCorrectionInput,
 } from "@server/services/finalization-service.server";
@@ -41,6 +43,17 @@ export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const intent = readString(formData, "intent");
   const resultUrl = `/g/${params.groupCode}/games/${params.gameId}`;
+
+  if (intent === "reopen-finalization") {
+    const result = await reopenFinalizedGame(context.group.id, params.gameId);
+    if (!result.ok) {
+      return { ...result, intent: "reopen-finalization" as const };
+    }
+    return redirect(
+      `/g/${params.groupCode}/games/${params.gameId}/admin?notice=finalization-reopened`,
+      { status: 303 },
+    );
+  }
 
   if (intent === "save-game-identity") {
     const identityValues = readGameIdentityForm(formData);
@@ -165,6 +178,10 @@ export default function GameEdit({
     actionData?.ok === false && actionData.intent === "save-game-identity"
       ? actionData
       : null;
+  const reopenAction =
+    actionData?.ok === false && actionData.intent === "reopen-finalization"
+      ? actionData
+      : null;
   const resultUrl = `/g/${loaderData.group.publicCode}/games/${loaderData.game.id}`;
   const editUrl = `${resultUrl}/admin/edit`;
 
@@ -200,7 +217,100 @@ export default function GameEdit({
         isSubmitting={isSubmitting}
         results={loaderData.results}
       />
+
+      <ReopenFinalizationControl
+        error={reopenAction?.error ?? null}
+        gameTitle={loaderData.game.title}
+        isSubmitting={
+          isSubmitting &&
+          navigation.formData?.get("intent") === "reopen-finalization"
+        }
+      />
     </main>
+  );
+}
+
+function ReopenFinalizationControl({
+  error,
+  gameTitle,
+  isSubmitting,
+}: {
+  error: string | null;
+  gameTitle: string;
+  isSubmitting: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(Boolean(error));
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) dialog.showModal();
+    if (!isOpen && dialog.open) dialog.close();
+  }, [isOpen]);
+
+  return (
+    <section className="game-danger-zone" aria-labelledby="reopen-finalization-heading">
+      <div>
+        <strong id="reopen-finalization-heading">結果確定を取り消す</strong>
+        <p>誤って確定したときだけ、参加者入力を残したまま受付中へ戻します。</p>
+      </div>
+      <button
+        className="game-delete-trigger"
+        onClick={() => setIsOpen(true)}
+        type="button"
+      >
+        確定を取り消す
+      </button>
+      <dialog
+        aria-labelledby="reopen-finalization-dialog-title"
+        className="app-dialog"
+        onCancel={() => setIsOpen(false)}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) setIsOpen(false);
+        }}
+        onClose={() => setIsOpen(false)}
+        ref={dialogRef}
+      >
+        <div className="dialog-card">
+          <span aria-hidden="true" className="dialog-danger-icon">!</span>
+          <div>
+            <p className="eyebrow">REOPEN GAME</p>
+            <h2 id="reopen-finalization-dialog-title">結果確定を取り消しますか？</h2>
+            <p>
+              <strong>{gameTitle}</strong> を受付中へ戻します。確定結果は削除し、
+              実績は残っている確定開催から再計算します。参加者、リバイ履歴、終了時入力は残ります。
+            </p>
+            <p>
+              結果訂正、会費受取、TABLE STORIESがある開催は安全のため取り消せません。
+              送信済みの通知は取り消せず、再確定すると結果通知がもう一度送られます。
+            </p>
+          </div>
+          {error ? <p className="error-notice" role="alert">{error}</p> : null}
+          <div className="dialog-actions">
+            <button
+              autoFocus
+              className="button button-secondary"
+              disabled={isSubmitting}
+              onClick={() => setIsOpen(false)}
+              type="button"
+            >
+              キャンセル
+            </button>
+            <Form method="post">
+              <input name="intent" type="hidden" value="reopen-finalization" />
+              <button
+                className="button button-danger"
+                disabled={isSubmitting}
+                type="submit"
+              >
+                {isSubmitting ? "取消中…" : "結果確定を取り消す"}
+              </button>
+            </Form>
+          </div>
+        </div>
+      </dialog>
+    </section>
   );
 }
 

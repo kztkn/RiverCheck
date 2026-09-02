@@ -1,11 +1,14 @@
 import { withTransaction } from "@server/db/client.server";
 import {
+  deleteFinalResultsForReopen,
+  getFinalizationReopenBlockers,
   insertFinalResults,
   insertResultRevision,
   lockGameForFinalization,
   lockFinalResults,
   lockParticipantsForFinalization,
   markGameFinalized,
+  markGameOpenAfterFinalization,
   saveCostSettingsForFinalization,
   replaceFinalResults,
   toFinalizationParticipants,
@@ -222,6 +225,64 @@ export async function finalizeGame(
     });
   }
   return { ok: true };
+}
+
+export type ReopenFinalizedGameResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function reopenFinalizedGame(
+  groupId: string,
+  gameId: string,
+): Promise<ReopenFinalizedGameResult> {
+  return withTransaction(async (transaction) => {
+    const game = await lockGameForFinalization(transaction, groupId, gameId);
+    if (!game) return { ok: false, error: "開催が見つかりません。" };
+    if (game.status !== "finalized") {
+      return { ok: false, error: "確定済みの開催だけ確定を取り消せます。" };
+    }
+
+    const participants = await lockParticipantsForFinalization(transaction, gameId);
+    const blockers = await getFinalizationReopenBlockers(transaction, gameId);
+    const blockerLabels = [
+      blockers.hasResultRevisions ? "結果訂正履歴" : null,
+      blockers.hasCostShareReceipts ? "会費受取記録" : null,
+      blockers.hasStoryPosts ? "TABLE STORIES" : null,
+    ].filter((label): label is string => label !== null);
+    if (blockerLabels.length > 0) {
+      return {
+        ok: false,
+        error: `確定後のデータ（${blockerLabels.join("・")}）があるため、確定を取り消せません。`,
+      };
+    }
+
+    const results = await lockFinalResults(transaction, gameId);
+    const participantIds = new Set(
+      participants.map((participant) => participant.group_player_id),
+    );
+    if (
+      results.length < 4 ||
+      participants.length !== results.length ||
+      results.some((result) => !participantIds.has(result.groupPlayerId))
+    ) {
+      return {
+        ok: false,
+        error: "確定データの整合性を確認できないため、確定を取り消せません。",
+      };
+    }
+
+    const affectedGroupPlayerIds = results.map((result) => result.groupPlayerId);
+    await deleteFinalResultsForReopen(transaction, gameId);
+    if (!(await markGameOpenAfterFinalization(transaction, groupId, gameId))) {
+      throw new Error("game status changed during finalization reopen");
+    }
+    await awardAchievementsForPlayers(
+      transaction,
+      groupId,
+      affectedGroupPlayerIds,
+    );
+    return { ok: true };
+  });
 }
 
 export interface ResultCorrectionInput {
