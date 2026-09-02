@@ -35,6 +35,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: python scripts/apply-reopen-finalization.py
+      - run: python scripts/fix-reopen-finalization-tests.py
       - run: git diff --check
       - run: npm ci
       - run: npm run db:migrate:local
