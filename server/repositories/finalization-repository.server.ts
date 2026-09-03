@@ -184,6 +184,75 @@ export async function markGameFinalized(
   return result.rowCount === 1;
 }
 
+export interface FinalizationReopenBlockers {
+  hasResultRevisions: boolean;
+  hasCostShareReceipts: boolean;
+  hasStoryPosts: boolean;
+}
+
+export async function getFinalizationReopenBlockers(
+  transaction: DatabaseTransaction,
+  gameId: string,
+): Promise<FinalizationReopenBlockers> {
+  const result = await transaction.query<{
+    has_result_revisions: boolean;
+    has_cost_share_receipts: boolean;
+    has_story_posts: boolean;
+  }>(
+    `
+      SELECT
+        EXISTS (
+          SELECT 1
+          FROM game_result_revisions
+          WHERE game_id = $1
+        ) AS has_result_revisions,
+        EXISTS (
+          SELECT 1
+          FROM game_cost_share_receipts
+          WHERE game_id = $1
+        ) AS has_cost_share_receipts,
+        EXISTS (
+          SELECT 1
+          FROM game_story_posts AS story
+          INNER JOIN game_participants AS participant
+            ON participant.id = story.game_participant_id
+          WHERE participant.game_id = $1
+        ) AS has_story_posts
+    `,
+    [gameId],
+  );
+  const row = result.rows[0];
+  if (!row) throw new Error("failed to inspect finalization reopen blockers");
+  return {
+    hasResultRevisions: row.has_result_revisions,
+    hasCostShareReceipts: row.has_cost_share_receipts,
+    hasStoryPosts: row.has_story_posts,
+  };
+}
+
+export async function deleteFinalResultsForReopen(
+  transaction: DatabaseTransaction,
+  gameId: string,
+): Promise<void> {
+  await transaction.query("DELETE FROM game_results WHERE game_id = $1", [gameId]);
+}
+
+export async function markGameOpenAfterFinalization(
+  transaction: DatabaseTransaction,
+  groupId: string,
+  gameId: string,
+): Promise<boolean> {
+  const result = await transaction.query(
+    `
+      UPDATE games
+      SET status = 'open', finalized_at = NULL, updated_at = NOW()
+      WHERE id = $1 AND group_id = $2 AND status = 'finalized'
+    `,
+    [gameId, groupId],
+  );
+  return result.rowCount === 1;
+}
+
 export async function listFinalResults(
   groupId: string,
   gameId: string,
