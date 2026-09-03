@@ -32,6 +32,7 @@ export interface PlayerProfile {
 export interface CurrentGameParticipant {
   groupPlayerId: string;
   displayName: string;
+  statusText?: string | null;
 }
 
 export interface GameParticipantSummary {
