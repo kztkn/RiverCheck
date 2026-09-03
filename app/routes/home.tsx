@@ -34,11 +34,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   if (!resolved) {
     return (
       <main className="page-shell entry-resolver-page" aria-live="polite">
-        <section className="entry-resolver-loading">
+        <section className="entry-resolver-loading" role="status" aria-label="読み込み中">
           <span className="entry-resolver-spinner" aria-hidden="true" />
-          <p className="eyebrow">RIVERCHECK</p>
-          <h1>グループを確認しています</h1>
-          <p>いつものテーブルを探しています。</p>
         </section>
       </main>
     );
