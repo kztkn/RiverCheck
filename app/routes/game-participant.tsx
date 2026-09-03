@@ -32,7 +32,6 @@ import {
   listRegisteredPlayersForGame,
   updateParticipantInput,
   updateParticipantInputByGroupPlayerId,
-  updateParticipantTableStatus,
 } from "@server/repositories/participant-repository.server";
 import {
   clearParticipantCookie,
@@ -540,6 +539,9 @@ export async function action({ request, params }: Route.ActionArgs) {
         error: "参加状態を確認できませんでした。画面を更新してください。",
       };
     }
+    const { updateParticipantTableStatus } = await import(
+      "@server/repositories/participant-repository.server"
+    );
     const updated = await updateParticipantTableStatus(
       context.group.id,
       params.gameId,
@@ -680,6 +682,7 @@ export default function GameParticipant({
 }: Route.ComponentProps) {
   const navigation = useNavigation();
   const rebuyFetcher = useFetcher<RebuyActionData>();
+  const statusFetcher = useFetcher<ParticipantStatusActionData>();
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
   const [isEditing, setIsEditing] = useState(false);
@@ -865,6 +868,7 @@ export default function GameParticipant({
                 void revalidator.revalidate();
               }
             }}
+            statusFetcher={statusFetcher}
           />
 
           <section className="participant-phase participant-phase-live">
@@ -1154,25 +1158,32 @@ interface ParticipantRosterItem {
   statusText?: string;
 }
 
+type ParticipantStatusFetcher = ReturnType<
+  typeof useFetcher<ParticipantStatusActionData>
+>;
+
 export function ParticipantRosterSheet({
   available,
   items,
   onOpen,
+  statusFetcher,
 }: {
   available: boolean;
   items: ParticipantRosterItem[];
   onOpen?: () => void;
+  statusFetcher?: ParticipantStatusFetcher;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingStatus, setIsEditingStatus] = useState(false);
   const currentItem = items.find((item) => item.isCurrentUser) ?? null;
   const [statusDraft, setStatusDraft] = useState(currentItem?.statusText ?? "");
-  const statusFetcher = useFetcher<ParticipantStatusActionData>();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const countLabel = available ? String(items.length) : "—";
   const statusLength = Array.from(statusDraft).length;
-  const statusPending = statusFetcher.state !== "idle";
+  const statusFetcherData = statusFetcher?.data;
+  const statusFetcherState = statusFetcher?.state ?? "idle";
+  const statusPending = statusFetcherState !== "idle";
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -1199,10 +1210,10 @@ export function ParticipantRosterSheet({
   }, [currentItem?.statusText, isEditingStatus]);
 
   useEffect(() => {
-    if (statusFetcher.state !== "idle" || !statusFetcher.data?.ok) return;
-    setStatusDraft(statusFetcher.data.statusText ?? "");
+    if (statusFetcherState !== "idle" || !statusFetcherData?.ok) return;
+    setStatusDraft(statusFetcherData.statusText ?? "");
     setIsEditingStatus(false);
-  }, [statusFetcher.data, statusFetcher.state]);
+  }, [statusFetcherData, statusFetcherState]);
 
   function closeSheet() {
     setIsEditingStatus(false);
@@ -1290,7 +1301,14 @@ export function ParticipantRosterSheet({
                     className={item.isCurrentUser ? "is-current-user" : undefined}
                     key={item.displayName + "-" + index}
                   >
-                    <div className="participant-roster-row">
+                    <div
+                      aria-label={
+                        item.isCurrentUser
+                          ? `${item.displayName}（あなた）`
+                          : undefined
+                      }
+                      className="participant-roster-row"
+                    >
                       <span className="participant-roster-copy">
                         <strong>{item.displayName}</strong>
                         {item.statusText ? (
@@ -1299,9 +1317,9 @@ export function ParticipantRosterSheet({
                           </small>
                         ) : null}
                       </span>
-                      {item.isCurrentUser ? (
+                      {item.isCurrentUser && statusFetcher ? (
                         <button
-                          aria-label={`今日のひとことを編集（あなた：${item.displayName}）`}
+                          aria-label="今日のひとことを編集"
                           className="participant-roster-edit"
                           onClick={startStatusEdit}
                           type="button"
@@ -1313,7 +1331,7 @@ export function ParticipantRosterSheet({
                         </button>
                       ) : null}
                     </div>
-                    {item.isCurrentUser && isEditingStatus ? (
+                    {item.isCurrentUser && isEditingStatus && statusFetcher ? (
                       <statusFetcher.Form
                         className="participant-status-editor"
                         method="post"
@@ -1353,9 +1371,9 @@ export function ParticipantRosterSheet({
                             {statusLength}/{PARTICIPANT_TABLE_STATUS_MAX_LENGTH}
                           </span>
                         </label>
-                        {statusFetcher.data?.ok === false ? (
+                        {statusFetcherData?.ok === false ? (
                           <p className="participant-status-error" role="alert">
-                            {statusFetcher.data.error}
+                            {statusFetcherData.error}
                           </p>
                         ) : null}
                         <div className="participant-status-actions">
