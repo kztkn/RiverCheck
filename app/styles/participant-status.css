@@ -1,0 +1,167 @@
+.participant-roster-list li {
+  display: block;
+  min-height: 0;
+  padding: 0;
+}
+
+.participant-roster-list li.is-current-user {
+  margin-inline: -8px;
+  border-bottom-color: transparent;
+  border-radius: 12px;
+  background: rgba(57, 222, 141, 0.07);
+  box-shadow: inset 2px 0 0 rgba(57, 222, 141, 0.7);
+  padding-inline: 8px;
+}
+
+.participant-roster-row {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.participant-roster-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 3px;
+}
+
+.participant-roster-copy > strong {
+  overflow: hidden;
+  font-size: 0.9rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.participant-roster-list li.is-current-user .participant-roster-copy > strong {
+  color: var(--green);
+}
+
+.participant-roster-status {
+  overflow: hidden;
+  color: #c9d7cf;
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.participant-roster-edit {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border: 1px solid rgba(57, 222, 141, 0.2);
+  border-radius: 10px;
+  background: rgba(57, 222, 141, 0.06);
+  color: var(--green);
+  cursor: pointer;
+}
+
+.participant-roster-edit svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.participant-roster-edit:hover,
+.participant-roster-edit:focus-visible {
+  border-color: rgba(57, 222, 141, 0.48);
+  background: rgba(57, 222, 141, 0.12);
+}
+
+.participant-status-editor {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid rgba(57, 222, 141, 0.12);
+  padding: 10px 0 13px;
+}
+
+.participant-status-presets {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.participant-status-presets::-webkit-scrollbar {
+  display: none;
+}
+
+.participant-status-preset {
+  min-height: 32px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.025);
+  color: #c9d7cf;
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.participant-status-preset:hover,
+.participant-status-preset:focus-visible {
+  border-color: rgba(233, 186, 90, 0.42);
+  color: var(--gold);
+}
+
+.participant-status-field {
+  display: grid;
+  gap: 5px;
+}
+
+.participant-status-field input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(223, 236, 227, 0.16);
+  border-radius: 10px;
+  outline: none;
+  background: rgba(5, 14, 10, 0.48);
+  color: var(--ink);
+  padding: 9px 11px;
+}
+
+.participant-status-field input:focus {
+  border-color: rgba(57, 222, 141, 0.55);
+  box-shadow: 0 0 0 3px rgba(57, 222, 141, 0.08);
+}
+
+.participant-status-meta {
+  display: flex;
+  justify-content: flex-end;
+  color: #7f9388;
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.participant-status-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.participant-status-actions .button {
+  min-height: 36px;
+  padding: 7px 12px;
+  font-size: 0.7rem;
+}
+
+.participant-status-error {
+  margin: 0;
+  color: var(--red);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
