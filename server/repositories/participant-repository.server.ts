@@ -21,6 +21,7 @@ interface ParticipantRow {
 interface CurrentParticipantRow {
   group_player_id: string;
   display_name: string;
+  status_text: string | null;
 }
 
 interface PlayerOptionRow {
@@ -84,7 +85,8 @@ export async function listCurrentGameParticipants(
     `
       SELECT
         participant.group_player_id,
-        player.display_name
+        player.display_name,
+        participant.status_text
       FROM game_participants AS participant
       INNER JOIN games AS game ON game.id = participant.game_id
       INNER JOIN group_players AS group_player
@@ -100,6 +102,7 @@ export async function listCurrentGameParticipants(
   return result.rows.map((row) => ({
     groupPlayerId: row.group_player_id,
     displayName: row.display_name,
+    statusText: row.status_text,
   }));
 }
 
@@ -398,6 +401,32 @@ export async function joinExistingPlayerToGroupGame(
     );
     return groupPlayerId;
   });
+}
+
+export async function updateParticipantTableStatus(
+  groupId: string,
+  gameId: string,
+  groupPlayerId: string,
+  statusText: string | null,
+): Promise<boolean> {
+  const result = await queryDatabase<{ id: string }>(
+    `
+      UPDATE game_participants AS participant
+      SET
+        status_text = $4,
+        updated_at = NOW()
+      FROM games AS game
+      WHERE participant.game_id = game.id
+        AND game.id = $1
+        AND game.group_id = $2
+        AND game.status = 'open'
+        AND participant.group_player_id = $3
+      RETURNING participant.id
+    `,
+    [gameId, groupId, groupPlayerId, statusText],
+  );
+
+  return result.rowCount === 1;
 }
 
 export async function updateParticipantInput(
