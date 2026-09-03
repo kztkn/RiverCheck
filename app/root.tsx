@@ -27,6 +27,7 @@ import "./styles/highlight.css";
 import "./styles/history.css";
 import "./styles/qr.css";
 import "./styles/profile.css";
+import "./styles/participant-status.css";
 import "./styles/stats.css";
 import "./styles/timeline.css";
 
