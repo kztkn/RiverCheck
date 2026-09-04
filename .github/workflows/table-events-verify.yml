@@ -36,3 +36,5 @@ jobs:
           git add -A
           git commit -m "卓イベント仕様を反映して検証"
           git push origin HEAD:feat/table-events-v1
+
+# retry after timeline type narrowing fix
