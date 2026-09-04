@@ -38,3 +38,4 @@ jobs:
       - run: node scripts/verify-table-event-cancel-db.mjs
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rivercheck
+      - run: echo "PostgreSQL cancellation verification complete"
