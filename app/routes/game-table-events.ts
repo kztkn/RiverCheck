@@ -19,7 +19,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "cancel") {
     const eventId = readString(formData, "eventId");
     if (!isUuid(eventId)) {
-      return Response.json({ ok: false, error: "卓イベントを確認できません。" }, { status: 400 });
+      return Response.json({ ok: false, error: "テーブルイベントを確認できません。" }, { status: 400 });
     }
     const result = await cancelRecordedTableEvent(
       request,
