@@ -205,8 +205,8 @@ export async function cancelTableEvent(input: {
     `
       UPDATE game_table_events AS event
       SET canceled_at = NOW(),
-          canceled_by_group_player_id = $4,
-          canceled_by_type = $5
+          canceled_by_group_player_id = $4::uuid,
+          canceled_by_type = $5::text
       FROM games AS game
       WHERE event.game_id = game.id
         AND event.id = $3
@@ -215,8 +215,8 @@ export async function cancelTableEvent(input: {
         AND game.status = 'open'
         AND event.canceled_at IS NULL
         AND (
-          $5 = 'organizer'
-          OR ($4 IS NOT NULL AND event.recorded_by_group_player_id = $4)
+          $5::text = 'organizer'
+          OR ($4::uuid IS NOT NULL AND event.recorded_by_group_player_id = $4::uuid)
         )
       RETURNING event.id
     `,

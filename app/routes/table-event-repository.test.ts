@@ -31,9 +31,9 @@ describe("table event repository", () => {
     ).resolves.toBe(true);
 
     const [sql, params] = mocked.queryDatabase.mock.calls[0] ?? [];
-    expect(String(sql)).toContain("canceled_by_group_player_id = $4");
-    expect(String(sql)).toContain("canceled_by_type = $5");
-    expect(String(sql)).toContain("$5 = 'organizer'");
+    expect(String(sql)).toContain("canceled_by_group_player_id = $4::uuid");
+    expect(String(sql)).toContain("canceled_by_type = $5::text");
+    expect(String(sql)).toContain("$5::text = 'organizer'");
     expect(params).toEqual([
       "game-1",
       "group-1",
