@@ -29,6 +29,10 @@ export default [
   ),
   route("g/:groupCode/games/:gameId/timeline", "routes/game-timeline.ts"),
   route(
+    "g/:groupCode/games/:gameId/table-events",
+    "routes/game-table-events.ts",
+  ),
+  route(
     "g/:groupCode/games/:gameId/cost-share-receipts",
     "routes/game-cost-share-receipts.ts",
   ),
