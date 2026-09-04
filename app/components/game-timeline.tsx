@@ -186,7 +186,7 @@ function TimelineItem({
           <strong>BOMB POT</strong>
           <p>全員参加のスペシャルハンド</p>
         </div>
-      ) : (
+      ) : event.type === "all_in" ? (
         <div className="game-timeline-highlight">
           <strong>ALL IN</strong>
           <p>{event.players.map((player) => player.displayName).join(" vs ")}</p>
@@ -199,7 +199,7 @@ function TimelineItem({
             </span>
           ) : null}
         </div>
-      )}
+      ) : null}
     </li>
   );
 }
