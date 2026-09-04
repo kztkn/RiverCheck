@@ -1,0 +1,40 @@
+name: Table event cancel verify
+
+on:
+  push:
+    branches:
+      - fix/table-event-cancel
+    paths:
+      - .github/workflows/table-event-cancel-verify.yml
+      - scripts/fix-table-event-cancel.py
+      - app/routes/table-event-repository.test.ts
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/table-event-cancel
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: python scripts/fix-table-event-cancel.py
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Commit fix and remove temporary files
+        run: |
+          rm .github/workflows/table-event-cancel-verify.yml
+          rm scripts/fix-table-event-cancel.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "卓イベント取消のSQLパラメータを修正"
+          git push origin HEAD:fix/table-event-cancel
