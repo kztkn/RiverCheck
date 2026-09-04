@@ -205,8 +205,8 @@ export async function cancelTableEvent(input: {
     `
       UPDATE game_table_events AS event
       SET canceled_at = NOW(),
-          canceled_by_group_player_id = $5,
-          canceled_by_type = $6
+          canceled_by_group_player_id = $4,
+          canceled_by_type = $5
       FROM games AS game
       WHERE event.game_id = game.id
         AND event.id = $3
@@ -215,8 +215,8 @@ export async function cancelTableEvent(input: {
         AND game.status = 'open'
         AND event.canceled_at IS NULL
         AND (
-          $6 = 'organizer'
-          OR ($5 IS NOT NULL AND event.recorded_by_group_player_id = $5)
+          $5 = 'organizer'
+          OR ($4 IS NOT NULL AND event.recorded_by_group_player_id = $4)
         )
       RETURNING event.id
     `,
@@ -224,7 +224,6 @@ export async function cancelTableEvent(input: {
       input.gameId,
       input.groupId,
       input.eventId,
-      null,
       input.actor.groupPlayerId,
       input.actor.type,
     ],
