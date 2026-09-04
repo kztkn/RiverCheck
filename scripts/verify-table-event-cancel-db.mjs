@@ -31,7 +31,7 @@ try {
       seven_deuce_rule_enabled, bomb_pot_rule_enabled
     ) VALUES (
       $1, 'Cancel Test', NOW(), 'open', 20000, 20000,
-      0, 100, 0, 0, 0, 1, TRUE, TRUE
+      0, 100, 0, 0, 0, 4, TRUE, TRUE
     )
     RETURNING id`,
     [group.rows[0].id],
