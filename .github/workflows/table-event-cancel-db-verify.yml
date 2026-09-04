@@ -6,7 +6,10 @@ on:
       - fix/table-event-cancel-2
     paths:
       - .github/workflows/table-event-cancel-db-verify.yml
-      - scripts/verify-table-event-cancel-db.mjs
+      - scripts/apply-table-event-cancel-cast-fix.py
+
+permissions:
+  contents: write
 
 jobs:
   verify:
@@ -34,8 +37,21 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - run: python scripts/apply-table-event-cancel-cast-fix.py
       - run: npm run db:migrate
       - run: node scripts/verify-table-event-cancel-db.mjs
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rivercheck
-      - run: echo "PostgreSQL cancellation verification complete"
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Commit verified fix and remove temporary files
+        run: |
+          rm .github/workflows/table-event-cancel-db-verify.yml
+          rm scripts/apply-table-event-cancel-cast-fix.py
+          rm scripts/verify-table-event-cancel-db.mjs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "卓イベント取消のnull型推論を修正"
+          git push origin HEAD:fix/table-event-cancel-2
