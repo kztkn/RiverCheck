@@ -164,7 +164,7 @@ export function TableEventRecorder() {
       });
       const result = (await response.json()) as { ok: boolean; error?: string };
       if (!response.ok || !result.ok) {
-        setError(result.error ?? "卓イベントを記録できませんでした。");
+        setError(result.error ?? "テーブルイベントを記録できませんでした。");
         return;
       }
       setFeedback(successMessage);
@@ -202,7 +202,7 @@ export function TableEventRecorder() {
     const formData = new FormData();
     formData.set("intent", "cancel");
     formData.set("eventId", eventId);
-    await postEvent(formData, "卓イベントを取り消しました");
+    await postEvent(formData, "テーブルイベントを取り消しました");
   }
 
   return (
@@ -214,7 +214,7 @@ export function TableEventRecorder() {
         type="button"
       >
         <span aria-hidden="true">＋</span>
-        卓イベント
+        テーブルイベント
       </button>
       <dialog
         aria-labelledby="table-event-title"
@@ -233,10 +233,10 @@ export function TableEventRecorder() {
           <header className="table-event-header">
             <div>
               <p className="eyebrow">TABLE EVENT</p>
-              <h2 id="table-event-title">卓イベントを記録</h2>
+              <h2 id="table-event-title">テーブルイベントを記録</h2>
             </div>
             <button
-              aria-label="卓イベントを閉じる"
+              aria-label="テーブルイベントを閉じる"
               className="participant-roster-close"
               onClick={closeRecorder}
               type="button"
@@ -339,7 +339,7 @@ export function TableEventRecorder() {
 
           {panel.recentEvents.length > 0 ? (
             <section className="table-event-recent">
-              <h3>最近の卓イベント</h3>
+              <h3>最近のテーブルイベント</h3>
               <ul>
                 {panel.recentEvents.map((event) => (
                   <li key={event.id}>

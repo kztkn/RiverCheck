@@ -165,3 +165,24 @@
   font-size: 0.68rem;
   line-height: 1.5;
 }
+
+
+/* Centered participant/reference dialogs */
+.participant-roster-dialog {
+  margin: auto;
+  border-bottom: 1px solid rgba(57, 222, 141, 0.28);
+  border-radius: 22px;
+}
+
+/* Keep the destructive leave action away from the primary table-event control. */
+.participant-leave-trigger {
+  justify-self: start;
+  margin-top: 16px;
+  padding-inline: 0;
+  opacity: 0.62;
+}
+
+.participant-leave-trigger:hover,
+.participant-leave-trigger:focus-visible {
+  opacity: 1;
+}

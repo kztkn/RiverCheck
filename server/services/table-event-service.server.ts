@@ -155,7 +155,7 @@ export async function recordTableEvent(
   }
 
   if (!eventId) {
-    return { ok: false, error: "卓イベントを記録できませんでした。画面を更新してください。" };
+    return { ok: false, error: "テーブルイベントを記録できませんでした。画面を更新してください。" };
   }
   return { ok: true, eventId };
 }
@@ -168,7 +168,7 @@ export async function cancelRecordedTableEvent(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const context = await requireTableEventGame(groupCode, gameId);
   if (context.game.status !== "open") {
-    return { ok: false, error: "確定後の卓イベントは変更できません。" };
+    return { ok: false, error: "確定後のテーブルイベントは変更できません。" };
   }
   const actor = await resolveTableEventActor(
     request,
@@ -185,7 +185,7 @@ export async function cancelRecordedTableEvent(
   });
   return canceled
     ? { ok: true }
-    : { ok: false, error: "この卓イベントは取り消せませんでした。" };
+    : { ok: false, error: "このテーブルイベントは取り消せませんでした。" };
 }
 
 async function resolveTableEventActor(

@@ -13,7 +13,7 @@ describe("game timeline", () => {
     ).toBe("");
   });
 
-  it("運営記録と卓イベントを1本のタイムラインへ表示する", () => {
+  it("運営記録とテーブルイベントを1本のタイムラインへ表示する", () => {
     const markup = renderToStaticMarkup(
       createElement(GameTimelineView, {
         events: [

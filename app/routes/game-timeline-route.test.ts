@@ -29,7 +29,7 @@ describe("game timeline route", () => {
     mocked.listFinalizedGameTableEvents.mockResolvedValue([]);
   });
 
-  it("リバイ記録と卓イベントを時刻順で返す", async () => {
+  it("リバイ記録とテーブルイベントを時刻順で返す", async () => {
     mocked.listFinalizedGameTimeline.mockResolvedValue([
       {
         avatarUpdatedAt: "2026-08-20T00:00:00.000Z",
