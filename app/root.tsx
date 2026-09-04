@@ -10,6 +10,7 @@ import {
 import { AppErrorPage } from "~/components/error-page";
 import { InviteRequiredPage } from "~/components/invite-required-page";
 import { PwaUpdateNotice } from "~/components/pwa-update-notice";
+import { TableEventRecorder } from "~/components/table-event-recorder";
 import type { Route } from "./+types/root";
 import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
 import { hasMultipleActiveGroupsForPlayer } from "@server/repositories/group-repository.server";
@@ -30,6 +31,7 @@ import "./styles/profile.css";
 import "./styles/participant-status.css";
 import "./styles/stats.css";
 import "./styles/timeline.css";
+import "./styles/table-events.css";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
@@ -124,7 +126,12 @@ export default function App({ loaderData }: Route.ComponentProps) {
     rememberLastVisitedGroup(window.localStorage, loaderData.activeGroupCode);
   }, [loaderData.activeGroupCode]);
 
-  return <Outlet />;
+  return (
+    <>
+      <Outlet />
+      <TableEventRecorder />
+    </>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
