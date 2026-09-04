@@ -8,8 +8,9 @@
   margin-inline: -8px;
   border-bottom-color: transparent;
   border-radius: 12px;
-  background: rgba(57, 222, 141, 0.07);
-  box-shadow: inset 2px 0 0 rgba(57, 222, 141, 0.7);
+  background:
+    radial-gradient(circle at 14px 50%, rgba(57, 222, 141, 0.12), transparent 34px),
+    rgba(57, 222, 141, 0.045);
   padding-inline: 8px;
 }
 

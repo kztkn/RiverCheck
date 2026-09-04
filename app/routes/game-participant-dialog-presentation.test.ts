@@ -16,6 +16,16 @@ describe("participant dialog presentation", () => {
     expect(css).toContain("opacity: 0.62;");
   });
 
+  it("プレイヤー状態を左線ではなくチップと面で表現する", () => {
+    const appCss = readFileSync("app/styles/app.css", "utf8");
+    const participantCss = readFileSync("app/styles/participant-status.css", "utf8");
+
+    expect(appCss).not.toContain("border-left: 3px solid #71847a");
+    expect(appCss).not.toContain("border-left-color: var(--gold)");
+    expect(appCss).toContain(".participant-input-status::before");
+    expect(participantCss).not.toContain("box-shadow: inset 2px 0 0");
+  });
+
   it("ユーザー向け呼称をテーブルイベントに統一する", () => {
     const source = readFileSync("app/components/table-event-recorder.tsx", "utf8");
     expect(source).toContain("テーブルイベント");

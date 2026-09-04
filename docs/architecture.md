@@ -224,3 +224,12 @@ UI はアバターと縦ラインを軸にしたミニマルな時系列表示�
 - game participant loaderは同一URLをstatusで分岐する。openは未所属者にも参加導線を許可し、finalizedは推測困難なgame URLをcapability URLとして確定結果だけを公開する。draftはgroup member、organizer、またはその開催の有効なparticipant tokenを持つ既存参加者だけへ公開する
 - finalizedの未所属ゲストは `canBrowseGroup=false` とし、ヘッダーメニュー、player statsリンク、過去開催ナビ、PayPay、TABLE STORIESを返却・表示しない。これにより結果URLからグループ内を横断できない
 - `/r/:resultCode` はfinalized gameのcanonical participant routeへredirectする短縮URLであり、redirect後は同じ公開結果ルールに従う
+
+## RiverCheck UI の視覚言語
+
+- RiverCheck はポーカーテーブル上の道具や情報を連想できる、深緑を基調とした落ち着いた卓上UIを優先する。
+- 入力済み、要確認、選択中などの状態を、カード左端の太い色線だけで表現しない。状態はチップ状の小さなマーカー、バッジ、面のトーン、文字の強弱を組み合わせて示す。
+- プレイヤー一覧は一人ずつを過度にカード化せず、名札・ロスターとして読めるフラットな並びを基本とする。囲いは操作単位や展開可能な情報に必要な場合だけ使う。
+- スート記号はポーカーそのものの意味がある場面に限定し、一般的な管理状態の装飾には多用しない。
+- 状態色は原則として RiverCheck green、gold、muted を使い、赤は削除や取消など明確な危険操作に限定する。
+

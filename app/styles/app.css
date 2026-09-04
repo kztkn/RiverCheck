@@ -5363,20 +5363,23 @@ input[aria-invalid="true"] {
   gap: 0;
   overflow: hidden;
   border: 1px solid rgba(223, 236, 227, 0.14);
-  border-left: 3px solid #71847a;
-  border-radius: 13px;
-  background: rgba(14, 30, 24, 0.82);
+  border-radius: 14px;
+  background: rgba(14, 30, 24, 0.76);
   padding: 0;
   box-shadow: none;
 }
 
 .admin-page .participant-admin-row.is-input-complete {
-  border-left-color: rgba(57, 222, 141, 0.72);
+  background:
+    radial-gradient(circle at 92% 12%, rgba(57, 222, 141, 0.055), transparent 150px),
+    rgba(14, 30, 24, 0.78);
 }
 
 .admin-page .participant-admin-row.is-input-warning {
-  border-color: rgba(233, 186, 90, 0.25);
-  border-left-color: var(--gold);
+  border-color: rgba(233, 186, 90, 0.24);
+  background:
+    radial-gradient(circle at 92% 12%, rgba(233, 186, 90, 0.08), transparent 160px),
+    rgba(21, 31, 23, 0.82);
 }
 
 .admin-page .participant-admin-row[open] {
@@ -5447,26 +5450,53 @@ input[aria-invalid="true"] {
 }
 
 .admin-page .participant-input-status {
-  border: 1px solid rgba(223, 236, 227, 0.13);
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(223, 236, 227, 0.12);
   border-radius: 999px;
+  background: rgba(5, 15, 10, 0.32);
   color: #aab9b1;
   font-size: 0.59rem;
   font-weight: 850;
   line-height: 1;
-  padding: 5px 7px;
+  padding: 4px 8px 4px 6px;
   white-space: nowrap;
 }
 
+.admin-page .participant-input-status::before {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border: 1px solid #71847a;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px rgba(113, 132, 122, 0.16);
+  content: "";
+}
+
 .admin-page .is-input-complete .participant-input-status {
-  border-color: rgba(57, 222, 141, 0.24);
-  background: rgba(57, 222, 141, 0.07);
+  border-color: rgba(57, 222, 141, 0.2);
+  background: rgba(57, 222, 141, 0.055);
   color: #8ed9b3;
 }
 
+.admin-page .is-input-complete .participant-input-status::before {
+  border-color: var(--green);
+  background: rgba(57, 222, 141, 0.28);
+  box-shadow: inset 0 0 0 2px #102119;
+}
+
 .admin-page .is-input-warning .participant-input-status {
-  border-color: rgba(233, 186, 90, 0.3);
-  background: rgba(233, 186, 90, 0.09);
+  border-color: rgba(233, 186, 90, 0.26);
+  background: rgba(233, 186, 90, 0.075);
   color: var(--gold);
+}
+
+.admin-page .is-input-warning .participant-input-status::before {
+  border-color: var(--gold);
+  background: rgba(233, 186, 90, 0.26);
+  box-shadow: inset 0 0 0 2px #172017;
 }
 
 .admin-page .participant-admin-facts {
