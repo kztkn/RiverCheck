@@ -35,3 +35,17 @@ text = text.replace(
     1,
 )
 path.write_text(text)
+
+component_path = Path("app/components/game-timeline.tsx")
+component = component_path.read_text()
+old = '''      ) : (\n        <div className="game-timeline-highlight">\n          <strong>ALL IN</strong>'''
+new = '''      ) : event.type === "all_in" ? (\n        <div className="game-timeline-highlight">\n          <strong>ALL IN</strong>'''
+if old not in component:
+    raise RuntimeError("timeline all-in branch marker not found")
+component = component.replace(old, new, 1)
+old_end = '''          ) : null}\n        </div>\n      )}\n    </li>'''
+new_end = '''          ) : null}\n        </div>\n      ) : null}\n    </li>'''
+if old_end not in component:
+    raise RuntimeError("timeline all-in branch end marker not found")
+component = component.replace(old_end, new_end, 1)
+component_path.write_text(component)
