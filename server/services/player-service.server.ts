@@ -2,6 +2,7 @@ import { findGroupByPublicCode } from "@server/repositories/group-repository.ser
 import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
 import {
   attachExistingPlayerToGroup,
+  deactivateGroupPlayer,
   insertPlayerForGroup,
   listGroupPlayers,
   listReusablePlayersForGroup,
@@ -44,6 +45,10 @@ export type RenamePlayerResult =
       error: string;
       value: string;
     };
+
+export type RemovePlayerFromGroupResult =
+  | { ok: true }
+  | { ok: false; error: string };
 
 export async function getPlayerManagement(
   publicCode: string,
@@ -160,6 +165,22 @@ export async function renamePlayerForGroup(
         ok: false,
         error: "メンバーを確認できません。画面を更新してください。",
         value: rawDisplayName,
+      };
+}
+
+export async function removePlayerFromGroup(
+  publicCode: string,
+  groupPlayerId: string,
+): Promise<RemovePlayerFromGroupResult> {
+  const group = await findGroupByPublicCode(publicCode);
+  if (!group) return { ok: false, error: "グループが見つかりません。" };
+
+  const removed = await deactivateGroupPlayer(group.id, groupPlayerId);
+  return removed
+    ? { ok: true }
+    : {
+        ok: false,
+        error: "メンバーを確認できません。画面を更新してください。",
       };
 }
 

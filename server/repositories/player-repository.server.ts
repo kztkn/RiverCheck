@@ -44,7 +44,8 @@ export async function listGroupPlayers(
       FROM group_players AS group_player
       INNER JOIN players AS player ON player.id = group_player.player_id
       WHERE group_player.group_id = $1
-      ORDER BY group_player.is_active DESC, display_name ASC, group_player.created_at ASC
+        AND group_player.is_active = TRUE
+      ORDER BY display_name ASC, group_player.created_at ASC
     `,
     [groupId],
   );
@@ -107,6 +108,7 @@ export async function listReusablePlayersForGroup(
           FROM group_players AS target_membership
           WHERE target_membership.group_id = $1
             AND target_membership.player_id = player.id
+            AND target_membership.is_active = TRUE
         )
       ORDER BY has_profile_access DESC, player.display_name ASC, player.created_at ASC
     `,
@@ -134,7 +136,8 @@ export async function attachExistingPlayerToGroup(
       SELECT $1, player.id
       FROM players AS player
       WHERE player.id = $2
-      ON CONFLICT (group_id, player_id) DO NOTHING
+      ON CONFLICT (group_id, player_id) DO UPDATE
+      SET is_active = TRUE
       RETURNING id
     `,
     [groupId, playerId],
@@ -183,6 +186,23 @@ export async function updatePlayerDisplayNameForGroup(
       RETURNING player.id
     `,
     [groupId, groupPlayerId, displayName],
+  );
+  return result.rowCount === 1;
+}
+
+export async function deactivateGroupPlayer(
+  groupId: string,
+  groupPlayerId: string,
+): Promise<boolean> {
+  const result = await queryDatabase(
+    `
+      UPDATE group_players
+      SET is_active = FALSE
+      WHERE group_id = $1
+        AND id = $2
+        AND is_active = TRUE
+    `,
+    [groupId, groupPlayerId],
   );
   return result.rowCount === 1;
 }

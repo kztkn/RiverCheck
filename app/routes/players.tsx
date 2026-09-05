@@ -10,6 +10,7 @@ import {
   getPlayerManagement,
   readAddPlayerForm,
   renamePlayerForGroup,
+  removePlayerFromGroup,
 } from "@server/services/player-service.server";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
@@ -46,6 +47,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     added: url.searchParams.has("added"),
     linked: url.searchParams.has("linked"),
     renamed: url.searchParams.has("renamed"),
+    removed: url.searchParams.has("removed"),
   };
 }
 
@@ -66,6 +68,21 @@ export async function action({ request, params }: Route.ActionArgs) {
     const result = await addExistingPlayerForGroup(params.groupCode, playerId);
     if (!result.ok) return { ...result, intent };
     return redirect(`/g/${params.groupCode}/players?linked=1`);
+  }
+
+  if (intent === "remove-player") {
+    const groupPlayerId = readString(formData, "groupPlayerId");
+    if (!isUuid(groupPlayerId)) {
+      return {
+        ok: false as const,
+        intent,
+        error: "メンバーを確認できません。",
+        groupPlayerId,
+      };
+    }
+    const result = await removePlayerFromGroup(params.groupCode, groupPlayerId);
+    if (!result.ok) return { ...result, intent, groupPlayerId };
+    return redirect(`/g/${params.groupCode}/players?removed=1`);
   }
 
   if (intent === "rename-player") {
@@ -119,6 +136,12 @@ export default function Players({
     actionData.intent === "rename-player"
     ? actionData
     : null;
+  const removeFailure =
+    actionData?.ok === false &&
+    "intent" in actionData &&
+    actionData.intent === "remove-player"
+      ? actionData
+      : null;
   const errors = addFailure?.errors ?? {};
   const displayName = addFailure?.values.displayName ?? "";
   const actionUrl = `/g/${loaderData.group.publicCode}/players`;
@@ -148,6 +171,11 @@ export default function Players({
       <AppToast
         message={loaderData.renamed ? "表示名を変更しました。" : null}
         searchParam="renamed"
+      />
+
+      <AppToast
+        message={loaderData.removed ? "メンバーをグループから外しました。" : null}
+        searchParam="removed"
       />
 
       <div className="member-management">
@@ -280,6 +308,29 @@ export default function Players({
                         </button>
                       </div>
                     </Form>
+                    <div className="member-membership-note">
+                      <strong>グループ所属</strong>
+                      <p>外しても過去の開催・順位・戦績は残ります。必要になればあとで再追加できます。</p>
+                      <Form action={actionUrl} method="post" reloadDocument>
+                        <input name="intent" type="hidden" value="remove-player" />
+                        <input name="groupPlayerId" type="hidden" value={player.id} />
+                        <button
+                          className="text-button member-remove-from-group"
+                          disabled={isSubmitting}
+                          onClick={(event) => {
+                            if (!window.confirm(`${player.displayName}さんをこのグループから外しますか？\n過去の戦績は残ります。`)) {
+                              event.preventDefault();
+                            }
+                          }}
+                          type="submit"
+                        >
+                          このグループから外す
+                        </button>
+                      </Form>
+                      {removeFailure?.groupPlayerId === player.id ? (
+                        <p className="field-error" role="alert">{removeFailure.error}</p>
+                      ) : null}
+                    </div>
                   </details>
                 </li>
               ))}
