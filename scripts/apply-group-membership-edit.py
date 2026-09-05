@@ -36,18 +36,20 @@ s = s.replace('    renamed: url.searchParams.has("renamed"),\n', '    renamed: u
 needle = '''  if (intent === "rename-player") {\n'''
 block = '''  if (intent === "remove-player") {\n    const groupPlayerId = readString(formData, "groupPlayerId");\n    if (!isUuid(groupPlayerId)) {\n      return {\n        ok: false as const,\n        intent,\n        error: "メンバーを確認できません。",\n        groupPlayerId,\n      };\n    }\n    const result = await removePlayerFromGroup(params.groupCode, groupPlayerId);\n    if (!result.ok) return { ...result, intent, groupPlayerId };\n    return redirect(`/g/${params.groupCode}/players?removed=1`);\n  }\n\n'''
 s = s.replace(needle, block + needle)
-s = s.replace(
-'''  const renameFailure = actionData?.ok === false &&\n    "intent" in actionData &&\n    actionData.intent === "rename-player"\n      ? actionData\n      : null;''',
-'''  const renameFailure = actionData?.ok === false &&\n    "intent" in actionData &&\n    actionData.intent === "rename-player"\n      ? actionData\n      : null;\n  const removeFailure = actionData?.ok === false &&\n    "intent" in actionData &&\n    actionData.intent === "remove-player"\n      ? actionData\n      : null;'''
-)
+anchor = '  const errors = addFailure?.errors ?? {};\n'
+remove_failure = '''  const removeFailure =\n    actionData?.ok === false &&\n    "intent" in actionData &&\n    actionData.intent === "remove-player"\n      ? actionData\n      : null;\n'''
+if anchor not in s:
+    raise RuntimeError('removeFailure insertion anchor not found')
+s = s.replace(anchor, remove_failure + anchor, 1)
 s = s.replace(
 '''      <AppToast\n        message={loaderData.renamed ? "表示名を変更しました。" : null}\n        searchParam="renamed"\n      />''',
 '''      <AppToast\n        message={loaderData.renamed ? "表示名を変更しました。" : null}\n        searchParam="renamed"\n      />\n\n      <AppToast\n        message={loaderData.removed ? "メンバーをグループから外しました。" : null}\n        searchParam="removed"\n      />'''
 )
-s = s.replace(
-'''                      <div className="member-rename-actions">\n                        <Link''',
-'''                      <div className="member-membership-note">\n                        <strong>グループ所属</strong>\n                        <p>外しても過去の開催・順位・戦績は残ります。必要になればあとで再追加できます。</p>\n                        <Form action={actionUrl} method="post" reloadDocument>\n                          <input name="intent" type="hidden" value="remove-player" />\n                          <input name="groupPlayerId" type="hidden" value={player.id} />\n                          <button\n                            className="text-button member-remove-from-group"\n                            disabled={isSubmitting}\n                            onClick={(event) => {\n                              if (!window.confirm(`${player.displayName}さんをこのグループから外しますか？\\n過去の戦績は残ります。`)) {\n                                event.preventDefault();\n                              }\n                            }}\n                            type="submit"\n                          >\n                            このグループから外す\n                          </button>\n                        </Form>\n                        {removeFailure?.groupPlayerId === player.id ? (\n                          <p className="field-error" role="alert">{removeFailure.error}</p>\n                        ) : null}\n                      </div>\n                      <div className="member-rename-actions">\n                        <Link'''
-)
+close_anchor = '''                      </div>\n                    </Form>\n                  </details>'''
+membership = '''                      </div>\n                    </Form>\n                    <div className="member-membership-note">\n                      <strong>グループ所属</strong>\n                      <p>外しても過去の開催・順位・戦績は残ります。必要になればあとで再追加できます。</p>\n                      <Form action={actionUrl} method="post" reloadDocument>\n                        <input name="intent" type="hidden" value="remove-player" />\n                        <input name="groupPlayerId" type="hidden" value={player.id} />\n                        <button\n                          className="text-button member-remove-from-group"\n                          disabled={isSubmitting}\n                          onClick={(event) => {\n                            if (!window.confirm(`${player.displayName}さんをこのグループから外しますか？\\n過去の戦績は残ります。`)) {\n                              event.preventDefault();\n                            }\n                          }}\n                          type="submit"\n                        >\n                          このグループから外す\n                        </button>\n                      </Form>\n                      {removeFailure?.groupPlayerId === player.id ? (\n                        <p className="field-error" role="alert">{removeFailure.error}</p>\n                      ) : null}\n                    </div>\n                  </details>'''
+if close_anchor not in s:
+    raise RuntimeError('membership UI insertion anchor not found')
+s = s.replace(close_anchor, membership, 1)
 route.write_text(s)
 
 css = Path('app/styles/groups.css')
