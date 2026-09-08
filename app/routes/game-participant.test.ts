@@ -12,6 +12,7 @@ const mocked = vi.hoisted(() => ({
   findGroupByPublicCode: vi.fn(),
   findParticipantByGroupPlayerId: vi.fn(),
   findParticipantByTokenHash: vi.fn(),
+  getOpenGameTableEventCounts: vi.fn(),
   getAuthenticatedPlayerIdentity: vi.fn(),
   getAuthenticatedPlayerProfile: vi.fn(),
   getOwnGameStoryPost: vi.fn(),
@@ -53,6 +54,7 @@ vi.mock("@server/repositories/finalization-repository.server", () => ({
 vi.mock("@server/repositories/participant-repository.server", () => ({
   findParticipantByGroupPlayerId: mocked.findParticipantByGroupPlayerId,
   findParticipantByTokenHash: mocked.findParticipantByTokenHash,
+  getOpenGameTableEventCounts: mocked.getOpenGameTableEventCounts,
   joinAuthenticatedParticipant: mocked.joinAuthenticatedParticipant,
   joinExistingPlayerToGroupGame: mocked.joinExistingPlayerToGroupGame,
   joinNewParticipant: mocked.joinNewParticipant,
@@ -179,6 +181,11 @@ describe("game participant route", () => {
     mocked.joinExistingPlayerToGroupGame.mockResolvedValue(groupPlayerId);
     mocked.findParticipantByGroupPlayerId.mockResolvedValue(null);
     mocked.findParticipantByTokenHash.mockResolvedValue(null);
+    mocked.getOpenGameTableEventCounts.mockResolvedValue({
+      allInCount: 0,
+      bombPotCount: 0,
+      sevenDeuceCount: 0,
+    });
     mocked.listCurrentGameParticipants.mockResolvedValue([]);
     mocked.listRegisteredPlayersForGame.mockResolvedValue([]);
     mocked.listFinalResults.mockResolvedValue([]);

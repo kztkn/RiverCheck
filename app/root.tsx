@@ -32,6 +32,7 @@ import "./styles/participant-status.css";
 import "./styles/stats.css";
 import "./styles/timeline.css";
 import "./styles/table-events.css";
+import "./styles/table-now.css";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
