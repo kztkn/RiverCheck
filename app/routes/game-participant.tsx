@@ -24,6 +24,7 @@ import {
 import {
   findParticipantByGroupPlayerId,
   findParticipantByTokenHash,
+  getOpenGameTableEventCounts,
   joinAuthenticatedParticipant,
   joinNewParticipant,
   leaveGame,
@@ -94,6 +95,7 @@ import { updateGameCostShareReceipt } from "@server/services/game-cost-share-rec
 import { OrganizerCostShareCollection } from "~/components/organizer-cost-share-collection";
 import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-preview-draft";
 import { INVITE_REQUIRED_RESPONSE_TEXT } from "@domain/routing/public-group-entry";
+import { TableNow } from "~/components/table-now";
 
 type RebuyActionIntent = "record-rebuy" | "record-repayment" | "undo-rebuy";
 type RebuyActionData = RebuyServiceResult & { intent: RebuyActionIntent };
@@ -127,7 +129,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const participantTokenHash = participantToken
     ? await hashToken(participantToken)
     : null;
-  const [participant, participantRoster] = await Promise.all([
+  const [participant, participantRoster, tableEventCounts] = await Promise.all([
     profileOverview?.profile
       ? findParticipantByGroupPlayerId(
         context.group.id,
@@ -146,6 +148,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         .then((participants) => ({ available: true, participants }))
         .catch(() => ({ available: false, participants: [] }))
       : Promise.resolve({ available: true, participants: [] }),
+    context.game.status === "open"
+      ? getOpenGameTableEventCounts(context.group.id, params.gameId)
+      : Promise.resolve({ allInCount: 0, bombPotCount: 0, sevenDeuceCount: 0 }),
   ]);
 
   const canBrowseGroup = Boolean(profileOverview?.profile) || isOrganizer;
@@ -246,6 +251,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
           groupPlayerId: participant.groupPlayerId,
         }),
       }
+      : null,
+    tableNow: context.game.status === "open"
+      ? {
+          playerCount: participantRoster.available
+            ? participantRoster.participants.length
+            : null,
+          ...tableEventCounts,
+        }
       : null,
     participantRoster: {
       available: participantRoster.available,
@@ -764,6 +777,8 @@ export default function GameParticipant({
           </p>
         ) : null}
       </section>
+
+      {loaderData.tableNow ? <TableNow data={loaderData.tableNow} /> : null}
 
       {shouldShowLocalRules(loaderData.game.status) ? (
         <LocalRulesSheet

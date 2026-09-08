@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router";
+import { useLocation, useRevalidator } from "react-router";
 
 interface TableEventParticipant {
   groupPlayerId: string;
@@ -31,6 +31,7 @@ type RecorderMode = "menu" | "seven-deuce" | "all-in";
 
 export function TableEventRecorder() {
   const location = useLocation();
+  const revalidator = useRevalidator();
   const resourcePath = useMemo(
     () => buildTableEventsPath(location.pathname),
     [location.pathname],
@@ -172,6 +173,7 @@ export function TableEventRecorder() {
       setAllInIds([]);
       setWinnerIds([]);
       await refreshPanel();
+      void revalidator.revalidate();
     } catch {
       setError("通信に失敗しました。もう一度お試しください。");
     } finally {

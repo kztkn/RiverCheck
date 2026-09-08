@@ -1,0 +1,13 @@
+.table-now { display:grid; gap:10px; margin:-2px 0 14px; padding:12px 0 10px; border-block:1px solid rgba(214,235,225,.1); }
+.table-now-heading { display:flex; align-items:baseline; gap:8px; padding-inline:2px; }
+.table-now-heading > span { color:rgba(231,244,237,.72); font-size:.68rem; font-weight:800; letter-spacing:.18em; }
+.table-now-heading > small { color:rgba(214,235,225,.42); font-size:.72rem; }
+.table-now-scroller { display:flex; gap:8px; overflow-x:auto; padding:1px 2px 5px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.table-now-scroller::-webkit-scrollbar { display:none; }
+.table-now-item { display:inline-flex; flex:0 0 auto; align-items:center; gap:8px; min-height:44px; padding:7px 11px 7px 9px; border:1px solid rgba(214,235,225,.1); border-radius:14px; background:rgba(255,255,255,.025); }
+.table-now-item > svg { width:18px; height:18px; color:rgba(113,222,165,.72); }
+.table-now-item > span { display:flex; align-items:baseline; gap:6px; white-space:nowrap; }
+.table-now-item strong { color:#f2f7f4; font-size:.98rem; line-height:1; font-variant-numeric:tabular-nums; }
+.table-now-item small { color:rgba(224,238,231,.56); font-size:.66rem; font-weight:750; letter-spacing:.08em; }
+.table-now-players { border-color:rgba(57,222,141,.16); background:rgba(57,222,141,.045); }
+@media (min-width:700px) { .table-now-scroller { flex-wrap:wrap; overflow-x:visible; } }

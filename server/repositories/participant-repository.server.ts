@@ -77,6 +77,45 @@ export async function listRegisteredPlayersForGame(
   }));
 }
 
+export interface OpenGameTableEventCounts {
+  allInCount: number;
+  bombPotCount: number;
+  sevenDeuceCount: number;
+}
+
+interface OpenGameTableEventCountRow {
+  all_in_count: number;
+  bomb_pot_count: number;
+  seven_deuce_count: number;
+}
+
+export async function getOpenGameTableEventCounts(
+  groupId: string,
+  gameId: string,
+): Promise<OpenGameTableEventCounts> {
+  const result = await queryDatabase<OpenGameTableEventCountRow>(
+    `
+      SELECT
+        COUNT(*) FILTER (WHERE event.event_type = 'all_in')::int AS all_in_count,
+        COUNT(*) FILTER (WHERE event.event_type = 'bomb_pot')::int AS bomb_pot_count,
+        COUNT(*) FILTER (WHERE event.event_type = 'seven_deuce')::int AS seven_deuce_count
+      FROM game_table_events AS event
+      INNER JOIN games AS game ON game.id = event.game_id
+      WHERE game.id = $1
+        AND game.group_id = $2
+        AND game.status = 'open'
+        AND event.canceled_at IS NULL
+    `,
+    [gameId, groupId],
+  );
+  const row = result.rows[0];
+  return {
+    allInCount: row?.all_in_count ?? 0,
+    bombPotCount: row?.bomb_pot_count ?? 0,
+    sevenDeuceCount: row?.seven_deuce_count ?? 0,
+  };
+}
+
 export async function listCurrentGameParticipants(
   groupId: string,
   gameId: string,
