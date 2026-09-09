@@ -1,0 +1,360 @@
+name: Implement LIVE TABLE interactions
+
+on:
+  push:
+    branches:
+      - feat/live-table-interactions
+
+permissions:
+  contents: write
+
+jobs:
+  implement-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply LIVE TABLE implementation
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"anchor not found in {path}: {old[:120]!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          Path("app/components/table-now.tsx").write_text('''import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
+import { IconArrowUp, IconBomb, IconCards, IconUsers } from "@tabler/icons-react";
+
+export interface LiveTableEvent {
+  id: string;
+  type: "seven_deuce" | "bomb_pot" | "all_in";
+  recordedAt: string;
+  subject: { displayName: string } | null;
+  players: Array<{ displayName: string; isWinner: boolean }>;
+}
+
+export interface TableNowData {
+  allInCount: number;
+  bombPotCount: number;
+  playerCount: number | null;
+  sevenDeuceCount: number;
+  events?: LiveTableEvent[];
+}
+
+type DetailType = "all_in" | "bomb_pot" | "seven_deuce";
+
+export function TableNow({
+  data,
+  onPlayersClick,
+}: {
+  data: TableNowData;
+  onPlayersClick?: () => void;
+}) {
+  const [detailType, setDetailType] = useState<DetailType | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const events = [
+    data.allInCount > 0
+      ? { key: "all_in" as const, label: "ALL IN", value: data.allInCount, Icon: IconArrowUp }
+      : null,
+    data.bombPotCount > 0
+      ? { key: "bomb_pot" as const, label: "BOMB POT", value: data.bombPotCount, Icon: IconBomb }
+      : null,
+    data.sevenDeuceCount > 0
+      ? { key: "seven_deuce" as const, label: "72o", value: data.sevenDeuceCount, Icon: IconCards }
+      : null,
+  ].filter((item): item is NonNullable<typeof item> => item !== null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (detailType && !dialog.open) dialog.showModal();
+    if (!detailType && dialog.open) dialog.close();
+  }, [detailType]);
+
+  const selectedEvents = detailType
+    ? (data.events ?? []).filter((event) => event.type === detailType)
+    : [];
+
+  return (
+    <section aria-label="LIVE TABLE" className="table-now">
+      <div className="table-now-heading"><span>LIVE TABLE</span></div>
+      <div className="table-now-scroller">
+        <button
+          className="table-now-item table-now-players"
+          disabled={!onPlayersClick}
+          onClick={onPlayersClick}
+          type="button"
+        >
+          <IconUsers aria-hidden="true" stroke={1.7} />
+          <span><strong>{data.playerCount ?? "—"}</strong><small>PLAYERS</small></span>
+        </button>
+        {events.map(({ key, label, value, Icon }) => (
+          <button
+            className="table-now-item"
+            key={key}
+            onClick={() => setDetailType(key)}
+            type="button"
+          >
+            <Icon aria-hidden="true" stroke={1.7} />
+            <span><small>{label}</small><strong>{value}</strong></span>
+          </button>
+        ))}
+      </div>
+      <dialog
+        aria-labelledby="live-table-detail-title"
+        className="app-dialog participant-roster-dialog live-table-detail-dialog"
+        onCancel={() => setDetailType(null)}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) setDetailType(null);
+        }}
+        onClose={() => setDetailType(null)}
+        ref={dialogRef}
+      >
+        <div className="participant-roster-sheet live-table-detail-sheet">
+          <header className="participant-roster-header">
+            <div>
+              <p className="eyebrow">LIVE TABLE</p>
+              <h2 id="live-table-detail-title">{detailType ? detailLabel(detailType) : ""}</h2>
+            </div>
+            <button
+              aria-label="LIVE TABLE詳細を閉じる"
+              className="participant-roster-close"
+              onClick={() => setDetailType(null)}
+              type="button"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
+          </header>
+          <div className="participant-roster-scroll live-table-detail-list">
+            {selectedEvents.length === 0 ? (
+              <p className="participant-roster-empty">記録はありません</p>
+            ) : selectedEvents.map((event) => (
+              <article className="live-table-detail-row" key={event.id}>
+                <time dateTime={event.recordedAt}>{formatTableTime(event.recordedAt)}</time>
+                <div>{renderEventCopy(event)}</div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </dialog>
+    </section>
+  );
+}
+
+export function LiveTableMini({ data, to }: { data: TableNowData; to: string }) {
+  const items = [
+    `${data.playerCount ?? "—"} PLAYERS`,
+    data.allInCount > 0 ? `ALL IN ${data.allInCount}` : null,
+    data.bombPotCount > 0 ? `BOMB POT ${data.bombPotCount}` : null,
+    data.sevenDeuceCount > 0 ? `72o ${data.sevenDeuceCount}` : null,
+  ].filter((item): item is string => Boolean(item));
+  return (
+    <Link aria-label="LIVE TABLEを開く" className="home-live-table-mini" to={to}>
+      <strong>LIVE TABLE</strong>
+      <span>{items.join(" · ")}</span>
+      <b aria-hidden="true">→</b>
+    </Link>
+  );
+}
+
+function detailLabel(type: DetailType) {
+  if (type === "all_in") return "ALL IN";
+  if (type === "bomb_pot") return "BOMB POT";
+  return "72o成立";
+}
+
+function renderEventCopy(event: LiveTableEvent) {
+  if (event.type === "seven_deuce") {
+    return <strong>{event.subject?.displayName ?? "プレイヤー"}</strong>;
+  }
+  if (event.type === "bomb_pot") {
+    return <strong>BOMB POT</strong>;
+  }
+  const winners = event.players.filter((player) => player.isWinner).map((player) => player.displayName);
+  const players = event.players.map((player) => player.displayName);
+  return (
+    <>
+      <strong>勝者 {winners.join("・") || "—"}</strong>
+      <small>{players.join("・")}</small>
+    </>
+  );
+}
+
+function formatTableTime(value: string) {
+  return new Intl.DateTimeFormat("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Tokyo",
+  }).format(new Date(value));
+}
+''')
+
+          Path("app/styles/table-now.css").write_text('''.table-now { display:grid; gap:10px; margin:-2px 0 14px; padding:12px 0 10px; border-block:1px solid rgba(214,235,225,.1); }
+.table-now-heading { display:flex; align-items:baseline; gap:8px; padding-inline:2px; }
+.table-now-heading > span { color:rgba(231,244,237,.72); font-size:.68rem; font-weight:800; letter-spacing:.18em; }
+.table-now-scroller { display:flex; gap:8px; overflow-x:auto; padding:1px 2px 5px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.table-now-scroller::-webkit-scrollbar { display:none; }
+.table-now-item { appearance:none; display:inline-flex; flex:0 0 auto; align-items:center; gap:8px; min-height:44px; margin:0; padding:7px 11px 7px 9px; border:1px solid rgba(214,235,225,.1); border-radius:14px; background:rgba(255,255,255,.025); color:inherit; font:inherit; cursor:pointer; }
+.table-now-item:disabled { cursor:default; opacity:1; }
+.table-now-item:not(:disabled):hover,.table-now-item:not(:disabled):focus-visible { border-color:rgba(57,222,141,.32); background:rgba(57,222,141,.06); }
+.table-now-item > svg { width:18px; height:18px; color:rgba(113,222,165,.72); }
+.table-now-item > span { display:flex; align-items:baseline; gap:6px; white-space:nowrap; }
+.table-now-item strong { color:#f2f7f4; font-size:.98rem; line-height:1; font-variant-numeric:tabular-nums; }
+.table-now-item small { color:rgba(224,238,231,.56); font-size:.66rem; font-weight:750; letter-spacing:.08em; }
+.table-now-players { border-color:rgba(57,222,141,.16); background:rgba(57,222,141,.045); }
+.live-table-detail-sheet { max-height:min(72vh,560px); }
+.live-table-detail-list { display:grid; }
+.live-table-detail-row { display:grid; grid-template-columns:52px minmax(0,1fr); gap:12px; align-items:start; border-top:1px solid var(--line); padding:13px 2px; }
+.live-table-detail-row:first-child { border-top:0; }
+.live-table-detail-row time { color:var(--muted); font-size:.72rem; font-variant-numeric:tabular-nums; }
+.live-table-detail-row > div { display:grid; gap:4px; min-width:0; }
+.live-table-detail-row strong { font-size:.82rem; }
+.live-table-detail-row small { color:var(--muted); font-size:.7rem; line-height:1.45; }
+.home-live-table-mini { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; margin-top:16px; border-block:1px solid rgba(57,222,141,.14); padding:10px 2px; color:inherit; }
+.home-live-table-mini strong { color:var(--green); font-size:.63rem; letter-spacing:.12em; white-space:nowrap; }
+.home-live-table-mini span { overflow:hidden; color:rgba(225,239,231,.7); font-size:.69rem; text-overflow:ellipsis; white-space:nowrap; }
+.home-live-table-mini b { color:rgba(113,222,165,.7); font-size:.9rem; font-weight:600; }
+@media (min-width:700px) { .table-now-scroller { flex-wrap:wrap; overflow-x:visible; } }
+''')
+
+          replace_once(
+            "app/routes/game-participant.tsx",
+            'import { TableNow } from "~/components/table-now";\n',
+            'import { TableNow } from "~/components/table-now";\nimport { listOpenGameTableEvents } from "@server/repositories/table-event-repository.server";\n',
+          )
+          replace_once(
+            "app/routes/game-participant.tsx",
+            '  const [participant, participantRoster, tableEventCounts] = await Promise.all([\n',
+            '  const [participant, participantRoster, tableEventCounts, tableEvents] = await Promise.all([\n',
+          )
+          replace_once(
+            "app/routes/game-participant.tsx",
+            '    context.game.status === "open"\n      ? getOpenGameTableEventCounts(context.group.id, params.gameId)\n      : Promise.resolve({ allInCount: 0, bombPotCount: 0, sevenDeuceCount: 0 }),\n  ]);\n',
+            '    context.game.status === "open"\n      ? getOpenGameTableEventCounts(context.group.id, params.gameId)\n      : Promise.resolve({ allInCount: 0, bombPotCount: 0, sevenDeuceCount: 0 }),\n    context.game.status === "open"\n      ? listOpenGameTableEvents(context.group.id, params.gameId, 100)\n      : Promise.resolve([]),\n  ]);\n',
+          )
+          replace_once(
+            "app/routes/game-participant.tsx",
+            '          ...tableEventCounts,\n        }\n',
+            '          ...tableEventCounts,\n          events: tableEvents.map((event) => ({\n            id: event.id,\n            type: event.type,\n            recordedAt: event.recordedAt,\n            subject: event.subject ? { displayName: event.subject.displayName } : null,\n            players: event.players.map((player) => ({\n              displayName: player.displayName,\n              isWinner: player.isWinner,\n            })),\n          })),\n        }\n',
+          )
+          replace_once(
+            "app/routes/game-participant.tsx",
+            '  const [isEditing, setIsEditing] = useState(false);\n',
+            '  const [isEditing, setIsEditing] = useState(false);\n  const [rosterOpenSignal, setRosterOpenSignal] = useState(0);\n',
+          )
+          replace_once(
+            "app/routes/game-participant.tsx",
+            '      {loaderData.tableNow ? <TableNow data={loaderData.tableNow} /> : null}\n',
+            '      {loaderData.tableNow ? (\n        <TableNow\n          data={loaderData.tableNow}\n          onPlayersClick={loaderData.participant ? () => setRosterOpenSignal((value) => value + 1) : undefined}\n        />\n      ) : null}\n',
+          )
+          replace_once(
+            "app/routes/game-participant.tsx",
+            '          <ParticipantRosterSheet\n            available={loaderData.participantRoster.available}\n            items={loaderData.participantRoster.items}\n',
+            '          <ParticipantRosterSheet\n            available={loaderData.participantRoster.available}\n            externalOpenSignal={rosterOpenSignal}\n            hideTrigger\n            items={loaderData.participantRoster.items}\n',
+          )
+          replace_once(
+            "app/routes/game-participant.tsx",
+            'export function ParticipantRosterSheet({\n  available,\n  items,\n  onOpen,\n  statusFetcher,\n}: {\n  available: boolean;\n  items: ParticipantRosterItem[];\n  onOpen?: () => void;\n  statusFetcher?: ParticipantStatusFetcher;\n}) {\n',
+            'export function ParticipantRosterSheet({\n  available,\n  externalOpenSignal = 0,\n  hideTrigger = false,\n  items,\n  onOpen,\n  statusFetcher,\n}: {\n  available: boolean;\n  externalOpenSignal?: number;\n  hideTrigger?: boolean;\n  items: ParticipantRosterItem[];\n  onOpen?: () => void;\n  statusFetcher?: ParticipantStatusFetcher;\n}) {\n',
+          )
+          replace_once(
+            "app/routes/game-participant.tsx",
+            '  function startStatusEdit() {\n',
+            '  useEffect(() => {\n    if (externalOpenSignal <= 0) return;\n    openSheet();\n  }, [externalOpenSignal]);\n\n  function startStatusEdit() {\n',
+          )
+          replace_once(
+            "app/routes/game-participant.tsx",
+            '      <button\n        aria-controls="participant-roster-dialog"\n        aria-expanded={isOpen}\n        aria-haspopup="dialog"\n        className="participant-roster-trigger"\n        onClick={openSheet}\n        ref={triggerRef}\n        type="button"\n      >\n        <span>\n          参加者 <strong>{countLabel}</strong>\n        </span>\n        <small>一覧を見る</small>\n      </button>\n',
+            '      {hideTrigger ? null : (\n        <button\n          aria-controls="participant-roster-dialog"\n          aria-expanded={isOpen}\n          aria-haspopup="dialog"\n          className="participant-roster-trigger"\n          onClick={openSheet}\n          ref={triggerRef}\n          type="button"\n        >\n          <span>\n            参加者 <strong>{countLabel}</strong>\n          </span>\n          <small>一覧を見る</small>\n        </button>\n      )}\n',
+          )
+
+          replace_once(
+            "app/routes/group-top.tsx",
+            'import { GroupSiteHeader } from "~/components/site-menu";\n',
+            'import { GroupSiteHeader } from "~/components/site-menu";\nimport { LiveTableMini } from "~/components/table-now";\n',
+          )
+          replace_once(
+            "app/routes/group-top.tsx",
+            '  const overview = await getGroupOverview(params.groupCode);\n  if (!overview) throw new Response("Group not found", { status: 404 });\n  return overview;\n',
+            '  const overview = await getGroupOverview(params.groupCode);\n  if (!overview) throw new Response("Group not found", { status: 404 });\n  const primaryGame = orderActiveGamesBySchedule(overview.games)[0];\n  const liveTable = primaryGame?.status === "open"\n    ? await import("@server/repositories/participant-repository.server").then(async ({ getOpenGameTableEventCounts }) => ({\n        gameId: primaryGame.id,\n        playerCount: primaryGame.participantCount,\n        ...(await getOpenGameTableEventCounts(overview.group.id, primaryGame.id)),\n      }))\n    : null;\n  return { ...overview, liveTable };\n',
+          )
+          replace_once(
+            "app/routes/group-top.tsx",
+            '  const { group, games } = loaderData;\n',
+            '  const { group, games, liveTable } = loaderData;\n',
+          )
+          replace_once(
+            "app/routes/group-top.tsx",
+            '                </div>\n              </div>\n              <Link\n                className="button button-primary home-game-primary-action"\n',
+            '                </div>\n                {liveTable && liveTable.gameId === primaryGame.id ? (\n                  <LiveTableMini data={liveTable} to={`games/${primaryGame.id}`} />\n                ) : null}\n              </div>\n              <Link\n                className="button button-primary home-game-primary-action"\n',
+          )
+
+          test_path = Path("app/routes/game-participant.test.ts")
+          test = test_path.read_text()
+          test = test.replace('  listResultRevisions: vi.fn(),\n', '  listResultRevisions: vi.fn(),\n  listOpenGameTableEvents: vi.fn(),\n', 1)
+          anchor = 'vi.mock("@server/repositories/group-paypay-repository.server", () => ({\n'
+          mock = 'vi.mock("@server/repositories/table-event-repository.server", () => ({\n  listOpenGameTableEvents: mocked.listOpenGameTableEvents,\n}));\n'
+          if anchor not in test: raise SystemExit("game participant test mock anchor missing")
+          test = test.replace(anchor, mock + anchor, 1)
+          test = test.replace('    mocked.listResultRevisions.mockResolvedValue([]);\n', '    mocked.listResultRevisions.mockResolvedValue([]);\n    mocked.listOpenGameTableEvents.mockResolvedValue([]);\n', 1)
+          test_path.write_text(test)
+
+          Path("app/routes/live-table-ui.test.ts").write_text('''import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+const component = readFileSync("app/components/table-now.tsx", "utf8");
+const participant = readFileSync("app/routes/game-participant.tsx", "utf8");
+const top = readFileSync("app/routes/group-top.tsx", "utf8");
+const styles = readFileSync("app/styles/table-now.css", "utf8");
+describe("LIVE TABLE", () => {
+  it("uses LIVE TABLE without the old Japanese subtitle", () => {
+    expect(component).toContain('>LIVE TABLE<');
+    expect(component).not.toContain("いまの卓");
+  });
+  it("opens players from the LIVE TABLE metric and hides the duplicate roster trigger", () => {
+    expect(participant).toContain("rosterOpenSignal");
+    expect(participant).toContain("hideTrigger");
+    expect(component).toContain("onPlayersClick");
+  });
+  it("offers event detail buttons and a top-page mini LIVE TABLE", () => {
+    expect(component).toContain("live-table-detail-dialog");
+    expect(component).toContain("勝者");
+    expect(component).toContain("LiveTableMini");
+    expect(top).toContain("<LiveTableMini");
+    expect(styles).toContain("home-live-table-mini");
+  });
+});
+''')
+
+          req = Path("docs/requirements.md")
+          text = req.read_text()
+          old = '15. open開催の参加者ページでは開催タイトル直下に「TABLE NOW / いまの卓」を表示し、現在参加中の人数を常時表示する。ALL IN・BOMB POT・72o成立は取消されていないテーブルイベントの累計が1件以上の項目だけ表示する。リバイ数は含めない。狭いスマートフォン幅では各指標を横スクロールでき、1項目内の不自然な改行を避ける。draft・finalizedでは表示しない。ページ表示・フォーカス復帰・pageshowおよびテーブルイベントの記録/取消後の既存loader再検証で最新値へ同期し、常時ポーリングやWebSocketは導入しない'
+          new = '15. open開催の参加者ページでは開催タイトル直下に「LIVE TABLE」を表示し、現在参加中の人数を常時表示する。PLAYERSを押すと既存の参加者一覧を開き、従来の参加者一覧トリガーは重複表示しない。ALL IN・BOMB POT・72o成立は取消されていないテーブルイベントの累計が1件以上の項目だけ表示し、押すとその種別の記録詳細を確認できる。リバイ数は含めない。狭いスマートフォン幅では各指標を横スクロールでき、1項目内の不自然な改行を避ける。draft・finalizedでは表示しない。グループTOPのNEXT TABLE主開催がopenの場合はカード内にもミニLIVE TABLEを表示し、開催画面へ遷移できる。ページ表示・フォーカス復帰・pageshowおよびテーブルイベントの記録/取消後の既存loader再検証で最新値へ同期し、常時ポーリングやWebSocketは導入しない'
+          if old not in text: raise SystemExit("requirements anchor missing")
+          req.write_text(text.replace(old, new, 1))
+
+          Path(".github/workflows/live-table-implementation.yml").unlink()
+          PY
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Commit verified implementation
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "LIVE TABLEの詳細導線とトップ表示を追加"
+          git push origin HEAD:feat/live-table-interactions
