@@ -84,17 +84,6 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
                   <LiveTableMini data={liveTable} to={`games/${primaryGame.id}`} />
                 ) : null}
               </div>
-              <Link
-                className="button button-primary home-game-primary-action"
-                to={buildGameUrl(primaryGame, isOrganizer, false)}
-              >
-                {isOrganizer
-                  ? "開催管理を開く"
-                  : primaryGame.status === "open"
-                    ? "ゲーム画面へ"
-                    : "受付状況を見る"}
-                <span aria-hidden="true">→</span>
-              </Link>
             </article>
             {otherActiveGames.length > 0 ? (
               <div
