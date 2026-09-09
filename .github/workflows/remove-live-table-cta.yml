@@ -1,0 +1,49 @@
+name: Remove duplicate LIVE TABLE CTA
+on:
+  push:
+    branches: [fix/remove-duplicate-live-table-cta]
+permissions:
+  contents: write
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Remove duplicate CTA
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('app/routes/group-top.tsx')
+          s=p.read_text()
+          old='''              <Link
+                className="button button-primary home-game-primary-action"
+                to={buildGameUrl(primaryGame, isOrganizer, false)}
+              >
+                {isOrganizer
+                  ? "開催管理を開く"
+                  : primaryGame.status === "open"
+                    ? "ゲーム画面へ"
+                    : "受付状況を見る"}
+                <span aria-hidden="true">→</span>
+              </Link>
+'''
+          if old not in s: raise SystemExit('CTA block not found')
+          p.write_text(s.replace(old,'',1))
+          Path('.github/workflows/remove-live-table-cta.yml').unlink()
+          PY
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Commit verified change
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'トップのLIVE TABLE重複導線を整理'
+          git push origin HEAD:fix/remove-duplicate-live-table-cta
