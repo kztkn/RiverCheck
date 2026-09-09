@@ -29,6 +29,7 @@ const mocked = vi.hoisted(() => ({
   listCurrentGameParticipants: vi.fn(),
   listRegisteredPlayersForGame: vi.fn(),
   listResultRevisions: vi.fn(),
+  listOpenGameTableEvents: vi.fn(),
   selectPlayerProfile: vi.fn(),
   saveFinalizedGameStory: vi.fn(),
   deleteGameStoryPostAsOrganizer: vi.fn(),
@@ -65,6 +66,9 @@ vi.mock("@server/repositories/participant-repository.server", () => ({
   updateParticipantInput: mocked.updateParticipantInput,
   updateParticipantInputByGroupPlayerId:
     mocked.updateParticipantInputByGroupPlayerId,
+}));
+vi.mock("@server/repositories/table-event-repository.server", () => ({
+  listOpenGameTableEvents: mocked.listOpenGameTableEvents,
 }));
 vi.mock("@server/repositories/group-paypay-repository.server", () => ({
   findGamePaymentAmountForPlayer: mocked.findGamePaymentAmountForPlayer,
@@ -191,6 +195,7 @@ describe("game participant route", () => {
     mocked.listFinalResults.mockResolvedValue([]);
     mocked.listGameCostShareReceipts.mockResolvedValue([]);
     mocked.listResultRevisions.mockResolvedValue([]);
+    mocked.listOpenGameTableEvents.mockResolvedValue([]);
     mocked.listGamesForGroup.mockResolvedValue([]);
     mocked.getOwnGameStoryPost.mockResolvedValue(null);
     mocked.getPublishedGameStoryPosts.mockResolvedValue([]);

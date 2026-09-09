@@ -1,5 +1,6 @@
 import { Link, useRouteLoaderData } from "react-router";
 import { GroupSiteHeader } from "~/components/site-menu";
+import { LiveTableMini } from "~/components/table-now";
 import { orderActiveGamesBySchedule } from "@domain/game/order-active-games";
 import { getGroupOverview } from "@server/services/group-service.server";
 import type { GameListItem } from "@shared-types/game";
@@ -14,11 +15,19 @@ const statusLabels = {
 export async function loader({ params }: Route.LoaderArgs) {
   const overview = await getGroupOverview(params.groupCode);
   if (!overview) throw new Response("Group not found", { status: 404 });
-  return overview;
+  const primaryGame = orderActiveGamesBySchedule(overview.games)[0];
+  const liveTable = primaryGame?.status === "open"
+    ? await import("@server/repositories/participant-repository.server").then(async ({ getOpenGameTableEventCounts }) => ({
+        gameId: primaryGame.id,
+        playerCount: primaryGame.participantCount,
+        ...(await getOpenGameTableEventCounts(overview.group.id, primaryGame.id)),
+      }))
+    : null;
+  return { ...overview, liveTable };
 }
 
 export default function GroupTop({ loaderData }: Route.ComponentProps) {
-  const { group, games } = loaderData;
+  const { group, games, liveTable } = loaderData;
   const rootData = useRouteLoaderData("root") as
     | {
         authenticatedPlayerGroupPlayerId: string | null;
@@ -71,6 +80,9 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
                   </time>
                   <span>参加者 {primaryGame.participantCount}人</span>
                 </div>
+                {liveTable && liveTable.gameId === primaryGame.id ? (
+                  <LiveTableMini data={liveTable} to={`games/${primaryGame.id}`} />
+                ) : null}
               </div>
               <Link
                 className="button button-primary home-game-primary-action"

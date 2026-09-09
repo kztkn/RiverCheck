@@ -96,6 +96,7 @@ import { OrganizerCostShareCollection } from "~/components/organizer-cost-share-
 import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-preview-draft";
 import { INVITE_REQUIRED_RESPONSE_TEXT } from "@domain/routing/public-group-entry";
 import { TableNow } from "~/components/table-now";
+import { listOpenGameTableEvents } from "@server/repositories/table-event-repository.server";
 
 type RebuyActionIntent = "record-rebuy" | "record-repayment" | "undo-rebuy";
 type RebuyActionData = RebuyServiceResult & { intent: RebuyActionIntent };
@@ -129,7 +130,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const participantTokenHash = participantToken
     ? await hashToken(participantToken)
     : null;
-  const [participant, participantRoster, tableEventCounts] = await Promise.all([
+  const [participant, participantRoster, tableEventCounts, tableEvents] = await Promise.all([
     profileOverview?.profile
       ? findParticipantByGroupPlayerId(
         context.group.id,
@@ -151,6 +152,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     context.game.status === "open"
       ? getOpenGameTableEventCounts(context.group.id, params.gameId)
       : Promise.resolve({ allInCount: 0, bombPotCount: 0, sevenDeuceCount: 0 }),
+    context.game.status === "open"
+      ? listOpenGameTableEvents(context.group.id, params.gameId, 100)
+      : Promise.resolve([]),
   ]);
 
   const canBrowseGroup = Boolean(profileOverview?.profile) || isOrganizer;
@@ -258,6 +262,16 @@ export async function loader({ request, params }: Route.LoaderArgs) {
             ? participantRoster.participants.length
             : null,
           ...tableEventCounts,
+          events: tableEvents.map((event) => ({
+            id: event.id,
+            type: event.type,
+            recordedAt: event.recordedAt,
+            subject: event.subject ? { displayName: event.subject.displayName } : null,
+            players: event.players.map((player) => ({
+              displayName: player.displayName,
+              isWinner: player.isWinner,
+            })),
+          })),
         }
       : null,
     participantRoster: {
@@ -699,6 +713,7 @@ export default function GameParticipant({
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
   const [isEditing, setIsEditing] = useState(false);
+  const [rosterOpenSignal, setRosterOpenSignal] = useState(0);
   const noticeMessage = getParticipantNotice(loaderData.notice);
   const [showNoticeToast, setShowNoticeToast] = useState(Boolean(noticeMessage));
 
@@ -778,7 +793,12 @@ export default function GameParticipant({
         ) : null}
       </section>
 
-      {loaderData.tableNow ? <TableNow data={loaderData.tableNow} /> : null}
+      {loaderData.tableNow ? (
+        <TableNow
+          data={loaderData.tableNow}
+          onPlayersClick={loaderData.participant ? () => setRosterOpenSignal((value) => value + 1) : undefined}
+        />
+      ) : null}
 
       {shouldShowLocalRules(loaderData.game.status) ? (
         <LocalRulesSheet
@@ -877,6 +897,8 @@ export default function GameParticipant({
 
           <ParticipantRosterSheet
             available={loaderData.participantRoster.available}
+            externalOpenSignal={rosterOpenSignal}
+            hideTrigger
             items={loaderData.participantRoster.items}
             onOpen={() => {
               if (revalidator.state === "idle") {
@@ -1179,11 +1201,15 @@ type ParticipantStatusFetcher = ReturnType<
 
 export function ParticipantRosterSheet({
   available,
+  externalOpenSignal = 0,
+  hideTrigger = false,
   items,
   onOpen,
   statusFetcher,
 }: {
   available: boolean;
+  externalOpenSignal?: number;
+  hideTrigger?: boolean;
   items: ParticipantRosterItem[];
   onOpen?: () => void;
   statusFetcher?: ParticipantStatusFetcher;
@@ -1246,6 +1272,11 @@ export function ParticipantRosterSheet({
     setIsOpen(true);
   }
 
+  useEffect(() => {
+    if (externalOpenSignal <= 0) return;
+    openSheet();
+  }, [externalOpenSignal]);
+
   function startStatusEdit() {
     setStatusDraft(currentItem?.statusText ?? "");
     setIsEditingStatus(true);
@@ -1258,20 +1289,22 @@ export function ParticipantRosterSheet({
 
   return (
     <>
-      <button
-        aria-controls="participant-roster-dialog"
-        aria-expanded={isOpen}
-        aria-haspopup="dialog"
-        className="participant-roster-trigger"
-        onClick={openSheet}
-        ref={triggerRef}
-        type="button"
-      >
-        <span>
-          参加者 <strong>{countLabel}</strong>
-        </span>
-        <small>一覧を見る</small>
-      </button>
+      {hideTrigger ? null : (
+        <button
+          aria-controls="participant-roster-dialog"
+          aria-expanded={isOpen}
+          aria-haspopup="dialog"
+          className="participant-roster-trigger"
+          onClick={openSheet}
+          ref={triggerRef}
+          type="button"
+        >
+          <span>
+            参加者 <strong>{countLabel}</strong>
+          </span>
+          <small>一覧を見る</small>
+        </button>
+      )}
       <dialog
         aria-labelledby="participant-roster-title"
         className="app-dialog participant-roster-dialog"
