@@ -791,6 +791,15 @@ export default function GameParticipant({
             }).format(new Date(loaderData.game.playedAt))}
           </p>
         ) : null}
+        {loaderData.isOrganizer && loaderData.game.status === "open" ? (
+          <Link
+            className="button button-secondary participant-admin-link"
+            reloadDocument
+            to={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/admin`}
+          >
+            開催管理へ
+          </Link>
+        ) : null}
       </section>
 
       {loaderData.tableNow ? (
