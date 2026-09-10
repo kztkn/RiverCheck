@@ -24,3 +24,18 @@
 .home-live-table-mini span { overflow:hidden; color:rgba(225,239,231,.7); font-size:.69rem; text-overflow:ellipsis; white-space:nowrap; }
 .home-live-table-mini b { color:rgba(113,222,165,.7); font-size:.9rem; font-weight:600; }
 @media (min-width:700px) { .table-now-scroller { flex-wrap:wrap; overflow-x:visible; } }
+
+.table-now-item.is-new-record {
+  animation: table-record-glow 1.2s ease-out;
+}
+@keyframes table-record-glow {
+  0%, 25% { background: rgba(57,222,141,.2); border-color: rgba(113,222,165,.75); }
+  100% { background: rgba(255,255,255,.025); border-color: rgba(214,235,225,.1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .table-now-item.is-new-record {
+    animation: none;
+    background: rgba(57,222,141,.12);
+    border-color: rgba(113,222,165,.55);
+  }
+}

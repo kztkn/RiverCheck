@@ -4458,7 +4458,7 @@ input[aria-invalid="true"] {
 
 .participant-session > .participant-phase-live {
   gap: 13px;
-  margin-top: clamp(30px, 7vw, 46px);
+  margin-top: 4px;
   border: 0;
   background: transparent;
   padding: 0;
@@ -4537,7 +4537,7 @@ input[aria-invalid="true"] {
 }
 
 .participant-session .rebuy-actions .button {
-  min-height: 54px;
+  min-height: 58px;
   border-radius: 13px;
   font-size: 0.84rem;
   touch-action: manipulation;
@@ -4545,7 +4545,7 @@ input[aria-invalid="true"] {
 
 .participant-session > .participant-phase-after {
   gap: 15px;
-  margin-top: clamp(38px, 8vw, 58px);
+  margin-top: 20px;
   border: 0;
   border-top: 1px solid rgba(233, 186, 90, 0.28);
   background: transparent;
@@ -4573,6 +4573,41 @@ input[aria-invalid="true"] {
   gap: 16px;
   border-top: 1px solid var(--line);
   padding: 18px 0 22px;
+}
+
+.participant-hero-playing {
+  padding: 20px 0 14px;
+}
+.participant-hero-playing h1 {
+  font-size: clamp(1.4rem, 5vw, 2rem);
+}
+.participant-session > .table-now {
+  margin-top: 22px;
+}
+.participant-result-entry-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 58px;
+  padding: 12px 3px;
+  color: var(--ink);
+  font-weight: 750;
+  font-size: .9rem;
+  cursor: pointer;
+  list-style: none;
+  touch-action: manipulation;
+}
+.participant-result-entry-trigger::-webkit-details-marker { display: none; }
+.participant-result-entry-trigger:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+}
+.participant-result-entry-trigger > span:last-child { color: var(--green); }
+.admin-own-play-link {
+  width: 100%;
+  min-height: 48px;
+  margin: 12px 0 24px;
 }
 
 .participant-session .result-entry-form {

@@ -1,3 +1,4 @@
+import { useVisibleRevalidation } from "~/utils/use-visible-revalidation";
 import {
   Form,
   Link,
@@ -717,18 +718,11 @@ export default function GameParticipant({
   const noticeMessage = getParticipantNotice(loaderData.notice);
   const [showNoticeToast, setShowNoticeToast] = useState(Boolean(noticeMessage));
 
+  useVisibleRevalidation(loaderData.game.status === "open");
+
   useEffect(() => {
-    if (loaderData.game.status !== "open") return;
-    const refresh = () => {
-      if (revalidator.state === "idle") void revalidator.revalidate();
-    };
-    window.addEventListener("pageshow", refresh);
-    window.addEventListener("focus", refresh);
-    return () => {
-      window.removeEventListener("pageshow", refresh);
-      window.removeEventListener("focus", refresh);
-    };
-  }, [loaderData.game.status, revalidator]);
+    if (loaderData.notice === "saved") setIsEditing(false);
+  }, [loaderData.notice]);
 
   useEffect(() => {
     if (loaderData.notice !== "finalized") return;
@@ -778,7 +772,13 @@ export default function GameParticipant({
         organizer={loaderData.isOrganizer}
       />
 
-      <section className="participant-hero">
+      <section
+        className={`participant-hero${
+          loaderData.participant && loaderData.game.status === "open"
+            ? " participant-hero-playing"
+            : ""
+        }`}
+      >
         <p className="participant-hero-status">
           {loaderData.game.status === "finalized" ? "RESULTS" : "AT THE TABLE"}
         </p>
@@ -795,10 +795,13 @@ export default function GameParticipant({
 
       {loaderData.tableNow ? (
         <>
-          <TableNow
-            data={loaderData.tableNow}
-            onPlayersClick={() => setRosterOpenSignal((value) => value + 1)}
-          />
+          {!loaderData.participant ? (
+            <TableNow
+              key={loaderData.game.id}
+              data={loaderData.tableNow}
+              onPlayersClick={() => setRosterOpenSignal((value) => value + 1)}
+            />
+          ) : null}
           <ParticipantRosterSheet
             available={loaderData.participantRoster.available}
             externalOpenSignal={rosterOpenSignal}
@@ -814,7 +817,7 @@ export default function GameParticipant({
         </>
       ) : null}
 
-      {shouldShowLocalRules(loaderData.game.status) ? (
+      {shouldShowLocalRules(loaderData.game.status) && !loaderData.participant ? (
         <LocalRulesSheet
           bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
           sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
@@ -927,6 +930,18 @@ export default function GameParticipant({
             />
           </section>
 
+          {loaderData.tableNow ? (
+            <TableNow
+              key={loaderData.game.id}
+              data={loaderData.tableNow}
+              onPlayersClick={() => setRosterOpenSignal((value) => value + 1)}
+            />
+          ) : null}
+          <LocalRulesSheet
+            bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
+            sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
+          />
+
           {loaderData.participant.status === "submitted" && !isEditing ? (
             <section
               className="participant-phase participant-phase-after"
@@ -982,7 +997,10 @@ export default function GameParticipant({
               </div>
             </section>
           ) : (
-            <ParticipantResultEntrySection>
+            <ParticipantResultEntrySection
+              key={loaderData.game.id}
+              initiallyOpen={isEditing || Boolean(actionData?.error)}
+            >
               <ResultEntryForm
                 initialChips={loaderData.game.initialChips}
                 isSubmitting={isSubmitting}
@@ -1819,25 +1837,35 @@ function ResultEntryForm({
 
 export function ParticipantResultEntrySection({
   children,
+  initiallyOpen = false,
 }: {
   children: ReactNode;
+  initiallyOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(initiallyOpen);
+  useEffect(() => {
+    if (initiallyOpen) setOpen(true);
+  }, [initiallyOpen]);
+
   return (
-    <section
+    <details
       aria-label="ゲーム終了時の入力"
       className="participant-phase participant-phase-after participant-after-entry"
+      data-pause-live-refresh={open ? "true" : undefined}
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
     >
-      <div className="participant-phase-heading">
-        <span className="participant-phase-label">ゲーム終了後</span>
-        <div>
-          <h3>最終結果を入力</h3>
-          <p>
-            ゲームが終了したら、残りチップと手元のリバイ証を入力します。
-          </p>
-        </div>
+      <summary className="participant-result-entry-trigger">
+        <span>{open ? "最終結果を入力" : "終了して入力する"}</span>
+        <span aria-hidden="true">{open ? "−" : "＋"}</span>
+      </summary>
+      <div className="participant-after-entry-body">
+        <p className="muted-copy">
+          ゲームが終了したら、残りチップと手元のリバイ証を入力します。
+        </p>
+        {children}
       </div>
-      <div className="participant-after-entry-body">{children}</div>
-    </section>
+    </details>
   );
 }
 

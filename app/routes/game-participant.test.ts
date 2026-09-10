@@ -433,7 +433,7 @@ describe("game participant route", () => {
     expect(markup).toContain("参加者はいません");
   });
 
-  it("未入力の最終結果フォームを折りたたまず表示する", () => {
+  it("未入力の最終結果フォームは閉じておき、終了操作から開く", () => {
     const markup = renderToStaticMarkup(
       createElement(
         ParticipantResultEntrySection,
@@ -442,13 +442,24 @@ describe("game participant route", () => {
       ),
     );
 
-    expect(markup).toContain("最終結果を入力");
+    expect(markup).toContain("終了して入力する");
     expect(markup).toContain(
       "ゲームが終了したら、残りチップと手元のリバイ証を入力します。",
     );
     expect(markup).toContain("入力フォーム");
-    expect(markup).not.toContain("<details");
-    expect(markup).not.toContain("<summary");
+    expect(markup).toContain("<details");
+    expect(markup).toContain("<summary");
+    expect(markup).not.toContain('open=""');
+    expect(markup).not.toContain('data-pause-live-refresh="true"');
+  });
+
+  it("修正中・保存失敗時のフォームは開いた状態で再表示する", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ParticipantResultEntrySection, { initiallyOpen: true, children: "入力フォーム" }),
+    );
+    expect(markup).toContain('open=""');
+    expect(markup).toContain('data-pause-live-refresh="true"');
+    expect(markup).toContain("最終結果を入力");
   });
 
   it("最終結果だけを保存し、TABLE STORYは更新しない", async () => {

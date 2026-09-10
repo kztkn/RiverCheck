@@ -231,7 +231,10 @@ export function TableEventRecorder() {
         }}
         ref={dialogRef}
       >
-        <div className="table-event-sheet">
+        <div
+          className="table-event-sheet"
+          data-pause-live-refresh={pending ? "true" : undefined}
+        >
           <header className="table-event-header">
             <div>
               <p className="eyebrow">TABLE EVENT</p>
@@ -364,9 +367,8 @@ export function TableEventRecorder() {
 }
 
 export function buildTableEventsPath(pathname: string): string | null {
-  const match = pathname.match(/^\/g\/[^/]+\/games\/[^/]+\/?$/u);
-  if (!match) return null;
-  return `${pathname.replace(/\/+$/u, "")}/table-events`;
+  const match = pathname.match(/^(\/g\/[^/]+\/games\/[^/]+)(?:\/admin)?\/?$/u);
+  return match ? `${match[1]}/table-events` : null;
 }
 
 function baseCommand(intent: string): FormData {

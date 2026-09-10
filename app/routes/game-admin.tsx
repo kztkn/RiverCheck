@@ -1,3 +1,4 @@
+import { useVisibleRevalidation } from "~/utils/use-visible-revalidation";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { consumeCompletedFetcherSubmission } from "~/utils/consume-completed-fetcher-submission";
 import { IconPencil, IconTrash } from "@tabler/icons-react";
@@ -679,21 +680,7 @@ export default function GameAdmin({
   }, [pendingRebuyCorrection]);
 
 
-  useEffect(() => {
-    if (loaderData.game.status === "finalized") return;
-
-    const refresh = () => {
-      if (document.visibilityState === "visible" && revalidator.state === "idle") {
-        void revalidator.revalidate();
-      }
-    };
-    const intervalId = window.setInterval(refresh, 5_000);
-    window.addEventListener("focus", refresh);
-    return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener("focus", refresh);
-    };
-  }, [loaderData.game.status, revalidator]);
+  useVisibleRevalidation(loaderData.game.status === "open");
 
   function submitRebuyAction(
     participantId: string,
@@ -969,6 +956,16 @@ export default function GameAdmin({
           </nav>
         </section>
 
+          <Link
+            className="button button-secondary admin-own-play-link"
+            reloadDocument
+            to={loaderData.participantUrl}
+          >
+            {loaderData.currentParticipant
+              ? "自分のプレイ画面へ"
+              : "自分も参加する（参加者画面へ）"}
+          </Link>
+
             <h2>参加者リンク</h2>
             <p>このリンクを参加者に共有してください。</p>
             {loaderData.currentParticipant ? (
@@ -1005,15 +1002,6 @@ export default function GameAdmin({
             </button>
           </div>
           <ParticipantLinkQr url={loaderData.participantUrl} />
-          <Link
-            className="button button-secondary"
-            reloadDocument
-            to={loaderData.participantUrl}
-          >
-            {loaderData.currentParticipant
-              ? `${loaderData.currentParticipant.displayName} のチップ入力画面を開く`
-              : "自分も参加する（参加者画面へ）"}
-          </Link>
         </section>
 
         <section className="admin-participants" id="admin-participants">

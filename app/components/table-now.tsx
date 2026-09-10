@@ -24,6 +24,13 @@ export interface TableNowData {
 }
 
 type DetailType = "all_in" | "bomb_pot" | "seven_deuce";
+type CountKey = "allInCount" | "bombPotCount" | "sevenDeuceCount" | "playerCount";
+
+export function increasedTableCounts(previous: TableNowData, next: TableNowData): CountKey[] {
+  const keys: CountKey[] = ["allInCount", "bombPotCount", "sevenDeuceCount", "playerCount"];
+  return keys.filter((key) => previous[key] !== null && next[key] !== null
+    && next[key]! > previous[key]!);
+}
 
 export function TableNow({
   data,
@@ -34,10 +41,23 @@ export function TableNow({
 }) {
   const [detailType, setDetailType] = useState<DetailType | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const previousCounts = useRef(data);
+  const [highlighted, setHighlighted] = useState<CountKey[]>([]);
+
+  useEffect(() => {
+    const increases = increasedTableCounts(previousCounts.current, data);
+    previousCounts.current = data;
+    setHighlighted(increases);
+    if (increases.length === 0) return;
+    const timer = window.setTimeout(() => setHighlighted([]), 1_200);
+    return () => window.clearTimeout(timer);
+  }, [data.allInCount, data.bombPotCount, data.sevenDeuceCount, data.playerCount]);
+
   const events = [
     data.allInCount > 0
       ? {
           key: "all_in" as const,
+          countKey: "allInCount" as const,
           label: "ALL IN",
           value: data.allInCount,
           Icon: IconArrowUp,
@@ -46,6 +66,7 @@ export function TableNow({
     data.bombPotCount > 0
       ? {
           key: "bomb_pot" as const,
+          countKey: "bombPotCount" as const,
           label: "BOMB POT",
           value: data.bombPotCount,
           Icon: IconBomb,
@@ -54,6 +75,7 @@ export function TableNow({
     data.sevenDeuceCount > 0
       ? {
           key: "seven_deuce" as const,
+          countKey: "sevenDeuceCount" as const,
           label: "72o",
           value: data.sevenDeuceCount,
           Icon: IconCards,
@@ -79,7 +101,7 @@ export function TableNow({
       </div>
       <div className="table-now-scroller">
         <button
-          className="table-now-item table-now-players"
+          className={`table-now-item table-now-players${highlighted.includes("playerCount") ? " is-new-record" : ""}`}
           disabled={!onPlayersClick}
           onClick={onPlayersClick}
           type="button"
@@ -90,9 +112,9 @@ export function TableNow({
             <small>PLAYERS</small>
           </span>
         </button>
-        {events.map(({ key, label, value, Icon }) => (
+        {events.map(({ key, countKey, label, value, Icon }) => (
           <button
-            className="table-now-item"
+            className={`table-now-item${highlighted.includes(countKey) ? " is-new-record" : ""}`}
             key={key}
             onClick={() => setDetailType(key)}
             type="button"
