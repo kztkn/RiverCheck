@@ -794,10 +794,24 @@ export default function GameParticipant({
       </section>
 
       {loaderData.tableNow ? (
-        <TableNow
-          data={loaderData.tableNow}
-          onPlayersClick={loaderData.participant ? () => setRosterOpenSignal((value) => value + 1) : undefined}
-        />
+        <>
+          <TableNow
+            data={loaderData.tableNow}
+            onPlayersClick={() => setRosterOpenSignal((value) => value + 1)}
+          />
+          <ParticipantRosterSheet
+            available={loaderData.participantRoster.available}
+            externalOpenSignal={rosterOpenSignal}
+            hideTrigger
+            items={loaderData.participantRoster.items}
+            onOpen={() => {
+              if (revalidator.state === "idle") {
+                void revalidator.revalidate();
+              }
+            }}
+            statusFetcher={loaderData.participant ? statusFetcher : undefined}
+          />
+        </>
       ) : null}
 
       {shouldShowLocalRules(loaderData.game.status) ? (
@@ -894,19 +908,6 @@ export default function GameParticipant({
               </small>
             </div>
           </div>
-
-          <ParticipantRosterSheet
-            available={loaderData.participantRoster.available}
-            externalOpenSignal={rosterOpenSignal}
-            hideTrigger
-            items={loaderData.participantRoster.items}
-            onOpen={() => {
-              if (revalidator.state === "idle") {
-                void revalidator.revalidate();
-              }
-            }}
-            statusFetcher={statusFetcher}
-          />
 
           <section className="participant-phase participant-phase-live">
             <div className="participant-phase-heading">
