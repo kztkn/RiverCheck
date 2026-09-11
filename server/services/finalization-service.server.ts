@@ -25,7 +25,7 @@ import type { CreateGameInput, GameDetails } from "@shared-types/game";
 import type { GameParticipantSummary } from "@shared-types/player";
 import {
   awardAchievementsForPlayers,
-  refreshAchievementsForPlayers,
+  scheduleAchievementRefresh,
 } from "@server/services/achievement-service.server";
 import { notifyGameFinalized } from "@server/services/push-notification-service.server";
 import { clearChangedCostShareReceipts } from "@server/repositories/game-cost-share-receipt-repository.server";
@@ -211,17 +211,10 @@ export async function finalizeGame(
   });
   if (!finalized.ok) return finalized;
 
-  try {
-    await refreshAchievementsForPlayers(
-      group.id,
-      finalized.achievementPlayerIds,
-    );
-  } catch (error) {
-    console.error("Failed to refresh achievements after finalization", {
-      errorType: error instanceof Error ? error.name : "unknown",
-      gameId,
-    });
-  }
+  scheduleAchievementRefresh(group.id, finalized.achievementPlayerIds, {
+    reason: "finalization",
+    gameId,
+  });
 
   try {
     await notifyGameFinalized({

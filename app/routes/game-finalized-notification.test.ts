@@ -7,7 +7,7 @@ const mocked = vi.hoisted(() => ({
   lockParticipants: vi.fn(),
   markFinalized: vi.fn(),
   notifyGameFinalized: vi.fn(),
-  refreshAchievements: vi.fn(),
+  scheduleAchievements: vi.fn(),
   saveCostSettings: vi.fn(),
 }));
 
@@ -33,7 +33,7 @@ vi.mock("@server/repositories/finalization-repository.server", () => ({
 }));
 vi.mock("@server/services/achievement-service.server", () => ({
   awardAchievementsForPlayers: vi.fn(),
-  refreshAchievementsForPlayers: mocked.refreshAchievements,
+  scheduleAchievementRefresh: mocked.scheduleAchievements,
 }));
 vi.mock("@server/services/push-notification-service.server", () => ({
   notifyGameFinalized: mocked.notifyGameFinalized,
@@ -95,7 +95,7 @@ describe("game finalization notification", () => {
     );
     mocked.saveCostSettings.mockResolvedValue(true);
     mocked.markFinalized.mockResolvedValue(true);
-    mocked.refreshAchievements.mockImplementation(async () => {
+    mocked.scheduleAchievements.mockImplementation(() => {
       mocked.events.push("achievements");
     });
     mocked.notifyGameFinalized.mockImplementation(async () => {
