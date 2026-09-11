@@ -7,7 +7,7 @@ import {
 import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
 import { isGameStoryReactionType } from "@domain/story/game-story-reaction";
 import type { GameStoryReactionSummary } from "@shared-types/game-story-reaction";
-import { refreshAchievementsForPlayers } from "@server/services/achievement-service.server";
+import { scheduleAchievementRefresh } from "@server/services/achievement-service.server";
 
 export interface GameStoryReactionOverview {
   canReact: boolean;
@@ -81,15 +81,10 @@ export async function saveGameStoryReaction(
     return { ok: false, status: 404, error: "投稿を確認できませんでした。" };
   }
   if (saved.active) {
-    try {
-      await refreshAchievementsForPlayers(group.id, [groupPlayerId]);
-    } catch (error) {
-      console.error("Failed to refresh achievements after story reaction", {
-        errorType: error instanceof Error ? error.name : "unknown",
-        gameId: input.gameId,
-        groupPlayerId,
-      });
-    }
+    scheduleAchievementRefresh(group.id, [groupPlayerId], {
+      reason: "story-reaction",
+      gameId: input.gameId,
+    });
   }
   return { ok: true, ...saved };
 }
