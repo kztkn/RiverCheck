@@ -11,6 +11,7 @@ import type {
   GameResultSummary,
 } from "@shared-types/result";
 import { ResultRevisionHistory } from "./result-revision-history";
+import { PlayerAvatar } from "./player-avatar";
 
 export function FinalResults({
   groupCode,
@@ -32,7 +33,7 @@ export function FinalResults({
   linkPlayerProfiles?: boolean;
   playedAt: string;
   payPay: { link: string; paymentAmount: number | null } | null;
-  results: GameResultSummary[];
+  results: Array<GameResultSummary & { avatarUrl?: string | null }>;
   revisions: GameResultRevision[];
   shareUrl: string;
   showSharePanel?: boolean;
@@ -158,8 +159,17 @@ export function FinalResults({
         >
           <div className="result-winner-copy">
             <span>WINNER</span>
-            <strong>{winner.displayName}</strong>
-            <ResultParticipantMeta result={winner} />
+            <div className="result-winner-identity">
+              <PlayerAvatar
+                avatarUrl={winner.avatarUrl ?? null}
+                className="result-avatar result-winner-avatar"
+                displayName={winner.displayName}
+              />
+              <div className="result-winner-person">
+                <strong>{winner.displayName}</strong>
+                <ResultParticipantMeta result={winner} />
+              </div>
+            </div>
           </div>
           <div className="result-values result-winner-values">
             <b
@@ -188,6 +198,11 @@ export function FinalResults({
             <span className={`rank-badge rank-${result.rank}`}>
               {formatOrdinal(result.rank)}
             </span>
+            <PlayerAvatar
+              avatarUrl={result.avatarUrl ?? null}
+              className="result-avatar"
+              displayName={result.displayName}
+            />
             <div className="result-player">
               <strong>{result.displayName}</strong>
               <ResultParticipantMeta result={result} />

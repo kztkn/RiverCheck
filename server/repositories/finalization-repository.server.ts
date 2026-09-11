@@ -50,6 +50,7 @@ interface ResultRow {
   score: string;
   rank: number;
   cost_share: string;
+  avatar_uploaded_at?: Date | null;
 }
 
 interface RevisionRow {
@@ -256,7 +257,7 @@ export async function markGameOpenAfterFinalization(
 export async function listFinalResults(
   groupId: string,
   gameId: string,
-): Promise<GameResultSummary[]> {
+): Promise<Array<GameResultSummary & { avatarUpdatedAt: string | null }>> {
   const result = await queryDatabase<ResultRow>(
     `
       SELECT game_result.group_player_id,
@@ -264,7 +265,8 @@ export async function listFinalResults(
              game_result.remaining_chips, game_result.total_rebuy_count,
              game_result.tracked_outstanding_rebuy_count,
              game_result.settlement_rebuy_count,
-             game_result.score, game_result.rank, game_result.cost_share
+             game_result.score, game_result.rank, game_result.cost_share,
+             player.avatar_uploaded_at
       FROM game_results AS game_result
       INNER JOIN games AS game ON game.id = game_result.game_id
       INNER JOIN group_players AS group_player
@@ -285,6 +287,7 @@ export async function listFinalResults(
     score: Number(row.score),
     rank: row.rank,
     costShare: Number(row.cost_share),
+    avatarUpdatedAt: row.avatar_uploaded_at?.toISOString() ?? null,
   }));
 }
 
