@@ -1,3 +1,4 @@
+import { waitUntil } from "cloudflare:workers";
 import { evaluateAchievements } from "@domain/achievement/evaluate-achievements";
 import {
   insertAchievementUnlocks,
@@ -71,6 +72,25 @@ export async function refreshAchievementsForPlayers(
 ): Promise<void> {
   await withTransaction((transaction) =>
     awardAchievementsForPlayers(transaction, groupId, groupPlayerIds)
+  );
+}
+
+export function scheduleAchievementRefresh(
+  groupId: string,
+  groupPlayerIds: string[],
+  context: { reason: string; gameId?: string },
+): void {
+  const uniquePlayerIds = [...new Set(groupPlayerIds)];
+  if (uniquePlayerIds.length === 0) return;
+
+  waitUntil(
+    refreshAchievementsForPlayers(groupId, uniquePlayerIds).catch((error) => {
+      console.error("Failed to refresh achievements in background", {
+        errorType: error instanceof Error ? error.name : "unknown",
+        gameId: context.gameId,
+        reason: context.reason,
+      });
+    }),
   );
 }
 
