@@ -1,0 +1,46 @@
+name: Verify achievement migration
+
+on:
+  push:
+    branches:
+      - "feat/achievement-expansion-v1"
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: rivercheck
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rivercheck"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/achievement-expansion-v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply all migrations to fresh PostgreSQL
+        run: npm run db:migrate:local
+      - name: Remove temporary workflow
+        run: |
+          rm .github/workflows/achievement-migration-ci.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "称号migrationをPostgreSQLで検証"
+          git push origin HEAD:feat/achievement-expansion-v1
