@@ -23,7 +23,10 @@ import {
 } from "@domain/result-revision/build-result-revision-changes";
 import type { CreateGameInput, GameDetails } from "@shared-types/game";
 import type { GameParticipantSummary } from "@shared-types/player";
-import { awardAchievementsForPlayers } from "@server/services/achievement-service.server";
+import {
+  awardAchievementsForPlayers,
+  refreshAchievementsForPlayers,
+} from "@server/services/achievement-service.server";
 import { notifyGameFinalized } from "@server/services/push-notification-service.server";
 import { clearChangedCostShareReceipts } from "@server/repositories/game-cost-share-receipt-repository.server";
 import { findChangedCostSharePlayerIds } from "@domain/payment/find-changed-cost-shares";
@@ -94,6 +97,7 @@ type FinalizeTransactionResult =
   | {
       ok: true;
       notification: { playedAt: string; title: string };
+      achievementPlayerIds: string[];
     };
 
 export async function finalizeGame(
@@ -194,20 +198,30 @@ export async function finalizeGame(
     if (!(await markGameFinalized(transaction, group.id, gameId))) {
       throw new Error("game status changed during finalization");
     }
-    await awardAchievementsForPlayers(
-      transaction,
-      group.id,
-      calculated.results.map((result) => result.groupPlayerId),
-    );
     return {
       ok: true as const,
       notification: {
         playedAt: game.playedAt,
         title: game.title,
       },
+      achievementPlayerIds: calculated.results.map(
+        (result) => result.groupPlayerId,
+      ),
     };
   });
   if (!finalized.ok) return finalized;
+
+  try {
+    await refreshAchievementsForPlayers(
+      group.id,
+      finalized.achievementPlayerIds,
+    );
+  } catch (error) {
+    console.error("Failed to refresh achievements after finalization", {
+      errorType: error instanceof Error ? error.name : "unknown",
+      gameId,
+    });
+  }
 
   try {
     await notifyGameFinalized({

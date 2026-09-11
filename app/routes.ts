@@ -17,6 +17,10 @@ export default [
   route("g/:groupCode/players", "routes/players.tsx"),
   route("g/:groupCode/players/:groupPlayerId/avatar", "routes/player-avatar.ts"),
   route("g/:groupCode/profile", "routes/player-profile.tsx"),
+  route(
+    "g/:groupCode/achievement-notifications",
+    "routes/achievement-notifications.ts",
+  ),
   route("g/:groupCode/logout", "routes/player-logout.ts"),
   route("g/:groupCode/profile/claim/:claimToken", "routes/player-profile-claim.tsx"),
   route("g/:groupCode/games/new", "routes/game-new.tsx"),

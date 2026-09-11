@@ -98,6 +98,7 @@ import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-previe
 import { INVITE_REQUIRED_RESPONSE_TEXT } from "@domain/routing/public-group-entry";
 import { TableNow } from "~/components/table-now";
 import { listOpenGameTableEvents } from "@server/repositories/table-event-repository.server";
+import { refreshAchievementsForPlayers } from "@server/services/achievement-service.server";
 
 type RebuyActionIntent = "record-rebuy" | "record-repayment" | "undo-rebuy";
 type RebuyActionData = RebuyServiceResult & { intent: RebuyActionIntent };
@@ -427,6 +428,17 @@ export async function action({ request, params }: Route.ActionArgs) {
       },
     );
     if (!result.ok) return { error: result.error };
+    if (groupPlayerId && !isDeletingOwnStory) {
+      try {
+        await refreshAchievementsForPlayers(context.group.id, [groupPlayerId]);
+      } catch (error) {
+        console.error("Failed to refresh achievements after story post", {
+          errorType: error instanceof Error ? error.name : "unknown",
+          gameId: params.gameId,
+          groupPlayerId,
+        });
+      }
+    }
     return redirect(
       `${participantUrl}?notice=${isDeletingOwnStory ? "story-deleted" : "story-saved"}`,
       { status: 303 },

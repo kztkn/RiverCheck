@@ -10,6 +10,7 @@ import {
 import { AppErrorPage } from "~/components/error-page";
 import { InviteRequiredPage } from "~/components/invite-required-page";
 import { PwaUpdateNotice } from "~/components/pwa-update-notice";
+import { AchievementUnlockToast } from "~/components/achievement-unlock-toast";
 import { TableEventRecorder } from "~/components/table-event-recorder";
 import type { Route } from "./+types/root";
 import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
@@ -22,6 +23,7 @@ import {
 } from "@domain/routing/public-group-entry";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { rememberLastVisitedGroup } from "~/utils/last-visited-group";
+import { getPendingPlayerAchievementNotifications } from "@server/services/achievement-service.server";
 import "./styles/app.css";
 import "./styles/groups.css";
 import "./styles/highlight.css";
@@ -46,6 +48,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       authenticatedPlayerName: null,
       hasMultipleGroups: false,
       isOrganizer: false,
+      pendingAchievementNotifications: [],
     };
   }
 
@@ -63,9 +66,15 @@ export async function loader({ request }: Route.LoaderArgs) {
     throw new Response(INVITE_REQUIRED_RESPONSE_TEXT, { status: 403 });
   }
 
-  const hasMultipleGroups = profile
-    ? await hasMultipleActiveGroupsForPlayer(profile.playerId)
-    : false;
+  const [hasMultipleGroups, pendingAchievementNotifications] = profile && overview
+    ? await Promise.all([
+        hasMultipleActiveGroupsForPlayer(profile.playerId),
+        getPendingPlayerAchievementNotifications(
+          overview.group.id,
+          profile.groupPlayerId,
+        ),
+      ])
+    : [false, []];
   return {
     activeGroupCode: overview?.group.publicCode ?? null,
     activeGroupName: overview?.group.name ?? null,
@@ -80,6 +89,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     authenticatedPlayerName: profile?.displayName ?? null,
     hasMultipleGroups,
     isOrganizer,
+    pendingAchievementNotifications,
   };
 }
 
@@ -131,6 +141,15 @@ export default function App({ loaderData }: Route.ComponentProps) {
     <>
       <Outlet />
       <TableEventRecorder />
+      {loaderData.activeGroupCode && loaderData.pendingAchievementNotifications.length > 0 ? (
+        <AchievementUnlockToast
+          groupCode={loaderData.activeGroupCode}
+          items={loaderData.pendingAchievementNotifications}
+          key={loaderData.pendingAchievementNotifications
+            .map((item) => item.playerAchievementId)
+            .join(":")}
+        />
+      ) : null}
     </>
   );
 }

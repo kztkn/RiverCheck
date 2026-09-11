@@ -7,6 +7,7 @@ const mocked = vi.hoisted(() => ({
   lockParticipants: vi.fn(),
   markFinalized: vi.fn(),
   notifyGameFinalized: vi.fn(),
+  refreshAchievements: vi.fn(),
   saveCostSettings: vi.fn(),
 }));
 
@@ -32,6 +33,7 @@ vi.mock("@server/repositories/finalization-repository.server", () => ({
 }));
 vi.mock("@server/services/achievement-service.server", () => ({
   awardAchievementsForPlayers: vi.fn(),
+  refreshAchievementsForPlayers: mocked.refreshAchievements,
 }));
 vi.mock("@server/services/push-notification-service.server", () => ({
   notifyGameFinalized: mocked.notifyGameFinalized,
@@ -93,6 +95,9 @@ describe("game finalization notification", () => {
     );
     mocked.saveCostSettings.mockResolvedValue(true);
     mocked.markFinalized.mockResolvedValue(true);
+    mocked.refreshAchievements.mockImplementation(async () => {
+      mocked.events.push("achievements");
+    });
     mocked.notifyGameFinalized.mockImplementation(async () => {
       mocked.events.push("notified");
     });
@@ -103,7 +108,7 @@ describe("game finalization notification", () => {
       finalizeGame(group, gameId, settings, false, false),
     ).resolves.toEqual({ ok: true });
 
-    expect(mocked.events).toEqual(["committed", "notified"]);
+    expect(mocked.events).toEqual(["committed", "achievements", "notified"]);
     expect(mocked.notifyGameFinalized).toHaveBeenCalledWith({
       gameId,
       groupId: group.id,
