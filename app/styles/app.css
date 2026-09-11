@@ -6358,7 +6358,44 @@ input[aria-invalid="true"] {
 .result-winner-copy {
   display: grid;
   min-width: 0;
+  gap: 8px;
+}
+
+.result-winner-identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 13px;
+}
+
+.result-winner-person {
+  display: grid;
+  min-width: 0;
   gap: 5px;
+}
+
+.result-winner-person > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: clamp(1.75rem, 7vw, 2.8rem);
+  line-height: 1.05;
+  letter-spacing: -0.055em;
+}
+
+.player-avatar.result-avatar {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+}
+
+.player-avatar.result-winner-avatar {
+  width: 54px;
+  height: 54px;
+  flex-basis: 54px;
+  border-radius: 12px;
+  font-size: 1rem;
 }
 
 .result-winner-copy > span:first-child {
@@ -6432,7 +6469,7 @@ input[aria-invalid="true"] {
 }
 
 .result-panel .result-row {
-  grid-template-columns: 48px minmax(0, 1fr) auto;
+  grid-template-columns: 48px 40px minmax(0, 1fr) auto;
 }
 
 .result-panel .result-player {
@@ -6458,8 +6495,22 @@ input[aria-invalid="true"] {
   }
 
   .result-panel .result-row {
-    grid-template-columns: 38px minmax(0, 1fr) auto;
+    grid-template-columns: 38px 34px minmax(0, 1fr) auto;
     gap: 8px;
+  }
+
+  .player-avatar.result-avatar {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+    border-radius: 9px;
+  }
+
+  .player-avatar.result-winner-avatar {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
+    border-radius: 11px;
   }
 
   .result-values {

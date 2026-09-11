@@ -295,7 +295,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         groupPlayerId: player.id,
       }),
     })),
-    results,
+    results: results.map((result) => ({
+      ...result,
+      avatarUrl: buildPlayerAvatarUrl({
+        avatarUpdatedAt: result.avatarUpdatedAt,
+        groupCode: params.groupCode,
+        groupPlayerId: result.groupPlayerId,
+      }),
+    })),
     costShareReceipts,
     revisions,
     ownStoryPost,
