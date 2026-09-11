@@ -3,7 +3,13 @@ export type AchievementIconKey =
   | "flame"
   | "calendar-check"
   | "trending-up"
-  | "badge-check";
+  | "badge-check"
+  | "cards"
+  | "bolt"
+  | "refresh"
+  | "notes"
+  | "heart"
+  | "arrows-up-down";
 
 export interface AchievementSummary {
   id: string;
@@ -33,4 +39,8 @@ export interface PlayerAchievementCollection {
   totalCount: number;
   equippedAchievement: EquippedAchievement | null;
   items: PlayerAchievementItem[];
+}
+
+export interface PendingAchievementNotification extends AchievementSummary {
+  playerAchievementId: string;
 }
