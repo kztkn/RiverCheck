@@ -145,6 +145,25 @@ export async function attachExistingPlayerToGroup(
   return result.rows[0]?.id ?? null;
 }
 
+// Self-service enrollment must never reactivate a membership removed by the host.
+export async function joinPlayerToGroup(
+  groupId: string,
+  playerId: string,
+): Promise<string | null> {
+  const result = await queryDatabase<{ id: string }>(
+    `
+      INSERT INTO group_players (group_id, player_id)
+      SELECT $1, player.id FROM players AS player WHERE player.id = $2
+      ON CONFLICT (group_id, player_id) DO UPDATE
+      SET is_active = group_players.is_active
+      WHERE group_players.is_active = TRUE
+      RETURNING id
+    `,
+    [groupId, playerId],
+  );
+  return result.rows[0]?.id ?? null;
+}
+
 export async function insertPlayerForGroup(
   groupId: string,
   displayName: string,

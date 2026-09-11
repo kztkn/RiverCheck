@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { classifyRateLimitedRequest } from "./classify-rate-limited-request";
 
 describe("classifyRateLimitedRequest", () => {
+  it("開催不要のグループ登録も参加者用POST制限を受ける", () => {
+    expect(classifyRateLimitedRequest("POST", "/g/river-check/join")).toBe("participant-write");
+    expect(classifyRateLimitedRequest("POST", "/g/river-check/join/")).toBe("participant-write");
+    expect(classifyRateLimitedRequest("GET", "/g/river-check/join")).toBeNull();
+  });
   it("主催者ログインのPOSTだけをログイン制限へ分類する", () => {
     expect(
       classifyRateLimitedRequest(

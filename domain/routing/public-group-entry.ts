@@ -17,7 +17,7 @@ export function isPublicGroupEntryPath(
   if (decodedGroupCode !== groupCode) return false;
 
   const rest = segments.slice(2);
-  if (rest.length === 1 && rest[0] === "organizer-login") return true;
+  if (rest.length === 1 && (rest[0] === "organizer-login" || rest[0] === "join")) return true;
   if (
     rest.length === 3 &&
     rest[0] === "profile" &&

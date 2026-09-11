@@ -4586,6 +4586,13 @@ input[aria-invalid="true"] {
   min-height: 48px;
   margin-top: 12px;
 }
+.game-refresh-button {
+  width: 100%;
+  min-height: 48px;
+}
+.admin-participants > .game-refresh-button {
+  margin-bottom: 16px;
+}
 .participant-session > .table-now {
   margin-top: 22px;
 }

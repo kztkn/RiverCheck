@@ -3,6 +3,7 @@ import { ReusablePlayerPicker } from "~/components/reusable-player-picker";
 import { Form, Link, redirect, useNavigation } from "react-router";
 import { PlayerAvatar } from "~/components/player-avatar";
 import { AppToast } from "~/components/app-toast";
+import { GroupEntryLink } from "~/components/group-entry-link";
 import { IconEdit, IconPlus } from "@tabler/icons-react";
 import {
   addExistingPlayerForGroup,
@@ -25,6 +26,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const url = new URL(request.url);
   return {
     ...management,
+    groupEntryUrl: `${url.origin}/g/${params.groupCode}/join`,
     players: management.players.map((player) => ({
       ...player,
       avatarUrl: buildPlayerAvatarUrl({
@@ -157,6 +159,8 @@ export default function Players({
           このグループのメンバーを管理します。表示名やアイコンなどのプロフィールはグループ間で共通です。
         </p>
       </section>
+
+      <GroupEntryLink url={loaderData.groupEntryUrl} />
 
       <AppToast
         message={loaderData.added ? "新しいメンバーを追加しました。" : null}

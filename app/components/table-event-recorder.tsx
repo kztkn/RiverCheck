@@ -231,10 +231,7 @@ export function TableEventRecorder() {
         }}
         ref={dialogRef}
       >
-        <div
-          className="table-event-sheet"
-          data-pause-live-refresh={pending ? "true" : undefined}
-        >
+        <div className="table-event-sheet">
           <header className="table-event-header">
             <div>
               <p className="eyebrow">TABLE EVENT</p>

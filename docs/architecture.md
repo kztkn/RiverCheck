@@ -162,6 +162,8 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 
 ## 主催者導線と認証
 
+開催不要のグループ招待は `/g/:groupCode/join` で提供し、rootの未所属者向け公開入口にこのrouteだけを追加する。`group-entry-service`が既存の本人プロフィール選択・新規作成を組み立て、routeはHttpOnlyの本人Cookieを返してグループTOPへ303 redirectする。GETは副作用を持たず、game_participantsを作成しない。別グループで認証済みの場合は送信されたplayer IDを信用せず本人セッションから解決し、`joinPlayerToGroup`で所属だけを追加する。このrepository関数は主催者用の追加処理と異なり、無効化済み所属を再有効化しない。未認証の表示データは有効メンバーの名前・アバターに限定し、他グループの再利用候補は取得しない。POSTには既存の参加者用Rate Limitingを適用し、responseはno-storeとする。
+
 主催者ホームは `/g/:groupCode/manage` とする。ホーム上部はメンバー管理とグループ設定への導線に絞り、開催作成は開催管理セクション内の操作として配置する。`/g/:groupCode/settings` はグループ名、LINEオープンチャット招待URL、PayPay受取リンクなど開催をまたぐ共通設定を扱い、設定が増えても各開催管理へ混在させない。LINEオープンチャットURLは`groups.line_open_chat_url`へnullableで保持し、About routeは値がある場合だけコミュニティ導線を描画する。既存`river-check`は移行で現在のURLを引き継ぎ、新規groupはNULLで開始する。
 
 主催者ホーム、開催作成、メンバー管理、グループ設定、各開催管理のloader/actionは共通のサーバー認証を通し、未認証時は `/g/:groupCode/organizer-login` へ移動する。グループ設定の更新はserviceで入力検証・保存し、Workersの主催者変更用Rate Limiting対象となるPOST actionからだけ実行する。参加者向け画面からもこの認証入口を経由して主催者画面へ戻れる。
@@ -234,6 +236,6 @@ UI はアバターと縦ラインを軸にしたミニマルな時系列表示�
 - 状態色は原則として RiverCheck green、gold、muted を使い、赤は削除や取消など明確な危険操作に限定する。
 
 
-### 表示中の開催再検証
+### 開催画面の更新
 
-参加者・開催管理routeは共通の`useVisibleRevalidation`を使い、open開催の表示中だけ5秒間隔で既存loaderを再検証する。Page Visibilityで非表示時はタイマーを解除し、表示復帰・focus・pageshowで再開する。ルート遷移・fetcher処理・フォーム編集時はスキップし、同時再検証を抑止する。終了時入力はDOMを維持する開閉式にして入力を保持し、展開中は定期更新を停止する。LIVE TABLEは前回取得した累計と比較して増加した指標だけを短時間強調する。卓イベントの管理画面入口も既存のtable-events resourceとサーバー認可を共有する。
+参加者・開催管理routeは定期ポーリングやfocus・pageshow・表示復帰を契機にした再検証を行わない。保存・記録・取消後の既存の再検証と、参加者一覧を開いた際の更新を維持する。開催管理の「入力状況を更新」、入力済み参加者の「確定結果を確認する」は共通の`GameRefreshButton`から既存loaderを1回だけ再検証し、遷移・fetcher処理・再検証中は押せない。主催者が確定済みなら同じ参加者routeで結果を表示する。終了時入力はDOMを維持する開閉式にして入力を保持する。LIVE TABLEは前回取得した累計と比較して増加した指標だけを短時間強調する。卓イベントの管理画面入口も既存のtable-events resourceとサーバー認可を共有する。

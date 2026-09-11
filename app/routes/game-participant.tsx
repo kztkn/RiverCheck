@@ -1,4 +1,4 @@
-import { useVisibleRevalidation } from "~/utils/use-visible-revalidation";
+import { GameRefreshButton } from "~/components/game-refresh-button";
 import {
   Form,
   Link,
@@ -718,8 +718,6 @@ export default function GameParticipant({
   const noticeMessage = getParticipantNotice(loaderData.notice);
   const [showNoticeToast, setShowNoticeToast] = useState(Boolean(noticeMessage));
 
-  useVisibleRevalidation(loaderData.game.status === "open");
-
   useEffect(() => {
     if (loaderData.notice === "saved") setIsEditing(false);
   }, [loaderData.notice]);
@@ -1003,6 +1001,7 @@ export default function GameParticipant({
                 >
                   修正する
                 </button>
+                <GameRefreshButton>確定結果を確認する</GameRefreshButton>
               </div>
             </section>
           ) : (
@@ -1860,7 +1859,6 @@ export function ParticipantResultEntrySection({
     <details
       aria-label="ゲーム終了時の入力"
       className="participant-phase participant-phase-after participant-after-entry"
-      data-pause-live-refresh={open ? "true" : undefined}
       open={open}
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >

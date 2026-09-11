@@ -1,4 +1,4 @@
-import { useVisibleRevalidation } from "~/utils/use-visible-revalidation";
+import { GameRefreshButton } from "~/components/game-refresh-button";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { consumeCompletedFetcherSubmission } from "~/utils/consume-completed-fetcher-submission";
 import { IconPencil, IconTrash } from "@tabler/icons-react";
@@ -680,8 +680,6 @@ export default function GameAdmin({
   }, [pendingRebuyCorrection]);
 
 
-  useVisibleRevalidation(loaderData.game.status === "open");
-
   function submitRebuyAction(
     participantId: string,
     intent: "record-rebuy" | "record-repayment",
@@ -1014,6 +1012,7 @@ export default function GameAdmin({
               {visibleParticipants.length}人
             </span>
           </div>
+          <GameRefreshButton>入力状況を更新</GameRefreshButton>
           <div
             aria-label="参加者の入力状況内訳"
             className="participant-state-summary"

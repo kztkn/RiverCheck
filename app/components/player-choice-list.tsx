@@ -33,7 +33,7 @@ export function PlayerChoiceList({
 }: {
   actionLabel: string;
   confirmBeforeSubmit?: boolean;
-  confirmationKind?: "join" | "switch";
+  confirmationKind?: "join" | "switch" | "login";
   intent: string;
   isSubmitting: boolean;
   players: PlayerChoice[];
@@ -66,6 +66,11 @@ export function PlayerChoiceList({
   const confirmation = selectedPlayer
     ? confirmationKind === "switch"
       ? buildPlayerSwitchConfirmation(selectedPlayer.displayName)
+      : confirmationKind === "login"
+      ? {
+          title: `${selectedPlayer.displayName}としてログインしますか？`,
+          description: "この端末では次回からこのプロフィールで開きます。自分の名前であることを確認してください。",
+        }
       : buildPlayerJoinConfirmation(selectedPlayer.displayName)
     : null;
 

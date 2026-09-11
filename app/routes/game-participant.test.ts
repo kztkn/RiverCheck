@@ -450,7 +450,6 @@ describe("game participant route", () => {
     expect(markup).toContain("<details");
     expect(markup).toContain("<summary");
     expect(markup).not.toContain('open=""');
-    expect(markup).not.toContain('data-pause-live-refresh="true"');
   });
 
   it("修正中・保存失敗時のフォームは開いた状態で再表示する", () => {
@@ -458,7 +457,6 @@ describe("game participant route", () => {
       createElement(ParticipantResultEntrySection, { initiallyOpen: true, children: "入力フォーム" }),
     );
     expect(markup).toContain('open=""');
-    expect(markup).toContain('data-pause-live-refresh="true"');
     expect(markup).toContain("最終結果を入力");
   });
 
