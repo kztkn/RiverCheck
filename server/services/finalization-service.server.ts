@@ -281,16 +281,10 @@ export async function reopenFinalizedGame(
       };
     }
 
-    const affectedGroupPlayerIds = results.map((result) => result.groupPlayerId);
     await deleteFinalResultsForReopen(transaction, gameId);
     if (!(await markGameOpenAfterFinalization(transaction, groupId, gameId))) {
       throw new Error("game status changed during finalization reopen");
     }
-    await awardAchievementsForPlayers(
-      transaction,
-      groupId,
-      affectedGroupPlayerIds,
-    );
     return { ok: true };
   });
 }
