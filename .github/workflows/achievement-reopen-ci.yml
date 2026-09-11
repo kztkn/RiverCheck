@@ -19,7 +19,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: python3 .github/scripts/remove-reopen-achievement-refresh.py
+      - name: Apply permanent-achievement reopen change
+        run: python3 .github/scripts/remove-reopen-achievement-refresh.py
       - run: npm ci
       - run: npm run typecheck
       - run: npx vitest run app/routes/finalization-reopen.test.ts app/routes/finalization-reopen-repository.test.ts app/routes/game-finalized-notification.test.ts
