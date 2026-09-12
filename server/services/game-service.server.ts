@@ -291,8 +291,12 @@ export function validateGameSettingsForm(
       } else {
         costShares = parsedShares;
         firstPlaceCost = parsedShares[0] ?? null;
-        secondPlaceCost = parsedShares[1] ?? null;
-        thirdPlaceCost = parsedShares[2] ?? null;
+        secondPlaceCost = parsedShares[1] ?? parsedShares[0] ?? null;
+        // games keeps legacy top-3 columns as NOT NULL even for heads-up games.
+        // For 2-player plans, persist the last available rank as the 3rd-place
+        // compatibility value; cost_shares remains the source of truth.
+        thirdPlaceCost =
+          parsedShares[2] ?? parsedShares[1] ?? parsedShares[0] ?? null;
       }
     }
   } else {

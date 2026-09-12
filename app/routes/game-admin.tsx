@@ -474,6 +474,8 @@ export default function GameAdmin({
   const [settlementParticipantCount, setSettlementParticipantCount] = useState(
     values.previewParticipantCount,
   );
+  const [publishFailureCount, setPublishFailureCount] = useState(0);
+  const [persistentPublishError, setPersistentPublishError] = useState<string | null>(null);
   const [optimisticallyRemoved, setOptimisticallyRemoved] = useState<{
     id: string;
     displayName: string;
@@ -516,6 +518,27 @@ export default function GameAdmin({
   const [bombPotRuleEnabled, setBombPotRuleEnabled] = useState(
     loaderData.game.bombPotRuleEnabled,
   );
+
+  useEffect(() => {
+    if (
+      actionData?.ok === false &&
+      "intent" in actionData &&
+      actionData.intent === "publish-settlement-plan" &&
+      "error" in actionData
+    ) {
+      setPersistentPublishError(actionData.error);
+      setPublishFailureCount((count) => count + 1);
+    }
+  }, [actionData]);
+
+  useEffect(() => {
+    if (navigation.state !== "submitting") return;
+    const intent = navigation.formData?.get("intent");
+    if (intent === "publish-settlement-plan") return;
+    setPersistentPublishError(null);
+    setPublishFailureCount(0);
+  }, [navigation.formData, navigation.state]);
+
   const gameSettingsDialogRef = useRef<HTMLDialogElement>(null);
   const gameDeletionDialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -1366,7 +1389,15 @@ export default function GameAdmin({
             values={values}
           />
           <FinalizationPanel
-            error={finalizeError}
+            error={
+              persistentPublishError
+                ? `${persistentPublishError}${
+                    publishFailureCount > 1
+                      ? `（${publishFailureCount}回連続で失敗）`
+                      : ""
+                  }`
+                : finalizeError
+            }
             finalization={loaderData.finalization}
             isSubmitting={isSubmitting}
             publishedAt={loaderData.game.settlementPlanPublishedAt}
@@ -1978,9 +2009,10 @@ function FinalizationPanel({
           </label>
         ) : null}
         {!participantCountMatches ? (
-          <p className="warning-notice">
-            会費精算の人数（{settlementParticipantCountLabel}）と参加者（
-            {finalization.participantCount}人）を一致させてください。
+          <p className="field-hint settlement-count-hint">
+            結果確定する場合は、会費精算の人数（{settlementParticipantCountLabel}）を
+            現在の参加者（{finalization.participantCount}人）に合わせてください。
+            精算予定の公開だけなら、このままでも問題ありません。
           </p>
         ) : null}
         {error ? (
