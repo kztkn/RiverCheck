@@ -1,7 +1,7 @@
 import { assertNonNegativeSafeInteger } from "../shared/validation";
 
 export const COST_ROUNDING_UNIT = 100;
-export const MINIMUM_PARTICIPANT_COUNT = 4;
+export const MINIMUM_PARTICIPANT_COUNT = 2;
 
 export interface CostShareInput {
   venueCost: number;
@@ -33,15 +33,16 @@ export function calculateCostShares({
   assertNonNegativeSafeInteger(venueCost, "venueCost");
   assertNonNegativeSafeInteger(participantCount, "participantCount");
   if (participantCount < MINIMUM_PARTICIPANT_COUNT) {
-    throw new RangeError("participantCount must be at least 4");
+    throw new RangeError("participantCount must be at least 2");
   }
 
-  const fixedCosts = [firstPlaceCost, secondPlaceCost, thirdPlaceCost];
-  fixedCosts.forEach((value, index) =>
+  const suppliedCosts = [firstPlaceCost, secondPlaceCost, thirdPlaceCost];
+  suppliedCosts.forEach((value, index) =>
     assertRounded(value, `${index + 1} place cost`),
   );
+  const fixedCosts = suppliedCosts.slice(0, Math.min(3, participantCount));
 
-  if (firstPlaceCost > secondPlaceCost || secondPlaceCost > thirdPlaceCost) {
+  if (fixedCosts.some((value, index) => index > 0 && value < fixedCosts[index - 1]!)) {
     throw new RangeError("place costs must be non-decreasing");
   }
 
@@ -49,6 +50,14 @@ export function calculateCostShares({
     Math.ceil(venueCost / COST_ROUNDING_UNIT) * COST_ROUNDING_UNIT;
   if (!Number.isSafeInteger(settlementTotal)) {
     throw new RangeError("settlementTotal exceeds the safe integer range");
+  }
+
+  if (participantCount <= 3) {
+    const allocated = fixedCosts.reduce((sum, share) => sum + share, 0);
+    if (allocated !== settlementTotal) {
+      throw new RangeError("fixed place costs must match settlement total");
+    }
+    return { settlementTotal, shares: fixedCosts };
   }
 
   const minimumRequired =

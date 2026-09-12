@@ -115,11 +115,11 @@ describe("calculateCostShares", () => {
     ).toThrow(RangeError);
   });
 
-  it("4人未満を拒否する", () => {
+  it("2人未満を拒否する", () => {
     expect(() =>
       calculateCostShares({
         venueCost: 4_600,
-        participantCount: 3,
+        participantCount: 1,
         firstPlaceCost: 0,
         secondPlaceCost: 500,
         thirdPlaceCost: 1_000,

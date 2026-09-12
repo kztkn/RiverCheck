@@ -58,7 +58,7 @@ export function GameSettingsFields({
 }: GameSettingsFieldsProps) {
   const [venueCost, setVenueCost] = useState(values.venueCost);
   const [participantCountInput, setParticipantCountInput] = useState(
-    String(Math.max(4, Number(values.previewParticipantCount) || 4)),
+    String(Math.max(2, Number(values.previewParticipantCount) || 2)),
   );
   const [recommendationMode, setRecommendationMode] =
     useState<RecommendationMode>("standard");
@@ -230,9 +230,11 @@ export function GameSettingsFields({
     setShareValues(adjusted.shares.map(String));
     setEditingRank(null);
     setAdjustmentMode(
-      effectiveMode === "standard" || effectiveMode === "gentle"
-        ? "top-three"
-        : "individual",
+      adjusted.participantCount < 4
+        ? "individual"
+        : effectiveMode === "standard" || effectiveMode === "gentle"
+          ? "top-three"
+          : "individual",
     );
     setRecommendationMode(effectiveMode);
     setRecommendationNotice(
@@ -256,6 +258,12 @@ export function GameSettingsFields({
   }
 
   function applyTopThreeDistribution() {
+    const participantCount = Number(participantCountInput);
+    if (participantCount < 4) {
+      setAdjustmentMode("individual");
+      setRecommendationNotice(`${participantCount}人開催では各順位を個別に調整してください。`);
+      return;
+    }
     try {
       const result = calculateCostShares({
         venueCost: parsePreviewInteger(venueCost),
@@ -479,7 +487,7 @@ export function GameSettingsFields({
               error={errors.previewParticipantCount}
               inputMode="numeric"
               label="人数"
-              min={4}
+              min={2}
               name="previewParticipantCount"
               onChange={(event) => {
                 const nextParticipantCount = event.target.value;
@@ -573,7 +581,7 @@ export function GameSettingsFields({
                 onClick={applyTopThreeDistribution}
                 type="button"
               >
-                上位3位から配分
+                {Number(participantCountInput) < 4 ? "順位を個別調整" : "上位3位から配分"}
               </button>
               <button
                 aria-pressed={adjustmentMode === "individual"}
@@ -587,7 +595,9 @@ export function GameSettingsFields({
           </div>
           <p className="settlement-edit-hint">
             {adjustmentMode === "top-three"
-              ? "1〜3位を変えると、4位以下を自動で再配分します。"
+              ? Number(participantCountInput) < 4
+                ? "2〜3人開催では各順位を直接調整します。"
+                : "1〜3位を変えると、4位以下を自動で再配分します。"
               : "変更した順位だけを調整します。"}
           </p>
           <div className="share-grid">
@@ -732,7 +742,7 @@ function parsePreviewInteger(value: string): number {
 
 function parseParticipantCount(value: string): number {
   const parsed = parsePreviewInteger(value);
-  if (parsed < 4) throw new RangeError("participant count is too small");
+  if (parsed < 2) throw new RangeError("participant count is too small");
   return parsed;
 }
 
@@ -740,7 +750,7 @@ function normalizeParticipantCount(value: string): string {
   try {
     return String(parseParticipantCount(value));
   } catch {
-    return "4";
+    return "2";
   }
 }
 
@@ -749,7 +759,7 @@ function buildInitialShares(values: GameSettingsValues): string[] {
   try {
     participantCount = parseParticipantCount(values.previewParticipantCount);
   } catch {
-    participantCount = 4;
+    participantCount = 2;
   }
   if (values.costShares.length === participantCount) {
     return [...values.costShares];
@@ -799,7 +809,7 @@ function analyzeSettlement(
     participantCount = parseParticipantCount(participantCountValue);
   } catch {
     return invalidAnalysis(
-      "人数は4人以上で入力してください。",
+      "人数は2人以上で入力してください。",
       settlementTotal,
     );
   }

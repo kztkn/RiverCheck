@@ -264,7 +264,7 @@ export function validateGameSettingsForm(
   ) {
     errors.previewParticipantCount =
       minimumParticipantCount === MINIMUM_PARTICIPANT_COUNT
-        ? "精算は4人以上で試算してください。"
+        ? "精算は2人以上で試算してください。"
         : `現在の参加人数（${minimumParticipantCount}人）以上で試算してください。`;
   }
 

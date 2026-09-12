@@ -91,8 +91,8 @@ describe("recommendTopCosts", () => {
     }
   });
 
-  it("4人未満を拒否する", () => {
-    expect(() => recommendTopCosts(11_330, 3)).toThrow(RangeError);
+  it("2人未満を拒否する", () => {
+    expect(() => recommendTopCosts(11_330, 1)).toThrow(RangeError);
   });
 
   it("実参加人数が想定人数を超えた場合は実参加人数へ合わせる", () => {

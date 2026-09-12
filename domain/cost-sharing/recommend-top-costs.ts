@@ -31,13 +31,17 @@ export function recommendTopCosts(
   assertNonNegativeSafeInteger(venueCost, "venueCost");
   assertNonNegativeSafeInteger(participantCount, "participantCount");
   if (participantCount < MINIMUM_PARTICIPANT_COUNT) {
-    throw new RangeError("participantCount must be at least 4");
+    throw new RangeError("participantCount must be at least 2");
   }
 
   const settlementTotal =
     Math.ceil(venueCost / COST_ROUNDING_UNIT) * COST_ROUNDING_UNIT;
   if (!Number.isSafeInteger(settlementTotal)) {
     throw new RangeError("settlementTotal exceeds the safe integer range");
+  }
+
+  if (participantCount < 4 && mode !== "simple") {
+    return recommendSmallTableCosts(settlementTotal, participantCount, mode);
   }
 
   if (mode === "podium") {
@@ -94,13 +98,36 @@ export function recommendTopCosts(
   };
 }
 
+function recommendSmallTableCosts(
+  settlementTotal: number,
+  participantCount: number,
+  mode: RecommendationMode,
+): RecommendedTopCosts {
+  const weights = mode === "gentle"
+    ? Array.from({ length: participantCount }, (_, index) => participantCount + index + 1)
+    : Array.from({ length: participantCount }, (_, index) => index + 1);
+  const weightTotal = weights.reduce((sum, weight) => sum + weight, 0);
+  const shares: number[] = [];
+  for (let index = 0; index < participantCount - 1; index += 1) {
+    shares.push(Math.floor((settlementTotal * weights[index]!) / weightTotal / COST_ROUNDING_UNIT) * COST_ROUNDING_UNIT);
+  }
+  shares.push(settlementTotal - shares.reduce((sum, share) => sum + share, 0));
+  return {
+    firstPlaceCost: shares[0]!,
+    secondPlaceCost: shares[1]!,
+    thirdPlaceCost: shares[2] ?? shares[shares.length - 1]!,
+    settlementTotal,
+    shares,
+  };
+}
+
 function toRecommendedTopCosts(
   result: CostShareResult,
 ): RecommendedTopCosts {
   return {
     firstPlaceCost: result.shares[0]!,
     secondPlaceCost: result.shares[1]!,
-    thirdPlaceCost: result.shares[2]!,
+    thirdPlaceCost: result.shares[2] ?? result.shares[result.shares.length - 1]!,
     settlementTotal: result.settlementTotal,
     shares: result.shares,
   };

@@ -86,7 +86,7 @@ export function buildFinalizationState(
     chipValidation,
     canFinalize:
       game.status === "open" &&
-      participants.length >= 4 &&
+      participants.length >= 2 &&
       incompleteNames.length === 0 &&
       invalidRebuyNames.length === 0,
   };
@@ -118,8 +118,8 @@ export async function finalizeGame(
     }
 
     const rows = await lockParticipantsForFinalization(transaction, gameId);
-    if (rows.length < 4) {
-      return { ok: false, error: "結果確定には4人以上の参加者が必要です。" };
+    if (rows.length < 2) {
+      return { ok: false, error: "結果確定には2人以上の参加者が必要です。" };
     }
     if (settings.previewParticipantCount !== rows.length) {
       return {

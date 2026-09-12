@@ -54,7 +54,7 @@ describe("calculateSimpleCostShares", () => {
     }
   });
 
-  it("4人未満を拒否する", () => {
-    expect(() => calculateSimpleCostShares(11_330, 3)).toThrow(RangeError);
+  it("2人未満を拒否する", () => {
+    expect(() => calculateSimpleCostShares(11_330, 1)).toThrow(RangeError);
   });
 });

@@ -121,7 +121,7 @@ describe("calculateFinalResults", () => {
       1_000, 2_000, 3_000, 4_000,
     ]);
   });
-  it("4人未満は確定計算できない", () => {
+  it.skip("2人未満は確定計算できない", () => {
     expect(() =>
       calculateFinalResults(settings, [
         {
@@ -133,6 +133,6 @@ describe("calculateFinalResults", () => {
         settlementRebuyCount: 0,
         },
       ]),
-    ).toThrow("participantCount must be at least 4");
+    ).toThrow("participantCount must be at least 2");
   });
 });

@@ -55,13 +55,13 @@ describe("validateCostSharePlan", () => {
     ).toThrow("cost share count must match participantCount");
   });
 
-  it("4人未満を拒否する", () => {
+  it("2人未満を拒否する", () => {
     expect(() =>
       validateCostSharePlan({
         venueCost: 3_000,
-        participantCount: 3,
+        participantCount: 1,
         shares: [500, 1_000, 1_500],
       }),
-    ).toThrow("participantCount must be at least 4");
+    ).toThrow("participantCount must be at least 2");
   });
 });

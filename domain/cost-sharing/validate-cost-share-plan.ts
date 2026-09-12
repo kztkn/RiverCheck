@@ -19,7 +19,7 @@ export function validateCostSharePlan({
   assertNonNegativeSafeInteger(venueCost, "venueCost");
   assertNonNegativeSafeInteger(participantCount, "participantCount");
   if (participantCount < MINIMUM_PARTICIPANT_COUNT) {
-    throw new RangeError("participantCount must be at least 4");
+    throw new RangeError("participantCount must be at least 2");
   }
   if (shares.length !== participantCount) {
     throw new RangeError("cost share count must match participantCount");
