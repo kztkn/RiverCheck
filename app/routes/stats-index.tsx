@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { Link } from "react-router";
 import { PlayerAvatar } from "~/components/player-avatar";
@@ -34,6 +35,23 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
 export default function StatsIndex({ loaderData }: Route.ComponentProps) {
   const { group, ranking, sort } = loaderData;
+  const [activeSort, setActiveSort] = useState<PlayerStatsSort>(sort);
+  const visibleRanking = useMemo(
+    () => rankPlayers(ranking, activeSort),
+    [ranking, activeSort],
+  );
+
+  function handleSortChange(nextSort: PlayerStatsSort) {
+    setActiveSort(nextSort);
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("sort", nextSort);
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  }
 
   return (
     <main className="page-shell stats-page">
@@ -47,19 +65,20 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
         <div className="section-heading stats-heading">
           <div className="stats-sort" aria-label="ランキングの並び順">
             {rankingOptions.map((option) => (
-              <Link
-                aria-current={sort === option.value ? "page" : undefined}
-                className={sort === option.value ? "is-active" : undefined}
+              <button
+                aria-current={activeSort === option.value ? "page" : undefined}
+                className={activeSort === option.value ? "is-active" : undefined}
                 key={option.value}
-                to={`?sort=${option.value}`}
+                onClick={() => handleSortChange(option.value)}
+                type="button"
               >
                 {option.label}
-              </Link>
+              </button>
             ))}
           </div>
         </div>
 
-        {ranking.length === 0 ? (
+        {visibleRanking.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon" aria-hidden="true">♠</div>
             <h3>まだメンバーがいません</h3>
@@ -67,8 +86,8 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
           </div>
         ) : (
           <div className="stats-ranking-list">
-            {ranking.map((player) => {
-              const metric = getRankingMetric(player, sort);
+            {visibleRanking.map((player) => {
+              const metric = getRankingMetric(player, activeSort);
               return (
                 <Link
                   className={`stats-ranking-card${
@@ -118,6 +137,78 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
       </section>
     </main>
   );
+}
+
+function rankPlayers(
+  ranking: PlayerStatsRankingRow[],
+  sort: PlayerStatsSort,
+): PlayerStatsRankingRow[] {
+  const sorted = [...ranking].sort((left, right) => {
+    const metricOrder = compareRankingMetrics(left, right, sort);
+    return metricOrder !== 0
+      ? metricOrder
+      : left.displayName.localeCompare(right.displayName, "ja");
+  });
+
+  let previousRank = 0;
+  return sorted.map((player, index) => {
+    const previous = sorted[index - 1];
+    const rank =
+      previous && compareRankingMetrics(previous, player, sort) === 0
+        ? previousRank
+        : index + 1;
+    previousRank = rank;
+    return { ...player, rank };
+  });
+}
+
+function compareRankingMetrics(
+  left: PlayerStatsRankingRow,
+  right: PlayerStatsRankingRow,
+  sort: PlayerStatsSort,
+): number {
+  if (sort === "average") {
+    return compareDesc(left.averageNetBb, right.averageNetBb) ||
+      compareDesc(left.totalNetBb, right.totalNetBb);
+  }
+  if (sort === "max-win") {
+    return compareDesc(left.maxWinBb, right.maxWinBb) ||
+      compareDesc(left.totalNetBb, right.totalNetBb);
+  }
+  if (sort === "max-loss") {
+    return compareAsc(left.maxLossBb, right.maxLossBb) ||
+      compareDesc(left.totalNetBb, right.totalNetBb);
+  }
+  if (sort === "recent") {
+    return compareDesc(left.recentAverageNetBb, right.recentAverageNetBb) ||
+      compareDesc(left.totalNetBb, right.totalNetBb);
+  }
+  if (sort === "top-three") {
+    return compareDesc(left.topThreeFinishes, right.topThreeFinishes) ||
+      compareDesc(left.wins, right.wins) ||
+      compareDesc(left.totalNetBb, right.totalNetBb);
+  }
+  if (sort === "rank-rate") {
+    return compareNullableAsc(left.averageRankRate, right.averageRankRate) ||
+      compareDesc(left.totalNetBb, right.totalNetBb);
+  }
+  return compareDesc(left.totalNetBb, right.totalNetBb) ||
+    compareDesc(left.averageNetBb, right.averageNetBb);
+}
+
+function compareDesc(left: number, right: number): number {
+  return right - left;
+}
+
+function compareAsc(left: number, right: number): number {
+  return left - right;
+}
+
+function compareNullableAsc(left: number | null, right: number | null): number {
+  if (left === null && right === null) return 0;
+  if (left === null) return 1;
+  if (right === null) return -1;
+  return left - right;
 }
 
 function getRankingMetric(
