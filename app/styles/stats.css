@@ -306,19 +306,24 @@
   display: none;
 }
 
-.stats-sort a {
+.stats-sort a,
+.stats-sort button {
   min-width: 96px;
   flex: 0 0 auto;
+  border: 0;
   border-radius: 8px;
+  background: transparent;
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 800;
   padding: 9px 12px;
+  cursor: pointer;
   scroll-snap-align: start;
   text-align: center;
 }
 
-.stats-sort a.is-active {
+.stats-sort a.is-active,
+.stats-sort button.is-active {
   background: rgba(57, 222, 141, 0.14);
   color: var(--green);
 }
