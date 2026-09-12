@@ -1,13 +1,16 @@
 import { waitUntil } from "cloudflare:workers";
 import { evaluateAchievements } from "@domain/achievement/evaluate-achievements";
 import {
+  clearAchievementRefreshNeeded,
   insertAchievementUnlocks,
   listAchievementHistoryGames,
   listAchievementReactionSummaries,
   listPendingAchievementNotifications,
   listPlayerAchievementCollection,
   listUnlockedAchievementIds,
+  lockAchievementRefreshTargets,
   markAchievementNotificationSeen,
+  markAchievementRefreshNeeded,
 } from "@server/repositories/achievement-repository.server";
 import {
   withTransaction,
@@ -18,13 +21,18 @@ import type {
   PlayerAchievementCollection,
 } from "@shared-types/achievement";
 
+interface AchievementRefreshContext {
+  reason: string;
+  gameId?: string;
+}
+
 export async function awardAchievementsForPlayers(
   transaction: DatabaseTransaction,
   groupId: string,
   groupPlayerIds: string[],
-): Promise<void> {
+): Promise<number> {
   const uniquePlayerIds = [...new Set(groupPlayerIds)];
-  if (uniquePlayerIds.length === 0) return;
+  if (uniquePlayerIds.length === 0) return 0;
 
   const history = await listAchievementHistoryGames(
     transaction,
@@ -63,45 +71,129 @@ export async function awardAchievementsForPlayers(
     }).map((unlock) => ({ groupPlayerId, unlock }));
   });
 
-  await insertAchievementUnlocks(transaction, groupId, playerUnlocks);
+  return insertAchievementUnlocks(transaction, groupId, playerUnlocks);
 }
 
 export async function refreshAchievementsForPlayers(
   groupId: string,
   groupPlayerIds: string[],
-): Promise<void> {
-  await withTransaction((transaction) =>
-    awardAchievementsForPlayers(transaction, groupId, groupPlayerIds)
-  );
+): Promise<number> {
+  const uniquePlayerIds = [...new Set(groupPlayerIds)];
+  if (uniquePlayerIds.length === 0) return 0;
+
+  return withTransaction(async (transaction) => {
+    // Lock player rows before evaluating history. A newer mutation that marks
+    // the same player dirty waits and leaves dirty=true after this refresh.
+    const targets = await lockAchievementRefreshTargets(
+      transaction,
+      groupId,
+      uniquePlayerIds,
+    );
+    if (targets.length === 0) return 0;
+    const newUnlockCount = await awardAchievementsForPlayers(
+      transaction,
+      groupId,
+      targets,
+    );
+    await clearAchievementRefreshNeeded(transaction, groupId, targets);
+    return newUnlockCount;
+  });
+}
+
+export async function markAchievementsDirtyBestEffort(
+  groupId: string,
+  groupPlayerIds: string[],
+  context: AchievementRefreshContext,
+): Promise<boolean> {
+  const uniquePlayerIds = [...new Set(groupPlayerIds)];
+  if (uniquePlayerIds.length === 0) return true;
+  try {
+    await withTransaction((transaction) =>
+      markAchievementRefreshNeeded(transaction, groupId, uniquePlayerIds)
+    );
+    return true;
+  } catch (error) {
+    console.error("Failed to mark achievements for refresh", {
+      errorType: error instanceof Error ? error.name : "unknown",
+      gameId: context.gameId,
+      playerCount: uniquePlayerIds.length,
+      reason: context.reason,
+    });
+    return false;
+  }
+}
+
+export async function refreshAchievementsBestEffort(
+  groupId: string,
+  groupPlayerIds: string[],
+  context: AchievementRefreshContext,
+): Promise<boolean> {
+  const uniquePlayerIds = [...new Set(groupPlayerIds)];
+  if (uniquePlayerIds.length === 0) return true;
+  const startedAt = Date.now();
+  console.info("Achievement refresh started", {
+    gameId: context.gameId,
+    playerCount: uniquePlayerIds.length,
+    reason: context.reason,
+  });
+  try {
+    const newUnlockCount = await refreshAchievementsForPlayers(
+      groupId,
+      uniquePlayerIds,
+    );
+    console.info("Achievement refresh succeeded", {
+      durationMs: Date.now() - startedAt,
+      gameId: context.gameId,
+      newUnlockCount,
+      playerCount: uniquePlayerIds.length,
+      reason: context.reason,
+    });
+    return true;
+  } catch (error) {
+    console.error("Achievement refresh failed", {
+      durationMs: Date.now() - startedAt,
+      errorType: error instanceof Error ? error.name : "unknown",
+      gameId: context.gameId,
+      playerCount: uniquePlayerIds.length,
+      reason: context.reason,
+    });
+    return false;
+  }
 }
 
 export function scheduleAchievementRefresh(
   groupId: string,
   groupPlayerIds: string[],
-  context: { reason: string; gameId?: string },
+  context: AchievementRefreshContext,
 ): void {
   const uniquePlayerIds = [...new Set(groupPlayerIds)];
   if (uniquePlayerIds.length === 0) return;
 
-  waitUntil(
-    refreshAchievementsForPlayers(groupId, uniquePlayerIds).catch((error) => {
-      console.error("Failed to refresh achievements in background", {
-        errorType: error instanceof Error ? error.name : "unknown",
-        gameId: context.gameId,
-        reason: context.reason,
-      });
-    }),
-  );
+  waitUntil((async () => {
+    await markAchievementsDirtyBestEffort(groupId, uniquePlayerIds, context);
+    await refreshAchievementsBestEffort(groupId, uniquePlayerIds, context);
+  })());
 }
 
 export async function getPlayerAchievementCollection(
   groupId: string,
   groupPlayerId: string,
 ): Promise<PlayerAchievementCollection> {
-  const collection = await listPlayerAchievementCollection(groupId, groupPlayerId);
+  let collection = await listPlayerAchievementCollection(groupId, groupPlayerId);
+  if (collection.needsRefresh) {
+    const refreshed = await refreshAchievementsBestEffort(
+      groupId,
+      [groupPlayerId],
+      { reason: "collection-repair" },
+    );
+    if (refreshed) {
+      collection = await listPlayerAchievementCollection(groupId, groupPlayerId);
+    }
+  }
+  const { needsRefresh: _needsRefresh, ...publicCollection } = collection;
   return {
-    ...collection,
-    items: collection.items.map((achievement) =>
+    ...publicCollection,
+    items: publicCollection.items.map((achievement) =>
       achievement.isHidden && !achievement.isUnlocked
         ? {
             ...achievement,
