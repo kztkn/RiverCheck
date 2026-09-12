@@ -1,0 +1,67 @@
+name: Fix settlement publish retry
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply fixes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('server/services/game-service.server.ts')
+          s = p.read_text()
+          old = '''        costShares = parsedShares;\n        firstPlaceCost = parsedShares[0] ?? null;\n        secondPlaceCost = parsedShares[1] ?? null;\n        thirdPlaceCost = parsedShares[2] ?? null;'''
+          new = '''        costShares = parsedShares;\n        firstPlaceCost = parsedShares[0] ?? null;\n        secondPlaceCost = parsedShares[1] ?? parsedShares[0] ?? null;\n        // games keeps legacy top-3 columns as NOT NULL even for heads-up games.\n        // For 2-player plans, persist the last available rank as the 3rd-place\n        // compatibility value; cost_shares remains the source of truth.\n        thirdPlaceCost =\n          parsedShares[2] ?? parsedShares[1] ?? parsedShares[0] ?? null;'''
+          assert old in s
+          p.write_text(s.replace(old, new))
+
+          p = Path('app/routes/game-admin.tsx')
+          s = p.read_text()
+          old = '''  const [settlementParticipantCount, setSettlementParticipantCount] = useState(\n    values.previewParticipantCount,\n  );'''
+          new = '''  const [settlementParticipantCount, setSettlementParticipantCount] = useState(\n    values.previewParticipantCount,\n  );\n  const [publishFailureCount, setPublishFailureCount] = useState(0);\n  const [persistentPublishError, setPersistentPublishError] = useState<string | null>(null);'''
+          assert old in s
+          s = s.replace(old, new)
+
+          marker = '''  const [bombPotRuleEnabled, setBombPotRuleEnabled] = useState(\n    loaderData.game.bombPotRuleEnabled,\n  );\n  const gameSettingsDialogRef = useRef<HTMLDialogElement>(null);'''
+          replacement = '''  const [bombPotRuleEnabled, setBombPotRuleEnabled] = useState(\n    loaderData.game.bombPotRuleEnabled,\n  );\n\n  useEffect(() => {\n    if (\n      actionData?.ok === false &&\n      \"intent\" in actionData &&\n      actionData.intent === \"publish-settlement-plan\" &&\n      \"error\" in actionData\n    ) {\n      setPersistentPublishError(actionData.error);\n      setPublishFailureCount((count) => count + 1);\n    }\n  }, [actionData]);\n\n  useEffect(() => {\n    if (navigation.state !== \"submitting\") return;\n    const intent = navigation.formData?.get(\"intent\");\n    if (intent === \"publish-settlement-plan\") return;\n    setPersistentPublishError(null);\n    setPublishFailureCount(0);\n  }, [navigation.formData, navigation.state]);\n\n  const gameSettingsDialogRef = useRef<HTMLDialogElement>(null);'''
+          assert marker in s
+          s = s.replace(marker, replacement)
+
+          old = '''          <FinalizationPanel\n            error={finalizeError}\n            finalization={loaderData.finalization}'''
+          new = '''          <FinalizationPanel\n            error={\n              persistentPublishError\n                ? `${persistentPublishError}${\n                    publishFailureCount > 1\n                      ? `（${publishFailureCount}回連続で失敗）`\n                      : \"\"\n                  }`\n                : finalizeError\n            }\n            finalization={loaderData.finalization}'''
+          assert old in s
+          s = s.replace(old, new)
+
+          old = '''        {!participantCountMatches ? (\n          <p className=\"warning-notice\">\n            会費精算の人数（{settlementParticipantCountLabel}）と参加者（\n            {finalization.participantCount}人）を一致させてください。\n          </p>\n        ) : null}'''
+          new = '''        {!participantCountMatches ? (\n          <p className=\"field-hint settlement-count-hint\">\n            結果確定する場合は、会費精算の人数（{settlementParticipantCountLabel}）を\n            現在の参加者（{finalization.participantCount}人）に合わせてください。\n            精算予定の公開だけなら、このままでも問題ありません。\n          </p>\n        ) : null}'''
+          assert old in s
+          s = s.replace(old, new)
+          p.write_text(s)
+
+          p = Path('app/routes/two-player-settlement-compat.test.ts')
+          p.write_text('''import { describe, expect, it } from \"vitest\";\nimport { validateGameSettingsForm } from \"@server/services/game-service.server\";\n\ndescribe(\"2人精算のlegacy top-3互換値\", () => {\n  it(\"2人のcost_sharesでもDBのNOT NULL列向けに3位値を補完する\", () => {\n    const result = validateGameSettingsForm({\n      title: \"ヘッズアップ\",\n      playedAt: \"2026-09-12\",\n      initialChips: \"20000\",\n      venueCost: \"5000\",\n      firstPlaceCost: \"0\",\n      secondPlaceCost: \"5000\",\n      thirdPlaceCost: \"\",\n      previewParticipantCount: \"2\",\n      costShares: [\"0\", \"5000\"],\n      sevenDeuceRuleEnabled: false,\n      bombPotRuleEnabled: false,\n    });\n\n    expect(result.ok).toBe(true);\n    if (!result.ok) return;\n    expect(result.input.costShares).toEqual([0, 5000]);\n    expect(result.input.firstPlaceCost).toBe(0);\n    expect(result.input.secondPlaceCost).toBe(5000);\n    expect(result.input.thirdPlaceCost).toBe(5000);\n  });\n});\n''')
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Commit validated fixes
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/fix-settlement-publish-retry.yml
+          git add app server
+          git commit -m '2人精算公開と再試行表示を修正'
+          git push origin HEAD:main
