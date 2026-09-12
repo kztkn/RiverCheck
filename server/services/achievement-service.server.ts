@@ -26,6 +26,30 @@ interface AchievementRefreshContext {
   gameId?: string;
 }
 
+function buildAchievementErrorLog(error: unknown) {
+  const record =
+    typeof error === "object" && error !== null
+      ? (error as {
+          name?: unknown;
+          message?: unknown;
+          code?: unknown;
+          constraint?: unknown;
+        })
+      : null;
+  const rawMessage =
+    typeof record?.message === "string" ? record.message : String(error);
+
+  return {
+    errorType:
+      typeof record?.name === "string" ? record.name : typeof error,
+    errorMessage: rawMessage.slice(0, 500),
+    errorCode:
+      typeof record?.code === "string" ? record.code : undefined,
+    constraint:
+      typeof record?.constraint === "string" ? record.constraint : undefined,
+  };
+}
+
 export async function awardAchievementsForPlayers(
   transaction: DatabaseTransaction,
   groupId: string,
@@ -114,7 +138,7 @@ export async function markAchievementsDirtyBestEffort(
     return true;
   } catch (error) {
     console.error("Failed to mark achievements for refresh", {
-      errorType: error instanceof Error ? error.name : "unknown",
+      ...buildAchievementErrorLog(error),
       gameId: context.gameId,
       playerCount: uniquePlayerIds.length,
       reason: context.reason,
@@ -151,8 +175,8 @@ export async function refreshAchievementsBestEffort(
     return true;
   } catch (error) {
     console.error("Achievement refresh failed", {
+      ...buildAchievementErrorLog(error),
       durationMs: Date.now() - startedAt,
-      errorType: error instanceof Error ? error.name : "unknown",
       gameId: context.gameId,
       playerCount: uniquePlayerIds.length,
       reason: context.reason,
