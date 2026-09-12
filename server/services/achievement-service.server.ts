@@ -1,12 +1,22 @@
+import { waitUntil } from "cloudflare:workers";
 import { evaluateAchievements } from "@domain/achievement/evaluate-achievements";
 import {
-  synchronizeAchievementUnlocks,
+  insertAchievementUnlocks,
   listAchievementHistoryGames,
+  listAchievementReactionSummaries,
+  listPendingAchievementNotifications,
   listPlayerAchievementCollection,
   listUnlockedAchievementIds,
+  markAchievementNotificationSeen,
 } from "@server/repositories/achievement-repository.server";
-import type { DatabaseTransaction } from "@server/db/client.server";
-import type { PlayerAchievementCollection } from "@shared-types/achievement";
+import {
+  withTransaction,
+  type DatabaseTransaction,
+} from "@server/db/client.server";
+import type {
+  PendingAchievementNotification,
+  PlayerAchievementCollection,
+} from "@shared-types/achievement";
 
 export async function awardAchievementsForPlayers(
   transaction: DatabaseTransaction,
@@ -14,13 +24,23 @@ export async function awardAchievementsForPlayers(
   groupPlayerIds: string[],
 ): Promise<void> {
   const uniquePlayerIds = [...new Set(groupPlayerIds)];
+  if (uniquePlayerIds.length === 0) return;
+
   const history = await listAchievementHistoryGames(
     transaction,
     groupId,
     uniquePlayerIds,
   );
+  const reactionSummaries = await listAchievementReactionSummaries(
+    transaction,
+    groupId,
+    uniquePlayerIds,
+  );
+  const reactionByPlayer = new Map(
+    reactionSummaries.map((summary) => [summary.groupPlayerId, summary]),
+  );
 
-  for (const groupPlayerId of uniquePlayerIds) {
+  const playerUnlocks = uniquePlayerIds.flatMap((groupPlayerId) => {
     const games = history
       .filter((game) => game.groupPlayerId === groupPlayerId)
       .map((game) => ({
@@ -31,14 +51,47 @@ export async function awardAchievementsForPlayers(
         totalRebuyCount: game.totalRebuyCount,
         outstandingRebuyCount: game.outstandingRebuyCount,
         settlementRebuyCount: game.settlementRebuyCount,
+        sevenDeuceCount: game.sevenDeuceCount,
+        allInWinCount: game.allInWinCount,
+        allInLossCount: game.allInLossCount,
+        storyPostCount: game.storyPostCount,
       }));
-    await synchronizeAchievementUnlocks(
-      transaction,
-      groupId,
-      groupPlayerId,
-      evaluateAchievements(games),
-    );
-  }
+    const reaction = reactionByPlayer.get(groupPlayerId);
+    return evaluateAchievements(games, {
+      reactedStoryPostCount: reaction?.reactedStoryPostCount ?? 0,
+      fifthReactedStoryGameId: reaction?.fifthReactedStoryGameId ?? null,
+    }).map((unlock) => ({ groupPlayerId, unlock }));
+  });
+
+  await insertAchievementUnlocks(transaction, groupId, playerUnlocks);
+}
+
+export async function refreshAchievementsForPlayers(
+  groupId: string,
+  groupPlayerIds: string[],
+): Promise<void> {
+  await withTransaction((transaction) =>
+    awardAchievementsForPlayers(transaction, groupId, groupPlayerIds)
+  );
+}
+
+export function scheduleAchievementRefresh(
+  groupId: string,
+  groupPlayerIds: string[],
+  context: { reason: string; gameId?: string },
+): void {
+  const uniquePlayerIds = [...new Set(groupPlayerIds)];
+  if (uniquePlayerIds.length === 0) return;
+
+  waitUntil(
+    refreshAchievementsForPlayers(groupId, uniquePlayerIds).catch((error) => {
+      console.error("Failed to refresh achievements in background", {
+        errorType: error instanceof Error ? error.name : "unknown",
+        gameId: context.gameId,
+        reason: context.reason,
+      });
+    }),
+  );
 }
 
 export async function getPlayerAchievementCollection(
@@ -64,4 +117,23 @@ export async function getUnlockedPlayerAchievementIds(
   groupPlayerId: string,
 ): Promise<string[]> {
   return listUnlockedAchievementIds(groupPlayerId);
+}
+
+export async function getPendingPlayerAchievementNotifications(
+  groupId: string,
+  groupPlayerId: string,
+): Promise<PendingAchievementNotification[]> {
+  return listPendingAchievementNotifications(groupId, groupPlayerId);
+}
+
+export async function acknowledgePlayerAchievementNotification(
+  groupId: string,
+  groupPlayerId: string,
+  playerAchievementId: string,
+): Promise<boolean> {
+  return markAchievementNotificationSeen(
+    groupId,
+    groupPlayerId,
+    playerAchievementId,
+  );
 }

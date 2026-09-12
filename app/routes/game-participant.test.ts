@@ -109,6 +109,9 @@ vi.mock("@server/services/organizer-auth.server", () => ({
   isOrganizerAuthenticated: mocked.isOrganizerAuthenticated,
   requireOrganizer: mocked.requireOrganizer,
 }));
+vi.mock("@server/services/achievement-service.server", () => ({
+  scheduleAchievementRefresh: vi.fn(),
+}));
 vi.mock("@domain/payment/paypay-link", () => ({
   isPayPayLinkActive: vi.fn(() => false),
 }));

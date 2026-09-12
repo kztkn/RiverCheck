@@ -14,7 +14,19 @@ export type EvaluatedAchievementCode =
   | "giant-killer"
   | "fourth-place-pro"
   | "silver-collector"
-  | "title-defense";
+  | "title-defense"
+  | "seven-deuce-first"
+  | "seven-deuce-three"
+  | "seven-deuce-five"
+  | "all-in-five-wins"
+  | "all-in-five-losses"
+  | "rebuy-ten"
+  | "rebuy-triple"
+  | "story-first"
+  | "story-three"
+  | "story-five"
+  | "love-giver"
+  | "rollercoaster";
 
 export const evaluatedAchievementCodes = [
   "first-win",
@@ -33,6 +45,18 @@ export const evaluatedAchievementCodes = [
   "fourth-place-pro",
   "silver-collector",
   "title-defense",
+  "seven-deuce-first",
+  "seven-deuce-three",
+  "seven-deuce-five",
+  "all-in-five-wins",
+  "all-in-five-losses",
+  "rebuy-ten",
+  "rebuy-triple",
+  "story-first",
+  "story-three",
+  "story-five",
+  "love-giver",
+  "rollercoaster",
 ] as const satisfies readonly EvaluatedAchievementCode[];
 
 export interface AchievementGameResult {
@@ -43,6 +67,15 @@ export interface AchievementGameResult {
   totalRebuyCount: number;
   outstandingRebuyCount: number | null;
   settlementRebuyCount: number;
+  sevenDeuceCount: number;
+  allInWinCount: number;
+  allInLossCount: number;
+  storyPostCount: number;
+}
+
+export interface AchievementActivitySummary {
+  reactedStoryPostCount: number;
+  fifthReactedStoryGameId: string | null;
 }
 
 export interface AchievementUnlock {
@@ -50,8 +83,14 @@ export interface AchievementUnlock {
   sourceGameId: string;
 }
 
+const emptyActivitySummary: AchievementActivitySummary = {
+  reactedStoryPostCount: 0,
+  fifthReactedStoryGameId: null,
+};
+
 export function evaluateAchievements(
   games: AchievementGameResult[],
+  activity: AchievementActivitySummary = emptyActivitySummary,
 ): AchievementUnlock[] {
   const unlocks: AchievementUnlock[] = [];
   const unlockedCodes = new Set<EvaluatedAchievementCode>();
@@ -59,6 +98,13 @@ export function evaluateAchievements(
   let fourthPlaces = 0;
   let secondPlaces = 0;
   let cumulativeNetBb = 0;
+  let cumulativeRebuys = 0;
+  let cumulativeSevenDeuce = 0;
+  let cumulativeAllInWins = 0;
+  let cumulativeAllInLosses = 0;
+  let cumulativeStoryPosts = 0;
+  let hasBigPositive = false;
+  let hasBigNegative = false;
 
   const unlock = (
     code: EvaluatedAchievementCode,
@@ -93,10 +139,7 @@ export function evaluateAchievements(
       }
     }
 
-    if (
-      previousGame?.rank === 1 &&
-      isLastPlace(game)
-    ) {
+    if (previousGame?.rank === 1 && isLastPlace(game)) {
       unlock("three-day-reign", game.gameId);
     }
 
@@ -143,6 +186,58 @@ export function evaluateAchievements(
     if (cumulativeNetBb >= 100) {
       unlock("hundred-bb", game.gameId);
     }
+
+    cumulativeRebuys += game.totalRebuyCount;
+    if (game.totalRebuyCount >= 3) {
+      unlock("rebuy-triple", game.gameId);
+    }
+    if (cumulativeRebuys >= 10) {
+      unlock("rebuy-ten", game.gameId);
+    }
+
+    cumulativeSevenDeuce += game.sevenDeuceCount;
+    if (cumulativeSevenDeuce >= 1) {
+      unlock("seven-deuce-first", game.gameId);
+    }
+    if (cumulativeSevenDeuce >= 3) {
+      unlock("seven-deuce-three", game.gameId);
+    }
+    if (cumulativeSevenDeuce >= 5) {
+      unlock("seven-deuce-five", game.gameId);
+    }
+
+    cumulativeAllInWins += game.allInWinCount;
+    cumulativeAllInLosses += game.allInLossCount;
+    if (cumulativeAllInWins >= 5) {
+      unlock("all-in-five-wins", game.gameId);
+    }
+    if (cumulativeAllInLosses >= 5) {
+      unlock("all-in-five-losses", game.gameId);
+    }
+
+    cumulativeStoryPosts += game.storyPostCount;
+    if (cumulativeStoryPosts >= 1) {
+      unlock("story-first", game.gameId);
+    }
+    if (cumulativeStoryPosts >= 3) {
+      unlock("story-three", game.gameId);
+    }
+    if (cumulativeStoryPosts >= 5) {
+      unlock("story-five", game.gameId);
+    }
+
+    hasBigPositive ||= game.netBb >= 200;
+    hasBigNegative ||= game.netBb <= -200;
+    if (hasBigPositive && hasBigNegative) {
+      unlock("rollercoaster", game.gameId);
+    }
+  }
+
+  if (
+    activity.reactedStoryPostCount >= 5 &&
+    activity.fifthReactedStoryGameId
+  ) {
+    unlock("love-giver", activity.fifthReactedStoryGameId);
   }
 
   return unlocks;

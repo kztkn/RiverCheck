@@ -1,8 +1,14 @@
 import {
+  IconArrowsUpDown,
+  IconBolt,
+  IconCards,
   IconRosetteDiscountCheck,
   IconCalendarCheck,
   IconFlame,
+  IconHeart,
   IconLock,
+  IconNotes,
+  IconRefresh,
   IconTrendingUp,
   IconTrophy,
 } from "@tabler/icons-react";
@@ -22,6 +28,12 @@ export function AchievementIcon({
     "calendar-check": IconCalendarCheck,
     "trending-up": IconTrendingUp,
     "badge-check": IconRosetteDiscountCheck,
+    cards: IconCards,
+    bolt: IconBolt,
+    refresh: IconRefresh,
+    notes: IconNotes,
+    heart: IconHeart,
+    "arrows-up-down": IconArrowsUpDown,
   }[iconKey];
   return <Icon aria-hidden="true" />;
 }

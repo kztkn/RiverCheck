@@ -16,6 +16,10 @@ function game(
     totalRebuyCount: 0,
     outstandingRebuyCount: 0,
     settlementRebuyCount: 0,
+    sevenDeuceCount: 0,
+    allInWinCount: 0,
+    allInLossCount: 0,
+    storyPostCount: 0,
     ...overrides,
   };
 }
@@ -373,5 +377,81 @@ describe("achievement evaluation reconciliation", () => {
 
     expect(beforeCorrection).not.toContain("giant-killer");
     expect(afterCorrection).toContain("giant-killer");
+  });
+});
+
+
+describe("追加称号", () => {
+  it("72oを1・3・5回で段階的に解除する", () => {
+    const unlocks = evaluateAchievements([
+      game("g1", { sevenDeuceCount: 1 }),
+      game("g2", { sevenDeuceCount: 2 }),
+      game("g3", { sevenDeuceCount: 2 }),
+    ]);
+    expect(unlocks).toEqual(expect.arrayContaining([
+      { code: "seven-deuce-first", sourceGameId: "g1" },
+      { code: "seven-deuce-three", sourceGameId: "g2" },
+      { code: "seven-deuce-five", sourceGameId: "g3" },
+    ]));
+  });
+
+  it("ALL INの勝敗を別々に5回で解除する", () => {
+    const unlocks = evaluateAchievements([
+      game("g1", { allInWinCount: 2, allInLossCount: 1 }),
+      game("g2", { allInWinCount: 3, allInLossCount: 4 }),
+    ]);
+    expect(unlocks).toEqual(expect.arrayContaining([
+      { code: "all-in-five-wins", sourceGameId: "g2" },
+      { code: "all-in-five-losses", sourceGameId: "g2" },
+    ]));
+  });
+
+  it("リバイ通算10回と1開催3回を別条件で解除する", () => {
+    const unlocks = evaluateAchievements([
+      game("g1", { totalRebuyCount: 3 }),
+      game("g2", { totalRebuyCount: 4 }),
+      game("g3", { totalRebuyCount: 3 }),
+    ]);
+    expect(unlocks).toEqual(expect.arrayContaining([
+      { code: "rebuy-triple", sourceGameId: "g1" },
+      { code: "rebuy-ten", sourceGameId: "g3" },
+    ]));
+  });
+
+  it("TABLE STORIESを1・3・5投稿で段階的に解除する", () => {
+    const unlocks = evaluateAchievements([
+      game("g1", { storyPostCount: 1 }),
+      game("g2", { storyPostCount: 1 }),
+      game("g3", { storyPostCount: 1 }),
+      game("g4", { storyPostCount: 1 }),
+      game("g5", { storyPostCount: 1 }),
+    ]);
+    expect(unlocks).toEqual(expect.arrayContaining([
+      { code: "story-first", sourceGameId: "g1" },
+      { code: "story-three", sourceGameId: "g3" },
+      { code: "story-five", sourceGameId: "g5" },
+    ]));
+  });
+
+  it("5件の異なる投稿へのリアクションで愛を配る者を解除する", () => {
+    const unlocks = evaluateAchievements(
+      [game("played")],
+      { reactedStoryPostCount: 5, fifthReactedStoryGameId: "reacted-game" },
+    );
+    expect(unlocks).toContainEqual({
+      code: "love-giver",
+      sourceGameId: "reacted-game",
+    });
+  });
+
+  it("+200BBと-200BBを両方経験するとジェットコースターを解除する", () => {
+    const unlocks = evaluateAchievements([
+      game("g1", { netBb: 220 }),
+      game("g2", { netBb: -210 }),
+    ]);
+    expect(unlocks).toContainEqual({
+      code: "rollercoaster",
+      sourceGameId: "g2",
+    });
   });
 });

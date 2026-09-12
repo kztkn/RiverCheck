@@ -7088,3 +7088,64 @@ input[aria-invalid="true"] {
     transform: rotate(360deg);
   }
 }
+
+
+.achievement-unlock-toast {
+  width: min(calc(100% - 32px), 420px);
+  align-items: center;
+  gap: 12px;
+  border-color: rgba(233, 186, 90, 0.38);
+  background:
+    radial-gradient(circle at 8% 20%, rgba(233, 186, 90, 0.12), transparent 42%),
+    #102119;
+}
+
+.achievement-unlock-toast > span:first-child {
+  border: 1px solid rgba(233, 186, 90, 0.42);
+  background: rgba(233, 186, 90, 0.1);
+  color: var(--gold);
+}
+
+.achievement-unlock-toast > span:first-child svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.8;
+}
+
+.achievement-unlock-toast-copy {
+  display: grid !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0;
+  flex: 1 1 auto !important;
+  place-items: initial !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  gap: 2px;
+  text-align: left;
+}
+
+.achievement-unlock-toast-copy small {
+  color: var(--gold);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.achievement-unlock-toast-copy strong {
+  overflow: hidden;
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.achievement-unlock-toast-copy em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

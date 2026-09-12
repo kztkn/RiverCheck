@@ -55,15 +55,13 @@ beforeEach(() => {
 });
 
 describe("reopenFinalizedGame", () => {
-  it("removes only final results, reopens the game, and recalculates achievements", async () => {
+  it("removes only final results, reopens the game, and keeps earned achievements", async () => {
     await expect(reopenFinalizedGame("group-1", "game-1")).resolves.toEqual({ ok: true });
     expect(mocked.deleteFinalResultsForReopen).toHaveBeenCalledWith(expect.anything(), "game-1");
     expect(mocked.markGameOpenAfterFinalization).toHaveBeenCalledWith(
       expect.anything(), "group-1", "game-1",
     );
-    expect(mocked.awardAchievementsForPlayers).toHaveBeenCalledWith(
-      expect.anything(), "group-1", ids,
-    );
+    expect(mocked.awardAchievementsForPlayers).not.toHaveBeenCalled();
   });
 
   it("locks final results before checking blockers", async () => {

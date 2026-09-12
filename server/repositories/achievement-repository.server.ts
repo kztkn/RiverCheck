@@ -1,10 +1,10 @@
 import { queryDatabase, type DatabaseTransaction } from "@server/db/client.server";
-import {
-  evaluatedAchievementCodes,
-  type AchievementUnlock,
+import type {
+  AchievementUnlock,
 } from "@domain/achievement/evaluate-achievements";
 import type {
   AchievementIconKey,
+  PendingAchievementNotification,
   PlayerAchievementCollection,
   PlayerAchievementItem,
 } from "@shared-types/achievement";
@@ -19,6 +19,16 @@ interface AchievementHistoryRow {
   total_rebuy_count: number | null;
   tracked_outstanding_rebuy_count: number | null;
   settlement_rebuy_count: number;
+  seven_deuce_count: number;
+  all_in_win_count: number;
+  all_in_loss_count: number;
+  story_post_count: number;
+}
+
+interface AchievementReactionSummaryRow {
+  group_player_id: string;
+  reacted_story_post_count: number;
+  fifth_reacted_story_game_id: string | null;
 }
 
 interface AchievementCollectionRow {
@@ -36,6 +46,16 @@ interface AchievementCollectionRow {
   is_equipped: boolean;
 }
 
+interface PendingAchievementRow {
+  player_achievement_id: string;
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  icon_key: AchievementIconKey;
+  category: string;
+}
+
 export interface AchievementHistoryGame {
   groupPlayerId: string;
   gameId: string;
@@ -45,6 +65,21 @@ export interface AchievementHistoryGame {
   totalRebuyCount: number;
   outstandingRebuyCount: number | null;
   settlementRebuyCount: number;
+  sevenDeuceCount: number;
+  allInWinCount: number;
+  allInLossCount: number;
+  storyPostCount: number;
+}
+
+export interface AchievementReactionSummary {
+  groupPlayerId: string;
+  reactedStoryPostCount: number;
+  fifthReactedStoryGameId: string | null;
+}
+
+export interface PlayerAchievementUnlock {
+  groupPlayerId: string;
+  unlock: AchievementUnlock;
 }
 
 export async function listAchievementHistoryGames(
@@ -79,23 +114,80 @@ export async function listAchievementHistoryGames(
         INNER JOIN games AS game ON game.id = game_result.game_id
         WHERE game.group_id = $1
           AND game.status = 'finalized'
+      ),
+      seven_deuce_metrics AS (
+        SELECT
+          event.game_id,
+          event.subject_group_player_id AS group_player_id,
+          COUNT(*)::INTEGER AS seven_deuce_count
+        FROM game_table_events AS event
+        INNER JOIN games AS game ON game.id = event.game_id
+        WHERE game.group_id = $1
+          AND game.status = 'finalized'
+          AND event.event_type = 'seven_deuce'
+          AND event.canceled_at IS NULL
+          AND event.subject_group_player_id IS NOT NULL
+        GROUP BY event.game_id, event.subject_group_player_id
+      ),
+      all_in_metrics AS (
+        SELECT
+          event.game_id,
+          event_player.group_player_id,
+          COUNT(*) FILTER (WHERE event_player.is_winner)::INTEGER AS all_in_win_count,
+          COUNT(*) FILTER (WHERE NOT event_player.is_winner)::INTEGER AS all_in_loss_count
+        FROM game_table_events AS event
+        INNER JOIN games AS game ON game.id = event.game_id
+        INNER JOIN game_table_event_players AS event_player
+          ON event_player.event_id = event.id
+        WHERE game.group_id = $1
+          AND game.status = 'finalized'
+          AND event.event_type = 'all_in'
+          AND event.canceled_at IS NULL
+        GROUP BY event.game_id, event_player.group_player_id
+      ),
+      story_metrics AS (
+        SELECT
+          participant.game_id,
+          participant.group_player_id,
+          COUNT(*)::INTEGER AS story_post_count
+        FROM game_story_posts AS post
+        INNER JOIN game_participants AS participant
+          ON participant.id = post.game_participant_id
+        INNER JOIN games AS game ON game.id = participant.game_id
+        WHERE game.group_id = $1
+          AND game.status = 'finalized'
+          AND post.deleted_at IS NULL
+        GROUP BY participant.game_id, participant.group_player_id
       )
       SELECT
-        group_player_id,
-        game_id,
-        rank,
-        participant_count,
-        total_rebuy_count,
-        tracked_outstanding_rebuy_count,
-        settlement_rebuy_count,
-        initial_chips,
-        net_bb
+        finalized_results.group_player_id,
+        finalized_results.game_id,
+        finalized_results.rank,
+        finalized_results.participant_count,
+        finalized_results.total_rebuy_count,
+        finalized_results.tracked_outstanding_rebuy_count,
+        finalized_results.settlement_rebuy_count,
+        finalized_results.initial_chips,
+        finalized_results.net_bb,
+        COALESCE(seven_deuce_metrics.seven_deuce_count, 0) AS seven_deuce_count,
+        COALESCE(all_in_metrics.all_in_win_count, 0) AS all_in_win_count,
+        COALESCE(all_in_metrics.all_in_loss_count, 0) AS all_in_loss_count,
+        COALESCE(story_metrics.story_post_count, 0) AS story_post_count
       FROM finalized_results
-      WHERE group_player_id = ANY($2::UUID[])
-      ORDER BY group_player_id,
-               played_at ASC,
-               finalized_at ASC,
-               game_id ASC
+      LEFT JOIN seven_deuce_metrics
+        ON seven_deuce_metrics.game_id = finalized_results.game_id
+       AND seven_deuce_metrics.group_player_id = finalized_results.group_player_id
+      LEFT JOIN all_in_metrics
+        ON all_in_metrics.game_id = finalized_results.game_id
+       AND all_in_metrics.group_player_id = finalized_results.group_player_id
+      LEFT JOIN story_metrics
+        ON story_metrics.game_id = finalized_results.game_id
+       AND story_metrics.group_player_id = finalized_results.group_player_id
+      WHERE finalized_results.group_player_id = ANY($2::UUID[])
+      ORDER BY finalized_results.group_player_id,
+               finalized_results.played_at ASC,
+               finalized_results.finalized_at ASC,
+               finalized_results.game_id ASC
     `,
     [groupId, groupPlayerIds],
   );
@@ -118,65 +210,118 @@ export async function listAchievementHistoryGames(
       row.total_rebuy_count ?? row.settlement_rebuy_count,
     outstandingRebuyCount: row.tracked_outstanding_rebuy_count,
     settlementRebuyCount: row.settlement_rebuy_count,
+    sevenDeuceCount: row.seven_deuce_count,
+    allInWinCount: row.all_in_win_count,
+    allInLossCount: row.all_in_loss_count,
+    storyPostCount: row.story_post_count,
   }));
 }
 
-export async function synchronizeAchievementUnlocks(
+export async function listAchievementReactionSummaries(
   transaction: DatabaseTransaction,
   groupId: string,
-  groupPlayerId: string,
-  unlocks: AchievementUnlock[],
+  groupPlayerIds: string[],
+): Promise<AchievementReactionSummary[]> {
+  if (groupPlayerIds.length === 0) return [];
+  const result = await transaction.query<AchievementReactionSummaryRow>(
+    `
+      WITH reacted_posts AS (
+        SELECT
+          reaction.group_player_id,
+          post.id AS post_id,
+          participant.game_id,
+          MIN(reaction.created_at) AS first_reacted_at
+        FROM game_story_reactions AS reaction
+        INNER JOIN game_story_posts AS post
+          ON post.id = reaction.game_story_post_id
+        INNER JOIN game_participants AS participant
+          ON participant.id = post.game_participant_id
+        INNER JOIN games AS game ON game.id = participant.game_id
+        WHERE game.group_id = $1
+          AND game.status = 'finalized'
+          AND post.deleted_at IS NULL
+          AND reaction.group_player_id = ANY($2::UUID[])
+        GROUP BY
+          reaction.group_player_id,
+          post.id,
+          participant.game_id
+      ),
+      ranked_posts AS (
+        SELECT
+          reacted_posts.*,
+          ROW_NUMBER() OVER (
+            PARTITION BY group_player_id
+            ORDER BY first_reacted_at ASC, post_id ASC
+          ) AS reaction_number
+        FROM reacted_posts
+      )
+      SELECT
+        group_player_id,
+        COUNT(*)::INTEGER AS reacted_story_post_count,
+        MAX(game_id) FILTER (
+          WHERE reaction_number = 5
+        ) AS fifth_reacted_story_game_id
+      FROM ranked_posts
+      GROUP BY group_player_id
+    `,
+    [groupId, groupPlayerIds],
+  );
+  return result.rows.map((row) => ({
+    groupPlayerId: row.group_player_id,
+    reactedStoryPostCount: row.reacted_story_post_count,
+    fifthReactedStoryGameId: row.fifth_reacted_story_game_id,
+  }));
+}
+
+export async function insertAchievementUnlocks(
+  transaction: DatabaseTransaction,
+  groupId: string,
+  playerUnlocks: PlayerAchievementUnlock[],
 ): Promise<void> {
-  const unlockedCodes = unlocks.map((unlock) => unlock.code);
-
+  if (playerUnlocks.length === 0) return;
   await transaction.query(
     `
-      UPDATE group_players AS group_player
-      SET equipped_achievement_id = NULL
-      FROM achievements AS achievement
-      WHERE group_player.id = $2
-        AND group_player.group_id = $1
-        AND group_player.equipped_achievement_id = achievement.id
-        AND achievement.code = ANY($3::TEXT[])
-        AND NOT (achievement.code = ANY($4::TEXT[]))
-    `,
-    [groupId, groupPlayerId, [...evaluatedAchievementCodes], unlockedCodes],
-  );
-
-  await transaction.query(
-    `
-      DELETE FROM player_achievements AS player_achievement
-      USING achievements AS achievement, group_players AS group_player
-      WHERE player_achievement.group_player_id = group_player.id
-        AND player_achievement.achievement_id = achievement.id
-        AND group_player.id = $2
-        AND group_player.group_id = $1
-        AND achievement.code = ANY($3::TEXT[])
-        AND NOT (achievement.code = ANY($4::TEXT[]))
-    `,
-    [groupId, groupPlayerId, [...evaluatedAchievementCodes], unlockedCodes],
-  );
-
-  for (const unlock of unlocks) {
-    await transaction.query(
-      `
-        INSERT INTO player_achievements (
-          group_player_id, achievement_id, source_game_id, unlocked_at
+      WITH requested_unlocks AS (
+        SELECT *
+        FROM jsonb_to_recordset($2::JSONB) AS unlock(
+          group_player_id UUID,
+          code TEXT,
+          source_game_id UUID
         )
-        SELECT group_player.id, achievement.id, game.id,
-               COALESCE(game.finalized_at, game.updated_at, game.played_at)
-        FROM group_players AS group_player
-        INNER JOIN games AS game
-          ON game.id = $4 AND game.group_id = group_player.group_id
-        INNER JOIN achievements AS achievement ON achievement.code = $3
-        WHERE group_player.id = $2 AND group_player.group_id = $1
-        ON CONFLICT (group_player_id, achievement_id) DO UPDATE
-        SET source_game_id = EXCLUDED.source_game_id,
-            unlocked_at = EXCLUDED.unlocked_at
-      `,
-      [groupId, groupPlayerId, unlock.code, unlock.sourceGameId],
-    );
-  }
+      )
+      INSERT INTO player_achievements (
+        group_player_id,
+        achievement_id,
+        source_game_id,
+        unlocked_at
+      )
+      SELECT
+        group_player.id,
+        achievement.id,
+        game.id,
+        COALESCE(game.finalized_at, game.updated_at, game.played_at)
+      FROM requested_unlocks AS requested
+      INNER JOIN group_players AS group_player
+        ON group_player.id = requested.group_player_id
+       AND group_player.group_id = $1
+      INNER JOIN achievements AS achievement
+        ON achievement.code = requested.code
+      INNER JOIN games AS game
+        ON game.id = requested.source_game_id
+       AND game.group_id = $1
+      ON CONFLICT (group_player_id, achievement_id) DO NOTHING
+    `,
+    [
+      groupId,
+      JSON.stringify(
+        playerUnlocks.map(({ groupPlayerId, unlock }) => ({
+          group_player_id: groupPlayerId,
+          code: unlock.code,
+          source_game_id: unlock.sourceGameId,
+        })),
+      ),
+    ],
+  );
 }
 
 export async function listPlayerAchievementCollection(
@@ -269,4 +414,62 @@ export async function listUnlockedAchievementIds(
     [groupPlayerId],
   );
   return result.rows.map((row) => row.achievement_id);
+}
+
+export async function listPendingAchievementNotifications(
+  groupId: string,
+  groupPlayerId: string,
+): Promise<PendingAchievementNotification[]> {
+  const result = await queryDatabase<PendingAchievementRow>(
+    `
+      SELECT
+        player_achievement.id AS player_achievement_id,
+        achievement.id,
+        achievement.code,
+        achievement.name,
+        achievement.description,
+        achievement.icon_key,
+        achievement.category
+      FROM player_achievements AS player_achievement
+      INNER JOIN group_players AS group_player
+        ON group_player.id = player_achievement.group_player_id
+      INNER JOIN achievements AS achievement
+        ON achievement.id = player_achievement.achievement_id
+      WHERE group_player.group_id = $1
+        AND group_player.id = $2
+        AND player_achievement.notified_at IS NULL
+      ORDER BY player_achievement.unlocked_at ASC, achievement.sort_order ASC
+      LIMIT 20
+    `,
+    [groupId, groupPlayerId],
+  );
+  return result.rows.map((row) => ({
+    playerAchievementId: row.player_achievement_id,
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    description: row.description,
+    iconKey: row.icon_key,
+    category: row.category,
+  }));
+}
+
+export async function markAchievementNotificationSeen(
+  groupId: string,
+  groupPlayerId: string,
+  playerAchievementId: string,
+): Promise<boolean> {
+  const result = await queryDatabase(
+    `
+      UPDATE player_achievements AS player_achievement
+      SET notified_at = COALESCE(player_achievement.notified_at, NOW())
+      FROM group_players AS group_player
+      WHERE player_achievement.id = $3
+        AND player_achievement.group_player_id = $2
+        AND group_player.id = player_achievement.group_player_id
+        AND group_player.group_id = $1
+    `,
+    [groupId, groupPlayerId, playerAchievementId],
+  );
+  return result.rowCount === 1;
 }

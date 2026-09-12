@@ -7,6 +7,7 @@ import {
 import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
 import { isGameStoryReactionType } from "@domain/story/game-story-reaction";
 import type { GameStoryReactionSummary } from "@shared-types/game-story-reaction";
+import { scheduleAchievementRefresh } from "@server/services/achievement-service.server";
 
 export interface GameStoryReactionOverview {
   canReact: boolean;
@@ -76,7 +77,14 @@ export async function saveGameStoryReaction(
     input.reactionType,
     input.active,
   );
-  return saved
-    ? { ok: true, ...saved }
-    : { ok: false, status: 404, error: "投稿を確認できませんでした。" };
+  if (!saved) {
+    return { ok: false, status: 404, error: "投稿を確認できませんでした。" };
+  }
+  if (saved.active) {
+    scheduleAchievementRefresh(group.id, [groupPlayerId], {
+      reason: "story-reaction",
+      gameId: input.gameId,
+    });
+  }
+  return { ok: true, ...saved };
 }
