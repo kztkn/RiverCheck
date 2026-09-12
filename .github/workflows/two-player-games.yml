@@ -1,0 +1,104 @@
+name: Two player games implementation
+on:
+  push:
+    branches: [feat/two-player-games]
+permissions:
+  contents: write
+jobs:
+  implement-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/two-player-games
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply implementation
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p=Path('domain/cost-sharing/calculate-cost-shares.ts')
+          s=p.read_text()
+          s=s.replace('export const MINIMUM_PARTICIPANT_COUNT = 4;', 'export const MINIMUM_PARTICIPANT_COUNT = 2;')
+          s=s.replace('throw new RangeError("participantCount must be at least 4");', 'throw new RangeError("participantCount must be at least 2");')
+          old='''  const fixedCosts = [firstPlaceCost, secondPlaceCost, thirdPlaceCost];\n  fixedCosts.forEach((value, index) =>\n    assertRounded(value, `${index + 1} place cost`),\n  );\n\n  if (firstPlaceCost > secondPlaceCost || secondPlaceCost > thirdPlaceCost) {\n    throw new RangeError("place costs must be non-decreasing");\n  }\n\n  const settlementTotal =\n    Math.ceil(venueCost / COST_ROUNDING_UNIT) * COST_ROUNDING_UNIT;\n  if (!Number.isSafeInteger(settlementTotal)) {\n    throw new RangeError("settlementTotal exceeds the safe integer range");\n  }\n\n  const minimumRequired =\n    firstPlaceCost + secondPlaceCost + (participantCount - 2) * thirdPlaceCost;'''
+          new='''  const suppliedCosts = [firstPlaceCost, secondPlaceCost, thirdPlaceCost];\n  suppliedCosts.forEach((value, index) =>\n    assertRounded(value, `${index + 1} place cost`),\n  );\n  const fixedCosts = suppliedCosts.slice(0, Math.min(3, participantCount));\n\n  if (fixedCosts.some((value, index) => index > 0 && value < fixedCosts[index - 1]!)) {\n    throw new RangeError("place costs must be non-decreasing");\n  }\n\n  const settlementTotal =\n    Math.ceil(venueCost / COST_ROUNDING_UNIT) * COST_ROUNDING_UNIT;\n  if (!Number.isSafeInteger(settlementTotal)) {\n    throw new RangeError("settlementTotal exceeds the safe integer range");\n  }\n\n  if (participantCount <= 3) {\n    const allocated = fixedCosts.reduce((sum, share) => sum + share, 0);\n    if (allocated !== settlementTotal) {\n      throw new RangeError("fixed place costs must match settlement total");\n    }\n    return { settlementTotal, shares: fixedCosts };\n  }\n\n  const minimumRequired =\n    firstPlaceCost + secondPlaceCost + (participantCount - 2) * thirdPlaceCost;'''
+          assert old in s
+          p.write_text(s.replace(old,new))
+
+          p=Path('domain/cost-sharing/validate-cost-share-plan.ts')
+          s=p.read_text().replace('participantCount must be at least 4','participantCount must be at least 2')
+          p.write_text(s)
+
+          p=Path('domain/cost-sharing/recommend-top-costs.ts')
+          s=p.read_text().replace('participantCount must be at least 4','participantCount must be at least 2')
+          marker='''  if (mode === "podium") {'''
+          insertion='''  if (participantCount < 4 && mode !== "simple") {\n    return recommendSmallTableCosts(settlementTotal, participantCount, mode);\n  }\n\n  if (mode === "podium") {'''
+          s=s.replace(marker,insertion,1)
+          s=s.replace('''    thirdPlaceCost: result.shares[2]!,''','''    thirdPlaceCost: result.shares[2] ?? result.shares[result.shares.length - 1]!,''')
+          helper='''\nfunction recommendSmallTableCosts(\n  settlementTotal: number,\n  participantCount: number,\n  mode: RecommendationMode,\n): RecommendedTopCosts {\n  const weights = mode === "gentle"\n    ? Array.from({ length: participantCount }, (_, index) => participantCount + index + 1)\n    : Array.from({ length: participantCount }, (_, index) => index + 1);\n  const weightTotal = weights.reduce((sum, weight) => sum + weight, 0);\n  const shares: number[] = [];\n  for (let index = 0; index < participantCount - 1; index += 1) {\n    shares.push(Math.floor((settlementTotal * weights[index]!) / weightTotal / COST_ROUNDING_UNIT) * COST_ROUNDING_UNIT);\n  }\n  shares.push(settlementTotal - shares.reduce((sum, share) => sum + share, 0));\n  return {\n    firstPlaceCost: shares[0]!,\n    secondPlaceCost: shares[1]!,\n    thirdPlaceCost: shares[2] ?? shares[shares.length - 1]!,\n    settlementTotal,\n    shares,\n  };\n}\n'''
+          s=s.replace('\nfunction toRecommendedTopCosts(', helper+'\nfunction toRecommendedTopCosts(')
+          p.write_text(s)
+
+          p=Path('app/components/game-settings-fields.tsx')
+          s=p.read_text()
+          s=s.replace('String(Math.max(4, Number(values.previewParticipantCount) || 4))','String(Math.max(2, Number(values.previewParticipantCount) || 2))')
+          s=s.replace('min={4}\n              name="previewParticipantCount"','min={2}\n              name="previewParticipantCount"')
+          s=s.replace('if (parsed < 4)', 'if (parsed < 2)')
+          s=s.replace('return "4";', 'return "2";')
+          s=s.replace('participantCount = 4;', 'participantCount = 2;')
+          s=s.replace('人数は4人以上で入力してください。','人数は2人以上で入力してください。')
+          # For 2/3 players there is no lower-rank redistribution. Keep editing direct and explicit.
+          needle='''  function applyTopThreeDistribution() {\n    try {'''
+          repl='''  function applyTopThreeDistribution() {\n    const participantCount = Number(participantCountInput);\n    if (participantCount < 4) {\n      setAdjustmentMode("individual");\n      setRecommendationNotice(`${participantCount}人開催では各順位を個別に調整してください。`);\n      return;\n    }\n    try {'''
+          assert needle in s
+          s=s.replace(needle,repl)
+          s=s.replace('''                上位3位から配分''','''                {Number(participantCountInput) < 4 ? "順位を個別調整" : "上位3位から配分"}''')
+          s=s.replace('''              ? "1〜3位を変えると、4位以下を自動で再配分します。"''','''              ? Number(participantCountInput) < 4\n                ? "2〜3人開催では各順位を直接調整します。"\n                : "1〜3位を変えると、4位以下を自動で再配分します。"''')
+          # recommendation changes should switch small tables to individual mode
+          s=s.replace('''    setAdjustmentMode(\n      effectiveMode === "standard" || effectiveMode === "gentle"\n        ? "top-three"\n        : "individual",\n    );''','''    setAdjustmentMode(\n      adjusted.participantCount < 4\n        ? "individual"\n        : effectiveMode === "standard" || effectiveMode === "gentle"\n          ? "top-three"\n          : "individual",\n    );''')
+          p.write_text(s)
+
+          p=Path('server/services/game-service.server.ts')
+          s=p.read_text().replace('"精算は4人以上で試算してください。"','"精算は2人以上で試算してください。"')
+          p.write_text(s)
+
+          p=Path('server/services/finalization-service.server.ts')
+          s=p.read_text().replace('participants.length >= 4','participants.length >= 2')
+          s=s.replace('if (rows.length < 4)', 'if (rows.length < 2)')
+          s=s.replace('結果確定には4人以上の参加者が必要です。','結果確定には2人以上の参加者が必要です。')
+          p.write_text(s)
+
+          # Update existing unit test's lower-bound assertion.
+          p=Path('domain/cost-sharing/calculate-cost-shares.test.ts')
+          s=p.read_text().replace('it("4人未満を拒否する"','it("2人未満を拒否する"')
+          s=s.replace('''        participantCount: 3,\n        firstPlaceCost: 0,\n        secondPlaceCost: 500,\n        thirdPlaceCost: 1_000,''','''        participantCount: 1,\n        firstPlaceCost: 0,\n        secondPlaceCost: 500,\n        thirdPlaceCost: 1_000,''')
+          p.write_text(s)
+
+          Path('migrations/0029_allow_two_player_games.sql').write_text('''ALTER TABLE games DROP CONSTRAINT games_preview_participant_count_valid;\nALTER TABLE games ADD CONSTRAINT games_preview_participant_count_valid CHECK (preview_participant_count >= 2);\n\nCREATE OR REPLACE FUNCTION rivercheck_valid_cost_shares(\n  share_values BIGINT[], venue_cost BIGINT, participant_count INTEGER\n) RETURNS BOOLEAN LANGUAGE SQL IMMUTABLE STRICT AS $$\n  WITH ranked AS (\n    SELECT value, LAG(value) OVER (ORDER BY ordinal) AS previous_value\n    FROM UNNEST(share_values) WITH ORDINALITY AS share(value, ordinal)\n  )\n  SELECT CARDINALITY(share_values) = participant_count\n    AND CARDINALITY(share_values) >= 2\n    AND COALESCE(BOOL_AND(value IS NOT NULL AND value >= 0 AND value % 100 = 0\n      AND (previous_value IS NULL OR value >= previous_value)), FALSE)\n    AND COALESCE(SUM(value), 0)::NUMERIC = CEIL(venue_cost::NUMERIC / 100) * 100\n  FROM ranked\n$$;\n''')
+
+          Path('domain/cost-sharing/two-player-cost-sharing.test.ts').write_text('''import { describe, expect, it } from "vitest";\nimport { recommendTopCosts } from "./recommend-top-costs";\nimport { validateCostSharePlan } from "./validate-cost-share-plan";\n\ndescribe("2〜3人開催の精算", () => {\n  it("2人の標準配分を生成して検証できる", () => {\n    const result = recommendTopCosts(3_000, 2, "standard");\n    expect(result.shares).toHaveLength(2);\n    expect(result.shares[0]).toBeLessThanOrEqual(result.shares[1]!);\n    expect(validateCostSharePlan({ venueCost: 3_000, participantCount: 2, shares: result.shares }).shares).toEqual(result.shares);\n  });\n\n  it("3人のゆる傾斜を生成して検証できる", () => {\n    const result = recommendTopCosts(4_500, 3, "gentle");\n    expect(result.shares).toHaveLength(3);\n    expect(result.shares.reduce((sum, share) => sum + share, 0)).toBe(4_500);\n    expect(result.shares.every((share, index) => index === 0 || share >= result.shares[index - 1]!)).toBe(true);\n  });\n\n  it("1人開催は拒否する", () => {\n    expect(() => recommendTopCosts(1_000, 1)).toThrow(RangeError);\n  });\n});\n''')
+
+          for name in ['docs/requirements.md','docs/domain-rules.md']:
+            p=Path(name); s=p.read_text()
+            note='\n\n### 2人・3人開催\n- 開催・結果確定は2人以上から可能とする。ヘッズアップを含め、通常の開催と同じく結果・BB収支・ランキングへ記録する。\n- 2〜3人では存在する順位だけで会費を配分し、表彰台ボーナスは従来どおり6人以上でのみ利用できる。\n'
+            if '### 2人・3人開催' not in s: s += note
+            p.write_text(s)
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Commit implementation
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/two-player-games.yml
+          git add app domain server migrations docs
+          git commit -m '2人開催とヘッズアップ記録に対応'
+          git push origin HEAD:feat/two-player-games
