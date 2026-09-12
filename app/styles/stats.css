@@ -796,7 +796,8 @@
 }
 
 @media (max-width: 380px) {
-  .stats-sort a {
+  .stats-sort a,
+.stats-sort button {
     min-width: 62px;
     padding-inline: 8px;
   }
@@ -1153,7 +1154,8 @@
   background: rgba(9, 23, 17, 0.76);
 }
 
-.stats-ranking-section .stats-sort a {
+.stats-ranking-section .stats-sort a,
+.stats-sort button {
   min-width: 102px;
   min-height: 40px;
   padding: 11px 14px;
