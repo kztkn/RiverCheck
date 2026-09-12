@@ -25,7 +25,8 @@ import type { CreateGameInput, GameDetails } from "@shared-types/game";
 import type { GameParticipantSummary } from "@shared-types/player";
 import {
   awardAchievementsForPlayers,
-  scheduleAchievementRefresh,
+  markAchievementsDirtyBestEffort,
+  refreshAchievementsBestEffort,
 } from "@server/services/achievement-service.server";
 import { notifyGameFinalized } from "@server/services/push-notification-service.server";
 import { clearChangedCostShareReceipts } from "@server/repositories/game-cost-share-receipt-repository.server";
@@ -211,10 +212,18 @@ export async function finalizeGame(
   });
   if (!finalized.ok) return finalized;
 
-  scheduleAchievementRefresh(group.id, finalized.achievementPlayerIds, {
-    reason: "finalization",
-    gameId,
-  });
+  // Results are already committed. Achievement work may delay this response,
+  // but a failure must never turn a valid result into a failed finalization.
+  await markAchievementsDirtyBestEffort(
+    group.id,
+    finalized.achievementPlayerIds,
+    { reason: "finalization", gameId },
+  );
+  await refreshAchievementsBestEffort(
+    group.id,
+    finalized.achievementPlayerIds,
+    { reason: "finalization", gameId },
+  );
 
   try {
     await notifyGameFinalized({

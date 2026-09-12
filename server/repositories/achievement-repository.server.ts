@@ -44,6 +44,7 @@ interface AchievementCollectionRow {
   source_game_title: string | null;
   source_game_played_at: Date | null;
   is_equipped: boolean;
+  achievements_dirty: boolean;
 }
 
 interface PendingAchievementRow {
@@ -277,9 +278,9 @@ export async function insertAchievementUnlocks(
   transaction: DatabaseTransaction,
   groupId: string,
   playerUnlocks: PlayerAchievementUnlock[],
-): Promise<void> {
-  if (playerUnlocks.length === 0) return;
-  await transaction.query(
+): Promise<number> {
+  if (playerUnlocks.length === 0) return 0;
+  const result = await transaction.query(
     `
       WITH requested_unlocks AS (
         SELECT *
@@ -322,16 +323,73 @@ export async function insertAchievementUnlocks(
       ),
     ],
   );
+  return result.rowCount ?? 0;
+}
+
+export async function markAchievementRefreshNeeded(
+  transaction: DatabaseTransaction,
+  groupId: string,
+  groupPlayerIds: string[],
+): Promise<void> {
+  const uniquePlayerIds = [...new Set(groupPlayerIds)];
+  if (uniquePlayerIds.length === 0) return;
+  await transaction.query(
+    `
+      UPDATE group_players
+      SET achievements_dirty = TRUE
+      WHERE group_id = $1
+        AND id = ANY($2::UUID[])
+    `,
+    [groupId, uniquePlayerIds],
+  );
+}
+
+export async function lockAchievementRefreshTargets(
+  transaction: DatabaseTransaction,
+  groupId: string,
+  groupPlayerIds: string[],
+): Promise<string[]> {
+  const uniquePlayerIds = [...new Set(groupPlayerIds)];
+  if (uniquePlayerIds.length === 0) return [];
+  const result = await transaction.query<{ id: string }>(
+    `
+      SELECT id
+      FROM group_players
+      WHERE group_id = $1
+        AND id = ANY($2::UUID[])
+      ORDER BY id
+      FOR UPDATE
+    `,
+    [groupId, uniquePlayerIds],
+  );
+  return result.rows.map((row) => row.id);
+}
+
+export async function clearAchievementRefreshNeeded(
+  transaction: DatabaseTransaction,
+  groupId: string,
+  groupPlayerIds: string[],
+): Promise<void> {
+  if (groupPlayerIds.length === 0) return;
+  await transaction.query(
+    `
+      UPDATE group_players
+      SET achievements_dirty = FALSE
+      WHERE group_id = $1
+        AND id = ANY($2::UUID[])
+    `,
+    [groupId, groupPlayerIds],
+  );
 }
 
 export async function listPlayerAchievementCollection(
   groupId: string,
   groupPlayerId: string,
-): Promise<PlayerAchievementCollection> {
+): Promise<PlayerAchievementCollection & { needsRefresh: boolean }> {
   const result = await queryDatabase<AchievementCollectionRow>(
     `
       WITH target_player AS (
-        SELECT id, equipped_achievement_id
+        SELECT id, equipped_achievement_id, achievements_dirty
         FROM group_players
         WHERE id = $2 AND group_id = $1
       )
@@ -343,6 +401,7 @@ export async function listPlayerAchievementCollection(
         achievement.icon_key,
         achievement.category,
         achievement.is_hidden,
+        target_player.achievements_dirty,
         player_achievement.unlocked_at,
         source_game.id AS source_game_id,
         source_game.title AS source_game_title,
@@ -386,6 +445,7 @@ export async function listPlayerAchievementCollection(
   const equipped = items.find((item) => item.isEquipped && item.isUnlocked);
 
   return {
+    needsRefresh: result.rows[0]?.achievements_dirty ?? false,
     unlockedCount: items.filter((item) => item.isUnlocked).length,
     totalCount: items.length,
     equippedAchievement: equipped

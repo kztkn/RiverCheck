@@ -5,9 +5,12 @@ vi.mock("@server/db/client.server", () => ({
 }));
 
 import {
+  clearAchievementRefreshNeeded,
   insertAchievementUnlocks,
   listAchievementHistoryGames,
   listAchievementReactionSummaries,
+  lockAchievementRefreshTargets,
+  markAchievementRefreshNeeded,
 } from "@server/repositories/achievement-repository.server";
 import type { DatabaseTransaction } from "@server/db/client.server";
 
@@ -38,6 +41,26 @@ describe("achievement repository", () => {
     expect(query.mock.calls[0]?.[0]).toContain("jsonb_to_recordset");
     expect(query.mock.calls[0]?.[0]).toContain("ON CONFLICT (group_player_id, achievement_id) DO NOTHING");
     expect(query.mock.calls[0]?.[0]).not.toContain("DELETE FROM player_achievements");
+  });
+
+  it("marks, locks, and clears achievement refresh state", async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ id: "player-1" }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 });
+    const transaction = transactionWith(query);
+
+    await markAchievementRefreshNeeded(transaction, "group-1", ["player-1"]);
+    await expect(lockAchievementRefreshTargets(
+      transaction,
+      "group-1",
+      ["player-1"],
+    )).resolves.toEqual(["player-1"]);
+    await clearAchievementRefreshNeeded(transaction, "group-1", ["player-1"]);
+
+    expect(String(query.mock.calls[0]?.[0])).toContain("achievements_dirty = TRUE");
+    expect(String(query.mock.calls[1]?.[0])).toContain("FOR UPDATE");
+    expect(String(query.mock.calls[2]?.[0])).toContain("achievements_dirty = FALSE");
   });
 
   it("loads finalized result, table-event, and story facts in one history query", async () => {

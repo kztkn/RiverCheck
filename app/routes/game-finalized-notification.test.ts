@@ -6,8 +6,9 @@ const mocked = vi.hoisted(() => ({
   lockGame: vi.fn(),
   lockParticipants: vi.fn(),
   markFinalized: vi.fn(),
+  markAchievementsDirty: vi.fn(),
   notifyGameFinalized: vi.fn(),
-  scheduleAchievements: vi.fn(),
+  refreshAchievements: vi.fn(),
   saveCostSettings: vi.fn(),
 }));
 
@@ -33,7 +34,8 @@ vi.mock("@server/repositories/finalization-repository.server", () => ({
 }));
 vi.mock("@server/services/achievement-service.server", () => ({
   awardAchievementsForPlayers: vi.fn(),
-  scheduleAchievementRefresh: mocked.scheduleAchievements,
+  markAchievementsDirtyBestEffort: mocked.markAchievementsDirty,
+  refreshAchievementsBestEffort: mocked.refreshAchievements,
 }));
 vi.mock("@server/services/push-notification-service.server", () => ({
   notifyGameFinalized: mocked.notifyGameFinalized,
@@ -95,8 +97,13 @@ describe("game finalization notification", () => {
     );
     mocked.saveCostSettings.mockResolvedValue(true);
     mocked.markFinalized.mockResolvedValue(true);
-    mocked.scheduleAchievements.mockImplementation(() => {
+    mocked.markAchievementsDirty.mockImplementation(async () => {
+      mocked.events.push("achievements-dirty");
+      return true;
+    });
+    mocked.refreshAchievements.mockImplementation(async () => {
       mocked.events.push("achievements");
+      return true;
     });
     mocked.notifyGameFinalized.mockImplementation(async () => {
       mocked.events.push("notified");
@@ -108,7 +115,12 @@ describe("game finalization notification", () => {
       finalizeGame(group, gameId, settings, false, false),
     ).resolves.toEqual({ ok: true });
 
-    expect(mocked.events).toEqual(["committed", "achievements", "notified"]);
+    expect(mocked.events).toEqual([
+      "committed",
+      "achievements-dirty",
+      "achievements",
+      "notified",
+    ]);
     expect(mocked.notifyGameFinalized).toHaveBeenCalledWith({
       gameId,
       groupId: group.id,
@@ -117,6 +129,23 @@ describe("game finalization notification", () => {
       playedAt: settings.playedAt,
       title: settings.title,
     });
+  });
+
+  it("称号更新失敗でも確定結果を成功として返す", async () => {
+    mocked.refreshAchievements.mockImplementation(async () => {
+      mocked.events.push("achievements-failed");
+      return false;
+    });
+
+    await expect(
+      finalizeGame(group, gameId, settings, false, false),
+    ).resolves.toEqual({ ok: true });
+    expect(mocked.events).toEqual([
+      "committed",
+      "achievements-dirty",
+      "achievements-failed",
+      "notified",
+    ]);
   });
 
   it("通知失敗でも確定結果を成功として返す", async () => {

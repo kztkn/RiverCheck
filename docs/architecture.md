@@ -186,7 +186,7 @@ PIN・合言葉と32文字以上の署名鍵はCloudflare Secretで受け取る�
 
 ## finalize
 
-service が `pg` の client を取得して `BEGIN` し、gameと参加者行をロックする。全員の入力と4人以上の参加を確認し、domain関数で検算、点数、順位、負担額を計算する。差分がある場合は主催者の確認を必須にする。game_resultsへのINSERT、gameのfinalized更新、現在の確定済み履歴に基づく実績同期を同一transactionで実行し、途中失敗時はrollbackする。
+service が `pg` の client を取得して `BEGIN` し、gameと参加者行をロックする。全員の入力と2人以上の参加を確認し、domain関数で検算、点数、順位、負担額を計算する。差分がある場合は主催者の確認を必須にする。game_resultsへのINSERTとgameのfinalized更新を同一transactionでcommitし、ここを結果確定の成功条件とする。commit後に対象playerの`achievements_dirty`をbest effortで立て、実績再評価を同期で1回待つ。実績再評価が失敗しても確定結果は成功のままとし、dirtyが残っていれば次回の称号コレクション読取り時だけ再評価して自己修復する。正常時の個人ページでは実績再計算を行わない。
 
 ## 精算プレビューのローカル下書き
 
