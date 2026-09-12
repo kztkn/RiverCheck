@@ -28,4 +28,17 @@ describe("achievement refresh policy", () => {
     );
     expect(migration).toContain("game.status = 'finalized'");
   });
+
+  it("logs actionable database metadata when an achievement refresh fails", () => {
+    const service = readFileSync(
+      "server/services/achievement-service.server.ts",
+      "utf8",
+    );
+
+    expect(service).toContain("errorMessage:");
+    expect(service).toContain("errorCode:");
+    expect(service).toContain("constraint:");
+    expect(service).toContain("...buildAchievementErrorLog(error)");
+    expect(service).toContain('console.error("Achievement refresh failed"');
+  });
 });
