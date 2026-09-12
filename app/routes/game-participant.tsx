@@ -1,4 +1,3 @@
-import { GameRefreshButton } from "~/components/game-refresh-button";
 import {
   Form,
   Link,
@@ -1024,14 +1023,16 @@ export default function GameParticipant({
                     loaderData.participant.settlementRebuyCount ?? 0
                   }
                 />
-                <button
-                  className="button button-secondary"
-                  onClick={() => setIsEditing(true)}
-                  type="button"
-                >
-                  修正する
-                </button>
-                <GameRefreshButton>確定結果を確認する</GameRefreshButton>
+                <div className="submitted-input-actions">
+                  <button
+                    className="button button-secondary"
+                    onClick={() => setIsEditing(true)}
+                    type="button"
+                  >
+                    修正する
+                  </button>
+                  <FinalResultRefreshControl />
+                </div>
               </div>
             </section>
           ) : (
@@ -1510,6 +1511,49 @@ export function ParticipantRosterSheet({
           </div>
         </div>
       </dialog>
+    </>
+  );
+}
+
+function FinalResultRefreshControl() {
+  const revalidator = useRevalidator();
+  const [isChecking, setIsChecking] = useState(false);
+  const [showPendingMessage, setShowPendingMessage] = useState(false);
+  const sawLoadingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isChecking) return;
+    if (revalidator.state === "loading") {
+      sawLoadingRef.current = true;
+      return;
+    }
+    if (revalidator.state === "idle" && sawLoadingRef.current) {
+      sawLoadingRef.current = false;
+      setIsChecking(false);
+      setShowPendingMessage(true);
+    }
+  }, [isChecking, revalidator.state]);
+
+  return (
+    <>
+      <button
+        className="button button-secondary"
+        disabled={isChecking || revalidator.state !== "idle"}
+        onClick={() => {
+          setShowPendingMessage(false);
+          sawLoadingRef.current = false;
+          setIsChecking(true);
+          void revalidator.revalidate();
+        }}
+        type="button"
+      >
+        {isChecking ? "確認中…" : "結果画面へ"}
+      </button>
+      {showPendingMessage ? (
+        <p className="result-refresh-message" role="status">
+          まだ結果は確定していません。主催者が結果を確定したあと、もう一度お試しください。
+        </p>
+      ) : null}
     </>
   );
 }
