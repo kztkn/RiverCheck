@@ -13,6 +13,7 @@ import {
 } from "react-router";
 import {
   findGameForGroup,
+  publishSettlementPlan,
   updateLocalRules,
 } from "@server/repositories/game-repository.server";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
@@ -125,6 +126,45 @@ export async function action({ request, params }: Route.ActionArgs) {
   const authorized = await requireGame(params.groupCode, params.gameId);
   const formData = await request.formData();
   const intent = readString(formData, "intent");
+
+  if (intent === "publish-settlement-plan") {
+    const values = readAdminCostSettingsForm(formData, authorized.game);
+    const validation = validateGameSettingsForm(values);
+    if (!validation.ok) {
+      const messages = [
+        ...new Set(
+          Object.values(validation.errors).filter(
+            (message): message is string => Boolean(message),
+          ),
+        ),
+      ];
+      return {
+        ok: false as const,
+        intent: "publish-settlement-plan" as const,
+        error: `精算設定を確認してください。${messages.join(" ")}`,
+        errors: validation.errors,
+        values,
+      };
+    }
+    const published = await publishSettlementPlan(
+      authorized.group.id,
+      params.gameId,
+      validation.input,
+    );
+    if (!published) {
+      return {
+        ok: false as const,
+        intent: "publish-settlement-plan" as const,
+        error: "精算予定を公開できませんでした。画面を更新してください。",
+        errors: {},
+        values,
+      };
+    }
+    return redirect(
+      `/g/${params.groupCode}/games/${params.gameId}/admin?notice=settlement-plan-published`,
+      { status: 303 },
+    );
+  }
 
   if (intent === "finalize") {
     const values = readAdminCostSettingsForm(formData, authorized.game);
@@ -1304,7 +1344,6 @@ export default function GameAdmin({
           method="post"
           noValidate
         >
-          <input name="intent" type="hidden" value="finalize" />
           <GameSettingsFields
             actualParticipantCount={loaderData.participants.length}
             errors={actionErrors}
@@ -1318,7 +1357,13 @@ export default function GameAdmin({
             error={finalizeError}
             finalization={loaderData.finalization}
             isSubmitting={isSubmitting}
+            publishedAt={loaderData.game.settlementPlanPublishedAt}
             settlementParticipantCount={settlementParticipantCount}
+            submittingIntent={
+              typeof navigation.formData?.get("intent") === "string"
+                ? String(navigation.formData?.get("intent"))
+                : null
+            }
           />
         </Form>
         <dialog
@@ -1767,6 +1812,7 @@ function toDateInputValue(playedAt: string): string {
 function noticeText(notice: string | null): string | null {
   if (notice === "finalized") return "結果を確定しました。";
   if (notice === "local-rules-saved") return "ローカルルールを保存しました。";
+  if (notice === "settlement-plan-published") return "今日の精算予定を参加者に公開しました。";
   if (notice === "game-settings-updated") return "開催設定を保存しました。";
   if (notice === "finalization-reopened") return "結果確定を取り消しました。";
   if (notice === "corrected") return "確定結果を訂正しました。";
@@ -1777,12 +1823,16 @@ function FinalizationPanel({
   error,
   finalization,
   isSubmitting,
+  publishedAt,
   settlementParticipantCount,
+  submittingIntent,
 }: {
   error: string | null;
   finalization: Route.ComponentProps["loaderData"]["finalization"];
   isSubmitting: boolean;
+  publishedAt: string | null;
   settlementParticipantCount: string;
+  submittingIntent: string | null;
 }) {
   const [differenceConfirmed, setDifferenceConfirmed] = useState(false);
   const [rebuyMismatchConfirmed, setRebuyMismatchConfirmed] = useState(false);
@@ -1930,6 +1980,22 @@ function FinalizationPanel({
           </p>
         ) : null}
         <button
+          className="button button-secondary"
+          disabled={isSubmitting}
+          name="intent"
+          type="submit"
+          value="publish-settlement-plan"
+        >
+          {submittingIntent === "publish-settlement-plan"
+            ? "公開中…"
+            : publishedAt
+              ? "公開内容を更新"
+              : "参加者に公開"}
+        </button>
+        {publishedAt ? (
+          <p className="field-hint">現在の精算予定は参加者に公開中です。</p>
+        ) : null}
+        <button
           className="button button-primary"
           disabled={
             !finalization.canFinalize ||
@@ -1938,9 +2004,13 @@ function FinalizationPanel({
             (hasDifference && !differenceConfirmed) ||
             (hasRebuyMismatch && !rebuyMismatchConfirmed)
           }
+          name="intent"
           type="submit"
+          value="finalize"
         >
-          {isSubmitting ? "処理中…" : "この精算設定で結果を確定"}
+          {submittingIntent === "finalize"
+            ? "処理中…"
+            : "この精算設定で結果を確定"}
         </button>
         <p className="finalize-hint">
           確定時に上の精算設定も保存します。確定後は変更できません。

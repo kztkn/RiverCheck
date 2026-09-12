@@ -839,10 +839,26 @@ export default function GameParticipant({
       ) : null}
 
       {shouldShowLocalRules(loaderData.game.status) && !loaderData.participant ? (
-        <LocalRulesSheet
-          bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
-          sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
-        />
+        <>
+          <LocalRulesSheet
+            bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
+            sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
+          />
+          {loaderData.game.settlementPlanPublishedAt && loaderData.game.costShares ? (
+            <SettlementPlanSheet
+              costShares={loaderData.game.costShares}
+              participantCount={loaderData.game.previewParticipantCount}
+              venueCost={loaderData.game.venueCost}
+            />
+          ) : null}
+          {loaderData.game.settlementPlanPublishedAt && loaderData.game.costShares ? (
+            <SettlementPlanSheet
+              costShares={loaderData.game.costShares}
+              participantCount={loaderData.game.previewParticipantCount}
+              venueCost={loaderData.game.venueCost}
+            />
+          ) : null}
+        </>
       ) : null}
 
       {loaderData.game.status === "finalized" && loaderData.pastGameNavigation ? (
@@ -1611,6 +1627,94 @@ export function LocalRulesSheet({
                 ) : null}
               </section>
             ))}
+          </div>
+        </div>
+      </dialog>
+    </div>
+  );
+}
+
+export function SettlementPlanSheet({
+  costShares,
+  participantCount,
+  venueCost,
+}: {
+  costShares: number[];
+  participantCount: number;
+  venueCost: number;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) dialog.showModal();
+    else if (!isOpen && dialog.open) dialog.close();
+  }, [isOpen]);
+
+  function closeSheet() {
+    setIsOpen(false);
+  }
+
+  return (
+    <div className="local-rules-entry settlement-plan-entry">
+      <button
+        aria-controls="settlement-plan-dialog"
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        className="rebuy-rules-trigger local-rules-trigger"
+        onClick={() => setIsOpen(true)}
+        ref={triggerRef}
+        type="button"
+      >
+        <span>今日の精算予定</span>
+        <span aria-hidden="true">›</span>
+      </button>
+      <dialog
+        aria-labelledby="settlement-plan-title"
+        className="app-dialog participant-roster-dialog rebuy-rules-dialog"
+        id="settlement-plan-dialog"
+        onCancel={closeSheet}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) closeSheet();
+        }}
+        onClose={() => {
+          setIsOpen(false);
+          triggerRef.current?.focus();
+        }}
+        ref={dialogRef}
+      >
+        <div className="participant-roster-sheet rebuy-rules-sheet">
+          <header className="participant-roster-header">
+            <div>
+              <p className="eyebrow">SETTLEMENT PLAN</p>
+              <h2 id="settlement-plan-title">今日の精算予定</h2>
+            </div>
+            <button
+              aria-label="精算予定を閉じる"
+              className="participant-roster-close"
+              onClick={closeSheet}
+              type="button"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </header>
+          <div className="participant-roster-scroll rebuy-rules-content">
+            <p className="rebuy-rules-note">
+              会場費 {venueCost.toLocaleString("ja-JP")}円 ・ {participantCount}人想定
+            </p>
+            <ol className="rebuy-rules-list settlement-plan-list">
+              {costShares.map((share, index) => (
+                <li key={index}>
+                  <strong>{index + 1}位</strong>
+                  <span>{share.toLocaleString("ja-JP")}円</span>
+                </li>
+              ))}
+            </ol>
           </div>
         </div>
       </dialog>

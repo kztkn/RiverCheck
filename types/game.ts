@@ -22,6 +22,7 @@ export interface GameDetails extends GameSummary {
   secondPlaceCost: number;
   thirdPlaceCost: number;
   costShares: number[] | null;
+  settlementPlanPublishedAt: string | null;
   sevenDeuceRuleEnabled: boolean;
   bombPotRuleEnabled: boolean;
 }
