@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { IconEdit, IconPlus } from "@tabler/icons-react";
-import { Form, useNavigation, useSubmit } from "react-router";
+import { Form, useActionData, useNavigation, useSubmit } from "react-router";
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import { formatNetBb } from "@domain/score/bb-score";
 import type { GameResultSummary } from "@shared-types/result";
@@ -201,9 +201,11 @@ function StoryEditorDialog({
   photoUrl: string | null;
   post: OwnGameStoryPost | null;
 }) {
+  const actionData = useActionData<{ error?: string }>();
   const navigation = useNavigation();
   const submit = useSubmit();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const saveSubmissionRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [removePhoto, setRemovePhoto] = useState(false);
@@ -214,6 +216,17 @@ function StoryEditorDialog({
   const isSaving =
     navigation.state === "submitting" &&
     navigation.formData?.get("intent") === "save-story-post";
+
+  useEffect(() => {
+    if (isSaving) {
+      saveSubmissionRef.current = true;
+      return;
+    }
+    if (!saveSubmissionRef.current || navigation.state !== "idle") return;
+
+    saveSubmissionRef.current = false;
+    if (!actionData?.error) closeDialog();
+  }, [actionData, isSaving, navigation.state]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
