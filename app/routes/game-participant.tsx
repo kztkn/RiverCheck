@@ -851,13 +851,6 @@ export default function GameParticipant({
               venueCost={loaderData.game.venueCost}
             />
           ) : null}
-          {loaderData.game.settlementPlanPublishedAt && loaderData.game.costShares ? (
-            <SettlementPlanSheet
-              costShares={loaderData.game.costShares}
-              participantCount={loaderData.game.previewParticipantCount}
-              venueCost={loaderData.game.venueCost}
-            />
-          ) : null}
         </>
       ) : null}
 
@@ -978,6 +971,13 @@ export default function GameParticipant({
             bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
             sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
           />
+          {loaderData.game.settlementPlanPublishedAt && loaderData.game.costShares ? (
+            <SettlementPlanSheet
+              costShares={loaderData.game.costShares}
+              participantCount={loaderData.game.previewParticipantCount}
+              venueCost={loaderData.game.venueCost}
+            />
+          ) : null}
 
           {loaderData.participant.status === "submitted" && !isEditing ? (
             <section

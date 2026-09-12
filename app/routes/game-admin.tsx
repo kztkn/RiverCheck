@@ -146,11 +146,23 @@ export async function action({ request, params }: Route.ActionArgs) {
         values,
       };
     }
-    const published = await publishSettlementPlan(
-      authorized.group.id,
-      params.gameId,
-      validation.input,
-    );
+    let published = false;
+    try {
+      published = await publishSettlementPlan(
+        authorized.group.id,
+        params.gameId,
+        validation.input,
+      );
+    } catch (error) {
+      console.error("Failed to publish settlement plan", error);
+      return {
+        ok: false as const,
+        intent: "publish-settlement-plan" as const,
+        error: "精算予定を公開できませんでした。画面を更新してもう一度お試しください。",
+        errors: {},
+        values,
+      };
+    }
     if (!published) {
       return {
         ok: false as const,
@@ -1887,9 +1899,9 @@ function FinalizationPanel({
         </div>
       ) : null}
 
-      {finalization.participantCount < 4 ? (
+      {finalization.participantCount < 2 ? (
         <p className="warning-notice">
-          結果確定には4人以上必要です。現在は
+          結果確定には2人以上必要です。現在は
           {finalization.participantCount}人です。
         </p>
       ) : null}

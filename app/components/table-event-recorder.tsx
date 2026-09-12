@@ -209,15 +209,17 @@ export function TableEventRecorder() {
 
   return (
     <>
-      <button
-        className="table-event-trigger"
-        onClick={openRecorder}
-        ref={triggerRef}
-        type="button"
-      >
-        <span aria-hidden="true">＋</span>
-        テーブルイベント
-      </button>
+      <div className="table-event-fixed-layer" aria-hidden={isOpen ? "true" : undefined}>
+        <button
+          className="table-event-trigger"
+          onClick={openRecorder}
+          ref={triggerRef}
+          type="button"
+        >
+          <span aria-hidden="true">＋</span>
+          テーブルイベント
+        </button>
+      </div>
       <dialog
         aria-labelledby="table-event-title"
         className="app-dialog table-event-dialog"

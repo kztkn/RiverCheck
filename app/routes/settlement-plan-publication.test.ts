@@ -17,3 +17,9 @@ describe("settlement plan publication UX", () => {
     expect(source).toContain("settlementPlanPublishedAt");
   });
 });
+
+
+it("seated participants also see the published plan", () => {
+  const source = readFileSync("app/routes/game-participant.tsx", "utf8");
+  expect((source.match(/<SettlementPlanSheet/g) ?? []).length).toBeGreaterThanOrEqual(2);
+});

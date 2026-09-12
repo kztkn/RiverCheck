@@ -1,8 +1,17 @@
-.table-event-trigger {
+.table-event-fixed-layer {
   position: fixed;
   z-index: 34;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  pointer-events: none;
+}
+
+.table-event-trigger {
+  position: absolute;
   right: max(16px, env(safe-area-inset-right));
   bottom: max(18px, calc(env(safe-area-inset-bottom) + 12px));
+  pointer-events: auto;
   display: inline-flex;
   align-items: center;
   gap: 7px;
