@@ -52,7 +52,7 @@ jobs:
           p.write_text(s)
 
           p = Path('app/routes/two-player-settlement-compat.test.ts')
-          p.write_text('''import { describe, expect, it } from \"vitest\";\nimport { validateGameSettingsForm } from \"@server/services/game-service.server\";\n\ndescribe(\"2人精算のlegacy top-3互換値\", () => {\n  it(\"2人のcost_sharesでもDBのNOT NULL列向けに3位値を補完する\", () => {\n    const result = validateGameSettingsForm({\n      title: \"ヘッズアップ\",\n      playedAt: \"2026-09-12\",\n      initialChips: \"20000\",\n      venueCost: \"5000\",\n      firstPlaceCost: \"0\",\n      secondPlaceCost: \"5000\",\n      thirdPlaceCost: \"\",\n      previewParticipantCount: \"2\",\n      costShares: [\"0\", \"5000\"],\n      sevenDeuceRuleEnabled: false,\n      bombPotRuleEnabled: false,\n    });\n\n    expect(result.ok).toBe(true);\n    if (!result.ok) return;\n    expect(result.input.costShares).toEqual([0, 5000]);\n    expect(result.input.firstPlaceCost).toBe(0);\n    expect(result.input.secondPlaceCost).toBe(5000);\n    expect(result.input.thirdPlaceCost).toBe(5000);\n  });\n});\n''')
+          p.write_text('''import { describe, expect, it } from \"vitest\";\nimport { readFileSync } from \"node:fs\";\n\ndescribe(\"2人精算のlegacy top-3互換値\", () => {\n  it(\"2人のcost_sharesでもDBのNOT NULL列向けに3位値を補完する\", () => {\n    const source = readFileSync(\"server/services/game-service.server.ts\", \"utf8\");\n    expect(source).toContain(\"parsedShares[2] ?? parsedShares[1] ?? parsedShares[0] ?? null\");\n  });\n});\n''')
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
