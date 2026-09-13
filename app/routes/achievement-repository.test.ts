@@ -124,5 +124,6 @@ describe("achievement repository", () => {
       fifthReactedStoryGameId: "game-5",
     }]);
     expect(String(query.mock.calls[0]?.[0])).toContain("reaction_number = 5");
+    expect(String(query.mock.calls[0]?.[0])).toContain("MAX(game_id::TEXT)");
   });
 });

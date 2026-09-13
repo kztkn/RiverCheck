@@ -259,7 +259,7 @@ export async function listAchievementReactionSummaries(
       SELECT
         group_player_id,
         COUNT(*)::INTEGER AS reacted_story_post_count,
-        MAX(game_id) FILTER (
+        MAX(game_id::TEXT) FILTER (
           WHERE reaction_number = 5
         ) AS fifth_reacted_story_game_id
       FROM ranked_posts
