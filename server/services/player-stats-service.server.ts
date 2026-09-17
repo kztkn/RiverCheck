@@ -2,11 +2,15 @@ import {
   addCumulativeNetBb,
   calculatePlayerStats,
 } from "@domain/player-stats/calculate-player-stats";
+import {
+  calculatePlayerStatsRanking,
+  PLAYER_STATS_SORTS,
+} from "@domain/player-stats/rank-players";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import {
   findPlayerStatsIdentity,
   listFinalizedPlayerGameStats,
-  listPlayerStatsRanking,
+  listPlayerStatsRankingSnapshots,
 } from "@server/repositories/player-stats-repository.server";
 import type { GroupSummary } from "@shared-types/group";
 import type {
@@ -30,16 +34,7 @@ export interface PlayerStatsDetailOverview {
 }
 
 export function parsePlayerStatsSort(value: string | null): PlayerStatsSort {
-  const sorts: PlayerStatsSort[] = [
-    "total",
-    "average",
-    "max-win",
-    "max-loss",
-    "recent",
-    "top-three",
-    "rank-rate",
-  ];
-  return sorts.includes(value as PlayerStatsSort)
+  return PLAYER_STATS_SORTS.includes(value as PlayerStatsSort)
     ? value as PlayerStatsSort
     : "total";
 }
@@ -53,7 +48,10 @@ export async function getPlayerStatsRanking(
 
   return {
     group,
-    ranking: await listPlayerStatsRanking(group.id, sort),
+    ranking: calculatePlayerStatsRanking(
+      await listPlayerStatsRankingSnapshots(group.id),
+      sort,
+    ),
     sort,
   };
 }

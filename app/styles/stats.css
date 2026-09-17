@@ -1197,6 +1197,10 @@
 }
 
 .stats-ranking-section .stats-rank {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   width: auto;
   height: auto;
   justify-content: start;
@@ -1204,6 +1208,15 @@
   border-radius: 0;
   color: #83968c;
   font-size: 0.8rem;
+}
+
+.stats-ranking-section .stats-rank-change {
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .stats-ranking-section .is-top-three .stats-rank {

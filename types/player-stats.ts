@@ -1,30 +1,21 @@
 import type { EquippedAchievement } from "./achievement";
+import type { PlayerRankingMetrics, PlayerStatsSort } from "../domain/player-stats/ranking-types";
 
-export type PlayerStatsSort =
-  | "total"
-  | "average"
-  | "max-win"
-  | "max-loss"
-  | "recent"
-  | "top-three"
-  | "rank-rate";
+export type { PlayerStatsSort } from "../domain/player-stats/ranking-types";
 
-export interface PlayerStatsRankingRow {
-  rank: number;
-  groupPlayerId: string;
-  displayName: string;
-  gamesPlayed: number;
-  wins: number;
-  topThreeFinishes: number;
-  totalNetBb: number;
-  averageNetBb: number;
-  maxWinBb: number;
-  maxLossBb: number;
-  recentAverageNetBb: number;
-  recentGameCount: number;
-  averageRankRate: number | null;
+export interface PlayerStatsAggregate extends PlayerRankingMetrics {
   avatarUpdatedAt: string | null;
   equippedAchievement: EquippedAchievement | null;
+}
+
+export interface PlayerStatsRankingRow extends PlayerStatsAggregate {
+  rank: number;
+  previousRanks: Record<PlayerStatsSort, number | null>;
+}
+
+export interface PlayerStatsRankingSnapshots {
+  current: PlayerStatsAggregate[];
+  previous: PlayerStatsAggregate[];
 }
 
 export interface PlayerGameStat {

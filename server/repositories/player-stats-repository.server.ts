@@ -1,12 +1,12 @@
 import { queryDatabase } from "@server/db/client.server";
 import type {
-  PlayerStatsRankingRow,
-  PlayerStatsSort,
+  PlayerStatsAggregate,
+  PlayerStatsRankingSnapshots,
 } from "@shared-types/player-stats";
 import type { AchievementIconKey } from "@shared-types/achievement";
 
 interface RankingRow {
-  leaderboard_rank: string;
+  comparison_scope: "current" | "previous";
   group_player_id: string;
   display_name: string;
   games_played: number;
@@ -68,34 +68,31 @@ export interface FinalizedPlayerGameStat {
   netBb: number;
 }
 
-export async function listPlayerStatsRanking(
+export async function listPlayerStatsRankingSnapshots(
   groupId: string,
-  sort: PlayerStatsSort,
-): Promise<PlayerStatsRankingRow[]> {
-  const orderExpressions = {
-    total: "total_net_bb DESC, average_net_bb DESC",
-    average: "average_net_bb DESC, total_net_bb DESC",
-    "max-win": "max_win_bb DESC, total_net_bb DESC",
-    "max-loss": "max_loss_bb ASC, total_net_bb DESC",
-    recent: "recent_average_net_bb DESC, total_net_bb DESC",
-    "top-three": "top_three_finishes DESC, wins DESC, total_net_bb DESC",
-    "rank-rate": "average_rank_rate ASC NULLS LAST, total_net_bb DESC",
-  } satisfies Record<PlayerStatsSort, string>;
-  const orderExpression = orderExpressions[sort];
-
+): Promise<PlayerStatsRankingSnapshots> {
   const result = await queryDatabase<RankingRow>(
     `
-      WITH finalized_results AS (
+      WITH finalized_games AS (
+        SELECT id, played_at, finalized_at, initial_chips,
+          ROW_NUMBER() OVER (
+            ORDER BY played_at DESC, finalized_at DESC, id DESC
+          ) AS game_number
+        FROM games
+        WHERE group_id = $1 AND status = 'finalized'
+      ),
+      finalized_results AS (
         SELECT
+          comparison.scope AS comparison_scope,
           game_result.game_id,
           game_result.group_player_id,
           game_result.rank,
           game.initial_chips,
           COUNT(*) OVER (
-            PARTITION BY game_result.game_id
+            PARTITION BY comparison.scope, game_result.game_id
           )::INTEGER AS participant_count,
           ROW_NUMBER() OVER (
-            PARTITION BY game_result.group_player_id
+            PARTITION BY comparison.scope, game_result.group_player_id
             ORDER BY game.played_at DESC, game.finalized_at DESC, game.id DESC
           ) AS recent_number,
           CASE
@@ -105,12 +102,14 @@ export async function listPlayerStatsRanking(
             ELSE NULL
           END AS net_bb
         FROM game_results AS game_result
-        INNER JOIN games AS game ON game.id = game_result.game_id
-        WHERE game.group_id = $1
-          AND game.status = 'finalized'
+        INNER JOIN finalized_games AS game ON game.id = game_result.game_id
+        CROSS JOIN (VALUES ('current'), ('previous')) AS comparison(scope)
+        -- Filter before window numbering so the previous fourth game moves in.
+        WHERE comparison.scope = 'current' OR game.game_number > 1
       ),
       player_aggregates AS (
         SELECT
+          finalized_result.comparison_scope,
           group_player.id AS group_player_id,
           player.display_name,
           player.avatar_uploaded_at,
@@ -163,19 +162,14 @@ export async function listPlayerStatsRanking(
         INNER JOIN finalized_results AS finalized_result
           ON finalized_result.group_player_id = group_player.id
         WHERE group_player.group_id = $1
-        GROUP BY group_player.id, player.display_name, player.avatar_uploaded_at,
+        GROUP BY finalized_result.comparison_scope,
+                 group_player.id, player.display_name, player.avatar_uploaded_at,
                  equipped_achievement.id, equipped_achievement.code,
                  equipped_achievement.name, equipped_achievement.description,
                  equipped_achievement.icon_key, equipped_achievement.category
-      ),
-      ranked_players AS (
-        SELECT
-          RANK() OVER (ORDER BY ${orderExpression}) AS leaderboard_rank,
-          *
-        FROM player_aggregates
       )
       SELECT
-        leaderboard_rank,
+        comparison_scope,
         group_player_id,
         display_name,
         games_played,
@@ -196,8 +190,7 @@ export async function listPlayerStatsRanking(
         achievement_description,
         achievement_icon_key,
         achievement_category
-      FROM ranked_players
-      ORDER BY leaderboard_rank ASC, display_name ASC
+      FROM player_aggregates
     `,
     [groupId],
   );
@@ -209,8 +202,15 @@ export async function listPlayerStatsRanking(
     ),
   );
 
-  return result.rows.map((row) => ({
-    rank: Number(row.leaderboard_rank),
+  const snapshots: PlayerStatsRankingSnapshots = { current: [], previous: [] };
+  for (const row of result.rows) {
+    snapshots[row.comparison_scope].push(mapRankingAggregate(row));
+  }
+  return snapshots;
+}
+
+function mapRankingAggregate(row: RankingRow): PlayerStatsAggregate {
+  return {
     groupPlayerId: row.group_player_id,
     displayName: row.display_name,
     gamesPlayed: row.games_played,
@@ -241,7 +241,7 @@ export async function listPlayerStatsRanking(
             category: row.achievement_category,
           }
         : null,
-  }));
+  };
 }
 
 export async function findPlayerStatsIdentity(

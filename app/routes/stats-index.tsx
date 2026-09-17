@@ -5,7 +5,8 @@ import { PlayerAvatar } from "~/components/player-avatar";
 import { AchievementBadge } from "~/components/achievement-badge";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { formatSignedBbValue } from "@domain/score/bb-score";
-import { formatOrdinal } from "@domain/ranking/format-ordinal";
+import { rankPlayers } from "@domain/player-stats/rank-players";
+import { RankingPosition } from "~/components/ranking-position";
 import {
   getPlayerStatsRanking,
   parsePlayerStatsSort,
@@ -19,11 +20,11 @@ import type {
 const rankingOptions: Array<{ value: PlayerStatsSort; label: string }> = [
   { value: "total", label: "累計損益" },
   { value: "average", label: "平均損益" },
-  { value: "max-win", label: "最大勝ち" },
-  { value: "max-loss", label: "最大負け" },
   { value: "recent", label: "直近3戦" },
   { value: "top-three", label: "TOP3回数" },
   { value: "rank-rate", label: "順位率" },
+  { value: "max-win", label: "最大勝ち" },
+  { value: "max-loss", label: "最大負け" },
 ];
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -96,7 +97,10 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
                   key={player.groupPlayerId}
                   to={player.groupPlayerId}
                 >
-                  <span className="stats-rank">{formatOrdinal(player.rank)}</span>
+                  <RankingPosition
+                    rank={player.rank}
+                    previousRank={player.previousRanks[activeSort]}
+                  />
                   <span className="stats-player-identity">
                     <PlayerAvatar
                       avatarUrl={buildPlayerAvatarUrl({
@@ -137,78 +141,6 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
       </section>
     </main>
   );
-}
-
-function rankPlayers(
-  ranking: PlayerStatsRankingRow[],
-  sort: PlayerStatsSort,
-): PlayerStatsRankingRow[] {
-  const sorted = [...ranking].sort((left, right) => {
-    const metricOrder = compareRankingMetrics(left, right, sort);
-    return metricOrder !== 0
-      ? metricOrder
-      : left.displayName.localeCompare(right.displayName, "ja");
-  });
-
-  let previousRank = 0;
-  return sorted.map((player, index) => {
-    const previous = sorted[index - 1];
-    const rank =
-      previous && compareRankingMetrics(previous, player, sort) === 0
-        ? previousRank
-        : index + 1;
-    previousRank = rank;
-    return { ...player, rank };
-  });
-}
-
-function compareRankingMetrics(
-  left: PlayerStatsRankingRow,
-  right: PlayerStatsRankingRow,
-  sort: PlayerStatsSort,
-): number {
-  if (sort === "average") {
-    return compareDesc(left.averageNetBb, right.averageNetBb) ||
-      compareDesc(left.totalNetBb, right.totalNetBb);
-  }
-  if (sort === "max-win") {
-    return compareDesc(left.maxWinBb, right.maxWinBb) ||
-      compareDesc(left.totalNetBb, right.totalNetBb);
-  }
-  if (sort === "max-loss") {
-    return compareAsc(left.maxLossBb, right.maxLossBb) ||
-      compareDesc(left.totalNetBb, right.totalNetBb);
-  }
-  if (sort === "recent") {
-    return compareDesc(left.recentAverageNetBb, right.recentAverageNetBb) ||
-      compareDesc(left.totalNetBb, right.totalNetBb);
-  }
-  if (sort === "top-three") {
-    return compareDesc(left.topThreeFinishes, right.topThreeFinishes) ||
-      compareDesc(left.wins, right.wins) ||
-      compareDesc(left.totalNetBb, right.totalNetBb);
-  }
-  if (sort === "rank-rate") {
-    return compareNullableAsc(left.averageRankRate, right.averageRankRate) ||
-      compareDesc(left.totalNetBb, right.totalNetBb);
-  }
-  return compareDesc(left.totalNetBb, right.totalNetBb) ||
-    compareDesc(left.averageNetBb, right.averageNetBb);
-}
-
-function compareDesc(left: number, right: number): number {
-  return right - left;
-}
-
-function compareAsc(left: number, right: number): number {
-  return left - right;
-}
-
-function compareNullableAsc(left: number | null, right: number | null): number {
-  if (left === null && right === null) return 0;
-  if (left === null) return 1;
-  if (right === null) return -1;
-  return left - right;
 }
 
 function getRankingMetric(
