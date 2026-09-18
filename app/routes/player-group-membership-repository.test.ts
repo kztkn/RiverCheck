@@ -10,6 +10,7 @@ vi.mock("@server/db/client.server", () => ({
 
 import {
   attachExistingPlayerToGroup,
+  deactivateGroupPlayer,
   listReusablePlayersForGroup,
 } from "@server/repositories/player-repository.server";
 
@@ -58,6 +59,22 @@ describe("player group membership repository", () => {
     expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
       "group-2",
       "player-1",
+    ]);
+  });
+
+  it("所属解除は履歴を削除せず無効化する", async () => {
+    mocked.queryDatabase.mockResolvedValue({ rowCount: 1, rows: [] });
+
+    await expect(
+      deactivateGroupPlayer("group-2", "group-player-1"),
+    ).resolves.toBe(true);
+
+    const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
+    expect(sql).toContain("UPDATE group_players");
+    expect(sql).toContain("SET is_active = FALSE");
+    expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
+      "group-2",
+      "group-player-1",
     ]);
   });
 });

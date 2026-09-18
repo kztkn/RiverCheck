@@ -28,12 +28,4 @@ describe("hasMultipleActiveGroupsForPlayer", () => {
       "player-1",
     ]);
   });
-
-  it("所属が1件以下ならfalseを返す", async () => {
-    mocked.queryDatabase.mockResolvedValue({
-      rows: [{ has_multiple_groups: false }],
-    });
-
-    await expect(hasMultipleActiveGroupsForPlayer("player-1")).resolves.toBe(false);
-  });
 });

@@ -58,7 +58,6 @@ describe("PlayerStatsOverview", () => {
     expect(markup).toContain("+142BB");
     expect(markup).toContain("最大負け");
     expect(markup).toContain("-86BB");
-    expect(markup).not.toContain("stats-kpi-card");
   });
 
   it("shows em dashes for rates before the first game", () => {
@@ -83,7 +82,7 @@ describe("PlayerStatsOverview", () => {
 });
 
 describe("PlayerGameHistory", () => {
-  it("keeps every existing result field and game link in a light list row", () => {
+  it("keeps every result field and game link", () => {
     const markup = renderToStaticMarkup(
       createElement(
         MemoryRouter,
@@ -116,8 +115,6 @@ describe("PlayerGameHistory", () => {
     expect(markup).toContain(
       "/g/river-check/games/22222222-2222-4222-8222-222222222222",
     );
-    expect(markup).toContain("stats-game-row");
-    expect(markup).not.toContain("stats-game-card");
   });
 });
 
@@ -195,7 +192,6 @@ describe("PlayerAchievementCollectionView", () => {
     };
     const markup = renderAchievementCollection(collection);
 
-    expect(markup).toContain("achievement-unlocked-grid");
     expect(markup.indexOf("初戴冠")).toBeLessThan(markup.indexOf("常連"));
     expect(markup).toContain("装備中");
     expect(markup).toContain("第1回ポーカー会");
@@ -206,8 +202,6 @@ describe("PlayerAchievementCollectionView", () => {
     expect(markup).toContain("BB長者");
     expect(markup).toContain("条件は秘密");
     expect(markup).not.toContain("秘密の称号");
-    expect(markup).not.toContain("横にスワイプ");
-    expect(markup).not.toContain("achievement-collection-rail");
   });
 
   it("keeps zero and twenty-title collections structurally compact", () => {

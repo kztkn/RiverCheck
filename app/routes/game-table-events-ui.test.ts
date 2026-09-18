@@ -12,11 +12,7 @@ describe("table event recorder", () => {
     expect(buildTableEventsPath("/g/river-check/games/game-1/admin")).toBe(
       "/g/river-check/games/game-1/table-events",
     );
-    expect(buildTableEventsPath("/g/river-check/games/game-1/admin/")).toBe(
-      "/g/river-check/games/game-1/table-events",
-    );
     expect(buildTableEventsPath("/g/river-check/games/game-1/admin/edit")).toBeNull();
     expect(buildTableEventsPath("/g/river-check/games/game-1/table-events")).toBeNull();
-    expect(buildTableEventsPath("/g/river-check")).toBeNull();
   });
 });

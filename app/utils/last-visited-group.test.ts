@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_GROUP_CODE,
   LAST_VISITED_GROUP_STORAGE_KEY,
   isValidGroupCode,
   readLastVisitedGroup,
@@ -21,13 +20,12 @@ describe("last visited group", () => {
     expect(readLastVisitedGroup(storage)).toBe("boardgame");
   });
 
-  it("壊れた値は無視して既定グループへフォールバックできる", () => {
+  it("壊れた値を無視する", () => {
     const storage = {
       getItem: () => "../../admin",
     };
 
     expect(readLastVisitedGroup(storage)).toBeNull();
-    expect(readLastVisitedGroup(storage) ?? DEFAULT_GROUP_CODE).toBe("river-check");
     expect(isValidGroupCode("boardgame-2026")).toBe(true);
     expect(isValidGroupCode("BoardGame")).toBe(false);
   });

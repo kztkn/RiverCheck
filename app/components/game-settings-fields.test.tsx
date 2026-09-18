@@ -23,9 +23,9 @@ describe("GameSettingsFields local rules", () => {
       createElement(GameSettingsFields, { errors: {}, values: baseValues }),
     );
 
-    expect(markup).toContain('class="local-rules-disclosure"');
+    expect(markup).toContain("<details");
     expect(markup).toContain("72o ON ・ ボムポット ON");
-    expect(markup).not.toContain('class="local-rules-disclosure" open');
+    expect(markup).not.toMatch(/<details[^>]*\sopen(?:=|\s|>)/u);
   });
 
   it("OFF設定も閉じた状態の要約へ反映する", () => {

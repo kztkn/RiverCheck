@@ -3,6 +3,7 @@ import {
   recommendTopCosts,
   recommendTopCostsForAttendance,
 } from "./recommend-top-costs";
+import { validateCostSharePlan } from "./validate-cost-share-plan";
 
 describe("recommendTopCosts", () => {
   it("4人の負担を順位ウェイトでなだらかにする", () => {
@@ -74,6 +75,32 @@ describe("recommendTopCosts", () => {
 
   it("表彰台ボーナスは6人未満を拒否する", () => {
     expect(() => recommendTopCosts(12_000, 5, "podium")).toThrow(RangeError);
+  });
+
+  it("2人の標準配分を生成して検証できる", () => {
+    const result = recommendTopCosts(3_000, 2, "standard");
+
+    expect(result.shares).toHaveLength(2);
+    expect(result.shares[0]).toBeLessThanOrEqual(result.shares[1]!);
+    expect(
+      validateCostSharePlan({
+        venueCost: 3_000,
+        participantCount: 2,
+        shares: result.shares,
+      }).shares,
+    ).toEqual(result.shares);
+  });
+
+  it("3人のゆる傾斜を生成して検証できる", () => {
+    const result = recommendTopCosts(4_500, 3, "gentle");
+
+    expect(result.shares).toHaveLength(3);
+    expect(result.shares.reduce((sum, share) => sum + share, 0)).toBe(4_500);
+    expect(
+      result.shares.every(
+        (share, index) => index === 0 || share >= result.shares[index - 1]!,
+      ),
+    ).toBe(true);
   });
 
   it("ゆる傾斜でも100円単位・順位順・合計一致を維持する", () => {

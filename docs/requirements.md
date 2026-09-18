@@ -452,7 +452,7 @@ settlement_total = ceil(venue_cost / 100) × 100
 - 全員の cost_share 合計を settlement_total と必ず一致させる
 - 上記条件を満たした全順位配分をgamesへ保存し、finalizeで使用する
 - 移行前の全順位配分が未保存の開催は、1〜3位固定・3位額最低保証・残額傾斜・最下位丸め差額調整の従来計算を使う
-- 参加人数4人未満は設定不可とする
+- 参加人数2人未満は設定不可とする
 - 詳細アルゴリズムは docs/domain-rules.md を正とする
 
 ## 13. finalize
@@ -594,7 +594,7 @@ UUID、外部キー、一意制約、金額・チップの整数制約を使用�
 
 ## 17. テスト方針
 
-開発速度を優先し、MVP段階では高いcoverage目標、UIテスト、E2Eテスト、repositoryの網羅テストを必須にしない。
+開発速度を優先し、MVP段階では高いcoverage目標、UIテスト、E2Eテスト、repositoryの網羅テストを必須にしない。テスト件数やcoverage維持を目的にせず、削除したときに見逃す現実的な不具合があるテストだけを残す。実装のコピー、mockの自己検証、型・library保証の再確認、同じ保証の重複、内部実装や文言・CSS文字列への過度な依存、同じ分岐の過剰なcase分けは避ける。
 
 次のdomain関数はVitest unit testを必須とする。
 
@@ -606,7 +606,7 @@ UUID、外部キー、一意制約、金額・チップの整数制約を使用�
 - validateHighlightText / validateGamePhotoBytes / calculateScaledPhotoSize
 - normalizeParticipantTableStatus
 
-精算では100円固定、1〜3位の順位順、3位額の最低保証、4位以下の傾斜、合計一致、4人未満の拒否、丸め差額を確認する。
+精算では100円固定、全順位の単調増加、合計一致、2人未満の拒否、丸め差額を確認する。移行前データ向けの従来計算では、これに加えて1〜3位の順位順、3位額の最低保証、4位以下の傾斜を確認する。
 
 ## 18. MVP対象外
 

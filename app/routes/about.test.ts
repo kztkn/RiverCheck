@@ -9,7 +9,6 @@ vi.mock("~/components/site-menu", () => ({
   GroupSiteHeader: vi.fn(() => null),
 }));
 import {
-  ABOUT_DESCRIPTION,
   AboutHomeScreenGuide,
   AboutOpenChatSection,
   AboutSections,
@@ -23,9 +22,6 @@ describe("about page sections", () => {
       createElement(AboutSections, { lineOpenChatUrl: OPEN_CHAT_URL }),
     );
 
-    expect(ABOUT_DESCRIPTION).toBe(
-      "開催結果、会費の精算、個人戦績をひとつにまとめるポーカー会向けWebアプリです。",
-    );
     expect(markup.indexOf("称号を集める")).toBeLessThan(
       markup.indexOf("LINE OPENCHAT"),
     );
@@ -33,7 +29,6 @@ describe("about page sections", () => {
       markup.indexOf("ホーム画面に追加する"),
     );
     expect(markup).toContain("プロフィール画面で自分の名前を選ぶ");
-    expect(markup).not.toContain("本人用リンク");
   });
 
   it("OpenChat URL未設定時はコミュニティ導線を表示しない", () => {
@@ -54,7 +49,6 @@ describe("about page sections", () => {
     expect(markup).toContain("次の開催も、ここから。");
     expect(markup).toContain(`href="${OPEN_CHAT_URL}"`);
     expect(markup).toContain("LINEオープンチャットに参加");
-    expect(markup).not.toContain("↗");
   });
 
   it("ホーム画面追加手順を初期状態では閉じて表示する", () => {

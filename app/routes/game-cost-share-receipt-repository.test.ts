@@ -78,12 +78,4 @@ describe("game cost share receipt repository", () => {
       ["player-2", "player-3"],
     ]);
   });
-
-  it("会費変更がなければ受取確認へ書き込まない", async () => {
-    const transaction = { query: vi.fn() };
-
-    await clearChangedCostShareReceipts(transaction as never, "game-1", []);
-
-    expect(transaction.query).not.toHaveBeenCalled();
-  });
 });

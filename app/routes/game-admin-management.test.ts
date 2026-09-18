@@ -4,14 +4,17 @@ const mocked = vi.hoisted(() => ({
   clearParticipantCookie: vi.fn(() => "participant=; Max-Age=0"),
   findGameForGroup: vi.fn(),
   findGroupByPublicCode: vi.fn(),
+  publishSettlementPlan: vi.fn(),
   removeOpenGameForGroup: vi.fn(),
   updateLocalRules: vi.fn(),
   updateOpenGameIdentityForGroup: vi.fn(),
+  validateGameSettingsForm: vi.fn(),
   requireOrganizer: vi.fn(),
 }));
 
 vi.mock("@server/repositories/game-repository.server", () => ({
   findGameForGroup: mocked.findGameForGroup,
+  publishSettlementPlan: mocked.publishSettlementPlan,
   updateLocalRules: mocked.updateLocalRules,
 }));
 vi.mock("@server/repositories/group-repository.server", () => ({
@@ -41,7 +44,7 @@ vi.mock("@server/services/rebuy-service.server", () => ({
 vi.mock("@server/services/game-service.server", () => ({
   removeOpenGameForGroup: mocked.removeOpenGameForGroup,
   updateOpenGameIdentityForGroup: mocked.updateOpenGameIdentityForGroup,
-  validateGameSettingsForm: vi.fn(),
+  validateGameSettingsForm: mocked.validateGameSettingsForm,
 }));
 vi.mock("@server/services/finalization-service.server", () => ({
   buildFinalizationState: vi.fn(),
@@ -59,9 +62,19 @@ const group = {
   publicCode: "river-check",
 };
 const game = {
+  bombPotRuleEnabled: false,
+  costShares: [1_000, 2_000],
+  firstPlaceCost: 1_000,
   id: "22222222-2222-4222-8222-222222222222",
+  initialChips: 20_000,
+  playedAt: "2026-08-10T00:00:00.000Z",
+  previewParticipantCount: 2,
+  secondPlaceCost: 2_000,
+  sevenDeuceRuleEnabled: false,
   status: "open",
+  thirdPlaceCost: 2_000,
   title: "8月の会",
+  venueCost: 3_000,
 };
 
 describe("game admin management action", () => {
@@ -69,6 +82,41 @@ describe("game admin management action", () => {
     vi.resetAllMocks();
     mocked.findGroupByPublicCode.mockResolvedValue(group);
     mocked.findGameForGroup.mockResolvedValue(game);
+  });
+
+  it("検証済みの精算予定を公開して管理画面へ戻す", async () => {
+    const input = {
+      venueCost: 3_000,
+      firstPlaceCost: 1_000,
+      secondPlaceCost: 2_000,
+      thirdPlaceCost: 2_000,
+      previewParticipantCount: 2,
+      costShares: [1_000, 2_000],
+    };
+    mocked.validateGameSettingsForm.mockReturnValue({ ok: true, input });
+    mocked.publishSettlementPlan.mockResolvedValue(true);
+
+    const result = await action(
+      actionArgs({
+        intent: "publish-settlement-plan",
+        venueCost: "3000",
+        firstPlaceCost: "1000",
+        secondPlaceCost: "2000",
+        thirdPlaceCost: "2000",
+        previewParticipantCount: "2",
+        costShare: "1000",
+      }),
+    );
+
+    expect(mocked.publishSettlementPlan).toHaveBeenCalledWith(
+      group.id,
+      game.id,
+      input,
+    );
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).headers.get("Location")).toBe(
+      `/g/river-check/games/${game.id}/admin?notice=settlement-plan-published`,
+    );
   });
 
   it("開催設定の保存1回で開催名と開催日をまとめて更新する", async () => {

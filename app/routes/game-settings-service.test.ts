@@ -56,14 +56,11 @@ describe("game settings cost shares", () => {
     });
   });
 
-  it("72oルールのチェックがなければOFFとして読み取る", () => {
-    expect(readGameSettingsForm(new FormData()).sevenDeuceRuleEnabled).toBe(
-      false,
-    );
-  });
-
-  it("ボムポットのチェックがなければOFFとして読み取る", () => {
-    expect(readGameSettingsForm(new FormData()).bombPotRuleEnabled).toBe(false);
+  it("ルールのチェックがなければOFFとして読み取る", () => {
+    expect(readGameSettingsForm(new FormData())).toMatchObject({
+      sevenDeuceRuleEnabled: false,
+      bombPotRuleEnabled: false,
+    });
   });
 
   it("合計一致した全順位配分を保存用入力へ変換する", () => {
@@ -78,6 +75,25 @@ describe("game settings cost shares", () => {
         costShares: [1800, 2000, 2300, 2500, 2800],
         sevenDeuceRuleEnabled: true,
         bombPotRuleEnabled: true,
+      },
+    });
+  });
+
+  it("2人配分は最後の順位をlegacy 3位列の互換値に使う", () => {
+    const result = validateGameSettingsForm({
+      ...validValues,
+      venueCost: "3000",
+      previewParticipantCount: "2",
+      costShares: ["1000", "2000"],
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      input: {
+        costShares: [1_000, 2_000],
+        firstPlaceCost: 1_000,
+        secondPlaceCost: 2_000,
+        thirdPlaceCost: 2_000,
       },
     });
   });

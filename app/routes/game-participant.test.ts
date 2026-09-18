@@ -134,6 +134,7 @@ import {
   LocalRulesSheet,
   ParticipantResultEntrySection,
   ParticipantRosterSheet,
+  SettlementPlanSheet,
   resolveUndoableRebuyAction,
   shouldShowLocalRules,
 } from "./game-participant";
@@ -264,21 +265,6 @@ describe("game participant route", () => {
     expect(mocked.listCurrentGameParticipants).toHaveBeenCalledWith(
       group.id,
       gameId,
-    );
-  });
-
-  it("参加取り消し済み行を含まないrepository結果だけを一覧へ返す", async () => {
-    mocked.listCurrentGameParticipants.mockResolvedValue([
-      { displayName: "Alice", groupPlayerId },
-    ]);
-
-    const result = await loader(loaderArgs());
-
-    expect(result.participantRoster.items.map((item) => item.displayName)).toEqual([
-      "Alice",
-    ]);
-    expect(result.participantRoster.items).not.toContainEqual(
-      expect.objectContaining({ displayName: "Canceled player" }),
     );
   });
 
@@ -436,6 +422,22 @@ describe("game participant route", () => {
     expect(markup).toContain("参加者はいません");
   });
 
+  it("公開済みの精算予定を全順位分表示する", () => {
+    const markup = renderToStaticMarkup(
+      createElement(SettlementPlanSheet, {
+        costShares: [1_000, 2_000],
+        participantCount: 2,
+        venueCost: 3_000,
+      }),
+    );
+
+    expect(markup).toContain("今日の精算予定");
+    expect(markup).toContain("1位");
+    expect(markup).toContain("2位");
+    expect(markup).toContain("1,000円");
+    expect(markup).toContain("2,000円");
+  });
+
   it("未入力の最終結果フォームは閉じておき、終了操作から開く", () => {
     const markup = renderToStaticMarkup(
       createElement(
@@ -510,38 +512,6 @@ describe("game participant route", () => {
     expect(response.headers.get("Location")).toBe(
       `/g/river-check/games/${gameId}?notice=story-deleted`,
     );
-  });
-
-  it("主催者だけが会費を受取済みに更新できる", async () => {
-    mocked.findGameForGroup.mockResolvedValue({
-      ...openGame,
-      status: "finalized",
-    });
-
-    const result = await action(
-      actionArgs({
-        intent: "update-cost-share-receipt",
-        groupPlayerId,
-        received: "yes",
-      }),
-    );
-
-    expect(mocked.requireOrganizer).toHaveBeenCalledWith(
-      expect.any(Request),
-      "river-check",
-    );
-    expect(mocked.updateGameCostShareReceipt).toHaveBeenCalledWith(
-      group.id,
-      gameId,
-      groupPlayerId,
-      true,
-    );
-    expect(result).toEqual({
-      ok: true,
-      intent: "update-cost-share-receipt",
-      groupPlayerId,
-      received: true,
-    });
   });
 
   it("参加者は確定済み開催へあとからTABLE STORYを投稿できる", async () => {

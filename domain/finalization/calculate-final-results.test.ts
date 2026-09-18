@@ -135,4 +135,39 @@ describe("calculateFinalResults", () => {
       ]),
     ).toThrow("participantCount must be at least 2");
   });
+
+  it("2人開催を確定計算できる", () => {
+    const calculated = calculateFinalResults(
+      { ...settings, venueCost: 3_000, costShares: [1_000, 2_000] },
+      [
+        {
+          groupPlayerId: "a",
+          displayName: "A",
+          remainingChips: 25_000,
+          totalRebuyCount: 0,
+          outstandingRebuyCount: 0,
+          settlementRebuyCount: 0,
+        },
+        {
+          groupPlayerId: "b",
+          displayName: "B",
+          remainingChips: 15_000,
+          totalRebuyCount: 0,
+          outstandingRebuyCount: 0,
+          settlementRebuyCount: 0,
+        },
+      ],
+    );
+
+    expect(
+      calculated.results.map(({ displayName, rank, costShare }) => ({
+        displayName,
+        rank,
+        costShare,
+      })),
+    ).toEqual([
+      { displayName: "A", rank: 1, costShare: 1_000 },
+      { displayName: "B", rank: 2, costShare: 2_000 },
+    ]);
+  });
 });

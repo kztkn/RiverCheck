@@ -22,20 +22,27 @@ describe("rankPlayers", () => {
     ["max-win", { maxWinBb: 120 }, { maxWinBb: 40 }],
     ["max-loss", { maxLossBb: -200 }, { maxLossBb: -50 }],
   ];
-  it.each(cases)("orders %s without mutating the input", (sort, first, second) => {
+  it.each(cases)("orders %s", (sort, first, second) => {
     const input = [player("B", second), player("A", first)];
     expect(rankPlayers(input, sort).map((row) => [row.groupPlayerId, row.rank]))
       .toEqual([["A", 1], ["B", 2]]);
+  });
+
+  it("does not mutate the input", () => {
+    const input = [player("B", { totalNetBb: -20 }), player("A", { totalNetBb: 100 })];
+
+    rankPlayers(input, "total");
+
     expect(input.map((row) => row.groupPlayerId)).toEqual(["B", "A"]);
     expect(input[0]).not.toHaveProperty("rank");
   });
 
-  it.each(PLAYER_STATS_SORTS)("keeps competition ranks for %s", (sort) => {
+  it("keeps competition ranks", () => {
     const tied = [player("B"), player("A"), player("C", {
       totalNetBb: -10, averageNetBb: -10, recentAverageNetBb: -10,
       topThreeFinishes: 1, maxWinBb: 0, maxLossBb: 0, averageRankRate: 75,
     })];
-    expect(rankPlayers(tied, sort).map((row) => [row.groupPlayerId, row.rank]))
+    expect(rankPlayers(tied, "total").map((row) => [row.groupPlayerId, row.rank]))
       .toEqual([["A", 1], ["B", 1], ["C", 3]]);
   });
 

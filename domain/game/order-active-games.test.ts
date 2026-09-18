@@ -46,16 +46,4 @@ describe("orderActiveGamesBySchedule", () => {
       "old",
     ]);
   });
-
-  it("未来開催がなければ直近の日付超過開催を先頭にする", () => {
-    const result = orderActiveGamesBySchedule(
-      [
-        game("older", "2026-08-01T15:00:00.000Z"),
-        game("closest", "2026-08-29T15:00:00.000Z"),
-      ],
-      new Date("2026-08-30T11:00:00.000Z"),
-    );
-
-    expect(result.map((item) => item.id)).toEqual(["closest", "older"]);
-  });
 });

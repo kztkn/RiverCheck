@@ -1,24 +1,51 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-
-const participantRoute = readFileSync("app/routes/game-participant.tsx", "utf8");
-const component = readFileSync("app/components/table-now.tsx", "utf8");
-const styles = readFileSync("app/styles/table-now.css", "utf8");
+import { LiveTableMini, TableNow } from "../components/table-now";
 
 describe("LIVE TABLE presentation", () => {
-  it("renders only for open games through loader data", () => {
-    expect(participantRoute).toContain('tableNow: context.game.status === "open"');
-    expect(participantRoute).toContain("<TableNow");
+  it("0件のイベントは表示せず参加人数だけを表示する", () => {
+    const markup = renderToStaticMarkup(
+      createElement(TableNow, {
+        data: {
+          allInCount: 0,
+          bombPotCount: 0,
+          playerCount: 6,
+          sevenDeuceCount: 0,
+        },
+      }),
+    );
+
+    expect(markup).toContain("LIVE TABLE");
+    expect(markup).toContain("6");
+    expect(markup).toContain("PLAYERS");
+    expect(markup).not.toContain("ALL IN");
+    expect(markup).not.toContain("BOMB POT");
+    expect(markup).not.toContain("72o");
   });
 
-  it("keeps zero-count events out", () => {
-    expect(component).toContain("data.allInCount > 0");
-    expect(component).toContain("data.bombPotCount > 0");
-    expect(component).toContain("data.sevenDeuceCount > 0");
-  });
+  it("開催一覧のmini表示は記録のあるイベントだけを詳細へリンクする", () => {
+    const markup = renderToStaticMarkup(
+      createElement(
+        MemoryRouter,
+        null,
+        createElement(LiveTableMini, {
+          data: {
+            allInCount: 2,
+            bombPotCount: 0,
+            playerCount: 5,
+            sevenDeuceCount: 1,
+          },
+          to: "/g/river-check/games/game-1",
+        }),
+      ),
+    );
 
-  it("scrolls horizontally on narrow screens", () => {
-    expect(styles).toContain("overflow-x:auto");
-    expect(styles).toContain("white-space:nowrap");
+    expect(markup).toContain('href="/g/river-check/games/game-1"');
+    expect(markup).toContain("5 PLAYERS");
+    expect(markup).toContain("ALL IN 2");
+    expect(markup).toContain("72o 1");
+    expect(markup).not.toContain("BOMB POT");
   });
 });

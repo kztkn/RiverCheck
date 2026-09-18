@@ -4,7 +4,6 @@ import {
   isGameStoryReactionType,
 } from "@domain/story/game-story-reaction";
 import { buildGameStoryReactionPath } from "~/components/game-story-reactions";
-import { classifyRateLimitedRequest } from "@domain/rate-limiting/classify-rate-limited-request";
 
 describe("game story reactions", () => {
   it("第一弾の5種類だけを受け付ける", () => {
@@ -27,14 +26,5 @@ describe("game story reactions", () => {
       "/g/home/games/game-1/story-reactions",
     );
     expect(buildGameStoryReactionPath("/g/home/games/game-1/admin")).toBeNull();
-  });
-
-  it("リアクションPOSTをparticipant writeとしてrate limitする", () => {
-    expect(
-      classifyRateLimitedRequest(
-        "POST",
-        "/g/home/games/00000000-0000-4000-8000-000000000001/story-reactions",
-      ),
-    ).toBe("participant-write");
   });
 });

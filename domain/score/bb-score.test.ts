@@ -4,6 +4,7 @@ import {
   calculateNetBb,
   formatChipsPerBb,
   formatNetBb,
+  formatSignedBbValue,
 } from "./bb-score";
 
 describe("BB score", () => {
@@ -26,6 +27,12 @@ describe("BB score", () => {
     expect(formatNetBb({ score: 20_000, initialChips: 20_000 })).toBe("0BB");
     expect(formatNetBb({ score: 10_000, initialChips: 20_000 })).toBe("-50BB");
     expect(formatNetBb({ score: 0, initialChips: 20_000 })).toBe("-100BB");
+  });
+
+  it("戦績の正負と小数を読みやすく表示する", () => {
+    expect(formatSignedBbValue(12.345)).toBe("+12.35BB");
+    expect(formatSignedBbValue(0)).toBe("0BB");
+    expect(formatSignedBbValue(-7.5)).toBe("-7.5BB");
   });
 
   it("初期チップ0は拒否する", () => {

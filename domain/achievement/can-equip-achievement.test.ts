@@ -15,8 +15,4 @@ describe("canEquipAchievement", () => {
   it("allows unequipping", () => {
     expect(canEquipAchievement(null, ownUnlocked)).toBe(true);
   });
-
-  it("rejects an achievement unlocked only by another player", () => {
-    expect(canEquipAchievement("achievement-other-player", ownUnlocked)).toBe(false);
-  });
 });

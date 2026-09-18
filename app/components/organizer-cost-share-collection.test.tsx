@@ -2,7 +2,11 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
-import { OrganizerCostShareCollection } from "./organizer-cost-share-collection";
+import {
+  applyGameCostShareReceiptReceivedAt,
+  buildGameCostShareReceiptPath,
+  OrganizerCostShareCollection,
+} from "./organizer-cost-share-collection";
 
 describe("OrganizerCostShareCollection", () => {
   it("回収数、未回収数、0円の対象外を表示する", () => {
@@ -49,6 +53,26 @@ describe("OrganizerCostShareCollection", () => {
 
     expect(markup).toContain("回収完了");
     expect(markup).toContain("2 / 2人");
+  });
+
+  it("開催詳細から会費保存先を組み立て、対象者だけを即時更新する", () => {
+    expect(
+      buildGameCostShareReceiptPath("/g/river-check/games/game-1"),
+    ).toBe("/g/river-check/games/game-1/cost-share-receipts");
+    expect(buildGameCostShareReceiptPath("/g/river-check")).toBeNull();
+
+    const next = applyGameCostShareReceiptReceivedAt(
+      [
+        receipt("a", "Alice", 500, null),
+        receipt("b", "Bob", 1_000, null),
+      ],
+      "a",
+      "2026-08-29T01:00:00.000Z",
+    );
+    expect(next.map(({ receivedAt }) => receivedAt)).toEqual([
+      "2026-08-29T01:00:00.000Z",
+      null,
+    ]);
   });
 });
 

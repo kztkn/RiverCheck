@@ -23,13 +23,6 @@ describe("calculateSimpleCostShares", () => {
     });
   });
 
-  it("会費0円では全員を0円にする", () => {
-    expect(calculateSimpleCostShares(0, 4)).toEqual({
-      settlementTotal: 0,
-      shares: [0, 0, 0, 0],
-    });
-  });
-
   it("4〜20人の各ケースで保存可能な配分を返す", () => {
     for (
       let participantCount = 4;

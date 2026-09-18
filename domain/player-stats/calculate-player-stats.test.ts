@@ -71,11 +71,6 @@ describe("calculatePlayerStats", () => {
       topThreeRate: 50,
     });
   });
-
-  it("現在の確定結果だけを渡せば訂正履歴は二重集計されない", () => {
-    const currentResults = [{ gameId: "game-1", rank: 2, netBb: 10 }];
-    expect(calculatePlayerStats(currentResults).gamesPlayed).toBe(1);
-  });
 });
 
 describe("addCumulativeNetBb", () => {

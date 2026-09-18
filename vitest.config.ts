@@ -8,8 +8,9 @@ export default defineConfig({
     environment: "node",
     include: [
       "domain/**/*.test.ts",
-      "app/routes/**/*.test.ts",
-      "app/utils/**/*.test.ts",
+      "app/**/*.test.ts",
+      "app/**/*.test.tsx",
+      "server/**/*.test.ts",
       "workers/**/*.test.ts",
       "scripts/**/*.test.ts",
     ],
