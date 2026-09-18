@@ -57,6 +57,7 @@ import {
   getAdminParticipantInputState,
   summarizeAdminParticipantStates,
 } from "~/utils/admin-participant-state";
+import { getAdminNextAction } from "~/utils/admin-next-action";
 
 type OrganizerRebuyIntent =
   | "record-rebuy"
@@ -582,7 +583,20 @@ export default function GameAdmin({
   );
   const chipDifference =
     loaderData.finalization.chipValidation?.difference ?? null;
-
+  const settlementParticipantCountValue = parseNonNegativeInteger(
+    settlementParticipantCount,
+  );
+  const nextAction = getAdminNextAction({
+    participantCount: visibleParticipants.length,
+    submittedCount,
+    warningCount: participantStateSummary.warning,
+    invalidRebuyCount: loaderData.finalization.invalidRebuyNames.length,
+    settlementParticipantCount: settlementParticipantCountValue,
+    chipDifference,
+  });
+  const inputProgressPercent = visibleParticipants.length === 0
+    ? 0
+    : Math.round((submittedCount / visibleParticipants.length) * 100);
 
 
   useEffect(() => {
@@ -985,21 +999,47 @@ export default function GameAdmin({
 
 
       <>
-        <section className="admin-share-panel admin-utility-panel">
-          <div>
         <section
           aria-labelledby="admin-command-heading"
-          className="admin-command-summary"
+          className={`admin-command-summary is-${nextAction.tone}`}
         >
           <div className="admin-command-heading">
             <div>
-              <p className="form-brand-label">LIVE CONTROL</p>
-              <h2 id="admin-command-heading">運営状況</h2>
+              <p className="form-brand-label">NEXT ACTION</p>
+              <h2 id="admin-command-heading">開催進行</h2>
             </div>
             <span className={`status status-${loaderData.game.status}`}>
               {statusLabel(loaderData.game.status)}
             </span>
           </div>
+
+          <div className="admin-command-next">
+            <div className="admin-command-next-copy">
+              <h3>{nextAction.title}</h3>
+              <p>{nextAction.description}</p>
+            </div>
+            <div
+              aria-label={`終了入力 ${submittedCount} / ${visibleParticipants.length}人`}
+              aria-valuemax={Math.max(visibleParticipants.length, 1)}
+              aria-valuemin={0}
+              aria-valuenow={submittedCount}
+              className="admin-command-progress"
+              role="progressbar"
+            >
+              <div className="admin-command-progress-copy">
+                <span>終了入力</span>
+                <strong>{submittedCount} / {visibleParticipants.length}人</strong>
+              </div>
+              <div aria-hidden="true" className="admin-command-progress-track">
+                <span style={{ width: `${inputProgressPercent}%` }} />
+              </div>
+            </div>
+            <a className="admin-command-action" href={nextAction.href}>
+              {nextAction.actionLabel}
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
+
           <div className="admin-command-stats">
             <div className={incompleteCount > 0 ? "is-warning" : "is-clear"}>
               <span>結果入力</span>
@@ -1013,7 +1053,13 @@ export default function GameAdmin({
               <strong>
                 {chipDifference === null ? "—" : formatSignedNumber(chipDifference)}
               </strong>
-              <small>{chipDifference === 0 ? "一致" : "要確認"}</small>
+              <small>
+                {loaderData.finalization.isProvisional
+                  ? "未入力を0として暫定"
+                  : chipDifference === 0
+                    ? "一致"
+                    : "要確認"}
+              </small>
             </div>
             <div className={outstandingRebuyCount > 0 ? "is-warning" : "is-clear"}>
               <span>未返済リバイ</span>
@@ -1023,22 +1069,23 @@ export default function GameAdmin({
               </small>
             </div>
           </div>
-          <nav aria-label="開催管理内の移動" className="admin-command-links">
-            <a href="#admin-participants">参加者を見る</a>
-            <a href="#admin-settlement">精算・確定へ</a>
-          </nav>
         </section>
 
-          <Link
-            className="button button-secondary admin-own-play-link"
-            reloadDocument
-            to={loaderData.participantUrl}
-          >
-            {loaderData.currentParticipant
-              ? "自分のプレイ画面へ"
-              : "自分も参加する（参加者画面へ）"}
-          </Link>
+        <Link
+          className="button button-secondary admin-own-play-link"
+          reloadDocument
+          to={loaderData.participantUrl}
+        >
+          {loaderData.currentParticipant
+            ? "自分のプレイ画面へ"
+            : "自分も参加する（参加者画面へ）"}
+        </Link>
 
+        <section
+          className="admin-share-panel admin-utility-panel"
+          id="admin-share"
+        >
+          <div>
             <h2>参加者リンク</h2>
             <p>このリンクを参加者に共有してください。</p>
             {loaderData.currentParticipant ? (
