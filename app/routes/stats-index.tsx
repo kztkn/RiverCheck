@@ -112,12 +112,21 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
                     />
                     <span className="stats-player-name">
                       <strong>{player.displayName}</strong>
-                      {player.equippedAchievement ? (
-                        <AchievementBadge
-                          achievement={player.equippedAchievement}
-                          compact
-                        />
-                      ) : null}
+                      <span className="stats-achievement-slot">
+                        {player.equippedAchievement ? (
+                          <AchievementBadge
+                            achievement={player.equippedAchievement}
+                            compact
+                          />
+                        ) : (
+                          <span
+                            aria-hidden="true"
+                            className="stats-achievement-placeholder"
+                          >
+                            —
+                          </span>
+                        )}
+                      </span>
                       <small>
                         参加 {player.gamesPlayed}回 ・ 優勝 {player.wins}回
                         {player.averageRankRate === null

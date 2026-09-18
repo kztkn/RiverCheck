@@ -55,6 +55,21 @@ describe("ranking movement UI", () => {
 
 describe("ranking row layout", () => {
   const css = readFileSync("app/styles/stats.css", "utf8");
+  const source = readFileSync("app/routes/stats-index.tsx", "utf8");
+
+  it("reserves the same title slot and renders a decorative placeholder without an equipped title", () => {
+    expect(source).toContain('className="stats-achievement-slot"');
+    expect(source).toContain('className="stats-achievement-placeholder"');
+    expect(source).toContain('aria-hidden="true"');
+    expect(source).toMatch(/stats-achievement-placeholder[\s\S]*?—/);
+
+    const slotRule = css.match(/\.stats-ranking-section \.stats-achievement-slot\s*\{([^}]+)\}/)?.[1];
+    expect(slotRule).toMatch(/min-height:\s*25px;/);
+
+    const placeholderRule = css.match(/\.stats-ranking-section \.stats-achievement-placeholder\s*\{([^}]+)\}/)?.[1];
+    expect(placeholderRule).toMatch(/min-height:\s*23px;/);
+    expect(placeholderRule).toMatch(/border:\s*1px dashed/);
+  });
 
   it("shares the tallest content-driven row height regardless of equipped titles", () => {
     const listRule = css.match(/\.stats-ranking-section \.stats-ranking-list\s*\{([^}]+)\}/)?.[1];

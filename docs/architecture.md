@@ -158,7 +158,7 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 
 ランキング取得では`group_players.equipped_achievement_id`を直接公開せず、同じ`group_player`の`player_achievements`を経由して実績マスタを結合する。装備中かつ獲得済みと確認できた1件だけをランキングrowへ含め、共通のAchievementBadgeをcompact表示で再利用する。
 
-ランキング一覧の行高はCSS Gridの`grid-auto-rows: 1fr`で内容に必要な最大行高へ統一する。最低行高は全順位共通でデスクトップ88px・639px以下84pxとし、固定heightやJSによる高さ計測は使わない。称号の有無によるDOM分岐はそのまま維持し、未設定用のダミー称号は作らない。上位3人専用の最低行高は持たせず、配色だけで強調する。
+ランキング一覧の行高はCSS Gridの`grid-auto-rows: 1fr`で内容に必要な最大行高へ統一する。最低行高は全順位共通でデスクトップ88px・639px以下84pxとし、固定heightやJSによる高さ計測は使わない。プレイヤー名直下には最小25pxの称号スロットを常設し、装備中は共通のAchievementBadgeを表示、未設定時は`aria-hidden`な薄い破線枠の「—」プレースホルダーを表示して統計行の縦位置も揃える。上位3人専用の最低行高は持たせず、配色だけで強調する。
 
 ランキング指標はPlayerStatsRepositoryの確定結果CTEで集約する。1回のSQLで現在（全確定開催）と前回（最新確定開催を除いた集合）の2スコープを取得する。最新開催は`played_at DESC, finalized_at DESC, id DESC`で決定し、対象開催の除外をwindow計算より前に行う。開催人数のwindow countはスコープと`game_id`、直近3参加のrow numberはスコープと`group_player_id`で分割し、人数の二重計上や前回の4戦目の欠落を防ぐ。確定結果へのINNER JOINで、各時点の参加0回メンバーを除外する。
 

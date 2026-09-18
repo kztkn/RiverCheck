@@ -1251,6 +1251,31 @@
   gap: 3px;
 }
 
+.stats-ranking-section .stats-achievement-slot {
+  display: flex;
+  min-width: 0;
+  min-height: 25px;
+  align-items: center;
+}
+
+.stats-ranking-section .stats-achievement-slot > .achievement-badge {
+  max-width: 100%;
+}
+
+.stats-ranking-section .stats-achievement-placeholder {
+  display: inline-flex;
+  width: min(88px, 100%);
+  min-height: 23px;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed rgba(57, 222, 141, 0.2);
+  border-radius: 999px;
+  color: rgba(157, 176, 166, 0.52);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .stats-ranking-section .stats-player-name > small {
   max-width: 100%;
   overflow: hidden;
