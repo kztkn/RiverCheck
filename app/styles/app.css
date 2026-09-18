@@ -4118,7 +4118,7 @@ input[aria-invalid="true"] {
 .admin-local-rules {
   display: grid;
   gap: 16px;
-  margin-top: 24px;
+  margin: 0 0 34px;
   border: 1px solid var(--line);
   border-radius: 18px;
   background: rgba(9, 23, 17, 0.72);
@@ -5439,7 +5439,7 @@ input[aria-invalid="true"] {
 }
 
 .admin-page .admin-participants {
-  margin: 0 0 42px;
+  margin: 0 0 18px;
 }
 
 .admin-page .admin-participants .section-heading {

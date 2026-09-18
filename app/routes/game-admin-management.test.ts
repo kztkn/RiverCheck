@@ -5,13 +5,14 @@ const mocked = vi.hoisted(() => ({
   findGameForGroup: vi.fn(),
   findGroupByPublicCode: vi.fn(),
   removeOpenGameForGroup: vi.fn(),
+  updateLocalRules: vi.fn(),
   updateOpenGameIdentityForGroup: vi.fn(),
   requireOrganizer: vi.fn(),
 }));
 
 vi.mock("@server/repositories/game-repository.server", () => ({
   findGameForGroup: mocked.findGameForGroup,
-  updateLocalRules: vi.fn(),
+  updateLocalRules: mocked.updateLocalRules,
 }));
 vi.mock("@server/repositories/group-repository.server", () => ({
   findGroupByPublicCode: mocked.findGroupByPublicCode,
@@ -96,6 +97,30 @@ describe("game admin management action", () => {
     expect(response.headers.get("Location")).toBe(
       `/g/river-check/games/${game.id}/admin?notice=game-settings-updated`,
     );
+  });
+
+  it("ローカルルール保存は画面遷移せず成功データを返す", async () => {
+    mocked.updateLocalRules.mockResolvedValue(true);
+
+    const result = await action(
+      actionArgs({
+        intent: "save-local-rules",
+        sevenDeuceRuleEnabled: "yes",
+      }),
+    );
+
+    expect(mocked.updateLocalRules).toHaveBeenCalledWith(
+      group.id,
+      game.id,
+      {
+        sevenDeuceRuleEnabled: true,
+        bombPotRuleEnabled: false,
+      },
+    );
+    expect(result).toEqual({
+      ok: true,
+      intent: "save-local-rules",
+    });
   });
 
   it("開催を削除して主催者ホームへ戻り参加者Cookieも消す", async () => {

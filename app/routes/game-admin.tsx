@@ -80,6 +80,16 @@ type OrganizerParticipantInputActionData =
       participantId: string;
       error: string;
     };
+type LocalRulesActionData =
+  | {
+      ok: true;
+      intent: "save-local-rules";
+    }
+  | {
+      ok: false;
+      intent: "save-local-rules";
+      error: string;
+    };
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   await requireOrganizer(request, params.groupCode);
@@ -228,9 +238,10 @@ export async function action({ request, params }: Route.ActionArgs) {
         error: "ローカルルールを保存できませんでした。画面を更新してください。",
       };
     }
-    return redirect(
-      `/g/${params.groupCode}/games/${params.gameId}/admin?notice=local-rules-saved`,
-    );
+    return {
+      ok: true as const,
+      intent: "save-local-rules" as const,
+    };
   }
 
   if (intent === "update-game-identity") {
@@ -428,6 +439,7 @@ export default function GameAdmin({
   const rebuyFetcher = useFetcher<OrganizerRebuyActionData>();
   const participantInputFetcher =
     useFetcher<OrganizerParticipantInputActionData>();
+  const localRulesFetcher = useFetcher<LocalRulesActionData>();
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
   const failedAction =
@@ -435,10 +447,8 @@ export default function GameAdmin({
   const settingsAction =
     failedAction && "errors" in failedAction ? failedAction : null;
   const localRulesError =
-    actionData?.ok === false &&
-    "intent" in actionData &&
-    actionData.intent === "save-local-rules"
-      ? actionData.error
+    localRulesFetcher.data?.ok === false
+      ? localRulesFetcher.data.error
       : null;
   const gameIdentityAction =
     actionData?.ok === false &&
@@ -506,6 +516,7 @@ export default function GameAdmin({
   const participantLinkRef = useRef<HTMLInputElement>(null);
   const rebuySubmissionPendingRef = useRef(false);
   const participantInputSubmissionPendingRef = useRef(false);
+  const localRulesSubmissionPendingRef = useRef(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [gameSettingsOpen, setGameSettingsOpen] = useState(
     Boolean(gameIdentityAction),
@@ -660,6 +671,23 @@ export default function GameAdmin({
     participantInputFetcher.state,
     revalidator,
   ]);
+
+
+  useEffect(() => {
+    const data = consumeCompletedFetcherSubmission(
+      localRulesSubmissionPendingRef,
+      localRulesFetcher.state,
+      localRulesFetcher.data,
+    );
+    if (!data) return;
+    setToast({
+      id: Date.now(),
+      message: data.ok
+        ? "ローカルルールを保存しました。"
+        : data.error,
+      tone: data.ok ? "success" : "error",
+    });
+  }, [localRulesFetcher.data, localRulesFetcher.state]);
 
 
   useEffect(() => {
@@ -1346,7 +1374,13 @@ export default function GameAdmin({
           )}
         </section>
 
-        <Form className="admin-local-rules" method="post">
+        <localRulesFetcher.Form
+          className="admin-local-rules"
+          method="post"
+          onSubmit={() => {
+            localRulesSubmissionPendingRef.current = true;
+          }}
+        >
           <input name="intent" type="hidden" value="save-local-rules" />
           <details
             className="local-rules-disclosure"
@@ -1405,20 +1439,16 @@ export default function GameAdmin({
               ) : null}
               <button
                 className="button button-secondary"
-                disabled={
-                  navigation.state === "submitting" &&
-                  navigation.formData?.get("intent") === "save-local-rules"
-                }
+                disabled={localRulesFetcher.state !== "idle"}
                 type="submit"
               >
-                {navigation.state === "submitting" &&
-                navigation.formData?.get("intent") === "save-local-rules"
+                {localRulesFetcher.state !== "idle"
                   ? "保存中…"
                   : "ルール設定を保存"}
               </button>
             </div>
           </details>
-        </Form>
+        </localRulesFetcher.Form>
 
         <Form
           className="game-form admin-finalization-form"
