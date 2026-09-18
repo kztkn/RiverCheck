@@ -5,6 +5,9 @@ export function RankingPosition({ rank, previousRank }: {
   previousRank: number | null;
 }) {
   const change = previousRank === null ? null : previousRank - rank;
+  const changeClass = change === null || change === 0
+    ? "stats-rank-change"
+    : `stats-rank-change stats-rank-change--${change > 0 ? "up" : "down"}`;
   const label = change === null
     ? ""
     : change === 0
@@ -15,7 +18,7 @@ export function RankingPosition({ rank, previousRank }: {
     <span className="stats-rank">
       <span>{formatOrdinal(rank)}</span>
       {change === null ? null : (
-        <small className="stats-rank-change" aria-label={label} title={label}>
+        <small className={changeClass} aria-label={label} title={label}>
           {change === 0 ? "—" : `${change > 0 ? "↑" : "↓"}${Math.abs(change)}`}
         </small>
       )}

@@ -16,6 +16,24 @@ describe("ranking movement UI", () => {
     expect(markup).not.toMatch(/bb-positive|bb-negative/);
   });
 
+  it.each([
+    { rank: 1, previousRank: 7, direction: "up", symbol: "↑6" },
+    { rank: 3, previousRank: 1, direction: "down", symbol: "↓2" },
+    { rank: 1, previousRank: 13, direction: "up", symbol: "↑12" },
+    { rank: 13, previousRank: 1, direction: "down", symbol: "↓12" },
+  ])("adds the $direction badge for $symbol", ({ rank, previousRank, direction, symbol }) => {
+    const markup = renderToStaticMarkup(createElement(RankingPosition, { rank, previousRank }));
+    expect(markup).toContain(`class="stats-rank-change stats-rank-change--${direction}"`);
+    expect(markup).toContain(symbol);
+  });
+
+  it("keeps unchanged ranks muted without a movement badge", () => {
+    const markup = renderToStaticMarkup(createElement(RankingPosition, { rank: 2, previousRank: 2 }));
+    expect(markup).toContain('class="stats-rank-change"');
+    expect(markup).toContain("—");
+    expect(markup).not.toContain("stats-rank-change--");
+  });
+
   it("does not show NEW or a misleading unchanged marker for a missing previous rank", () => {
     const markup = renderToStaticMarkup(createElement(RankingPosition, { rank: 1, previousRank: null }));
     expect(markup).toContain("1st");
