@@ -13,14 +13,13 @@ describe("game admin local rules UI", () => {
   });
 
   it("tightens players-to-rules spacing and separates rules from settlement", () => {
-    const participantRule = css.match(
-      /\.admin-page \.admin-participants\s*\{([^}]+)\}/,
-    )?.[1];
-    expect(participantRule).toMatch(/margin:\s*0 0 18px;/);
-
-    const localRulesRule = css.match(
-      /\.admin-local-rules\s*\{([^}]+)\}/,
-    )?.[1];
-    expect(localRulesRule).toMatch(/margin:\s*0 0 34px;/);
+    expect(css).toContain(`.admin-page .admin-participants {
+  margin: 0 0 18px;
+}`);
+    expect(css).toContain(`.admin-local-rules {
+  display: grid;
+  gap: 16px;
+  margin: 0 0 34px;
+`);
   });
 });
