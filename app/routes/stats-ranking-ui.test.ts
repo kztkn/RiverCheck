@@ -52,3 +52,28 @@ describe("ranking movement UI", () => {
     expect(source).not.toContain("function rankPlayers(");
   });
 });
+
+describe("ranking row layout", () => {
+  const css = readFileSync("app/styles/stats.css", "utf8");
+
+  it("shares the tallest content-driven row height regardless of equipped titles", () => {
+    const listRule = css.match(/\.stats-ranking-section \.stats-ranking-list\s*\{([^}]+)\}/)?.[1];
+    expect(listRule).toMatch(/grid-auto-rows:\s*1fr;/);
+    expect(listRule).not.toMatch(/(?:^|[;\n])\s*(?:height|max-height):/);
+  });
+
+  it("uses common minimum heights on desktop and mobile, not rank-specific heights", () => {
+    const cardRules = [...css.matchAll(/\.stats-ranking-section \.stats-ranking-card\s*\{([^}]+)\}/g)]
+      .map((match) => match[1]);
+    expect(cardRules[0]).toMatch(/min-height:\s*88px;/);
+    expect(cardRules[1]).toMatch(/min-height:\s*84px;/);
+    for (const rule of cardRules) {
+      expect(rule).not.toMatch(/(?:^|[;\n])\s*(?:height|max-height):/);
+    }
+    const topThreeRules = [...css.matchAll(/\.stats-ranking-section \.stats-ranking-card\.is-top-three\s*\{([^}]+)\}/g)]
+      .map((match) => match[1]);
+    expect(topThreeRules).toHaveLength(1);
+    expect(topThreeRules[0]).toContain("background:");
+    expect(topThreeRules[0]).not.toMatch(/(?:^|[;\n])\s*(?:height|min-height|max-height):/);
+  });
+});

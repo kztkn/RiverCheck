@@ -1162,12 +1162,14 @@
 }
 
 .stats-ranking-section .stats-ranking-list {
+  /* Share the tallest content-driven row height, including optional titles. */
+  grid-auto-rows: 1fr;
   gap: 0;
   border-bottom: 1px solid var(--line);
 }
 
 .stats-ranking-section .stats-ranking-card {
-  min-height: 78px;
+  min-height: 88px;
   grid-template-columns: 46px minmax(180px, 1fr) minmax(132px, auto) 20px;
   gap: 15px;
   border: 0;
@@ -1187,7 +1189,6 @@
 }
 
 .stats-ranking-section .stats-ranking-card.is-top-three {
-  min-height: 88px;
   background:
     linear-gradient(90deg, rgba(233, 186, 90, 0.055), transparent 64%);
 }
@@ -1288,13 +1289,10 @@
   }
 
   .stats-ranking-section .stats-ranking-card {
+    min-height: 84px;
     grid-template-columns: minmax(34px, max-content) minmax(0, 1fr) auto;
     gap: 9px;
     padding-inline: 2px;
-  }
-
-  .stats-ranking-section .stats-ranking-card.is-top-three {
-    min-height: 84px;
   }
 
   .stats-ranking-section .stats-player-identity {
