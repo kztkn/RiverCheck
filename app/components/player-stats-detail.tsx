@@ -6,9 +6,20 @@ import type {
   PlayerStatsSummary,
 } from "@shared-types/player-stats";
 
+export function calculateRecentThreeNetBb(
+  games: PlayerGameStat[],
+): number | null {
+  const recent = games.slice(-3);
+  return recent.length === 0
+    ? null
+    : recent.reduce((total, game) => total + game.netBb, 0);
+}
+
 export function PlayerStatsOverview({
+  recentThreeNetBb,
   summary,
 }: {
+  recentThreeNetBb: number | null;
   summary: PlayerStatsSummary;
 }) {
   return (
@@ -26,6 +37,14 @@ export function PlayerStatsOverview({
         <strong className={getBbToneClass(summary.totalNetBb)}>
           {formatSignedBbValue(summary.totalNetBb)}
         </strong>
+        {recentThreeNetBb !== null ? (
+          <div className="stats-profit-recent">
+            <span>直近3戦</span>
+            <strong className={getBbToneClass(recentThreeNetBb)}>
+              {formatSignedBbValue(recentThreeNetBb)}
+            </strong>
+          </div>
+        ) : null}
       </div>
 
       <dl className="stats-core-metrics">

@@ -162,7 +162,7 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 
 ランキング指標はPlayerStatsRepositoryの確定結果CTEで集約する。1回のSQLで現在（全確定開催）と前回（最新確定開催を除いた集合）の2スコープを取得する。最新開催は`played_at DESC, finalized_at DESC, id DESC`で決定し、対象開催の除外をwindow計算より前に行う。開催人数のwindow countはスコープと`game_id`、直近3参加のrow numberはスコープと`group_player_id`で分割し、人数の二重計上や前回の4戦目の欠落を防ぐ。確定結果へのINNER JOINで、各時点の参加0回メンバーを除外する。
 
-個人詳細の「直近3戦」は既存の`PlayerStatsDetail.games`だけから最新3件を取り出して合計損益BBを算出する。追加SQL、順位計算、ランキングsnapshotは要求せず、各開催への既存リンクを再利用する。
+個人詳細の「直近3戦」は既存の`PlayerStatsDetail.games`だけから最新3件を取り出して合計損益BBを算出し、`PlayerStatsOverview`の累計損益に隣接する補助指標として表示する。追加SQL、順位計算、ランキングsnapshotは要求しない。開催ごとの表示とリンクは既存のページ下部`PlayerGameHistory`だけに集約し、直近3戦専用の開催リストは持たない。
 
 順位計算は`domain/player-stats/rank-players.ts`の純粋関数へ集約し、serviceとブラウザで共用する。SQLでは数値集約までを担い、serviceが現在順位と7指標の`previousRanks`を組み立て、既存loaderから返す。sort値はserviceの許可リストで検証し、SQLへ埋め込まない。画面は同じ関数で選択指標の現在順位を算出し、対応する前回順位との差を表示する。DBへの順位保存、新しいAPI、指標切替時の通信は追加しない。
 

@@ -34,7 +34,7 @@ const summary: PlayerStatsSummary = {
 describe("PlayerStatsOverview", () => {
   it("makes total profit the primary metric and keeps supporting stats", () => {
     const markup = renderToStaticMarkup(
-      createElement(PlayerStatsOverview, { summary }),
+      createElement(PlayerStatsOverview, { recentThreeNetBb: null, summary }),
     );
 
     expect(markup).toContain("TOTAL PROFIT");
@@ -63,6 +63,7 @@ describe("PlayerStatsOverview", () => {
   it("shows em dashes for rates before the first game", () => {
     const markup = renderToStaticMarkup(
       createElement(PlayerStatsOverview, {
+        recentThreeNetBb: null,
         summary: {
           ...summary,
           gamesPlayed: 0,

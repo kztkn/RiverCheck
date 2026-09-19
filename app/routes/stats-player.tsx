@@ -10,10 +10,10 @@ import { FavoriteHandDisplay } from "~/components/playing-card";
 import { AchievementBadge } from "~/components/achievement-badge";
 import { PlayerAchievementCollectionView } from "~/components/player-achievement-collection";
 import {
+  calculateRecentThreeNetBb,
   PlayerGameHistory,
   PlayerStatsOverview,
 } from "~/components/player-stats-detail";
-import { PlayerRecentThree } from "~/components/player-recent-three";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { formatSignedBbValue } from "@domain/score/bb-score";
 import { getPlayerStatsDetail } from "@server/services/player-stats-service.server";
@@ -171,6 +171,7 @@ export default function StatsPlayer({
   const { achievements, group, playerStats } = loaderData;
   const { summary, games } = playerStats;
   const recentGames = [...games].reverse();
+  const recentThreeNetBb = calculateRecentThreeNetBb(games);
   const navigation = useNavigation();
   const [showProfileSavedToast, setShowProfileSavedToast] = useState(
     loaderData.profileSaved,
@@ -321,12 +322,10 @@ export default function StatsPlayer({
         </section>
       ) : null}
 
-      <PlayerRecentThree
-        games={games}
-        groupCode={group.publicCode}
+      <PlayerStatsOverview
+        recentThreeNetBb={recentThreeNetBb}
+        summary={summary}
       />
-
-      <PlayerStatsOverview summary={summary} />
 
       <PlayerAchievementCollectionView
         collection={achievements}
