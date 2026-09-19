@@ -58,6 +58,7 @@ import {
   summarizeAdminParticipantStates,
 } from "~/utils/admin-participant-state";
 import { getAdminNextAction } from "~/utils/admin-next-action";
+import { openTableEventRecorder } from "~/components/table-event-recorder";
 
 type OrganizerRebuyIntent =
   | "record-rebuy"
@@ -1158,9 +1159,20 @@ export default function GameAdmin({
               <p className="form-brand-label">PLAYERS</p>
               <h2>参加者と入力状況</h2>
             </div>
-            <span className="count-badge">
-              {visibleParticipants.length}人
-            </span>
+            <div className="section-heading-actions">
+              <span className="count-badge">
+                {visibleParticipants.length}人
+              </span>
+              <button
+                aria-label="テーブルイベントを記録"
+                className="button button-secondary admin-table-event-button"
+                onClick={openTableEventRecorder}
+                type="button"
+              >
+                <span aria-hidden="true">＋</span>
+                TABLE EVENT
+              </button>
+            </div>
           </div>
           <GameRefreshButton>入力状況を更新</GameRefreshButton>
           <div

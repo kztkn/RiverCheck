@@ -96,6 +96,7 @@ import { OrganizerCostShareCollection } from "~/components/organizer-cost-share-
 import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-preview-draft";
 import { INVITE_REQUIRED_RESPONSE_TEXT } from "@domain/routing/public-group-entry";
 import { TableNow } from "~/components/table-now";
+import { openTableEventRecorder } from "~/components/table-event-recorder";
 import { listOpenGameTableEvents } from "@server/repositories/table-event-repository.server";
 import { scheduleAchievementRefresh } from "@server/services/achievement-service.server";
 
@@ -1898,6 +1899,15 @@ function RebuyTracker({
                 fetcher.formData?.get("intent") === "record-repayment"
                 ? "返済中…"
                 : "100BB返済"}
+            </button>
+            <button
+              aria-label="テーブルイベントを記録"
+              className="button participant-table-event-button"
+              onClick={openTableEventRecorder}
+              type="button"
+            >
+              <span aria-hidden="true">♠</span>
+              EVENT
             </button>
           </div>
           {result?.ok === false ? (

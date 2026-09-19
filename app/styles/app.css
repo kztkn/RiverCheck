@@ -4268,10 +4268,18 @@ input[aria-invalid="true"] {
   padding: 5px 9px;
 }
 
-.rebuy-state-grid,
-.participant-quick-action-buttons {
+.rebuy-state-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.participant-quick-action-buttons {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr)
+    minmax(72px, 0.72fr);
   gap: 9px;
 }
 

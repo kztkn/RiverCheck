@@ -1,40 +1,36 @@
-.table-event-fixed-layer {
-  position: fixed;
-  z-index: 34;
-  inset: 0;
-  width: 100vw;
-  height: 100dvh;
-  pointer-events: none;
+.participant-table-event-button,
+.admin-table-event-button {
+  border-color: rgba(233, 186, 90, 0.42);
+  background: rgba(233, 186, 90, 0.07);
+  color: #f0d392;
 }
 
-.table-event-trigger {
-  position: absolute;
-  right: max(16px, env(safe-area-inset-right));
-  bottom: max(18px, calc(env(safe-area-inset-bottom) + 12px));
-  pointer-events: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 44px;
-  border: 1px solid rgba(233, 186, 90, 0.42);
+.participant-table-event-button {
+  gap: 5px;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
+.participant-table-event-button > span {
+  font-size: 0.82rem;
+}
+
+.admin-table-event-button {
+  min-height: 38px;
+  gap: 6px;
   border-radius: 999px;
-  background: rgba(11, 24, 19, 0.94);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
-  color: #f5dfaa;
-  font-size: 0.78rem;
-  font-weight: 850;
-  padding: 0 15px;
-  backdrop-filter: blur(14px);
+  font-size: 0.65rem;
+  padding: 7px 11px;
+  white-space: nowrap;
 }
 
-.table-event-trigger > span {
-  display: grid;
-  width: 22px;
-  height: 22px;
-  place-items: center;
-  border-radius: 50%;
+.admin-table-event-button:hover,
+.admin-table-event-button:focus-visible,
+.participant-table-event-button:hover,
+.participant-table-event-button:focus-visible {
+  border-color: rgba(233, 186, 90, 0.68);
   background: rgba(233, 186, 90, 0.12);
-  font-size: 1rem;
+  color: #ffe4a7;
 }
 
 .table-event-dialog {

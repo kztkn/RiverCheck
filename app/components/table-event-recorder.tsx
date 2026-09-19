@@ -29,6 +29,14 @@ interface TableEventPanelResponse {
 
 type RecorderMode = "menu" | "seven-deuce" | "all-in";
 
+export const TABLE_EVENT_RECORDER_OPEN_EVENT =
+  "rivercheck:open-table-event-recorder";
+
+export function openTableEventRecorder(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(TABLE_EVENT_RECORDER_OPEN_EVENT));
+}
+
 export function TableEventRecorder() {
   const location = useLocation();
   const revalidator = useRevalidator();
@@ -46,7 +54,7 @@ export function TableEventRecorder() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   async function refreshPanel(path = resourcePath) {
     if (!path) {
@@ -115,15 +123,24 @@ export function TableEventRecorder() {
     };
   }, [isOpen]);
 
-  if (!resourcePath || !panel) return null;
+  useEffect(() => {
+    const handleOpen = () => {
+      const activeElement = document.activeElement;
+      returnFocusRef.current =
+        activeElement instanceof HTMLElement ? activeElement : null;
+      setMode("menu");
+      setFeedback(null);
+      setError(null);
+      setIsOpen(true);
+      void refreshPanel();
+    };
+    window.addEventListener(TABLE_EVENT_RECORDER_OPEN_EVENT, handleOpen);
+    return () => {
+      window.removeEventListener(TABLE_EVENT_RECORDER_OPEN_EVENT, handleOpen);
+    };
+  }, [resourcePath]);
 
-  function openRecorder() {
-    setMode("menu");
-    setFeedback(null);
-    setError(null);
-    setIsOpen(true);
-    void refreshPanel();
-  }
+  if (!resourcePath || !panel) return null;
 
   function closeRecorder() {
     setIsOpen(false);
@@ -209,17 +226,6 @@ export function TableEventRecorder() {
 
   return (
     <>
-      <div className="table-event-fixed-layer" aria-hidden={isOpen ? "true" : undefined}>
-        <button
-          className="table-event-trigger"
-          onClick={openRecorder}
-          ref={triggerRef}
-          type="button"
-        >
-          <span aria-hidden="true">＋</span>
-          テーブルイベント
-        </button>
-      </div>
       <dialog
         aria-labelledby="table-event-title"
         className="app-dialog table-event-dialog"
@@ -229,7 +235,8 @@ export function TableEventRecorder() {
         }}
         onClose={() => {
           setIsOpen(false);
-          triggerRef.current?.focus();
+          returnFocusRef.current?.focus();
+          returnFocusRef.current = null;
         }}
         ref={dialogRef}
       >
