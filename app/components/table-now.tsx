@@ -185,17 +185,63 @@ export function LiveTableMini({
   to: string;
 }) {
   const items = [
-    `${data.playerCount ?? "—"} PLAYERS`,
-    data.allInCount > 0 ? `ALL IN ${data.allInCount}` : null,
-    data.bombPotCount > 0 ? `BOMB POT ${data.bombPotCount}` : null,
-    data.sevenDeuceCount > 0 ? `72o ${data.sevenDeuceCount}` : null,
-  ].filter((item): item is string => Boolean(item));
+    {
+      Icon: IconUsers,
+      key: "players",
+      label: "PLAYERS",
+      value: data.playerCount ?? "—",
+      visible: true,
+    },
+    {
+      Icon: IconArrowUp,
+      key: "all-in",
+      label: "ALL IN",
+      value: data.allInCount,
+      visible: data.allInCount > 0,
+    },
+    {
+      Icon: IconBomb,
+      key: "bomb-pot",
+      label: "BOMB POT",
+      value: data.bombPotCount,
+      visible: data.bombPotCount > 0,
+    },
+    {
+      Icon: IconCards,
+      key: "seven-deuce",
+      label: "72o",
+      value: data.sevenDeuceCount,
+      visible: data.sevenDeuceCount > 0,
+    },
+  ].filter((item) => item.visible);
 
   return (
-    <Link aria-label="LIVE TABLEを開く" className="home-live-table-mini" to={to}>
-      <strong>LIVE TABLE</strong>
-      <span>{items.join(" · ")}</span>
-      <b aria-hidden="true">→</b>
+    <Link
+      aria-label="開催中のテーブルを開く"
+      className="home-live-table-mini"
+      to={to}
+    >
+      <span className="home-live-table-mini-heading">
+        <span aria-hidden="true" className="home-live-dot" />
+        <strong>LIVE TABLE</strong>
+      </span>
+
+      <span className="home-live-table-mini-stats">
+        {items.map(({ Icon, key, label, value }) => (
+          <span className="home-live-table-mini-stat" key={key}>
+            <Icon aria-hidden="true" stroke={1.7} />
+            <span>
+              <strong>{value}</strong>
+              <small>{label}</small>
+            </span>
+          </span>
+        ))}
+      </span>
+
+      <span className="home-live-table-mini-cta">
+        テーブルに戻る
+        <b aria-hidden="true">→</b>
+      </span>
     </Link>
   );
 }

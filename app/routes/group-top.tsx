@@ -43,6 +43,9 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
   const pastGames = games.filter((game) => game.status === "finalized");
   const primaryGame = activeGames[0];
   const otherActiveGames = activeGames.slice(1);
+  const isPrimaryGameLive =
+    primaryGame?.status === "open" &&
+    liveTable?.gameId === primaryGame.id;
 
   return (
     <main className="page-shell group-home-page">
@@ -56,19 +59,34 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
 
       <section
         aria-labelledby="current-game-heading"
-        className="home-current-game"
+        className={`home-current-game${isPrimaryGameLive ? " is-live" : ""}`}
       >
         <div className="home-section-heading">
           <div>
-            <p className="home-section-kicker">NEXT TABLE</p>
-            <h2 id="current-game-heading">開催予定</h2>
+            <p
+              className={`home-section-kicker${isPrimaryGameLive ? " is-live" : ""}`}
+            >
+              {isPrimaryGameLive ? (
+                <>
+                  <span aria-hidden="true" className="home-live-dot" />
+                  LIVE TABLE
+                </>
+              ) : (
+                "NEXT TABLE"
+              )}
+            </p>
+            <h2 id="current-game-heading">
+              {isPrimaryGameLive ? "開催中" : "開催予定"}
+            </h2>
           </div>
           <span className="home-section-count">{activeGames.length}件</span>
         </div>
 
         {primaryGame ? (
           <>
-            <article className="home-primary-game">
+            <article
+              className={`home-primary-game${isPrimaryGameLive ? " is-live" : ""}`}
+            >
               <div className="home-primary-game-copy">
                 <span className={`status status-${primaryGame.status}`}>
                   {statusLabels[primaryGame.status]}

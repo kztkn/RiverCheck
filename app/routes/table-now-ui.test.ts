@@ -43,9 +43,13 @@ describe("LIVE TABLE presentation", () => {
     );
 
     expect(markup).toContain('href="/g/river-check/games/game-1"');
-    expect(markup).toContain("5 PLAYERS");
-    expect(markup).toContain("ALL IN 2");
-    expect(markup).toContain("72o 1");
+    expect(markup).toContain("LIVE TABLE");
+    expect(markup).toContain(">5</strong>");
+    expect(markup).toContain("PLAYERS");
+    expect(markup).toContain(">2</strong>");
+    expect(markup).toContain("ALL IN");
+    expect(markup).toContain("72o");
+    expect(markup).toContain("テーブルに戻る");
     expect(markup).not.toContain("BOMB POT");
   });
 });

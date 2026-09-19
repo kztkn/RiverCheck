@@ -137,6 +137,7 @@ import {
   SettlementPlanSheet,
   resolveUndoableRebuyAction,
   shouldShowLocalRules,
+  shouldUseStickyRebuyActions,
 } from "./game-participant";
 
 const group = {
@@ -752,6 +753,14 @@ describe("game participant route", () => {
       "rc_participant_game",
     );
     expect(response.headers.get("Set-Cookie")).toContain("rc_player_profile");
+  });
+});
+
+describe("participant quick rebuy actions", () => {
+  it("keeps the bottom quick actions only while the player is actively playing", () => {
+    expect(shouldUseStickyRebuyActions("joined")).toBe(true);
+    expect(shouldUseStickyRebuyActions("submitted")).toBe(false);
+    expect(shouldUseStickyRebuyActions("locked")).toBe(false);
   });
 });
 

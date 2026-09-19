@@ -120,6 +120,12 @@ export type UndoableRebuyAction = {
   intent: "record-rebuy" | "record-repayment";
 };
 
+export function shouldUseStickyRebuyActions(
+  status: "joined" | "submitted" | "locked",
+): boolean {
+  return status === "joined";
+}
+
 export async function loader({ request, params }: Route.LoaderArgs) {
   const context = await requireGame(params.groupCode, params.gameId);
   const [isOrganizer, profileOverview] = await Promise.all([
@@ -775,6 +781,11 @@ export default function GameParticipant({
       className={`page-shell participant-page${loaderData.game.status === "open" && !loaderData.participant
           ? " participant-selection-page"
           : ""
+        }${loaderData.game.status === "open" &&
+          loaderData.participant &&
+          shouldUseStickyRebuyActions(loaderData.participant.status)
+          ? " has-sticky-rebuy-actions"
+          : ""
         }`}
     >
       <GroupSiteHeader
@@ -955,6 +966,9 @@ export default function GameParticipant({
               outstandingRebuyCount={
                 loaderData.participant.outstandingRebuyCount
               }
+              stickyActions={shouldUseStickyRebuyActions(
+                loaderData.participant.status,
+              )}
               totalRebuyCount={loaderData.participant.totalRebuyCount}
             />
           </section>
@@ -1774,11 +1788,13 @@ function RebuyTracker({
   canRecord,
   fetcher,
   outstandingRebuyCount,
+  stickyActions,
   totalRebuyCount,
 }: {
   canRecord: boolean;
   fetcher: ReturnType<typeof useFetcher<RebuyActionData>>;
   outstandingRebuyCount: number;
+  stickyActions: boolean;
   totalRebuyCount: number | null;
 }) {
   const isPending = fetcher.state !== "idle";
@@ -1847,60 +1863,75 @@ function RebuyTracker({
         </div>
       </div>
       {canRecord ? (
-        <div className="rebuy-actions">
-          <button
-            className="button button-primary"
-            disabled={isPending}
-            onClick={() => submit("record-rebuy")}
-            type="button"
-          >
-            {isPending && fetcher.formData?.get("intent") === "record-rebuy"
-              ? "記録中…"
-              : "＋ リバイ"}
-          </button>
-          <button
-            className="button button-secondary"
-            disabled={isPending || outstandingRebuyCount === 0}
-            onClick={() => submit("record-repayment")}
-            type="button"
-          >
-            {isPending &&
-              fetcher.formData?.get("intent") === "record-repayment"
-              ? "返済中…"
-              : "100BB返済"}
-          </button>
+        <div
+          aria-label="リバイのクイック操作"
+          className={`rebuy-actions participant-quick-actions${stickyActions ? " is-sticky" : ""}`}
+        >
+          <div aria-hidden="true" className="participant-quick-actions-status">
+            <span>
+              <small>REBUY</small>
+              <strong>{formatTotalRebuyCount(totalRebuyCount)}</strong>
+            </span>
+            <span>
+              <small>未返済</small>
+              <strong>{outstandingRebuyCount}口</strong>
+            </span>
+          </div>
+          <div className="participant-quick-action-buttons">
+            <button
+              className="button button-primary"
+              disabled={isPending}
+              onClick={() => submit("record-rebuy")}
+              type="button"
+            >
+              {isPending && fetcher.formData?.get("intent") === "record-rebuy"
+                ? "記録中…"
+                : "＋ リバイ"}
+            </button>
+            <button
+              className="button button-secondary"
+              disabled={isPending || outstandingRebuyCount === 0}
+              onClick={() => submit("record-repayment")}
+              type="button"
+            >
+              {isPending &&
+                fetcher.formData?.get("intent") === "record-repayment"
+                ? "返済中…"
+                : "100BB返済"}
+            </button>
+          </div>
+          {result?.ok === false ? (
+            <p className="rebuy-action-error" role="alert">
+              {result.error}
+            </p>
+          ) : null}
+          {feedbackMessage ? (
+            <div
+              aria-live="polite"
+              className="rebuy-action-feedback"
+              role="status"
+            >
+              <span className="rebuy-action-feedback-copy">
+                <span aria-hidden="true">✓</span>
+                <strong>{feedbackMessage}</strong>
+              </span>
+              <button
+                className="rebuy-inline-undo"
+                disabled={isPending}
+                onClick={undo}
+                type="button"
+              >
+                <span aria-hidden="true">↶</span>
+                元に戻す
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : (
         <p className="rebuy-tracker-help">
           このリバイ記録は現在変更できません。
         </p>
       )}
-      {result?.ok === false ? (
-        <p className="rebuy-action-error" role="alert">
-          {result.error}
-        </p>
-      ) : null}
-      {feedbackMessage ? (
-        <div
-          aria-live="polite"
-          className="rebuy-action-feedback"
-          role="status"
-        >
-          <span className="rebuy-action-feedback-copy">
-            <span aria-hidden="true">✓</span>
-            <strong>{feedbackMessage}</strong>
-          </span>
-          <button
-            className="rebuy-inline-undo"
-            disabled={isPending}
-            onClick={undo}
-            type="button"
-          >
-            <span aria-hidden="true">↶</span>
-            元に戻す
-          </button>
-        </div>
-      ) : null}
     </section>
   );
 }

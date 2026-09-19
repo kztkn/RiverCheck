@@ -13,6 +13,7 @@ import {
   PlayerGameHistory,
   PlayerStatsOverview,
 } from "~/components/player-stats-detail";
+import { PlayerRecentThree } from "~/components/player-recent-three";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { formatSignedBbValue } from "@domain/score/bb-score";
 import { getPlayerStatsDetail } from "@server/services/player-stats-service.server";
@@ -319,6 +320,11 @@ export default function StatsPlayer({
           </div>
         </section>
       ) : null}
+
+      <PlayerRecentThree
+        games={games}
+        groupCode={group.publicCode}
+      />
 
       <PlayerStatsOverview summary={summary} />
 
