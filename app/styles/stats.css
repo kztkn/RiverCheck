@@ -411,109 +411,6 @@
   color: var(--ink) !important;
 }
 
-.stats-recent-three {
-  display: grid;
-  grid-template-columns: minmax(180px, 0.72fr) minmax(0, 1.28fr);
-  gap: clamp(24px, 5vw, 56px);
-  margin: 0 0 18px;
-  border-top: 1px solid rgba(233, 186, 90, 0.3);
-  border-bottom: 1px solid var(--line);
-  background:
-    radial-gradient(circle at 4% 0%, rgba(233, 186, 90, 0.07), transparent 190px);
-  padding: 22px 0;
-}
-
-.stats-recent-three-lead {
-  display: grid;
-  align-content: center;
-  gap: 9px;
-}
-
-.stats-recent-three-lead > div {
-  display: grid;
-  gap: 6px;
-}
-
-.stats-recent-three-lead h2 {
-  margin: 0;
-  font-size: clamp(1.2rem, 4vw, 1.55rem);
-  letter-spacing: -0.04em;
-}
-
-.stats-recent-three-lead strong {
-  font-size: clamp(1.8rem, 7vw, 2.7rem);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  letter-spacing: -0.055em;
-}
-
-.stats-recent-three-lead > small {
-  color: var(--muted);
-  font-size: 0.66rem;
-}
-
-.stats-recent-three-games {
-  display: grid;
-  border-top: 1px solid rgba(223, 236, 227, 0.09);
-}
-
-.stats-recent-three-game {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 14px;
-  border-bottom: 1px solid rgba(223, 236, 227, 0.09);
-  color: inherit;
-  padding: 12px 2px;
-}
-
-.stats-recent-three-game:hover,
-.stats-recent-three-game:focus-visible {
-  background: rgba(57, 222, 141, 0.035);
-  outline: none;
-}
-
-.stats-recent-three-game-copy {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 3px 10px;
-}
-
-.stats-recent-three-game-copy > small {
-  grid-row: 1 / span 2;
-  align-self: center;
-  color: #81938a;
-  font-size: 0.65rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.stats-recent-three-game-copy > strong {
-  min-width: 0;
-  overflow: hidden;
-  font-size: 0.78rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.stats-recent-three-game-copy > span {
-  color: var(--muted);
-  font-size: 0.62rem;
-  font-weight: 750;
-}
-
-.stats-recent-three-game > b {
-  font-size: 0.82rem;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.stats-recent-three-arrow {
-  color: #6f8378;
-  font-size: 0.82rem;
-}
-
 .player-performance-summary {
   display: grid;
   grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
@@ -570,6 +467,29 @@
   font-variant-numeric: tabular-nums;
   line-height: 0.95;
   letter-spacing: -0.075em;
+  white-space: nowrap;
+}
+
+.stats-profit-recent {
+  display: flex;
+  width: fit-content;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 14px;
+  border-top: 1px solid rgba(223, 236, 227, 0.1);
+  padding-top: 10px;
+}
+
+.stats-profit-recent > span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 760;
+}
+
+.stats-profit-recent > strong {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
   white-space: nowrap;
 }
 
@@ -826,30 +746,6 @@
     width: 76px;
     height: 76px;
     border-radius: 21px;
-  }
-
-  .stats-recent-three {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 18px;
-    padding: 20px 0;
-  }
-
-  .stats-recent-three-lead {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-  }
-
-  .stats-recent-three-lead > .stats-brand-label,
-  .stats-recent-three-lead > small {
-    grid-column: 1 / -1;
-  }
-
-  .stats-recent-three-lead > small {
-    margin-top: -4px;
-  }
-
-  .stats-recent-three-lead strong {
-    font-size: clamp(1.85rem, 10vw, 2.7rem);
   }
 
   .player-performance-summary {
