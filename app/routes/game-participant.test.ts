@@ -183,10 +183,17 @@ describe("game participant route", () => {
     vi.resetAllMocks();
     mocked.findGroupByPublicCode.mockResolvedValue(group);
     mocked.findGameForGroup.mockResolvedValue(openGame);
-    mocked.findGameWithGroupByPublicCode.mockResolvedValue({
-      group,
-      game: openGame,
-    });
+    mocked.findGameWithGroupByPublicCode.mockImplementation(
+      async (publicCode: string, currentGameId: string) => {
+        const currentGroup = await mocked.findGroupByPublicCode(publicCode);
+        if (!currentGroup) return null;
+        const currentGame = await mocked.findGameForGroup(
+          currentGroup.id,
+          currentGameId,
+        );
+        return currentGame ? { group: currentGroup, game: currentGame } : null;
+      },
+    );
     mocked.isOrganizerAuthenticated.mockResolvedValue(false);
     mocked.getAuthenticatedPlayerIdentity.mockResolvedValue(null);
     mocked.getAuthenticatedPlayerProfile.mockResolvedValue({
