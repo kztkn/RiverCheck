@@ -8,6 +8,7 @@ export interface RevisionResult {
   score: number;
   rank: number;
   costShare: number;
+  gameSettlementAmount?: number;
 }
 
 export interface ResultCorrectionInput {
@@ -81,6 +82,8 @@ function hasResultChanged(
       after.trackedOutstandingRebuyCount ||
     before.score !== after.score ||
     before.rank !== after.rank ||
-    before.costShare !== after.costShare
+    before.costShare !== after.costShare ||
+    (before.gameSettlementAmount ?? 0) !==
+      (after.gameSettlementAmount ?? 0)
   );
 }

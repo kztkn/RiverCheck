@@ -130,6 +130,8 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 - トークンは 64 文字の SHA-256 hex として保存する
 - `games.rounding_unit` は既存スキーマとの互換用に残すが、DB制約とrepositoryで100固定にする
 - `games.cost_shares` は検証済みの全順位負担額を`BIGINT[]`で保存する。移行前のNULLだけは1〜3位設定から従来計算する
+- `games.bb_rate` は開催単位の`BIGINT NOT NULL DEFAULT 0`とし、0 / 5 / 10 / 20だけをCHECK制約で許可する。既存開催は0となり挙動を維持する
+- `game_results.game_settlement_amount` は確定時に計算した符号付きの100円単位`BIGINT NOT NULL DEFAULT 0`を保存する。最終精算額はこの列から`cost_share`を引いて導出し、重複保存しない
 - `games.seven_deuce_rule_enabled` は72oボーナスの開催単位スナップショットとする。新規開催の既定値はONだが、導入前データは移行時にOFFとして過去開催へ遡及させない
 - `games.bomb_pot_rule_enabled` はボムポットの開催単位スナップショットとする。新規開催の既定値はONだが、導入前データは移行時にOFFとして過去開催へ遡及させない
 - ローカルルールの文言は`domain/rules/local-rules.ts`へ集約し、受付中の参加者画面は100BB返済ルール、72o設定、ボムポット設定を同じ参照用ボトムシートへ描画する。確定結果では表示せず、各ルールの成立や支払いはDBイベント化しない
@@ -192,17 +194,17 @@ PIN・合言葉と32文字以上の署名鍵はCloudflare Secretで受け取る�
 
 ## finalize
 
-service が `pg` の client を取得して `BEGIN` し、gameと参加者行をロックする。全員の入力と2人以上の参加を確認し、domain関数で検算、点数、順位、負担額を計算する。差分がある場合は主催者の確認を必須にする。game_resultsへのINSERTとgameのfinalized更新を同一transactionでcommitし、ここを結果確定の成功条件とする。commit後に対象playerの`achievements_dirty`をbest effortで立て、実績再評価を同期で1回待つ。実績再評価が失敗しても確定結果は成功のままとし、dirtyが残っていれば次回の称号コレクション読取り時だけ再評価して自己修復する。正常時の個人ページでは実績再計算を行わない。
+service が `pg` の client を取得して `BEGIN` し、gameと参加者行をロックする。全員の入力と2人以上の参加を確認し、domain関数で検算、点数、順位、負担額、BBゲーム精算額を計算する。BBレート0では差分がある場合に主催者の確認を必須とし、BBレート有効時は差分0を必須とする。ゲーム精算額はBigIntの有理数計算で100円口へ丸め、誤差最小の決定的補正で全員合計0円を保証する。game_resultsへのINSERTとgameのfinalized更新を同一transactionでcommitし、ここを結果確定の成功条件とする。commit後に対象playerの`achievements_dirty`をbest effortで立て、実績再評価を同期で1回待つ。実績再評価が失敗しても確定結果は成功のままとし、dirtyが残っていれば次回の称号コレクション読取り時だけ再評価して自己修復する。正常時の個人ページでは実績再計算を行わない。
 
 ## 精算プレビューのローカル下書き
 
-確定前の精算プレビューは正式な`games`更新とは分離し、主催者のブラウザ`localStorage`だけへ保存する。保存キーはgroup codeとgame IDを含むバージョン付きキーとし、会費、想定人数、順位別負担額、おすすめ配分モード、調整モードをJSONで保持する。`GameSettingsFields`は下書き用propsが渡された開催管理画面だけで復元・自動保存を有効にし、新規開催画面では利用しない。壊れたJSONや未知のversion/modeは無視して削除する。
+確定前の精算プレビューは正式な`games`更新とは分離し、主催者のブラウザ`localStorage`だけへ保存する。保存キーはgroup codeとgame IDを含むバージョン付きキーとし、会費、想定人数、順位別負担額、おすすめ配分モード、調整モード、BBレートをJSONで保持する。旧ドラフトにBBレートがなければ0として復元する。`GameSettingsFields`は下書き用propsが渡された開催管理画面だけで復元・自動保存を有効にし、新規開催画面では利用しない。壊れたJSONや未知のversion/modeは無視して削除する。
 
 正式な開催設定と金額・人数・配分が同じ状態では下書きを保持せず、「元の設定に戻す」でlocalStorageを削除して正式値へ戻す。finalize成功後は結果画面への`notice=finalized`遷移時に、受付中開催の削除成功後は管理ホームへのredirectで渡す削除game IDを使って該当キーを削除する。localStorageが利用できない場合でも確定・削除などサーバー処理は失敗させない。
 
 ## 確定後の結果訂正
 
-主催者routeは既存参加者全員の残りチップ・リバイ回数を配列で受け取り、serviceがgame、game_participants、game_resultsをロックする。対象参加者集合が確定時から変わっていないことを検証し、既存のdomain関数で全順位・会費を再計算する。
+主催者routeは既存参加者全員の残りチップ・リバイ回数を配列で受け取り、serviceがgame、game_participants、game_resultsをロックする。対象参加者集合が確定時から変わっていないことを検証し、既存のdomain関数で全順位・会費・BBゲーム精算額を再計算する。BBレート有効時は訂正でもチップ差分0を必須とする。
 
 repositoryは訂正前後のGameResultSummary配列をJSONBとしてgame_result_revisionsへ保存した後、game_participantsを更新し、順位一意制約との衝突を避けるためgame_resultsを同一トランザクション内で置換する。gameはfinalizedのまま、共有URLも維持する。履歴取得は参加者用公開routeでも許可し、入力、順位、BB、会費の差分を共通コンポーネントで表示する。
 
@@ -213,7 +215,7 @@ repositoryは訂正前後のGameResultSummary配列をJSONBとしてgame_result_
 
 finalizedの開催ではgame_resultsを順位順に取得し、参加者用URLと主催者画面の共通コンポーネントで表示する。順位判定とDB保存は整数scoreのまま維持し、表示時にgames.initial_chipsを100BBとして初期スタック分を差し引いた損益BBへ換算する。共有操作は主催者画面だけに表示する。LINE用テキストはdomainの純粋関数で生成し、計算式は含めない。共有URLはgame UUIDを22文字のBase64URLへ可逆変換した`/r/:resultCode`を使用する。短縮routeは確定済み開催だけを既存の参加者用URLへredirectし、DBへの短縮コード保存や外部短縮サービスは使用しない。コピーはHTTPSまたはlocalhostではClipboard APIを優先し、同一LANのHTTPなど利用できない環境ではtextarea選択とcopy commandへフォールバックする。自動コピーが拒否された場合は選択状態にして手動コピーを案内する。
 
-会費回収確認は`game_cost_share_receipts`へ`game_id`と`group_player_id`の組み合わせ、および受取日時を保持する。公開結果のloaderでは主催者認証済みの場合だけ取得し、更新actionも主催者認証を必須とする。受取状態の更新では対象の確定結果行をロックし、0円または確定結果に存在しない参加者への登録を拒否する。結果訂正では会費負担額が変わった参加者の受取確認を、結果置換と同じトランザクション内で削除する。
+精算確認は既存の`game_cost_share_receipts`へ`game_id`と`group_player_id`の組み合わせ、および完了日時を保持する。BBレート0では従来の会費回収、有効時は主催者への入金または主催者からの送金の完了として再利用する。公開結果のloaderでは主催者認証済みの場合だけ取得し、更新actionも主催者認証を必須とする。更新では対象の確定結果行をロックし、最終精算額0円または確定結果に存在しない参加者への登録を拒否する。結果訂正では最終精算額が変わった参加者の確認を、結果置換と同じトランザクション内で削除する。
 
 ## GAME TIMELINE
 

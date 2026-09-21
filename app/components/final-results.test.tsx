@@ -8,6 +8,7 @@ describe("FinalResults settlement visibility", () => {
   const results: GameResultSummary[] = [
     {
       costShare: 1500,
+      gameSettlementAmount: 0,
       displayName: "Alice",
       groupPlayerId: "player-1",
       rank: 1,
@@ -19,6 +20,7 @@ describe("FinalResults settlement visibility", () => {
     },
     {
       costShare: 2500,
+      gameSettlementAmount: 0,
       displayName: "Bob",
       groupPlayerId: "player-2",
       rank: 2,
@@ -91,5 +93,34 @@ describe("FinalResults settlement visibility", () => {
     expect(markup).toContain("2,500円");
     expect(markup).toContain("4,000円");
     expect(markup).toContain("トータル");
+  });
+
+  it("BB精算が有効なら最終額とゲーム・会費の内訳を表示する", () => {
+    const markup = renderToStaticMarkup(
+      createElement(FinalResults, {
+        bbRate: 5,
+        groupCode: "river-check",
+        initialChips: 20_000,
+        lineText: "",
+        linkPlayerProfiles: false,
+        payPay: null,
+        playedAt: "2026-09-20T12:00:00.000Z",
+        results: [
+          { ...results[0], gameSettlementAmount: 1_500 },
+          { ...results[1], gameSettlementAmount: -1_500 },
+        ],
+        revisions: [],
+        shareUrl: "https://example.com/r/result",
+        showSettlementAmounts: true,
+        showSharePanel: false,
+      }),
+    );
+
+    expect(markup).toContain("精算レート 1BB = 5円");
+    expect(markup).toContain("精算なし");
+    expect(markup).toContain("支払 4,000円");
+    expect(markup).toContain("ゲーム +1,500円 / 会費 -1,500円");
+    expect(markup).toContain("会費合計");
+    expect(markup).not.toContain(">トータル<");
   });
 });

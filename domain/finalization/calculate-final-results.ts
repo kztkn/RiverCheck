@@ -3,6 +3,7 @@ import { calculateCostShares } from "../cost-sharing/calculate-cost-shares";
 import { validateCostSharePlan } from "../cost-sharing/validate-cost-share-plan";
 import { calculateRanking } from "../ranking/calculate-ranking";
 import { calculateScore } from "../score/calculate-score";
+import { calculateRoundedGameSettlements } from "../settlement/calculate-game-settlements";
 
 export interface FinalizationParticipant {
   groupPlayerId: string;
@@ -21,6 +22,7 @@ export interface FinalizationSettings {
   secondPlaceCost: number;
   thirdPlaceCost: number;
   costShares?: number[] | null;
+  bbRate?: number;
 }
 
 export function calculateFinalResults(
@@ -63,6 +65,19 @@ export function calculateFinalResults(
       }),
     })),
   );
+  const gameSettlementByPlayerId = new Map(
+    calculateRoundedGameSettlements(
+      ranking.map((ranked) => ({
+        groupPlayerId: ranked.groupPlayerId,
+        score: ranked.score,
+      })),
+      settings.initialChips,
+      settings.bbRate ?? 0,
+    ).map((settlement) => [
+      settlement.groupPlayerId,
+      settlement.gameSettlementAmount,
+    ]),
+  );
 
   return {
     chipValidation,
@@ -80,6 +95,8 @@ export function calculateFinalResults(
         score: ranked.score,
         rank: ranked.rank,
         costShare: costShares.shares[ranked.rank - 1]!,
+        gameSettlementAmount:
+          gameSettlementByPlayerId.get(ranked.groupPlayerId) ?? 0,
       };
     }),
   };

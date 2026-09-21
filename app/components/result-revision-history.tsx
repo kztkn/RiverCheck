@@ -4,10 +4,12 @@ import { buildResultRevisionChanges } from "@domain/result-revision/build-result
 import type { GameResultRevision } from "@shared-types/result";
 
 export function ResultRevisionHistory({
+  bbRate = 0,
   initialChips,
   revisions,
   showCostShareChanges = true,
 }: {
+  bbRate?: number;
   initialChips: number;
   revisions: GameResultRevision[];
   showCostShareChanges?: boolean;
@@ -120,6 +122,30 @@ export function ResultRevisionHistory({
                           label="会費"
                         />
                       ) : null}
+                      {showCostShareChanges &&
+                      bbRate > 0 &&
+                      (change.before.gameSettlementAmount ?? 0) !==
+                        (change.after.gameSettlementAmount ?? 0) ? (
+                        <ChangeValue
+                          after={formatSignedYen(
+                            change.after.gameSettlementAmount ?? 0,
+                          )}
+                          before={formatSignedYen(
+                            change.before.gameSettlementAmount ?? 0,
+                          )}
+                          label="ゲーム"
+                        />
+                      ) : null}
+                      {showCostShareChanges &&
+                      bbRate > 0 &&
+                      settlementBalance(change.before) !==
+                        settlementBalance(change.after) ? (
+                        <ChangeValue
+                          after={formatSignedYen(settlementBalance(change.after))}
+                          before={formatSignedYen(settlementBalance(change.before))}
+                          label="最終精算"
+                        />
+                      ) : null}
                     </div>
                   </article>
                 ))}
@@ -169,4 +195,15 @@ function formatChips(value: number): string {
 
 function formatYen(value: number): string {
   return `${value.toLocaleString("ja-JP")}円`;
+}
+
+function formatSignedYen(value: number): string {
+  return `${value > 0 ? "+" : ""}${value.toLocaleString("ja-JP")}円`;
+}
+
+function settlementBalance(result: {
+  costShare: number;
+  gameSettlementAmount?: number;
+}): number {
+  return (result.gameSettlementAmount ?? 0) - result.costShare;
 }

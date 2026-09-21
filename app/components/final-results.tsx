@@ -17,6 +17,7 @@ export function FinalResults({
   groupCode,
   lineText,
   editUrl,
+  bbRate = 0,
   initialChips,
   linkPlayerProfiles = true,
   playedAt,
@@ -30,6 +31,7 @@ export function FinalResults({
   groupCode: string;
   lineText: string;
   editUrl?: string;
+  bbRate?: number;
   initialChips: number;
   linkPlayerProfiles?: boolean;
   playedAt: string;
@@ -180,9 +182,7 @@ export function FinalResults({
               {formatNetBb({ score: winner.score, initialChips })}
             </b>
             {showSettlementAmounts ? (
-              <strong className="result-cost">
-                {formatNumber(winner.costShare)}円
-              </strong>
+              <ResultSettlementAmount bbRate={bbRate} result={winner} />
             ) : null}
           </div>
         </ResultPlayerContainer>
@@ -218,9 +218,7 @@ export function FinalResults({
                 {formatNetBb({ score: result.score, initialChips })}
               </strong>
               {showSettlementAmounts ? (
-                <strong className="result-cost">
-                  {formatNumber(result.costShare)}円
-                </strong>
+                <ResultSettlementAmount bbRate={bbRate} result={result} />
               ) : null}
             </div>
           </ResultPlayerContainer>
@@ -243,16 +241,20 @@ export function FinalResults({
         <div className="result-total-summary">
           {showSettlementAmounts ? (
             <div className="result-total">
-              <span>トータル</span>
+              <span>{bbRate > 0 ? "会費合計" : "トータル"}</span>
               <strong>{formatNumber(settlementTotal)}円</strong>
             </div>
           ) : null}
           <p className="bb-basis">
             1BB = {formatChipsPerBb(initialChips)}チップ
           </p>
+          {bbRate > 0 ? (
+            <p className="bb-basis">精算レート 1BB = {formatNumber(bbRate)}円</p>
+          ) : null}
         </div>
       </div>
       <ResultRevisionHistory
+        bbRate={bbRate}
         initialChips={initialChips}
         revisions={revisions}
         showCostShareChanges={showSettlementAmounts}
@@ -320,6 +322,44 @@ export function FinalResults({
       ) : null}
     </section>
   );
+}
+
+function ResultSettlementAmount({
+  bbRate,
+  result,
+}: {
+  bbRate: number;
+  result: GameResultSummary;
+}) {
+  if (bbRate === 0) {
+    return (
+      <strong className="result-cost">{formatNumber(result.costShare)}円</strong>
+    );
+  }
+
+  const gameAmount = result.gameSettlementAmount ?? 0;
+  const balance = gameAmount - result.costShare;
+  return (
+    <span className="result-settlement-amount">
+      <strong className={`result-cost result-cost-${settlementTone(balance)}`}>
+        {balance > 0 ? "受取" : balance < 0 ? "支払" : "精算なし"}
+        {balance === 0 ? "" : ` ${formatNumber(Math.abs(balance))}円`}
+      </strong>
+      <small>
+        ゲーム {formatSignedYen(gameAmount)} / 会費 -{formatNumber(result.costShare)}円
+      </small>
+    </span>
+  );
+}
+
+function settlementTone(value: number): "positive" | "negative" | "neutral" {
+  if (value > 0) return "positive";
+  if (value < 0) return "negative";
+  return "neutral";
+}
+
+function formatSignedYen(value: number): string {
+  return `${value > 0 ? "+" : ""}${formatNumber(value)}円`;
 }
 
 

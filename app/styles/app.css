@@ -5000,6 +5000,123 @@ input[aria-invalid="true"] {
   color: var(--ink);
 }
 
+.game-settlement-option {
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.game-settlement-option > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 58px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.game-settlement-option > summary::-webkit-details-marker {
+  display: none;
+}
+
+.game-settlement-option > summary::after {
+  content: "+";
+  color: var(--muted);
+  font-size: 1.2rem;
+}
+
+.game-settlement-option[open] > summary::after {
+  content: "−";
+}
+
+.game-settlement-option > summary > span,
+.game-settlement-toggle > span {
+  display: grid;
+  gap: 3px;
+}
+
+.game-settlement-option small,
+.bb-rate-picker > p {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.game-settlement-option-body {
+  display: grid;
+  gap: 18px;
+  padding: 4px 0 20px;
+}
+
+.game-settlement-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.game-settlement-toggle input {
+  width: 22px;
+  min-height: 22px;
+}
+
+.bb-rate-picker {
+  display: grid;
+  gap: 10px;
+  border-left: 2px solid rgba(233, 186, 90, 0.4);
+  background: rgba(233, 186, 90, 0.035);
+  padding: 13px 14px;
+}
+
+.bb-rate-picker > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bb-rate-picker button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 750;
+}
+
+.bb-rate-picker button.is-active {
+  border-color: rgba(233, 186, 90, 0.65);
+  background: rgba(233, 186, 90, 0.13);
+  color: #e9ba5a;
+}
+
+.game-settlement-preview {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.game-settlement-preview > div {
+  display: grid;
+}
+
+.game-settlement-preview > div > p {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  border-top: 1px solid var(--line);
+  padding: 10px 0;
+}
+
+.game-settlement-preview > div > p > span:last-child {
+  display: grid;
+  justify-items: end;
+  text-align: right;
+}
+
 .game-form > .form-actions {
   grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
   gap: 11px;
@@ -6631,6 +6748,32 @@ input[aria-invalid="true"] {
   font-variant-numeric: tabular-nums;
 }
 
+.result-settlement-amount {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  max-width: min(46vw, 240px);
+}
+
+.result-settlement-amount small {
+  color: var(--muted);
+  font-size: 0.62rem;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.result-values .result-cost-positive {
+  color: var(--green);
+}
+
+.result-values .result-cost-negative {
+  color: #e9ba5a;
+}
+
+.result-values .result-cost-neutral {
+  color: var(--muted);
+}
+
 .result-winner-values .result-score {
   font-size: clamp(1.35rem, 6vw, 2.1rem);
   font-variant-numeric: tabular-nums;
@@ -7371,4 +7514,3 @@ input[aria-invalid="true"] {
   line-height: 1.55;
   color: var(--muted);
 }
-

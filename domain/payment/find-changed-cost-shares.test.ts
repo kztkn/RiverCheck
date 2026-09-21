@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { findChangedCostSharePlayerIds } from "./find-changed-cost-shares";
+import {
+  findChangedCostSharePlayerIds,
+  findChangedSettlementPlayerIds,
+} from "./find-changed-cost-shares";
 
 describe("findChangedCostSharePlayerIds", () => {
   it("訂正で会費が変わった参加者だけを返す", () => {
@@ -30,6 +33,26 @@ describe("findChangedCostSharePlayerIds", () => {
           { groupPlayerId: "b", costShare: 500 },
           { groupPlayerId: "a", costShare: 500 },
         ],
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("findChangedSettlementPlayerIds", () => {
+  it("会費が同じでもゲーム精算による最終残高変更を返す", () => {
+    expect(
+      findChangedSettlementPlayerIds(
+        [{ groupPlayerId: "a", costShare: 500, gameSettlementAmount: 0 }],
+        [{ groupPlayerId: "a", costShare: 500, gameSettlementAmount: 1_000 }],
+      ),
+    ).toEqual(["a"]);
+  });
+
+  it("内訳が変わっても最終残高が同じなら返さない", () => {
+    expect(
+      findChangedSettlementPlayerIds(
+        [{ groupPlayerId: "a", costShare: 500, gameSettlementAmount: 0 }],
+        [{ groupPlayerId: "a", costShare: 1_000, gameSettlementAmount: 500 }],
       ),
     ).toEqual([]);
   });

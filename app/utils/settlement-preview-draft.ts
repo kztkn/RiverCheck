@@ -13,6 +13,7 @@ export interface SettlementPreviewDraft {
   shareValues: string[];
   recommendationMode: SettlementDraftRecommendationMode;
   adjustmentMode: SettlementDraftAdjustmentMode;
+  bbRate: string;
 }
 
 const recommendationModes = new Set<SettlementDraftRecommendationMode>([
@@ -25,6 +26,7 @@ const adjustmentModes = new Set<SettlementDraftAdjustmentMode>([
   "top-three",
   "individual",
 ]);
+const supportedBbRates = new Set(["0", "5", "10", "20"]);
 
 export function buildSettlementPreviewDraftStorageKey(
   groupCode: string,
@@ -59,6 +61,8 @@ export function parseSettlementPreviewDraft(
     ) {
       return null;
     }
+    const bbRate = typeof value.bbRate === "string" ? value.bbRate : "0";
+    if (!supportedBbRates.has(bbRate)) return null;
     return {
       version: 1,
       venueCost: value.venueCost,
@@ -67,6 +71,7 @@ export function parseSettlementPreviewDraft(
       recommendationMode:
         value.recommendationMode as SettlementDraftRecommendationMode,
       adjustmentMode: value.adjustmentMode as SettlementDraftAdjustmentMode,
+      bbRate,
     };
   } catch {
     return null;
@@ -79,6 +84,7 @@ export function hasSameSettlementPreviewValues(
 ): boolean {
   return (
     left.venueCost === right.venueCost &&
+    left.bbRate === right.bbRate &&
     left.participantCount === right.participantCount &&
     left.shareValues.length === right.shareValues.length &&
     left.shareValues.every((share, index) => share === right.shareValues[index])

@@ -27,7 +27,10 @@ describe("game cost share receipt service", () => {
   });
 
   it("確定結果の会費をロックして受取済みを保存する", async () => {
-    mocked.lockCostShareForReceipt.mockResolvedValue(1_500);
+    mocked.lockCostShareForReceipt.mockResolvedValue({
+      costShare: 1_500,
+      gameSettlementAmount: 0,
+    });
 
     await expect(
       updateGameCostShareReceipt("group-1", "game-1", "player-1", true),
@@ -48,7 +51,10 @@ describe("game cost share receipt service", () => {
   });
 
   it("0円の参加者を受取済みにはしない", async () => {
-    mocked.lockCostShareForReceipt.mockResolvedValue(0);
+    mocked.lockCostShareForReceipt.mockResolvedValue({
+      costShare: 0,
+      gameSettlementAmount: 0,
+    });
 
     await expect(
       updateGameCostShareReceipt("group-1", "game-1", "player-1", true),
@@ -57,6 +63,20 @@ describe("game cost share receipt service", () => {
       error: "0円の参加者は回収対象外です。",
     });
     expect(mocked.setGameCostShareReceived).not.toHaveBeenCalled();
+  });
+
+  it("ゲーム収支と会費が相殺された参加者を精算済みにはしない", async () => {
+    mocked.lockCostShareForReceipt.mockResolvedValue({
+      costShare: 1_500,
+      gameSettlementAmount: 1_500,
+    });
+
+    await expect(
+      updateGameCostShareReceipt("group-1", "game-1", "player-1", true),
+    ).resolves.toEqual({
+      ok: false,
+      error: "0円の参加者は精算対象外です。",
+    });
   });
 
   it("確定結果にない参加者は更新しない", async () => {

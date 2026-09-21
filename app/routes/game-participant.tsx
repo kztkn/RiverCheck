@@ -208,7 +208,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       ? await listResultRevisions(context.group.id, params.gameId)
       : [];
   const publicResults = isPublicResultViewer
-    ? results.map((result) => ({ ...result, costShare: 0 }))
+    ? results.map((result) => ({
+        ...result,
+        costShare: 0,
+        gameSettlementAmount: 0,
+      }))
     : results;
   const publicRevisions = isPublicResultViewer
     ? revisions.map((revision) => ({
@@ -216,10 +220,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         beforeResults: revision.beforeResults.map((result) => ({
           ...result,
           costShare: 0,
+          gameSettlementAmount: 0,
         })),
         afterResults: revision.afterResults.map((result) => ({
           ...result,
           costShare: 0,
+          gameSettlementAmount: 0,
         })),
       }))
     : revisions;
@@ -252,7 +258,17 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       : null;
   return {
     group: { name: context.group.name, publicCode: context.group.publicCode },
-    game: context.game,
+    game: isPublicResultViewer
+      ? {
+          ...context.game,
+          venueCost: 0,
+          firstPlaceCost: 0,
+          secondPlaceCost: 0,
+          thirdPlaceCost: 0,
+          costShares: null,
+          bbRate: 0,
+        }
+      : context.game,
     canBrowseGroup,
     isOrganizer,
     isPublicResultViewer,
@@ -355,11 +371,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
           context.game.title,
           results,
           context.game.initialChips,
+          context.game.bbRate,
         )
         : "",
     shareUrl: `${url.origin}/r/${encodeResultCode(params.gameId)}`,
     pastGameNavigation: buildPastGameNavigation(finalizedGames, params.gameId),
     payPay: payPayRecipientLink
+      && (context.game.bbRate === 0 || payPayPaymentAmount !== 0)
       ? { link: payPayRecipientLink, paymentAmount: payPayPaymentAmount }
       : null,
     notice: url.searchParams.get("notice"),
@@ -873,6 +891,7 @@ export default function GameParticipant({
           />
           {loaderData.game.settlementPlanPublishedAt && loaderData.game.costShares ? (
             <SettlementPlanSheet
+              bbRate={loaderData.game.bbRate}
               costShares={loaderData.game.costShares}
               participantCount={loaderData.game.previewParticipantCount}
               venueCost={loaderData.game.venueCost}
@@ -901,6 +920,7 @@ export default function GameParticipant({
       {loaderData.game.status === "finalized" ? (
         <>
           <FinalResults
+            bbRate={loaderData.game.bbRate}
             groupCode={loaderData.group.publicCode}
             lineText={loaderData.lineText}
             editUrl={
@@ -920,6 +940,7 @@ export default function GameParticipant({
           />
           {loaderData.isOrganizer ? (
             <OrganizerCostShareCollection
+              bbRate={loaderData.game.bbRate}
               receipts={loaderData.costShareReceipts}
             />
           ) : null}
@@ -1004,6 +1025,7 @@ export default function GameParticipant({
           />
           {loaderData.game.settlementPlanPublishedAt && loaderData.game.costShares ? (
             <SettlementPlanSheet
+              bbRate={loaderData.game.bbRate}
               costShares={loaderData.game.costShares}
               participantCount={loaderData.game.previewParticipantCount}
               venueCost={loaderData.game.venueCost}
@@ -1711,10 +1733,12 @@ export function LocalRulesSheet({
 }
 
 export function SettlementPlanSheet({
+  bbRate,
   costShares,
   participantCount,
   venueCost,
 }: {
+  bbRate: number;
   costShares: number[];
   participantCount: number;
   venueCost: number;
@@ -1783,6 +1807,11 @@ export function SettlementPlanSheet({
             <p className="rebuy-rules-note">
               会場費 {venueCost.toLocaleString("ja-JP")}円 ・ {participantCount}人想定
             </p>
+            {bbRate > 0 ? (
+              <p className="rebuy-rules-note">
+                ゲーム収支を 1BB = {bbRate.toLocaleString("ja-JP")}円で最終精算に含めます。
+              </p>
+            ) : null}
             <ol className="rebuy-rules-list settlement-plan-list">
               {costShares.map((share, index) => (
                 <li key={index}>

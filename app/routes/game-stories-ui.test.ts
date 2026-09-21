@@ -41,6 +41,7 @@ describe("GameStories", () => {
         results: [
           {
             costShare: 0,
+            gameSettlementAmount: 0,
             displayName: "Alice",
             groupPlayerId: "33333333-3333-4333-8333-333333333333",
             rank: 1,

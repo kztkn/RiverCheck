@@ -316,7 +316,13 @@ describe("game participant route", () => {
   it("finalized開催では参加者一覧を取得せず入口用データも空にする", async () => {
     mocked.findGameForGroup.mockResolvedValue({
       ...openGame,
+      bbRate: 5,
+      costShares: [1_500],
+      firstPlaceCost: 1_500,
+      secondPlaceCost: 1_500,
+      thirdPlaceCost: 1_500,
       status: "finalized",
+      venueCost: 1_500,
     });
 
     const result = await loader(loaderArgs());
@@ -426,6 +432,7 @@ describe("game participant route", () => {
   it("公開済みの精算予定を全順位分表示する", () => {
     const markup = renderToStaticMarkup(
       createElement(SettlementPlanSheet, {
+        bbRate: 0,
         costShares: [1_000, 2_000],
         participantCount: 2,
         venueCost: 3_000,
@@ -897,6 +904,7 @@ describe("finalized game invite-only access", () => {
       {
         avatarUpdatedAt: null,
         costShare: 1500,
+        gameSettlementAmount: 1_500,
         displayName: "Alice",
         groupPlayerId,
         rank: 1,
@@ -915,6 +923,7 @@ describe("finalized game invite-only access", () => {
         beforeResults: [
           {
             costShare: 2000,
+            gameSettlementAmount: 1_000,
             displayName: "Alice",
             groupPlayerId,
             rank: 1,
@@ -928,6 +937,7 @@ describe("finalized game invite-only access", () => {
         afterResults: [
           {
             costShare: 1500,
+            gameSettlementAmount: 1_500,
             displayName: "Alice",
             groupPlayerId,
             rank: 1,
@@ -949,8 +959,14 @@ describe("finalized game invite-only access", () => {
     expect(result.payPay).toBeNull();
     expect(result.lineText).toBe("");
     expect(result.results[0]?.costShare).toBe(0);
+    expect(result.results[0]?.gameSettlementAmount).toBe(0);
+    expect(result.game.bbRate).toBe(0);
+    expect(result.game.venueCost).toBe(0);
+    expect(result.game.costShares).toBeNull();
     expect(result.revisions[0]?.beforeResults[0]?.costShare).toBe(0);
+    expect(result.revisions[0]?.beforeResults[0]?.gameSettlementAmount).toBe(0);
     expect(result.revisions[0]?.afterResults[0]?.costShare).toBe(0);
+    expect(result.revisions[0]?.afterResults[0]?.gameSettlementAmount).toBe(0);
     expect(result.storyPosts).toEqual([]);
     expect(mocked.listGamesForGroup).not.toHaveBeenCalled();
     expect(mocked.getPublishedGameStoryPosts).not.toHaveBeenCalled();

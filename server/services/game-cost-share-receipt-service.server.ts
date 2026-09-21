@@ -1,4 +1,5 @@
 import { withTransaction } from "@server/db/client.server";
+import { calculateSettlementBalance } from "@domain/settlement/calculate-game-settlements";
 import {
   lockCostShareForReceipt,
   setGameCostShareReceived,
@@ -12,20 +13,30 @@ export async function updateGameCostShareReceipt(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     return await withTransaction(async (transaction) => {
-      const costShare = await lockCostShareForReceipt(
+      const settlement = await lockCostShareForReceipt(
         transaction,
         groupId,
         gameId,
         groupPlayerId,
       );
-      if (costShare === null) {
+      if (settlement === null) {
         return {
           ok: false,
           error: "会費の回収対象を確認できませんでした。画面を更新してください。",
         };
       }
-      if (received && costShare === 0) {
-        return { ok: false, error: "0円の参加者は回収対象外です。" };
+      const balance = calculateSettlementBalance({
+        costShare: settlement.costShare,
+        gameSettlementAmount: settlement.gameSettlementAmount ?? 0,
+      });
+      if (received && balance === 0) {
+        return {
+          ok: false,
+          error:
+            (settlement.gameSettlementAmount ?? 0) === 0
+              ? "0円の参加者は回収対象外です。"
+              : "0円の参加者は精算対象外です。",
+        };
       }
 
       await setGameCostShareReceived(

@@ -8,6 +8,7 @@ const settings = {
   firstPlaceCost: 0,
   secondPlaceCost: 500,
   thirdPlaceCost: 1_000,
+  bbRate: 0,
 };
 
 describe("calculateFinalResults", () => {
@@ -119,6 +120,31 @@ describe("calculateFinalResults", () => {
     expect(calculated.results.map((result) => result.costShare)).toEqual([
       1_000, 2_000, 3_000, 4_000,
     ]);
+  });
+
+  it("BB収支を100円単位かつゼロサムのゲーム精算額へ変換する", () => {
+    const calculated = calculateFinalResults(
+      {
+        ...settings,
+        bbRate: 5,
+        venueCost: 12_000,
+        costShares: [500, 900, 1_200, 1_400, 1_600, 1_800, 2_100, 2_500],
+      },
+      [80_000, 60_000, 40_000, 30_000, 10_000, 0, -20_000, -40_000].map(
+        (score, index) => ({
+          groupPlayerId: `player-${index + 1}`,
+          displayName: `P${index + 1}`,
+          remainingChips: Math.max(0, score),
+          totalRebuyCount: score < 0 ? Math.abs(score) / 10_000 : 0,
+          outstandingRebuyCount: score < 0 ? Math.abs(score) / 10_000 : 0,
+          settlementRebuyCount: score < 0 ? Math.abs(score) / 10_000 : 0,
+        }),
+      ),
+    );
+
+    expect(
+      calculated.results.map((result) => result.gameSettlementAmount),
+    ).toEqual([1_500, 1_000, 500, 300, -300, -500, -1_000, -1_500]);
   });
 
   it("2人未満は確定計算できない", () => {

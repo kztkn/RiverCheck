@@ -6,6 +6,9 @@ import {
 import { calculateCostShares } from "@domain/cost-sharing/calculate-cost-shares";
 import { MINIMUM_PODIUM_PARTICIPANT_COUNT } from "@domain/cost-sharing/calculate-podium-cost-shares";
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
+import { calculateFinalResults } from "@domain/finalization/calculate-final-results";
+import { BB_RATE_OPTIONS } from "@domain/settlement/calculate-game-settlements";
+import type { GameParticipantSummary } from "@shared-types/player";
 import {
   recommendTopCosts,
   recommendTopCostsForAttendance,
@@ -27,6 +30,7 @@ export interface GameSettingsValues {
   thirdPlaceCost: string;
   previewParticipantCount: string;
   costShares: string[];
+  bbRate: string;
   sevenDeuceRuleEnabled: boolean;
   bombPotRuleEnabled: boolean;
 }
@@ -40,8 +44,10 @@ interface GameSettingsFieldsProps {
   errors: SettingsErrors;
   onValidityChange?: (valid: boolean) => void;
   onParticipantCountChange?: (value: string) => void;
+  onBbRateChange?: (value: string) => void;
   settlementDraftBaseValues?: GameSettingsValues;
   settlementDraftStorageKey?: string;
+  settlementParticipants?: GameParticipantSummary[];
   showCoreSettings?: boolean;
   values: GameSettingsValues;
 }
@@ -51,8 +57,10 @@ export function GameSettingsFields({
   errors,
   onValidityChange,
   onParticipantCountChange,
+  onBbRateChange,
   settlementDraftBaseValues,
   settlementDraftStorageKey,
+  settlementParticipants,
   showCoreSettings = true,
   values,
 }: GameSettingsFieldsProps) {
@@ -65,6 +73,7 @@ export function GameSettingsFields({
   const [shareValues, setShareValues] = useState(() =>
     buildInitialShares(values),
   );
+  const [bbRate, setBbRate] = useState(values.bbRate || "0");
   const [adjustmentMode, setAdjustmentMode] =
     useState<AdjustmentMode>("top-three");
   const [editingRank, setEditingRank] = useState<number | null>(null);
@@ -89,10 +98,71 @@ export function GameSettingsFields({
     () => analyzeSettlement(venueCost, participantCountInput, shareValues),
     [participantCountInput, shareValues, venueCost],
   );
+  const gameSettlementPreview = useMemo(() => {
+    if (bbRate === "0" || !settlementParticipants) return null;
+    if (
+      settlementParticipants.length !== Number(participantCountInput) ||
+      settlementParticipants.some(
+        (participant) =>
+          participant.remainingChips === null ||
+          participant.settlementRebuyCount === null,
+      )
+    ) {
+      return {
+        error: "全員の終了入力と精算人数が揃うと、最終精算を表示します。",
+        results: null,
+      };
+    }
+
+    try {
+      const initialChips = parsePreviewInteger(values.initialChips);
+      const calculated = calculateFinalResults(
+        {
+          initialChips,
+          rebuyChips: initialChips,
+          venueCost: parsePreviewInteger(venueCost),
+          firstPlaceCost: parsePreviewInteger(shareValues[0] ?? ""),
+          secondPlaceCost: parsePreviewInteger(
+            shareValues[1] ?? shareValues[0] ?? "",
+          ),
+          thirdPlaceCost: parsePreviewInteger(
+            shareValues[2] ?? shareValues.at(-1) ?? "",
+          ),
+          costShares: shareValues.map(parsePreviewInteger),
+          bbRate: parsePreviewInteger(bbRate),
+        },
+        settlementParticipants.map((participant) => ({
+          groupPlayerId: participant.groupPlayerId,
+          displayName: participant.displayName,
+          remainingChips: participant.remainingChips!,
+          totalRebuyCount: participant.totalRebuyCount,
+          outstandingRebuyCount: participant.outstandingRebuyCount,
+          settlementRebuyCount: participant.settlementRebuyCount!,
+        })),
+      );
+      return { error: null, results: calculated.results };
+    } catch {
+      return {
+        error: "最終精算を表示するには、会費配分を整え、チップ差分を0にしてください。",
+        results: null,
+      };
+    }
+  }, [
+    bbRate,
+    participantCountInput,
+    settlementParticipants,
+    shareValues,
+    values.initialChips,
+    venueCost,
+  ]);
 
   useEffect(() => {
     onValidityChange?.(analysis.isValid);
   }, [analysis.isValid, onValidityChange]);
+
+  useEffect(() => {
+    onBbRateChange?.(bbRate);
+  }, [bbRate, onBbRateChange]);
 
   useEffect(() => {
     if (!settlementDraftStorageKey) {
@@ -116,6 +186,7 @@ export function GameSettingsFields({
       setShareValues([...draft.shareValues]);
       setRecommendationMode(draft.recommendationMode);
       setAdjustmentMode(draft.adjustmentMode);
+      setBbRate(draft.bbRate);
       setEditingRank(null);
       setRecommendationNotice(null);
       setDraftSaved(true);
@@ -136,6 +207,7 @@ export function GameSettingsFields({
       shareValues: [...shareValues],
       recommendationMode,
       adjustmentMode,
+      bbRate,
     };
     const baseValues = settlementDraftBaseValues ?? values;
     const baseline: SettlementPreviewDraft = {
@@ -145,6 +217,7 @@ export function GameSettingsFields({
       shareValues: buildInitialShares(baseValues),
       recommendationMode: "standard",
       adjustmentMode: "top-three",
+      bbRate: baseValues.bbRate || "0",
     };
 
     try {
@@ -160,6 +233,7 @@ export function GameSettingsFields({
     }
   }, [
     adjustmentMode,
+    bbRate,
     draftReady,
     participantCountInput,
     recommendationMode,
@@ -319,6 +393,7 @@ export function GameSettingsFields({
     setShareValues(buildInitialShares(baseValues));
     setRecommendationMode("standard");
     setAdjustmentMode("top-three");
+    setBbRate(baseValues.bbRate || "0");
     setEditingRank(null);
     setRecommendationNotice(null);
     if (settlementDraftStorageKey) {
@@ -682,6 +757,90 @@ export function GameSettingsFields({
             {errors.costShares ?? analysis.message}
           </p>
         </section>
+
+        <details
+          className="game-settlement-option"
+          open={bbRate !== "0" || Boolean(errors.bbRate)}
+        >
+          <summary>
+            <span>
+              <strong>追加の精算</strong>
+              <small>
+                {bbRate === "0" ? "ゲーム収支は含めません" : `ゲーム収支 1BB = ${bbRate}円`}
+              </small>
+            </span>
+          </summary>
+          <div className="game-settlement-option-body">
+            <label className="game-settlement-toggle">
+              <input
+                checked={bbRate !== "0"}
+                onChange={(event) => setBbRate(event.currentTarget.checked ? "5" : "0")}
+                type="checkbox"
+              />
+              <span>
+                <strong>ゲーム収支を精算に含める</strong>
+                <small>BB収支を100円単位の金額へ換算します。</small>
+              </span>
+            </label>
+            {bbRate !== "0" ? (
+              <div className="bb-rate-picker">
+                <span>BBレート</span>
+                <div aria-label="BBレート" role="group">
+                  {BB_RATE_OPTIONS.filter((rate) => rate > 0).map((rate) => (
+                    <button
+                      aria-pressed={bbRate === String(rate)}
+                      className={bbRate === String(rate) ? "is-active" : ""}
+                      key={rate}
+                      onClick={() => setBbRate(String(rate))}
+                      type="button"
+                    >
+                      {rate}円
+                    </button>
+                  ))}
+                </div>
+                <p>
+                  全員のゲーム収支が0円になるよう、100円単位で調整します。
+                </p>
+                {gameSettlementPreview ? (
+                  <section className="game-settlement-preview">
+                    <strong>最終精算プレビュー</strong>
+                    {gameSettlementPreview.results ? (
+                      <div>
+                        {gameSettlementPreview.results.map((result) => {
+                          const balance =
+                            result.gameSettlementAmount - result.costShare;
+                          return (
+                            <p key={result.groupPlayerId}>
+                              <span>
+                                {formatOrdinal(result.rank)} {result.displayName}
+                              </span>
+                              <span>
+                                <b>
+                                  {balance === 0
+                                    ? "精算なし"
+                                    : `${balance > 0 ? "受取" : "支払"} ${Math.abs(balance).toLocaleString("ja-JP")}円`}
+                                </b>
+                                <small>
+                                  ゲーム {formatSignedYen(result.gameSettlementAmount)} / 会費 -{result.costShare.toLocaleString("ja-JP")}円
+                                </small>
+                              </span>
+                            </p>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p>{gameSettlementPreview.error}</p>
+                    )}
+                  </section>
+                ) : null}
+              </div>
+            ) : null}
+            {errors.bbRate ? (
+              <p className="field-error" role="alert">{errors.bbRate}</p>
+            ) : null}
+          </div>
+        </details>
+        <input name="bbRate" type="hidden" value={bbRate} />
       </fieldset>
     </>
   );
@@ -738,6 +897,10 @@ function parsePreviewInteger(value: string): number {
   const parsed = Number(value);
   if (!Number.isSafeInteger(parsed)) throw new RangeError("unsafe integer");
   return parsed;
+}
+
+function formatSignedYen(value: number): string {
+  return `${value > 0 ? "+" : ""}${value.toLocaleString("ja-JP")}円`;
 }
 
 function parseParticipantCount(value: string): number {

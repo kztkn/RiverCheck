@@ -60,6 +60,7 @@ const settings = {
   secondPlaceCost: 500,
   thirdPlaceCost: 1_000,
   costShares: [0, 500, 1_000, 8_500],
+  bbRate: 0,
   sevenDeuceRuleEnabled: true,
   bombPotRuleEnabled: true,
 };
@@ -82,6 +83,7 @@ describe("game finalization notification", () => {
       secondPlaceCost: settings.secondPlaceCost,
       thirdPlaceCost: settings.thirdPlaceCost,
       costShares: settings.costShares,
+      bbRate: settings.bbRate,
       sevenDeuceRuleEnabled: true,
       bombPotRuleEnabled: true,
     });
@@ -160,5 +162,26 @@ describe("game finalization notification", () => {
       expect.objectContaining({ errorType: "Error", gameId }),
     );
     consoleError.mockRestore();
+  });
+
+  it("BB精算が有効ならチップ差分の確認では確定できない", async () => {
+    mocked.lockParticipants.mockResolvedValueOnce(
+      ["A", "B", "C", "D"].map((displayName, index) => ({
+        groupPlayerId: `group-player-${index + 1}`,
+        displayName,
+        remainingChips: index === 0 ? 19_000 : 20_000,
+        totalRebuyCount: 0,
+        outstandingRebuyCount: 0,
+        settlementRebuyCount: 0,
+      })),
+    );
+
+    await expect(
+      finalizeGame(group, gameId, { ...settings, bbRate: 5 }, true, false),
+    ).resolves.toEqual({
+      ok: false,
+      error: "ゲーム収支を精算する場合は、チップ差分を0にしてください。",
+    });
+    expect(mocked.insertFinalResults).not.toHaveBeenCalled();
   });
 });

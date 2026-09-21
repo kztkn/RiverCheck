@@ -30,7 +30,7 @@ import {
 } from "@server/services/achievement-service.server";
 import { notifyGameFinalized } from "@server/services/push-notification-service.server";
 import { clearChangedCostShareReceipts } from "@server/repositories/game-cost-share-receipt-repository.server";
-import { findChangedCostSharePlayerIds } from "@domain/payment/find-changed-cost-shares";
+import { findChangedSettlementPlayerIds } from "@domain/payment/find-changed-cost-shares";
 
 export function buildFinalizationState(
   game: GameDetails,
@@ -157,6 +157,20 @@ export async function finalizeGame(
         error: "リバイ記録と終了時リバイ証の差を確認してください。",
       };
     }
+    const chipValidation = validateChipTotal({
+      initialChips: game.initialChips,
+      rebuyChips: game.rebuyChips,
+      reports: completeParticipants.map((participant) => ({
+        remainingChips: participant.remainingChips,
+        settlementRebuyCount: participant.settlementRebuyCount,
+      })),
+    });
+    if (settings.bbRate > 0 && !chipValidation.isValid) {
+      return {
+        ok: false,
+        error: "ゲーム収支を精算する場合は、チップ差分を0にしてください。",
+      };
+    }
 
     let calculated;
     try {
@@ -168,6 +182,7 @@ export async function finalizeGame(
           secondPlaceCost: settings.secondPlaceCost,
           thirdPlaceCost: settings.thirdPlaceCost,
           costShares: settings.costShares,
+          bbRate: settings.bbRate,
         },
         completeParticipants,
       );
@@ -417,6 +432,20 @@ export async function updateFinalizedGame(
         settlementRebuyCount: correction.settlementRebuyCount,
       };
     });
+    const chipValidation = validateChipTotal({
+      initialChips: game.initialChips,
+      rebuyChips: game.rebuyChips,
+      reports: participants.map((participant) => ({
+        remainingChips: participant.remainingChips,
+        settlementRebuyCount: participant.settlementRebuyCount,
+      })),
+    });
+    if (game.bbRate > 0 && !chipValidation.isValid) {
+      return {
+        ok: false,
+        error: "ゲーム収支を精算している開催は、チップ差分を0にしてください。",
+      };
+    }
 
     let calculated;
     try {
@@ -452,7 +481,7 @@ export async function updateFinalizedGame(
     await clearChangedCostShareReceipts(
       transaction,
       gameId,
-      findChangedCostSharePlayerIds(beforeResults, calculated.results),
+      findChangedSettlementPlayerIds(beforeResults, calculated.results),
     );
     await replaceFinalResults(transaction, gameId, calculated.results);
 

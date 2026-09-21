@@ -33,6 +33,7 @@ const values: CreateGameFormValues = {
   thirdPlaceCost: "1000",
   previewParticipantCount: "4",
   costShares: ["0", "500", "1000", "9800"],
+  bbRate: "0",
   sevenDeuceRuleEnabled: true,
   bombPotRuleEnabled: true,
 };

@@ -18,6 +18,7 @@ import {
 import { notifyNewGameCreated } from "@server/services/push-notification-service.server";
 
 import { validateCostSharePlan } from "@domain/cost-sharing/validate-cost-share-plan";
+import { isSupportedBbRate } from "@domain/settlement/calculate-game-settlements";
 
 const JST_OFFSET_MILLISECONDS = 9 * 60 * 60 * 1_000;
 const LOCAL_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -32,6 +33,7 @@ export interface GameSettingsFormValues {
   thirdPlaceCost: string;
   previewParticipantCount: string;
   costShares: string[];
+  bbRate: string;
   sevenDeuceRuleEnabled: boolean;
   bombPotRuleEnabled: boolean;
 }
@@ -90,6 +92,7 @@ export function readGameSettingsForm(
     thirdPlaceCost: readString(formData, "thirdPlaceCost"),
     previewParticipantCount: readString(formData, "previewParticipantCount"),
     costShares: readStrings(formData, "costShare"),
+    bbRate: readString(formData, "bbRate"),
     sevenDeuceRuleEnabled:
       readString(formData, "sevenDeuceRuleEnabled") === "yes",
     bombPotRuleEnabled:
@@ -258,6 +261,10 @@ export function validateGameSettingsForm(
     "previewParticipantCount",
     errors,
   );
+  const bbRate = parseNonNegativeInteger(values.bbRate || "0", "bbRate", errors);
+  if (bbRate !== null && !isSupportedBbRate(bbRate)) {
+    errors.bbRate = "BBレートは0円、5円、10円、20円から選んでください。";
+  }
   if (
     previewParticipantCount !== null &&
     previewParticipantCount < minimumParticipantCount
@@ -376,6 +383,7 @@ export function validateGameSettingsForm(
       secondPlaceCost: secondPlaceCost!,
       thirdPlaceCost: thirdPlaceCost!,
       costShares,
+      bbRate: bbRate!,
       sevenDeuceRuleEnabled: values.sevenDeuceRuleEnabled,
       bombPotRuleEnabled: values.bombPotRuleEnabled,
     },

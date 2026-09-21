@@ -8,6 +8,7 @@ interface ReceiptRow {
   group_player_id: string;
   display_name: string;
   cost_share: string;
+  game_settlement_amount: string;
   received_at: Date | null;
 }
 
@@ -20,6 +21,7 @@ export async function listGameCostShareReceipts(
       SELECT game_result.group_player_id,
              player.display_name,
              game_result.cost_share,
+             game_result.game_settlement_amount,
              receipt.received_at
       FROM game_results AS game_result
       INNER JOIN games AS game ON game.id = game_result.game_id
@@ -40,6 +42,7 @@ export async function listGameCostShareReceipts(
     groupPlayerId: row.group_player_id,
     displayName: row.display_name,
     costShare: Number(row.cost_share),
+    gameSettlementAmount: Number(row.game_settlement_amount ?? 0),
     receivedAt: row.received_at?.toISOString() ?? null,
   }));
 }
@@ -49,10 +52,13 @@ export async function lockCostShareForReceipt(
   groupId: string,
   gameId: string,
   groupPlayerId: string,
-): Promise<number | null> {
-  const result = await transaction.query<{ cost_share: string }>(
+): Promise<{ costShare: number; gameSettlementAmount: number } | null> {
+  const result = await transaction.query<{
+    cost_share: string;
+    game_settlement_amount: string;
+  }>(
     `
-      SELECT game_result.cost_share
+      SELECT game_result.cost_share, game_result.game_settlement_amount
       FROM game_results AS game_result
       INNER JOIN games AS game ON game.id = game_result.game_id
       WHERE game_result.game_id = $1
@@ -64,7 +70,12 @@ export async function lockCostShareForReceipt(
     [gameId, groupPlayerId, groupId],
   );
   const row = result.rows[0];
-  return row ? Number(row.cost_share) : null;
+  return row
+    ? {
+        costShare: Number(row.cost_share),
+        gameSettlementAmount: Number(row.game_settlement_amount ?? 0),
+      }
+    : null;
 }
 
 export async function setGameCostShareReceived(

@@ -46,6 +46,7 @@ const defaults = {
   thirdPlaceCost: "1000",
   previewParticipantCount: "8",
   costShares: defaultCostShares.shares.map(String),
+  bbRate: "0",
   sevenDeuceRuleEnabled: true,
   bombPotRuleEnabled: true,
 };

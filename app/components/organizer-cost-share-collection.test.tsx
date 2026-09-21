@@ -14,6 +14,7 @@ describe("OrganizerCostShareCollection", () => {
       {
         path: "/",
         element: createElement(OrganizerCostShareCollection, {
+          bbRate: 0,
           receipts: [
             receipt("a", "Alice", 0, null),
             receipt("b", "Bob", 500, "2026-08-29T10:00:00.000Z"),
@@ -39,6 +40,7 @@ describe("OrganizerCostShareCollection", () => {
       {
         path: "/",
         element: createElement(OrganizerCostShareCollection, {
+          bbRate: 0,
           receipts: [
             receipt("a", "Alice", 500, "2026-08-29T10:00:00.000Z"),
             receipt("b", "Bob", 1_000, "2026-08-29T10:01:00.000Z"),
@@ -53,6 +55,34 @@ describe("OrganizerCostShareCollection", () => {
 
     expect(markup).toContain("回収完了");
     expect(markup).toContain("2 / 2人");
+  });
+
+  it("BB精算では最終額に応じて入金・送金方向を表示する", () => {
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: createElement(OrganizerCostShareCollection, {
+          bbRate: 5,
+          receipts: [
+            { ...receipt("a", "Alice", 500, null), gameSettlementAmount: 1_500 },
+            { ...receipt("b", "Bob", 2_500, null), gameSettlementAmount: -1_500 },
+            { ...receipt("c", "Carol", 1_500, null), gameSettlementAmount: 1_500 },
+          ],
+        }),
+      },
+    ]);
+
+    const markup = renderToStaticMarkup(
+      createElement(RouterProvider, { router }),
+    );
+
+    expect(markup).toContain("精算状況");
+    expect(markup).toContain("受取 1,000円");
+    expect(markup).toContain("支払 4,000円");
+    expect(markup).toContain("送金待ち");
+    expect(markup).toContain("入金待ち");
+    expect(markup).toContain("対象外");
+    expect(markup).toContain("0 / 2人");
   });
 
   it("開催詳細から会費保存先を組み立て、対象者だけを即時更新する", () => {
@@ -82,5 +112,11 @@ function receipt(
   costShare: number,
   receivedAt: string | null,
 ) {
-  return { costShare, displayName, groupPlayerId, receivedAt };
+  return {
+    costShare,
+    displayName,
+    gameSettlementAmount: 0,
+    groupPlayerId,
+    receivedAt,
+  };
 }

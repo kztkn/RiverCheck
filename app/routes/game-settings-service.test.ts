@@ -28,6 +28,7 @@ const validValues: GameSettingsFormValues = {
   thirdPlaceCost: "2300",
   previewParticipantCount: "5",
   costShares: ["1800", "2000", "2300", "2500", "2800"],
+  bbRate: "0",
   sevenDeuceRuleEnabled: true,
   bombPotRuleEnabled: true,
 };
@@ -45,6 +46,7 @@ describe("game settings cost shares", () => {
     );
     formData.set("sevenDeuceRuleEnabled", "yes");
     formData.set("bombPotRuleEnabled", "yes");
+    formData.set("bbRate", "5");
     validValues.costShares.forEach((share) =>
       formData.append("costShare", share),
     );
@@ -53,6 +55,7 @@ describe("game settings cost shares", () => {
       costShares: validValues.costShares,
       sevenDeuceRuleEnabled: true,
       bombPotRuleEnabled: true,
+      bbRate: "5",
     });
   });
 
@@ -75,8 +78,28 @@ describe("game settings cost shares", () => {
         costShares: [1800, 2000, 2300, 2500, 2800],
         sevenDeuceRuleEnabled: true,
         bombPotRuleEnabled: true,
+        bbRate: 0,
       },
     });
+  });
+
+  it("BBレートが未送信なら後方互換の0として扱う", () => {
+    expect(readGameSettingsForm(new FormData()).bbRate).toBe("");
+    expect(validateGameSettingsForm({ ...validValues, bbRate: "" })).toEqual(
+      expect.objectContaining({
+        ok: true,
+        input: expect.objectContaining({ bbRate: 0 }),
+      }),
+    );
+  });
+
+  it("プリセット外のBBレートを拒否する", () => {
+    expect(validateGameSettingsForm({ ...validValues, bbRate: "7" })).toEqual(
+      expect.objectContaining({
+        ok: false,
+        errors: expect.objectContaining({ bbRate: expect.stringContaining("5円") }),
+      }),
+    );
   });
 
   it("2人配分は最後の順位をlegacy 3位列の互換値に使う", () => {

@@ -21,12 +21,14 @@ describe("game cost share receipt repository", () => {
       rows: [
         {
           cost_share: "0",
+          game_settlement_amount: "0",
           display_name: "Alice",
           group_player_id: "player-1",
           received_at: null,
         },
         {
           cost_share: "500",
+          game_settlement_amount: "-1000",
           display_name: "Bob",
           group_player_id: "player-2",
           received_at: new Date("2026-08-29T10:00:00.000Z"),
@@ -39,12 +41,14 @@ describe("game cost share receipt repository", () => {
     ).resolves.toEqual([
       {
         costShare: 0,
+        gameSettlementAmount: 0,
         displayName: "Alice",
         groupPlayerId: "player-1",
         receivedAt: null,
       },
       {
         costShare: 500,
+        gameSettlementAmount: -1_000,
         displayName: "Bob",
         groupPlayerId: "player-2",
         receivedAt: "2026-08-29T10:00:00.000Z",

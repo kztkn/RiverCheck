@@ -27,6 +27,7 @@ interface GameRow {
   second_place_cost: string;
   third_place_cost: string;
   cost_shares: string[] | null;
+  bb_rate: string;
   settlement_plan_published_at: Date | null;
   seven_deuce_rule_enabled: boolean;
   bomb_pot_rule_enabled: boolean;
@@ -51,6 +52,7 @@ interface ResultRow {
   score: string;
   rank: number;
   cost_share: string;
+  game_settlement_amount: string;
   avatar_uploaded_at?: Date | null;
 }
 
@@ -73,6 +75,7 @@ export async function lockGameForFinalization(
              rebuy_chips, preview_participant_count, venue_cost,
              first_place_cost, second_place_cost, third_place_cost,
              cost_shares, settlement_plan_published_at,
+             bb_rate,
              seven_deuce_rule_enabled, bomb_pot_rule_enabled
       FROM games
       WHERE id = $1 AND group_id = $2
@@ -119,9 +122,10 @@ export async function insertFinalResults(
       `
         INSERT INTO game_results (
           game_id, group_player_id, remaining_chips, total_rebuy_count,
-          tracked_outstanding_rebuy_count, settlement_rebuy_count, score, rank, cost_share
+          tracked_outstanding_rebuy_count, settlement_rebuy_count, score, rank,
+          cost_share, game_settlement_amount
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `,
       [
         gameId,
@@ -133,6 +137,7 @@ export async function insertFinalResults(
         result.score,
         result.rank,
         result.costShare,
+        result.gameSettlementAmount,
       ],
     );
   }
@@ -154,6 +159,7 @@ export async function saveCostSettingsForFinalization(
           third_place_cost = $6,
           preview_participant_count = $7,
           cost_shares = $8::BIGINT[],
+          bb_rate = $9,
           updated_at = NOW()
       WHERE id = $1 AND group_id = $2 AND status = 'open'
     `,
@@ -166,6 +172,7 @@ export async function saveCostSettingsForFinalization(
       input.thirdPlaceCost,
       input.previewParticipantCount,
       input.costShares,
+      input.bbRate,
     ],
   );
   return result.rowCount === 1;
@@ -268,6 +275,7 @@ export async function listFinalResults(
              game_result.tracked_outstanding_rebuy_count,
              game_result.settlement_rebuy_count,
              game_result.score, game_result.rank, game_result.cost_share,
+             game_result.game_settlement_amount,
              player.avatar_uploaded_at
       FROM game_results AS game_result
       INNER JOIN games AS game ON game.id = game_result.game_id
@@ -289,6 +297,7 @@ export async function listFinalResults(
     score: Number(row.score),
     rank: row.rank,
     costShare: Number(row.cost_share),
+    gameSettlementAmount: Number(row.game_settlement_amount),
     avatarUpdatedAt: row.avatar_uploaded_at?.toISOString() ?? null,
   }));
 }
@@ -325,6 +334,7 @@ function mapGame(row: GameRow): GameDetails {
     secondPlaceCost: Number(row.second_place_cost),
     thirdPlaceCost: Number(row.third_place_cost),
     costShares: row.cost_shares?.map((value) => Number(value)) ?? null,
+    bbRate: Number(row.bb_rate),
     settlementPlanPublishedAt:
       row.settlement_plan_published_at?.toISOString() ?? null,
     sevenDeuceRuleEnabled: row.seven_deuce_rule_enabled,
@@ -343,7 +353,8 @@ export async function lockFinalResults(
              game_result.remaining_chips, game_result.total_rebuy_count,
              game_result.tracked_outstanding_rebuy_count,
              game_result.settlement_rebuy_count,
-             game_result.score, game_result.rank, game_result.cost_share
+             game_result.score, game_result.rank, game_result.cost_share,
+             game_result.game_settlement_amount
       FROM game_results AS game_result
       INNER JOIN group_players AS group_player
         ON group_player.id = game_result.group_player_id
@@ -486,6 +497,7 @@ function normalizeRevisionResult(
     trackedOutstandingRebuyCount:
       result.trackedOutstandingRebuyCount ?? null,
     settlementRebuyCount,
+    gameSettlementAmount: result.gameSettlementAmount ?? 0,
   };
 }
 
@@ -500,5 +512,6 @@ function mapResultRow(row: ResultRow): GameResultSummary {
     score: Number(row.score),
     rank: row.rank,
     costShare: Number(row.cost_share),
+    gameSettlementAmount: Number(row.game_settlement_amount),
   };
 }

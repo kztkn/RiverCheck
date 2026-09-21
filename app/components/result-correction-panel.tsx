@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Form, Link } from "react-router";
 import { calculateFinalResults } from "@domain/finalization/calculate-final-results";
+import { validateChipTotal } from "@domain/chip-validation/validate-chip-total";
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import { calculateNetBb, formatNetBb } from "@domain/score/bb-score";
 import type { GameDetails } from "@shared-types/game";
@@ -53,13 +54,30 @@ export function ResultCorrectionPanel({
           settlementRebuyCount,
         };
       });
+      const chipValidation = validateChipTotal({
+        initialChips: game.initialChips,
+        rebuyChips: game.rebuyChips,
+        reports: participants.map((participant) => ({
+          remainingChips: participant.remainingChips,
+          settlementRebuyCount: participant.settlementRebuyCount,
+        })),
+      });
+      if (game.bbRate > 0 && !chipValidation.isValid) {
+        return {
+          calculated: null,
+          chipDifference: chipValidation.difference,
+          error: "ゲーム収支を精算している開催は、チップ差分を0にしてください。",
+        };
+      }
       return {
         calculated: calculateFinalResults(game, participants),
+        chipDifference: chipValidation.difference,
         error: null,
       };
     } catch {
       return {
         calculated: null,
+        chipDifference: null,
         error: "残りチップ、累計リバイ、終了時リバイ証を0以上の整数で入力してください。",
       };
     }
@@ -75,13 +93,13 @@ export function ResultCorrectionPanel({
     );
   });
   const hasChanges = hasResultChanges;
-  const chipDifference = preview.calculated?.chipValidation.difference ?? 0;
+  const chipDifference = preview.chipDifference ?? 0;
   const hasChipDifference = chipDifference !== 0;
   const canSubmit =
     hasChanges &&
     (!hasResultChanges ||
       (Boolean(preview.calculated) &&
-        (!hasChipDifference || differenceConfirmed))) &&
+        (!hasChipDifference || (game.bbRate === 0 && differenceConfirmed)))) &&
     !isSubmitting;
 
   function updateValue(
@@ -227,7 +245,13 @@ export function ResultCorrectionPanel({
                       initialChips: game.initialChips,
                     })}
                   </span>
-                  <strong>{formatYen(result.costShare)}</strong>
+                  <strong>
+                    {game.bbRate > 0
+                      ? formatSettlementBalance(
+                          result.gameSettlementAmount - result.costShare,
+                        )
+                      : formatYen(result.costShare)}
+                  </strong>
                 </div>
               ))}
             </div>
@@ -236,7 +260,7 @@ export function ResultCorrectionPanel({
           )}
         </div>
 
-        {hasResultChanges && hasChipDifference ? (
+        {hasResultChanges && hasChipDifference && game.bbRate === 0 ? (
           <label className="confirmation-box difference-warning">
             <input
               checked={differenceConfirmed}
@@ -320,6 +344,11 @@ function scoreClassName(score: number, initialChips: number): string {
 
 function formatYen(value: number): string {
   return `${value.toLocaleString("ja-JP")}円`;
+}
+
+function formatSettlementBalance(value: number): string {
+  if (value === 0) return "精算なし";
+  return `${value > 0 ? "受取" : "支払"} ${Math.abs(value).toLocaleString("ja-JP")}円`;
 }
 
 function formatSignedNumber(value: number): string {

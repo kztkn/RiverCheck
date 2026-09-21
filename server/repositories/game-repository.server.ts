@@ -29,6 +29,7 @@ interface GameDetailsRow {
   second_place_cost: string;
   third_place_cost: string;
   cost_shares: string[] | null;
+  bb_rate: string;
   settlement_plan_published_at: Date | null;
   seven_deuce_rule_enabled: boolean;
   bomb_pot_rule_enabled: boolean;
@@ -108,6 +109,7 @@ export async function findGameForGroup(
         second_place_cost,
         third_place_cost,
         cost_shares,
+        bb_rate,
         settlement_plan_published_at,
         seven_deuce_rule_enabled,
         bomb_pot_rule_enabled
@@ -133,6 +135,7 @@ export async function findGameForGroup(
     secondPlaceCost: Number(row.second_place_cost),
     thirdPlaceCost: Number(row.third_place_cost),
     costShares: mapCostShares(row.cost_shares),
+    bbRate: Number(row.bb_rate),
     settlementPlanPublishedAt:
       row.settlement_plan_published_at?.toISOString() ?? null,
     sevenDeuceRuleEnabled: row.seven_deuce_rule_enabled,
@@ -178,10 +181,11 @@ export async function insertGame(
         third_place_cost,
         preview_participant_count,
         cost_shares,
+        bb_rate,
         seven_deuce_rule_enabled,
         bomb_pot_rule_enabled
       )
-      VALUES ($1, $2, $3, 'open', $4, $5, $6, 100, $7, $8, $9, $10, $11::BIGINT[], $12, $13)
+      VALUES ($1, $2, $3, 'open', $4, $5, $6, 100, $7, $8, $9, $10, $11::BIGINT[], $12, $13, $14)
       RETURNING id
     `,
     [
@@ -196,6 +200,7 @@ export async function insertGame(
       input.thirdPlaceCost,
       input.previewParticipantCount,
       input.costShares,
+      input.bbRate,
       input.sevenDeuceRuleEnabled,
       input.bombPotRuleEnabled,
     ],
@@ -217,6 +222,7 @@ export async function publishSettlementPlan(
     | "thirdPlaceCost"
     | "previewParticipantCount"
     | "costShares"
+    | "bbRate"
   >,
 ): Promise<boolean> {
   const result = await queryDatabase(
@@ -229,6 +235,7 @@ export async function publishSettlementPlan(
           third_place_cost = $6,
           preview_participant_count = $7,
           cost_shares = $8::BIGINT[],
+          bb_rate = $9,
           settlement_plan_published_at = NOW(),
           updated_at = NOW()
       WHERE id = $1
@@ -244,6 +251,7 @@ export async function publishSettlementPlan(
       input.thirdPlaceCost,
       input.previewParticipantCount,
       input.costShares,
+      input.bbRate,
     ],
   );
   return result.rowCount === 1;

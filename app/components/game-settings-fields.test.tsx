@@ -13,6 +13,7 @@ const baseValues: GameSettingsValues = {
   thirdPlaceCost: "1000",
   previewParticipantCount: "8",
   costShares: ["0", "500", "1000", "2100", "2100", "2100", "2100", "2100"],
+  bbRate: "0",
   sevenDeuceRuleEnabled: true,
   bombPotRuleEnabled: true,
 };
@@ -26,6 +27,77 @@ describe("GameSettingsFields local rules", () => {
     expect(markup).toContain("<details");
     expect(markup).toContain("72o ON ・ ボムポット ON");
     expect(markup).not.toMatch(/<details[^>]*\sopen(?:=|\s|>)/u);
+  });
+
+  it("BBレート0では追加精算を閉じた要約に留める", () => {
+    const markup = renderToStaticMarkup(
+      createElement(GameSettingsFields, { errors: {}, values: baseValues }),
+    );
+
+    expect(markup).toContain("ゲーム収支は含めません");
+    expect(markup).not.toContain("aria-label=\"BBレート\"");
+  });
+
+  it("BBレート有効時は現在値と100円単位調整を表示する", () => {
+    const markup = renderToStaticMarkup(
+      createElement(GameSettingsFields, {
+        errors: {},
+        values: { ...baseValues, bbRate: "5" },
+      }),
+    );
+
+    expect(markup).toContain("ゲーム収支 1BB = 5円");
+    expect(markup).toContain("100円単位で調整します");
+    expect(markup).toContain("aria-pressed=\"true\"");
+  });
+
+  it("終了入力が揃えばゲーム・会費・最終精算をプレビューする", () => {
+    const markup = renderToStaticMarkup(
+      createElement(GameSettingsFields, {
+        errors: {},
+        settlementParticipants: [
+          {
+            id: "participant-1",
+            groupPlayerId: "player-1",
+            displayName: "Alice",
+            status: "submitted",
+            remainingChips: 40_000,
+            totalRebuyCount: 0,
+            outstandingRebuyCount: 0,
+            settlementRebuyCount: 0,
+            deviceLocked: true,
+            avatarUpdatedAt: null,
+          },
+          {
+            id: "participant-2",
+            groupPlayerId: "player-2",
+            displayName: "Bob",
+            status: "submitted",
+            remainingChips: 0,
+            totalRebuyCount: 0,
+            outstandingRebuyCount: 0,
+            settlementRebuyCount: 0,
+            deviceLocked: true,
+            avatarUpdatedAt: null,
+          },
+        ],
+        values: {
+          ...baseValues,
+          venueCost: "3000",
+          previewParticipantCount: "2",
+          costShares: ["1000", "2000"],
+          firstPlaceCost: "1000",
+          secondPlaceCost: "2000",
+          thirdPlaceCost: "2000",
+          bbRate: "5",
+        },
+      }),
+    );
+
+    expect(markup).toContain("最終精算プレビュー");
+    expect(markup).toContain("ゲーム +500円 / 会費 -1,000円");
+    expect(markup).toContain("支払 500円");
+    expect(markup).toContain("支払 2,500円");
   });
 
   it("OFF設定も閉じた状態の要約へ反映する", () => {

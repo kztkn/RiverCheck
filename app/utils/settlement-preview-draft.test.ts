@@ -13,6 +13,7 @@ const draft: SettlementPreviewDraft = {
   shareValues: ["0", "1000", "1500", "3000", "3000", "3500"],
   recommendationMode: "standard",
   adjustmentMode: "top-three",
+  bbRate: "0",
 };
 
 describe("settlement preview draft", () => {
@@ -27,6 +28,14 @@ describe("settlement preview draft", () => {
     );
   });
 
+  it("BBレート追加前の下書きはレート0として復元する", () => {
+    const { bbRate: _bbRate, ...legacyDraft } = draft;
+    expect(parseSettlementPreviewDraft(JSON.stringify(legacyDraft))).toEqual({
+      ...draft,
+      bbRate: "0",
+    });
+  });
+
   it("正しい下書きを復元する", () => {
     expect(parseSettlementPreviewDraft(JSON.stringify(draft))).toEqual(draft);
   });
@@ -37,6 +46,9 @@ describe("settlement preview draft", () => {
       parseSettlementPreviewDraft(
         JSON.stringify({ ...draft, recommendationMode: "unknown" }),
       ),
+    ).toBeNull();
+    expect(
+      parseSettlementPreviewDraft(JSON.stringify({ ...draft, bbRate: "7" })),
     ).toBeNull();
   });
 
@@ -53,6 +65,9 @@ describe("settlement preview draft", () => {
         ...draft,
         shareValues: [...draft.shareValues.slice(0, -1), "3600"],
       }),
+    ).toBe(false);
+    expect(
+      hasSameSettlementPreviewValues(draft, { ...draft, bbRate: "5" }),
     ).toBe(false);
   });
 });

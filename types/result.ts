@@ -8,6 +8,7 @@ export interface GameResultSummary {
   score: number;
   rank: number;
   costShare: number;
+  gameSettlementAmount: number;
 }
 
 export interface GameResultRevision {
@@ -22,5 +23,6 @@ export interface GameCostShareReceipt {
   groupPlayerId: string;
   displayName: string;
   costShare: number;
+  gameSettlementAmount: number;
   receivedAt: string | null;
 }

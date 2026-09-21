@@ -1,4 +1,5 @@
 import { queryDatabase } from "@server/db/client.server";
+import { calculateSettlementBalance } from "@domain/settlement/calculate-game-settlements";
 
 export async function saveGroupPayPayRecipientLinkRecord(
   groupId: string,
@@ -26,9 +27,12 @@ export async function findGamePaymentAmountForPlayer(
   gameId: string,
   playerId: string,
 ): Promise<number | null> {
-  const result = await queryDatabase<{ cost_share: string }>(
+  const result = await queryDatabase<{
+    cost_share: string;
+    game_settlement_amount: string;
+  }>(
     `
-      SELECT game_result.cost_share
+      SELECT game_result.cost_share, game_result.game_settlement_amount
       FROM game_results AS game_result
       INNER JOIN games AS game ON game.id = game_result.game_id
       INNER JOIN group_players AS group_player
@@ -41,5 +45,10 @@ export async function findGamePaymentAmountForPlayer(
     [gameId, groupId, playerId],
   );
   const row = result.rows[0];
-  return row ? Number(row.cost_share) : null;
+  if (!row) return null;
+  const settlementBalance = calculateSettlementBalance({
+    costShare: Number(row.cost_share),
+    gameSettlementAmount: Number(row.game_settlement_amount ?? 0),
+  });
+  return settlementBalance < 0 ? Math.abs(settlementBalance) : 0;
 }

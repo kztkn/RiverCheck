@@ -486,6 +486,7 @@ export default function GameAdmin({
   const [settlementParticipantCount, setSettlementParticipantCount] = useState(
     values.previewParticipantCount,
   );
+  const [settlementBbRate, setSettlementBbRate] = useState(values.bbRate);
   const [publishFailureCount, setPublishFailureCount] = useState(0);
   const [persistentPublishError, setPersistentPublishError] = useState<string | null>(null);
   const [optimisticallyRemoved, setOptimisticallyRemoved] = useState<{
@@ -1471,13 +1472,16 @@ export default function GameAdmin({
           <GameSettingsFields
             actualParticipantCount={loaderData.participants.length}
             errors={actionErrors}
+            onBbRateChange={setSettlementBbRate}
             onParticipantCountChange={setSettlementParticipantCount}
             settlementDraftBaseValues={settlementDraftBaseValues}
             settlementDraftStorageKey={settlementDraftStorageKey}
+            settlementParticipants={loaderData.participants}
             showCoreSettings={false}
             values={values}
           />
           <FinalizationPanel
+            bbRate={Number(settlementBbRate) || 0}
             error={
               persistentPublishError
                 ? `${persistentPublishError}${
@@ -1879,6 +1883,7 @@ function gameToFormValues(game: Route.ComponentProps["loaderData"]["game"]) {
         thirdPlaceCost: game.thirdPlaceCost,
       }).shares
     ).map(String),
+    bbRate: String(game.bbRate),
     sevenDeuceRuleEnabled: game.sevenDeuceRuleEnabled,
     bombPotRuleEnabled: game.bombPotRuleEnabled,
   };
@@ -1901,6 +1906,7 @@ function readAdminCostSettingsForm(
     costShares: formData
       .getAll("costShare")
       .filter((value): value is string => typeof value === "string"),
+    bbRate: readString(formData, "bbRate"),
   };
 }
 
@@ -1952,6 +1958,7 @@ function noticeText(notice: string | null): string | null {
 }
 
 function FinalizationPanel({
+  bbRate,
   error,
   finalization,
   isSubmitting,
@@ -1959,6 +1966,7 @@ function FinalizationPanel({
   settlementParticipantCount,
   submittingIntent,
 }: {
+  bbRate: number;
   error: string | null;
   finalization: Route.ComponentProps["loaderData"]["finalization"];
   isSubmitting: boolean;
@@ -2056,12 +2064,14 @@ function FinalizationPanel({
           {validation!.difference > 0
             ? `${formatNumber(validation!.difference)}チップ不足しています。`
             : `${formatNumber(Math.abs(validation!.difference))}チップ多く報告されています。`}
-          入力を見直すか、差分を確認して確定してください。
+          {bbRate > 0
+            ? "ゲーム収支を精算するため、入力を見直して差分を0にしてください。"
+            : "入力を見直すか、差分を確認して確定してください。"}
         </p>
       ) : null}
 
       <div className="finalize-form">
-        {hasDifference && !finalization.isProvisional ? (
+        {hasDifference && !finalization.isProvisional && bbRate === 0 ? (
           <label className="confirmation-check">
             <input
               checked={differenceConfirmed}
@@ -2134,7 +2144,7 @@ function FinalizationPanel({
             !finalization.canFinalize ||
             !participantCountMatches ||
             isSubmitting ||
-            (hasDifference && !differenceConfirmed) ||
+            (hasDifference && (bbRate > 0 || !differenceConfirmed)) ||
             (hasRebuyMismatch && !rebuyMismatchConfirmed)
           }
           name="intent"
