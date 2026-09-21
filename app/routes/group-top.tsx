@@ -1,4 +1,5 @@
-import { Link, NavLink, useRouteLoaderData } from "react-router";
+import { Suspense } from "react";
+import { Await, Link, NavLink, useRouteLoaderData } from "react-router";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { LiveTableMini } from "~/components/table-now";
 import { orderActiveGamesBySchedule } from "@domain/game/order-active-games";
@@ -17,12 +18,20 @@ export async function loader({ params }: Route.LoaderArgs) {
   if (!overview) throw new Response("Group not found", { status: 404 });
   const primaryGame = orderActiveGamesBySchedule(overview.games)[0];
   const liveTable = primaryGame?.status === "open"
-    ? await import("@server/repositories/participant-repository.server").then(async ({ getOpenGameTableEventCounts }) => ({
-        gameId: primaryGame.id,
-        playerCount: primaryGame.participantCount,
-        ...(await getOpenGameTableEventCounts(overview.group.id, primaryGame.id)),
-      }))
-    : null;
+    ? import("@server/repositories/participant-repository.server")
+        .then(async ({ getOpenGameTableEventCounts }) => ({
+          gameId: primaryGame.id,
+          playerCount: primaryGame.participantCount,
+          ...(await getOpenGameTableEventCounts(
+            overview.group.id,
+            primaryGame.id,
+          )),
+        }))
+        .catch((error) => {
+          console.error("Failed to load group-top live table", error);
+          return null;
+        })
+    : Promise.resolve(null);
   return { ...overview, liveTable };
 }
 
@@ -43,9 +52,7 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
   const pastGames = games.filter((game) => game.status === "finalized");
   const primaryGame = activeGames[0];
   const otherActiveGames = activeGames.slice(1);
-  const isPrimaryGameLive =
-    primaryGame?.status === "open" &&
-    liveTable?.gameId === primaryGame.id;
+  const isPrimaryGameLive = primaryGame?.status === "open";
 
   return (
     <main className="page-shell group-home-page">
@@ -98,8 +105,19 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
                   </time>
                   <span>参加者 {primaryGame.participantCount}人</span>
                 </div>
-                {liveTable && liveTable.gameId === primaryGame.id ? (
-                  <LiveTableMini data={liveTable} to={`games/${primaryGame.id}`} />
+                {isPrimaryGameLive ? (
+                  <Suspense fallback={null}>
+                    <Await errorElement={null} resolve={liveTable}>
+                      {(resolvedLiveTable) =>
+                        resolvedLiveTable?.gameId === primaryGame.id ? (
+                          <LiveTableMini
+                            data={resolvedLiveTable}
+                            to={`games/${primaryGame.id}`}
+                          />
+                        ) : null
+                      }
+                    </Await>
+                  </Suspense>
                 ) : null}
               </div>
             </article>

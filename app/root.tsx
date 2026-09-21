@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import type { ShouldRevalidateFunctionArgs } from "react-router";
 import {
   isRouteErrorResponse,
   Links,
@@ -24,6 +25,7 @@ import {
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { rememberLastVisitedGroup } from "~/utils/last-visited-group";
 import { getPendingPlayerAchievementNotifications } from "@server/services/achievement-service.server";
+import { shouldRevalidateRootData } from "@domain/routing/should-revalidate-root-data";
 import "./styles/app.css";
 import "./styles/groups.css";
 import "./styles/highlight.css";
@@ -91,6 +93,20 @@ export async function loader({ request }: Route.LoaderArgs) {
     isOrganizer,
     pendingAchievementNotifications,
   };
+}
+
+export function shouldRevalidate({
+  currentUrl,
+  defaultShouldRevalidate,
+  formMethod,
+  nextUrl,
+}: ShouldRevalidateFunctionArgs): boolean {
+  return shouldRevalidateRootData({
+    currentPathname: currentUrl.pathname,
+    defaultShouldRevalidate,
+    formMethod,
+    nextPathname: nextUrl.pathname,
+  });
 }
 
 export const meta: Route.MetaFunction = () => [
