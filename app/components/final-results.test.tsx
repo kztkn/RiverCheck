@@ -59,8 +59,8 @@ describe("FinalResults settlement visibility", () => {
 
     expect(markup).toContain("Alice");
     expect(markup).toContain("Bob");
-    expect(markup).toContain("+50BB");
     expect(markup).toContain("-50BB");
+    expect(markup).toContain("-150BB");
     expect(markup).toContain("1BB = 200チップ");
     expect(markup).not.toContain("1,500円");
     expect(markup).not.toContain("2,500円");
