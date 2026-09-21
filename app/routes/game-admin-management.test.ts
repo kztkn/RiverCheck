@@ -84,7 +84,17 @@ describe("game admin management action", () => {
     vi.resetAllMocks();
     mocked.findGroupByPublicCode.mockResolvedValue(group);
     mocked.findGameForGroup.mockResolvedValue(game);
-    mocked.findGameWithGroupByPublicCode.mockResolvedValue({ group, game });
+    mocked.findGameWithGroupByPublicCode.mockImplementation(
+      async (publicCode: string, currentGameId: string) => {
+        const currentGroup = await mocked.findGroupByPublicCode(publicCode);
+        if (!currentGroup) return null;
+        const currentGame = await mocked.findGameForGroup(
+          currentGroup.id,
+          currentGameId,
+        );
+        return currentGame ? { group: currentGroup, game: currentGame } : null;
+      },
+    );
   });
 
   it("検証済みの精算予定を公開して管理画面へ戻す", async () => {
