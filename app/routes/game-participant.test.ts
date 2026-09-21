@@ -8,6 +8,7 @@ const mocked = vi.hoisted(() => ({
   createParticipantCookie: vi.fn(),
   createPlayerProfileCookie: vi.fn(),
   findGameForGroup: vi.fn(),
+  findGameWithGroupByPublicCode: vi.fn(),
   findGamePaymentAmountForPlayer: vi.fn(),
   findGroupByPublicCode: vi.fn(),
   findParticipantByGroupPlayerId: vi.fn(),
@@ -43,6 +44,7 @@ const mocked = vi.hoisted(() => ({
 
 vi.mock("@server/repositories/game-repository.server", () => ({
   findGameForGroup: mocked.findGameForGroup,
+  findGameWithGroupByPublicCode: mocked.findGameWithGroupByPublicCode,
   listGamesForGroup: mocked.listGamesForGroup,
 }));
 vi.mock("@server/repositories/group-repository.server", () => ({
@@ -181,6 +183,10 @@ describe("game participant route", () => {
     vi.resetAllMocks();
     mocked.findGroupByPublicCode.mockResolvedValue(group);
     mocked.findGameForGroup.mockResolvedValue(openGame);
+    mocked.findGameWithGroupByPublicCode.mockResolvedValue({
+      group,
+      game: openGame,
+    });
     mocked.isOrganizerAuthenticated.mockResolvedValue(false);
     mocked.getAuthenticatedPlayerIdentity.mockResolvedValue(null);
     mocked.getAuthenticatedPlayerProfile.mockResolvedValue({
