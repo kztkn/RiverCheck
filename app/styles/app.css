@@ -101,7 +101,6 @@ a {
   border-color: rgba(57, 222, 141, 0.48);
 }
 
-.brand.is-pending,
 .participant-admin-link.is-pending,
 .admin-own-play-link.is-pending {
   cursor: progress;
@@ -115,7 +114,7 @@ a {
   transform: none;
 }
 
-.brand:not(.is-pending):active {
+.brand:active {
   opacity: 0.72;
 }
 

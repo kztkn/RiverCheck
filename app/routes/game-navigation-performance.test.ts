@@ -9,6 +9,10 @@ const adminSource = readFileSync(
   new URL("./game-admin.tsx", import.meta.url),
   "utf8",
 );
+const siteMenuSource = readFileSync(
+  new URL("../components/site-menu.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("game screen navigation performance", () => {
   it("uses SPA navigation between organizer and participant screens", () => {
@@ -46,5 +50,16 @@ describe("game screen navigation performance", () => {
     expect(adminSource).toContain(
       "findGameWithGroupByPublicCode(groupCode, gameId)",
     );
+  });
+
+  it("keeps the group-top brand stable while prefetching it", () => {
+    const brandLink = siteMenuSource.match(
+      /<Link[\s\S]*?className="brand"[\s\S]*?<\/Link>/u,
+    )?.[0];
+
+    expect(brandLink).toContain('prefetch="viewport"');
+    expect(brandLink).not.toContain("isPending");
+    expect(brandLink).not.toContain("route-link-spinner");
+    expect(siteMenuSource).not.toContain("戻っています");
   });
 });
