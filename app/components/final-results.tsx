@@ -24,6 +24,7 @@ export function FinalResults({
   results,
   revisions,
   shareUrl,
+  showSettlementAmounts = true,
   showSharePanel = true,
 }: {
   groupCode: string;
@@ -36,6 +37,7 @@ export function FinalResults({
   results: Array<GameResultSummary & { avatarUrl?: string | null }>;
   revisions: GameResultRevision[];
   shareUrl: string;
+  showSettlementAmounts?: boolean;
   showSharePanel?: boolean;
 }) {
   const [shareState, setShareState] = useState<
@@ -177,9 +179,11 @@ export function FinalResults({
             >
               {formatNetBb({ score: winner.score, initialChips })}
             </b>
-            <strong className="result-cost">
-              {formatNumber(winner.costShare)}円
-            </strong>
+            {showSettlementAmounts ? (
+              <strong className="result-cost">
+                {formatNumber(winner.costShare)}円
+              </strong>
+            ) : null}
           </div>
         </ResultPlayerContainer>
       ) : null}
@@ -213,9 +217,11 @@ export function FinalResults({
               >
                 {formatNetBb({ score: result.score, initialChips })}
               </strong>
-              <strong className="result-cost">
-                {formatNumber(result.costShare)}円
-              </strong>
+              {showSettlementAmounts ? (
+                <strong className="result-cost">
+                  {formatNumber(result.costShare)}円
+                </strong>
+              ) : null}
             </div>
           </ResultPlayerContainer>
         ))}
@@ -235,10 +241,12 @@ export function FinalResults({
           </button>
         ) : <span />}
         <div className="result-total-summary">
-          <div className="result-total">
-            <span>トータル</span>
-            <strong>{formatNumber(settlementTotal)}円</strong>
-          </div>
+          {showSettlementAmounts ? (
+            <div className="result-total">
+              <span>トータル</span>
+              <strong>{formatNumber(settlementTotal)}円</strong>
+            </div>
+          ) : null}
           <p className="bb-basis">
             1BB = {formatChipsPerBb(initialChips)}チップ
           </p>
@@ -247,6 +255,7 @@ export function FinalResults({
       <ResultRevisionHistory
         initialChips={initialChips}
         revisions={revisions}
+        showCostShareChanges={showSettlementAmounts}
       />
 
       {payPay && payPayModalOpen ? (

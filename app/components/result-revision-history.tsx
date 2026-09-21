@@ -6,11 +6,31 @@ import type { GameResultRevision } from "@shared-types/result";
 export function ResultRevisionHistory({
   initialChips,
   revisions,
+  showCostShareChanges = true,
 }: {
   initialChips: number;
   revisions: GameResultRevision[];
+  showCostShareChanges?: boolean;
 }) {
-  if (revisions.length === 0) return null;
+  const visibleRevisions = revisions
+    .map((revision) => ({
+      revision,
+      changes: buildResultRevisionChanges(
+        revision.beforeResults,
+        revision.afterResults,
+      ).filter((change) =>
+        showCostShareChanges ||
+        change.before.remainingChips !== change.after.remainingChips ||
+        change.before.totalRebuyCount !== change.after.totalRebuyCount ||
+        change.before.settlementRebuyCount !==
+          change.after.settlementRebuyCount ||
+        change.before.score !== change.after.score ||
+        change.before.rank !== change.after.rank
+      ),
+    }))
+    .filter(({ changes }) => changes.length > 0);
+
+  if (visibleRevisions.length === 0) return null;
 
   return (
     <section
@@ -24,11 +44,7 @@ export function ResultRevisionHistory({
         <span className="revision-status">訂正済み</span>
       </div>
       <div className="revision-list">
-        {revisions.map((revision, index) => {
-          const changes = buildResultRevisionChanges(
-            revision.beforeResults,
-            revision.afterResults,
-          );
+        {visibleRevisions.map(({ revision, changes }, index) => {
           return (
             <details
               className="revision-card"
@@ -96,7 +112,8 @@ export function ResultRevisionHistory({
                           label="順位"
                         />
                       ) : null}
-                      {change.before.costShare !== change.after.costShare ? (
+                      {showCostShareChanges &&
+                      change.before.costShare !== change.after.costShare ? (
                         <ChangeValue
                           after={formatYen(change.after.costShare)}
                           before={formatYen(change.before.costShare)}

@@ -893,8 +893,53 @@ describe("finalized game invite-only access", () => {
       profile: null,
     });
     mocked.findParticipantByTokenHash.mockResolvedValue(null);
-    mocked.listFinalResults.mockResolvedValue([]);
-    mocked.listResultRevisions.mockResolvedValue([]);
+    mocked.listFinalResults.mockResolvedValue([
+      {
+        avatarUpdatedAt: null,
+        costShare: 1500,
+        displayName: "Alice",
+        groupPlayerId,
+        rank: 1,
+        remainingChips: 25000,
+        score: 5000,
+        settlementRebuyCount: 0,
+        totalRebuyCount: 0,
+        trackedOutstandingRebuyCount: 0,
+      },
+    ]);
+    mocked.listResultRevisions.mockResolvedValue([
+      {
+        id: "revision-1",
+        revisionNumber: 1,
+        correctedAt: "2026-08-11T00:00:00.000Z",
+        beforeResults: [
+          {
+            costShare: 2000,
+            displayName: "Alice",
+            groupPlayerId,
+            rank: 1,
+            remainingChips: 25000,
+            score: 5000,
+            settlementRebuyCount: 0,
+            totalRebuyCount: 0,
+            trackedOutstandingRebuyCount: 0,
+          },
+        ],
+        afterResults: [
+          {
+            costShare: 1500,
+            displayName: "Alice",
+            groupPlayerId,
+            rank: 1,
+            remainingChips: 25000,
+            score: 5000,
+            settlementRebuyCount: 0,
+            totalRebuyCount: 0,
+            trackedOutstandingRebuyCount: 0,
+          },
+        ],
+      },
+    ]);
 
     const result = await loader(loaderArgs());
 
@@ -902,6 +947,10 @@ describe("finalized game invite-only access", () => {
     expect(result.canBrowseGroup).toBe(false);
     expect(result.pastGameNavigation).toBeNull();
     expect(result.payPay).toBeNull();
+    expect(result.lineText).toBe("");
+    expect(result.results[0]?.costShare).toBe(0);
+    expect(result.revisions[0]?.beforeResults[0]?.costShare).toBe(0);
+    expect(result.revisions[0]?.afterResults[0]?.costShare).toBe(0);
     expect(result.storyPosts).toEqual([]);
     expect(mocked.listGamesForGroup).not.toHaveBeenCalled();
     expect(mocked.getPublishedGameStoryPosts).not.toHaveBeenCalled();
