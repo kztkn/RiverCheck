@@ -5,6 +5,7 @@ import type {
   GameListItem,
   GameStatus,
 } from "@shared-types/game";
+import type { GroupSummary } from "@shared-types/group";
 
 interface GameSummaryRow {
   id: string;
@@ -40,8 +41,32 @@ interface FinalizedGamePublicRouteRow {
   public_code: string;
 }
 
+interface GameWithGroupRow extends GameDetailsRow {
+  group_name: string;
+  group_public_code: string;
+  group_line_open_chat_url: string | null;
+  group_paypay_recipient_link: string | null;
+  group_paypay_link_registered_at: Date | null;
+}
+
 export async function listGamesForGroup(
   groupId: string,
+): Promise<GameListItem[]> {
+  return listGames("game.group_id = $1", [groupId]);
+}
+
+export async function listGamesForGroupByPublicCode(
+  publicCode: string,
+): Promise<GameListItem[]> {
+  return listGames(
+    "EXISTS (SELECT 1 FROM groups AS game_group WHERE game_group.id = game.group_id AND game_group.public_code = $1)",
+    [publicCode],
+  );
+}
+
+async function listGames(
+  whereSql: string,
+  params: unknown[],
 ): Promise<GameListItem[]> {
   const result = await queryDatabase<GameSummaryRow>(
     `
@@ -72,11 +97,11 @@ export async function listGamesForGroup(
         INNER JOIN players AS player ON player.id = group_player.player_id
         WHERE game_result.game_id = game.id
       ) AS result_summary ON TRUE
-      WHERE game.group_id = $1
+      WHERE ${whereSql}
       ORDER BY game.played_at DESC, game.created_at DESC
       LIMIT 50
     `,
-    [groupId],
+    params,
   );
 
   return result.rows.map((row) => ({
@@ -119,27 +144,59 @@ export async function findGameForGroup(
     [gameId, groupId],
   );
   const row = result.rows[0];
+  return row ? mapGameDetails(row) : null;
+}
+
+export async function findGameWithGroupByPublicCode(
+  publicCode: string,
+  gameId: string,
+): Promise<{ group: GroupSummary; game: GameDetails } | null> {
+  const result = await queryDatabase<GameWithGroupRow>(
+    `
+      SELECT
+        game.id,
+        game.group_id,
+        game.title,
+        game.played_at,
+        game.status,
+        game.initial_chips,
+        game.rebuy_chips,
+        game.preview_participant_count,
+        game.venue_cost,
+        game.first_place_cost,
+        game.second_place_cost,
+        game.third_place_cost,
+        game.cost_shares,
+        game.bb_rate,
+        game.settlement_plan_published_at,
+        game.seven_deuce_rule_enabled,
+        game.bomb_pot_rule_enabled,
+        game_group.name AS group_name,
+        game_group.public_code AS group_public_code,
+        game_group.line_open_chat_url AS group_line_open_chat_url,
+        game_group.paypay_recipient_link AS group_paypay_recipient_link,
+        game_group.paypay_link_registered_at AS group_paypay_link_registered_at
+      FROM games AS game
+      INNER JOIN groups AS game_group ON game_group.id = game.group_id
+      WHERE game.id = $1
+        AND game_group.public_code = $2
+    `,
+    [gameId, publicCode],
+  );
+  const row = result.rows[0];
   if (!row) return null;
 
   return {
-    id: row.id,
-    groupId: row.group_id,
-    title: row.title,
-    playedAt: row.played_at.toISOString(),
-    status: row.status,
-    initialChips: Number(row.initial_chips),
-    rebuyChips: Number(row.rebuy_chips),
-    previewParticipantCount: row.preview_participant_count,
-    venueCost: Number(row.venue_cost),
-    firstPlaceCost: Number(row.first_place_cost),
-    secondPlaceCost: Number(row.second_place_cost),
-    thirdPlaceCost: Number(row.third_place_cost),
-    costShares: mapCostShares(row.cost_shares),
-    bbRate: Number(row.bb_rate),
-    settlementPlanPublishedAt:
-      row.settlement_plan_published_at?.toISOString() ?? null,
-    sevenDeuceRuleEnabled: row.seven_deuce_rule_enabled,
-    bombPotRuleEnabled: row.bomb_pot_rule_enabled,
+    group: {
+      id: row.group_id,
+      name: row.group_name,
+      publicCode: row.group_public_code,
+      lineOpenChatUrl: row.group_line_open_chat_url,
+      payPayRecipientLink: row.group_paypay_recipient_link,
+      payPayLinkRegisteredAt:
+        row.group_paypay_link_registered_at?.toISOString() ?? null,
+    },
+    game: mapGameDetails(row),
   };
 }
 
@@ -338,6 +395,29 @@ export async function deleteOpenGame(
     [gameId, groupId],
   );
   return result.rowCount === 1;
+}
+
+function mapGameDetails(row: GameDetailsRow): GameDetails {
+  return {
+    id: row.id,
+    groupId: row.group_id,
+    title: row.title,
+    playedAt: row.played_at.toISOString(),
+    status: row.status,
+    initialChips: Number(row.initial_chips),
+    rebuyChips: Number(row.rebuy_chips),
+    previewParticipantCount: row.preview_participant_count,
+    venueCost: Number(row.venue_cost),
+    firstPlaceCost: Number(row.first_place_cost),
+    secondPlaceCost: Number(row.second_place_cost),
+    thirdPlaceCost: Number(row.third_place_cost),
+    costShares: mapCostShares(row.cost_shares),
+    bbRate: Number(row.bb_rate),
+    settlementPlanPublishedAt:
+      row.settlement_plan_published_at?.toISOString() ?? null,
+    sevenDeuceRuleEnabled: row.seven_deuce_rule_enabled,
+    bombPotRuleEnabled: row.bomb_pot_rule_enabled,
+  };
 }
 
 function mapCostShares(values: string[] | null): number[] | null {

@@ -6,17 +6,17 @@ import { useEffect, useRef, useState } from "react";
 import {
   Form,
   Link,
+  NavLink,
   redirect,
   useFetcher,
   useNavigation,
   useRevalidator,
 } from "react-router";
 import {
-  findGameForGroup,
+  findGameWithGroupByPublicCode,
   publishSettlementPlan,
   updateLocalRules,
 } from "@server/repositories/game-repository.server";
-import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import {
   findParticipantByTokenHash,
   listGameParticipants,
@@ -93,17 +93,20 @@ type LocalRulesActionData =
     };
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireOrganizer(request, params.groupCode);
-  const authorized = await requireGame(params.groupCode, params.gameId);
+  const participantToken = readParticipantToken(request, params.gameId);
+  const participantTokenHashPromise = participantToken
+    ? hashToken(participantToken)
+    : Promise.resolve(null);
+  const [, authorized, participantTokenHash] = await Promise.all([
+    requireOrganizer(request, params.groupCode),
+    requireGame(params.groupCode, params.gameId),
+    participantTokenHashPromise,
+  ]);
   if (authorized.game.status === "finalized") {
     throw redirect(
       "/g/" + params.groupCode + "/games/" + params.gameId,
     );
   }
-  const participantToken = readParticipantToken(request, params.gameId);
-  const participantTokenHash = participantToken
-    ? await hashToken(participantToken)
-    : null;
   const [participants, currentParticipant] = await Promise.all([
     listGameParticipants(authorized.group.id, params.gameId),
     participantTokenHash
@@ -1101,15 +1104,26 @@ export default function GameAdmin({
           </div>
         </section>
 
-        <Link
-          className="button button-secondary admin-own-play-link"
-          prefetch="intent"
+        <NavLink
+          className={({ isPending }) =>
+            `button button-secondary admin-own-play-link${isPending ? " is-pending" : ""}`
+          }
+          prefetch="viewport"
           to={loaderData.participantUrl}
         >
-          {loaderData.currentParticipant
-            ? "自分のプレイ画面へ"
-            : "自分も参加する（参加者画面へ）"}
-        </Link>
+          {({ isPending }) => (
+            <>
+              {isPending
+                ? "プレイ画面を開いています"
+                : loaderData.currentParticipant
+                  ? "自分のプレイ画面へ"
+                  : "自分も参加する（参加者画面へ）"}
+              {isPending ? (
+                <span aria-hidden="true" className="route-link-spinner" />
+              ) : null}
+            </>
+          )}
+        </NavLink>
 
         <section
           className="admin-share-panel admin-utility-panel"
@@ -1850,12 +1864,9 @@ export default function GameAdmin({
 }
 
 async function requireGame(groupCode: string, gameId: string) {
-  const group = await findGroupByPublicCode(groupCode);
-  if (!group) throw new Response("Game not found", { status: 404 });
-  const game = await findGameForGroup(group.id, gameId);
-  if (!game) throw new Response("Game not found", { status: 404 });
-
-  return { group, game };
+  const context = await findGameWithGroupByPublicCode(groupCode, gameId);
+  if (!context) throw new Response("Game not found", { status: 404 });
+  return context;
 }
 
 function gameToFormValues(game: Route.ComponentProps["loaderData"]["game"]) {

@@ -19,9 +19,9 @@ describe("game screen navigation performance", () => {
       /className="button button-secondary admin-own-play-link"[\s\S]*?<\/Link>/u,
     )?.[0];
 
-    expect(participantLink).toContain('prefetch="intent"');
+    expect(participantLink).toContain('prefetch="viewport"');
     expect(participantLink).not.toContain("reloadDocument");
-    expect(adminLink).toContain('prefetch="intent"');
+    expect(adminLink).toContain('prefetch="viewport"');
     expect(adminLink).not.toContain("reloadDocument");
   });
 
@@ -38,3 +38,13 @@ describe("game screen navigation performance", () => {
     expect(participantSource).toContain("participantTokenHashPromise");
   });
 });
+
+
+  it("uses a single joined lookup for game and group context", () => {
+    expect(participantSource).toContain(
+      "findGameWithGroupByPublicCode(groupCode, gameId)",
+    );
+    expect(adminSource).toContain(
+      "findGameWithGroupByPublicCode(groupCode, gameId)",
+    );
+  });

@@ -1,6 +1,7 @@
 import {
   Form,
   Link,
+  NavLink,
   redirect,
   useFetcher,
   useNavigation,
@@ -13,10 +14,9 @@ import {
   type ReactNode,
 } from "react";
 import {
-  findGameForGroup,
+  findGameWithGroupByPublicCode,
   listGamesForGroup,
 } from "@server/repositories/game-repository.server";
-import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import {
   listFinalResults,
   listResultRevisions,
@@ -851,13 +851,22 @@ export default function GameParticipant({
           </p>
         ) : null}
         {loaderData.isOrganizer && loaderData.game.status === "open" ? (
-          <Link
-            className="button button-secondary participant-admin-link"
-            prefetch="intent"
+          <NavLink
+            className={({ isPending }) =>
+              `button button-secondary participant-admin-link${isPending ? " is-pending" : ""}`
+            }
+            prefetch="viewport"
             to={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/admin`}
           >
-            開催管理へ
-          </Link>
+            {({ isPending }) => (
+              <>
+                {isPending ? "開催管理を開いています" : "開催管理へ"}
+                {isPending ? (
+                  <span aria-hidden="true" className="route-link-spinner" />
+                ) : null}
+              </>
+            )}
+          </NavLink>
         ) : null}
       </section>
 
@@ -2167,11 +2176,9 @@ function formatTotalRebuyCount(value: number | null): string {
   return value === null ? "記録なし" : `${value}回`;
 }
 async function requireGame(groupCode: string, gameId: string) {
-  const group = await findGroupByPublicCode(groupCode);
-  if (!group) throw new Response("Game not found", { status: 404 });
-  const game = await findGameForGroup(group.id, gameId);
-  if (!game) throw new Response("Game not found", { status: 404 });
-  return { group, game };
+  const context = await findGameWithGroupByPublicCode(groupCode, gameId);
+  if (!context) throw new Response("Game not found", { status: 404 });
+  return context;
 }
 
 function PastGameNavigation({
