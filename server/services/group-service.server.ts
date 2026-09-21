@@ -1,4 +1,6 @@
-import { listGamesForGroup } from "@server/repositories/game-repository.server";
+import {
+  listGamesForGroupByPublicCode,
+} from "@server/repositories/game-repository.server";
 import {
   findGroupByPublicCode,
   insertGroup,
@@ -45,14 +47,13 @@ export type RenameGroupResult =
 export async function getGroupOverview(
   publicCode: string,
 ): Promise<GroupOverview | null> {
-  const group = await findGroupByPublicCode(publicCode);
+  const [group, games] = await Promise.all([
+    findGroupByPublicCode(publicCode),
+    listGamesForGroupByPublicCode(publicCode),
+  ]);
   if (!group) return null;
 
-  const games = await listGamesForGroup(group.id);
-  return {
-    group,
-    games,
-  };
+  return { group, games };
 }
 
 export async function getGroupSettings(

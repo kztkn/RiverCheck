@@ -101,6 +101,29 @@ a {
   border-color: rgba(57, 222, 141, 0.48);
 }
 
+.brand.is-pending,
+.participant-admin-link.is-pending,
+.admin-own-play-link.is-pending {
+  cursor: progress;
+  pointer-events: none;
+}
+
+.participant-admin-link.is-pending,
+.admin-own-play-link.is-pending {
+  border-color: rgba(57, 222, 141, 0.48);
+  background: rgba(57, 222, 141, 0.08);
+  transform: none;
+}
+
+.brand:not(.is-pending):active {
+  opacity: 0.72;
+}
+
+.participant-admin-link:not(.is-pending):active,
+.admin-own-play-link:not(.is-pending):active {
+  transform: scale(0.985);
+}
+
 .home-game-row-arrow:has(.route-link-spinner) {
   display: inline-flex;
   align-items: center;

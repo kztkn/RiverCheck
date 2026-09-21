@@ -11,9 +11,109 @@ vi.mock("@server/db/client.server", () => ({
 import {
   deleteOpenGame,
   findFinalizedGamePublicRoute,
+  findGameWithGroupByPublicCode,
+  listGamesForGroupByPublicCode,
   updateLocalRules,
   updateOpenGameTitle,
 } from "@server/repositories/game-repository.server";
+
+describe("game repository navigation lookups", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("公開コードと開催IDからゲーム・グループを1クエリで返す", async () => {
+    mocked.queryDatabase.mockResolvedValue({
+      rows: [{
+        bb_rate: "5",
+        bomb_pot_rule_enabled: true,
+        cost_shares: ["0", "500", "1000"],
+        first_place_cost: "0",
+        group_id: "group-1",
+        group_line_open_chat_url: "https://example.com/openchat",
+        group_name: "River Check",
+        group_paypay_link_registered_at: new Date("2026-09-20T00:00:00.000Z"),
+        group_paypay_recipient_link: "https://example.com/paypay",
+        group_public_code: "river-check",
+        id: "game-1",
+        initial_chips: "20000",
+        played_at: new Date("2026-09-21T03:00:00.000Z"),
+        preview_participant_count: 8,
+        rebuy_chips: "20000",
+        second_place_cost: "500",
+        settlement_plan_published_at: new Date("2026-09-20T01:00:00.000Z"),
+        seven_deuce_rule_enabled: true,
+        status: "open",
+        third_place_cost: "1000",
+        title: "9月の会",
+        venue_cost: "12000",
+      }],
+    });
+
+    await expect(
+      findGameWithGroupByPublicCode("river-check", "game-1"),
+    ).resolves.toEqual({
+      group: {
+        id: "group-1",
+        lineOpenChatUrl: "https://example.com/openchat",
+        name: "River Check",
+        payPayLinkRegisteredAt: "2026-09-20T00:00:00.000Z",
+        payPayRecipientLink: "https://example.com/paypay",
+        publicCode: "river-check",
+      },
+      game: expect.objectContaining({
+        bbRate: 5,
+        costShares: [0, 500, 1000],
+        groupId: "group-1",
+        id: "game-1",
+        initialChips: 20000,
+        playedAt: "2026-09-21T03:00:00.000Z",
+        status: "open",
+        title: "9月の会",
+        venueCost: 12000,
+      }),
+    });
+
+    const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
+    expect(sql).toContain("INNER JOIN groups AS game_group");
+    expect(sql).toContain("game_group.public_code = $2");
+    expect(mocked.queryDatabase).toHaveBeenCalledOnce();
+    expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
+      "game-1",
+      "river-check",
+    ]);
+  });
+
+  it("公開コードを使って開催一覧を直接取得する", async () => {
+    mocked.queryDatabase.mockResolvedValue({
+      rows: [{
+        id: "game-1",
+        participant_count: 4,
+        played_at: new Date("2026-09-21T03:00:00.000Z"),
+        status: "open",
+        title: "9月の会",
+        winner_name: null,
+      }],
+    });
+
+    await expect(
+      listGamesForGroupByPublicCode("river-check"),
+    ).resolves.toEqual([{
+      id: "game-1",
+      participantCount: 4,
+      playedAt: "2026-09-21T03:00:00.000Z",
+      status: "open",
+      title: "9月の会",
+      winnerName: null,
+    }]);
+
+    const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
+    expect(sql).toContain("game_group.public_code = $1");
+    expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
+      "river-check",
+    ]);
+  });
+});
 
 describe("game repository public result route", () => {
   beforeEach(() => {

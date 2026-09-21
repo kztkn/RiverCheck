@@ -8,6 +8,7 @@ const mocked = vi.hoisted(() => ({
   createParticipantCookie: vi.fn(),
   createPlayerProfileCookie: vi.fn(),
   findGameForGroup: vi.fn(),
+  findGameWithGroupByPublicCode: vi.fn(),
   findGamePaymentAmountForPlayer: vi.fn(),
   findGroupByPublicCode: vi.fn(),
   findParticipantByGroupPlayerId: vi.fn(),
@@ -43,6 +44,7 @@ const mocked = vi.hoisted(() => ({
 
 vi.mock("@server/repositories/game-repository.server", () => ({
   findGameForGroup: mocked.findGameForGroup,
+  findGameWithGroupByPublicCode: mocked.findGameWithGroupByPublicCode,
   listGamesForGroup: mocked.listGamesForGroup,
 }));
 vi.mock("@server/repositories/group-repository.server", () => ({
@@ -181,6 +183,17 @@ describe("game participant route", () => {
     vi.resetAllMocks();
     mocked.findGroupByPublicCode.mockResolvedValue(group);
     mocked.findGameForGroup.mockResolvedValue(openGame);
+    mocked.findGameWithGroupByPublicCode.mockImplementation(
+      async (publicCode: string, currentGameId: string) => {
+        const currentGroup = await mocked.findGroupByPublicCode(publicCode);
+        if (!currentGroup) return null;
+        const currentGame = await mocked.findGameForGroup(
+          currentGroup.id,
+          currentGameId,
+        );
+        return currentGame ? { group: currentGroup, game: currentGame } : null;
+      },
+    );
     mocked.isOrganizerAuthenticated.mockResolvedValue(false);
     mocked.getAuthenticatedPlayerIdentity.mockResolvedValue(null);
     mocked.getAuthenticatedPlayerProfile.mockResolvedValue({
@@ -338,6 +351,13 @@ describe("game participant route", () => {
     mocked.findGameForGroup.mockResolvedValue({
       ...openGame,
       status: "finalized",
+    });
+    mocked.findGameWithGroupByPublicCode.mockResolvedValue({
+      group,
+      game: {
+        ...openGame,
+        status: "finalized",
+      },
     });
     mocked.getPublishedGameStoryPosts.mockResolvedValue([
       {
@@ -894,6 +914,13 @@ describe("finalized game invite-only access", () => {
       ...openGame,
       status: "finalized",
     });
+    mocked.findGameWithGroupByPublicCode.mockResolvedValue({
+      group,
+      game: {
+        ...openGame,
+        status: "finalized",
+      },
+    });
     mocked.isOrganizerAuthenticated.mockResolvedValue(false);
     mocked.getAuthenticatedPlayerProfile.mockResolvedValue({
       group,
@@ -978,6 +1005,13 @@ describe("finalized game invite-only access", () => {
     mocked.findGameForGroup.mockResolvedValue({
       ...openGame,
       status: "draft",
+    });
+    mocked.findGameWithGroupByPublicCode.mockResolvedValue({
+      group,
+      game: {
+        ...openGame,
+        status: "draft",
+      },
     });
     mocked.isOrganizerAuthenticated.mockResolvedValue(false);
     mocked.getAuthenticatedPlayerProfile.mockResolvedValue({

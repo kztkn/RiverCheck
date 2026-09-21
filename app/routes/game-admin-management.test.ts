@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocked = vi.hoisted(() => ({
   clearParticipantCookie: vi.fn(() => "participant=; Max-Age=0"),
   findGameForGroup: vi.fn(),
+  findGameWithGroupByPublicCode: vi.fn(),
   findGroupByPublicCode: vi.fn(),
   publishSettlementPlan: vi.fn(),
   removeOpenGameForGroup: vi.fn(),
@@ -14,6 +15,7 @@ const mocked = vi.hoisted(() => ({
 
 vi.mock("@server/repositories/game-repository.server", () => ({
   findGameForGroup: mocked.findGameForGroup,
+  findGameWithGroupByPublicCode: mocked.findGameWithGroupByPublicCode,
   publishSettlementPlan: mocked.publishSettlementPlan,
   updateLocalRules: mocked.updateLocalRules,
 }));
@@ -82,6 +84,17 @@ describe("game admin management action", () => {
     vi.resetAllMocks();
     mocked.findGroupByPublicCode.mockResolvedValue(group);
     mocked.findGameForGroup.mockResolvedValue(game);
+    mocked.findGameWithGroupByPublicCode.mockImplementation(
+      async (publicCode: string, currentGameId: string) => {
+        const currentGroup = await mocked.findGroupByPublicCode(publicCode);
+        if (!currentGroup) return null;
+        const currentGame = await mocked.findGameForGroup(
+          currentGroup.id,
+          currentGameId,
+        );
+        return currentGame ? { group: currentGroup, game: currentGame } : null;
+      },
+    );
   });
 
   it("検証済みの精算予定を公開して管理画面へ戻す", async () => {

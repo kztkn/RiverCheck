@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from "react";
-import { Form, Link, useRouteLoaderData } from "react-router";
+import { Form, Link, NavLink, useRouteLoaderData } from "react-router";
 import { PlayerAvatar } from "~/components/player-avatar";
 
 type SiteMenuIcon =
@@ -59,13 +59,29 @@ export function GroupSiteHeader({
           </span>
         </span>
       ) : (
-        <Link className="brand" to={`/g/${groupCode}`}>
-          <span className="brand-mark">RC</span>
-          <span className="brand-copy">
-            <span>RiverCheck</span>
-            {activeGroupName ? <small>{activeGroupName}</small> : null}
-          </span>
-        </Link>
+        <NavLink
+          className={({ isPending }) =>
+            `brand${isPending ? " is-pending" : ""}`
+          }
+          prefetch="viewport"
+          to={`/g/${groupCode}`}
+        >
+          {({ isPending }) => (
+            <>
+              <span className="brand-mark">
+                {isPending ? (
+                  <span aria-hidden="true" className="route-link-spinner" />
+                ) : (
+                  "RC"
+                )}
+              </span>
+              <span className="brand-copy">
+                <span>{isPending ? "戻っています" : "RiverCheck"}</span>
+                {activeGroupName ? <small>{activeGroupName}</small> : null}
+              </span>
+            </>
+          )}
+        </NavLink>
       )}
       <div className="header-actions">
         {status}
