@@ -13,10 +13,10 @@ const adminSource = readFileSync(
 describe("game screen navigation performance", () => {
   it("uses SPA navigation between organizer and participant screens", () => {
     const participantLink = participantSource.match(
-      /className="button button-secondary participant-admin-link"[\s\S]*?<\/Link>/u,
+      /className=\{\(\{ isPending \}\)[\s\S]*?participant-admin-link[\s\S]*?<\/NavLink>/u,
     )?.[0];
     const adminLink = adminSource.match(
-      /className="button button-secondary admin-own-play-link"[\s\S]*?<\/Link>/u,
+      /className=\{\(\{ isPending \}\)[\s\S]*?admin-own-play-link[\s\S]*?<\/NavLink>/u,
     )?.[0];
 
     expect(participantLink).toContain('prefetch="viewport"');
