@@ -352,6 +352,13 @@ describe("game participant route", () => {
       ...openGame,
       status: "finalized",
     });
+    mocked.findGameWithGroupByPublicCode.mockResolvedValue({
+      group,
+      game: {
+        ...openGame,
+        status: "finalized",
+      },
+    });
     mocked.getPublishedGameStoryPosts.mockResolvedValue([
       {
         avatarUpdatedAt: null,
@@ -991,6 +998,13 @@ describe("finalized game invite-only access", () => {
     mocked.findGameForGroup.mockResolvedValue({
       ...openGame,
       status: "draft",
+    });
+    mocked.findGameWithGroupByPublicCode.mockResolvedValue({
+      group,
+      game: {
+        ...openGame,
+        status: "draft",
+      },
     });
     mocked.isOrganizerAuthenticated.mockResolvedValue(false);
     mocked.getAuthenticatedPlayerProfile.mockResolvedValue({
