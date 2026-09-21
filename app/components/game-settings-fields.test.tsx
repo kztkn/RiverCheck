@@ -29,13 +29,16 @@ describe("GameSettingsFields local rules", () => {
     expect(markup).not.toMatch(/<details[^>]*\sopen(?:=|\s|>)/u);
   });
 
-  it("BBレート0では追加精算を閉じた要約に留める", () => {
+  it("BBレート0ではゲーム収支を閉じ、現在のレートを要約する", () => {
     const markup = renderToStaticMarkup(
       createElement(GameSettingsFields, { errors: {}, values: baseValues }),
     );
 
-    expect(markup).toContain("ゲーム収支は含めません");
-    expect(markup).not.toContain("aria-label=\"BBレート\"");
+    expect(markup).toContain("<strong>ゲーム収支</strong>");
+    expect(markup).toContain("1BB = 0円");
+    expect(markup).toContain("aria-label=\"BBレート\"");
+    expect(markup).toContain(">0円</button>");
+    expect(markup).not.toMatch(/<details[^>]*\sopen(?:=|\s|>)/u);
   });
 
   it("BBレート有効時は現在値と100円単位調整を表示する", () => {
@@ -46,9 +49,10 @@ describe("GameSettingsFields local rules", () => {
       }),
     );
 
-    expect(markup).toContain("ゲーム収支 1BB = 5円");
+    expect(markup).toContain("1BB = 5円");
     expect(markup).toContain("100円単位で調整します");
     expect(markup).toContain("aria-pressed=\"true\"");
+    expect(markup).toMatch(/<details[^>]*\sopen(?:=|\s|>)/u);
   });
 
   it("終了入力が揃えばゲーム・会費・最終精算をプレビューする", () => {

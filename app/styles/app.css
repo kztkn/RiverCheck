@@ -5029,8 +5029,7 @@ input[aria-invalid="true"] {
   content: "−";
 }
 
-.game-settlement-option > summary > span,
-.game-settlement-toggle > span {
+.game-settlement-option > summary > span {
   display: grid;
   gap: 3px;
 }
@@ -5044,20 +5043,8 @@ input[aria-invalid="true"] {
 
 .game-settlement-option-body {
   display: grid;
-  gap: 18px;
-  padding: 4px 0 20px;
-}
-
-.game-settlement-toggle {
-  display: flex;
-  align-items: center;
   gap: 12px;
-  cursor: pointer;
-}
-
-.game-settlement-toggle input {
-  width: 22px;
-  min-height: 22px;
+  padding: 4px 0 20px;
 }
 
 .bb-rate-picker {
@@ -5070,7 +5057,7 @@ input[aria-invalid="true"] {
 
 .bb-rate-picker > div {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 

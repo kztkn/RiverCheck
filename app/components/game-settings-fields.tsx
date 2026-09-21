@@ -74,6 +74,9 @@ export function GameSettingsFields({
     buildInitialShares(values),
   );
   const [bbRate, setBbRate] = useState(values.bbRate || "0");
+  const [gameSettlementOpen, setGameSettlementOpen] = useState(
+    (values.bbRate || "0") !== "0" || Boolean(errors.bbRate),
+  );
   const [adjustmentMode, setAdjustmentMode] =
     useState<AdjustmentMode>("top-three");
   const [editingRank, setEditingRank] = useState<number | null>(null);
@@ -163,6 +166,10 @@ export function GameSettingsFields({
   useEffect(() => {
     onBbRateChange?.(bbRate);
   }, [bbRate, onBbRateChange]);
+
+  useEffect(() => {
+    if (errors.bbRate) setGameSettlementOpen(true);
+  }, [errors.bbRate]);
 
   useEffect(() => {
     if (!settlementDraftStorageKey) {
@@ -760,81 +767,69 @@ export function GameSettingsFields({
 
         <details
           className="game-settlement-option"
-          open={bbRate !== "0" || Boolean(errors.bbRate)}
+          onToggle={(event) =>
+            setGameSettlementOpen(event.currentTarget.open)
+          }
+          open={gameSettlementOpen}
         >
           <summary>
             <span>
-              <strong>追加の精算</strong>
-              <small>
-                {bbRate === "0" ? "ゲーム収支は含めません" : `ゲーム収支 1BB = ${bbRate}円`}
-              </small>
+              <strong>ゲーム収支</strong>
+              <small>1BB = {bbRate}円</small>
             </span>
           </summary>
           <div className="game-settlement-option-body">
-            <label className="game-settlement-toggle">
-              <input
-                checked={bbRate !== "0"}
-                onChange={(event) => setBbRate(event.currentTarget.checked ? "5" : "0")}
-                type="checkbox"
-              />
-              <span>
-                <strong>ゲーム収支を精算に含める</strong>
-                <small>BB収支を100円単位の金額へ換算します。</small>
-              </span>
-            </label>
-            {bbRate !== "0" ? (
-              <div className="bb-rate-picker">
-                <span>BBレート</span>
-                <div aria-label="BBレート" role="group">
-                  {BB_RATE_OPTIONS.filter((rate) => rate > 0).map((rate) => (
-                    <button
-                      aria-pressed={bbRate === String(rate)}
-                      className={bbRate === String(rate) ? "is-active" : ""}
-                      key={rate}
-                      onClick={() => setBbRate(String(rate))}
-                      type="button"
-                    >
-                      {rate}円
-                    </button>
-                  ))}
-                </div>
-                <p>
-                  全員のゲーム収支が0円になるよう、100円単位で調整します。
-                </p>
-                {gameSettlementPreview ? (
-                  <section className="game-settlement-preview">
-                    <strong>最終精算プレビュー</strong>
-                    {gameSettlementPreview.results ? (
-                      <div>
-                        {gameSettlementPreview.results.map((result) => {
-                          const balance =
-                            result.gameSettlementAmount - result.costShare;
-                          return (
-                            <p key={result.groupPlayerId}>
-                              <span>
-                                {formatOrdinal(result.rank)} {result.displayName}
-                              </span>
-                              <span>
-                                <b>
-                                  {balance === 0
-                                    ? "精算なし"
-                                    : `${balance > 0 ? "受取" : "支払"} ${Math.abs(balance).toLocaleString("ja-JP")}円`}
-                                </b>
-                                <small>
-                                  ゲーム {formatSignedYen(result.gameSettlementAmount)} / 会費 -{result.costShare.toLocaleString("ja-JP")}円
-                                </small>
-                              </span>
-                            </p>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p>{gameSettlementPreview.error}</p>
-                    )}
-                  </section>
-                ) : null}
+            <div className="bb-rate-picker">
+              <span>精算レート</span>
+              <div aria-label="BBレート" role="group">
+                {BB_RATE_OPTIONS.map((rate) => (
+                  <button
+                    aria-pressed={bbRate === String(rate)}
+                    className={bbRate === String(rate) ? "is-active" : ""}
+                    key={rate}
+                    onClick={() => setBbRate(String(rate))}
+                    type="button"
+                  >
+                    {rate}円
+                  </button>
+                ))}
               </div>
-            ) : null}
+              <p>
+                0円は会費のみ。5円以上ではBB収支を換算し、全員のゲーム収支が合計0円になるよう100円単位で調整します。
+              </p>
+              {gameSettlementPreview ? (
+                <section className="game-settlement-preview">
+                  <strong>最終精算プレビュー</strong>
+                  {gameSettlementPreview.results ? (
+                    <div>
+                      {gameSettlementPreview.results.map((result) => {
+                        const balance =
+                          result.gameSettlementAmount - result.costShare;
+                        return (
+                          <p key={result.groupPlayerId}>
+                            <span>
+                              {formatOrdinal(result.rank)} {result.displayName}
+                            </span>
+                            <span>
+                              <b>
+                                {balance === 0
+                                  ? "精算なし"
+                                  : `${balance > 0 ? "受取" : "支払"} ${Math.abs(balance).toLocaleString("ja-JP")}円`}
+                              </b>
+                              <small>
+                                ゲーム {formatSignedYen(result.gameSettlementAmount)} / 会費 -{result.costShare.toLocaleString("ja-JP")}円
+                              </small>
+                            </span>
+                          </p>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p>{gameSettlementPreview.error}</p>
+                  )}
+                </section>
+              ) : null}
+            </div>
             {errors.bbRate ? (
               <p className="field-error" role="alert">{errors.bbRate}</p>
             ) : null}
