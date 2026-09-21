@@ -59,7 +59,7 @@ export function GroupSiteHeader({
           </span>
         </span>
       ) : (
-        <Link className="brand" to={`/g/${groupCode}`}>
+        <Link className="brand" prefetch="intent" to={`/g/${groupCode}`}>
           <span className="brand-mark">RC</span>
           <span className="brand-copy">
             <span>RiverCheck</span>
@@ -188,6 +188,7 @@ export function SiteMenu({
           <Fragment key={`${item.to}-${item.label}`}>
             <Link
               className="site-menu-link"
+              prefetch={item.reloadDocument ? "none" : "intent"}
               reloadDocument={item.reloadDocument}
               to={item.to}
             >

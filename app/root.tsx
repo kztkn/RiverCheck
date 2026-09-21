@@ -6,12 +6,14 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useNavigation,
 } from "react-router";
 import { AppErrorPage } from "~/components/error-page";
 import { InviteRequiredPage } from "~/components/invite-required-page";
 import { PwaUpdateNotice } from "~/components/pwa-update-notice";
 import { AchievementUnlockToast } from "~/components/achievement-unlock-toast";
 import { TableEventRecorder } from "~/components/table-event-recorder";
+import { NavigationProgress } from "~/components/navigation-progress";
 import type { Route } from "./+types/root";
 import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
 import { hasMultipleActiveGroupsForPlayer } from "@server/repositories/group-repository.server";
@@ -132,6 +134,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
+  const navigation = useNavigation();
+  const navigationPending = navigation.state !== "idle";
+
   useEffect(() => {
     if (!loaderData.activeGroupCode) return;
     rememberLastVisitedGroup(window.localStorage, loaderData.activeGroupCode);
@@ -139,6 +144,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
 
   return (
     <>
+      <NavigationProgress active={navigationPending} />
       <Outlet />
       <TableEventRecorder />
       {loaderData.activeGroupCode && loaderData.pendingAchievementNotifications.length > 0 ? (

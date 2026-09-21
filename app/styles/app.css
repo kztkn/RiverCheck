@@ -72,6 +72,69 @@ a {
   text-decoration: none;
 }
 
+.app-navigation-progress {
+  position: fixed;
+  z-index: 220;
+  top: env(safe-area-inset-top);
+  right: 0;
+  left: 0;
+  height: 3px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 90ms ease;
+}
+
+.app-navigation-progress.is-active {
+  opacity: 1;
+}
+
+.app-navigation-progress > span {
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(57, 222, 141, 0),
+    var(--green) 38%,
+    #95ffc4 70%,
+    rgba(57, 222, 141, 0)
+  );
+  box-shadow: 0 0 14px rgba(57, 222, 141, 0.46);
+  transform: translateX(-120%);
+}
+
+.app-navigation-progress.is-active > span {
+  animation: app-navigation-progress 900ms ease-in-out infinite;
+}
+
+@keyframes app-navigation-progress {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  58% {
+    transform: translateX(115%);
+  }
+
+  100% {
+    transform: translateX(245%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-navigation-progress {
+    transition: none;
+  }
+
+  .app-navigation-progress.is-active > span {
+    width: 72%;
+    animation: none;
+    transform: translateX(0);
+  }
+}
+
 .pwa-update-notice {
   position: fixed;
   right: max(16px, env(safe-area-inset-right));
