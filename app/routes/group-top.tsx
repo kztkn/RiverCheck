@@ -130,7 +130,7 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
         )}
       </section>
 
-      <Link className="home-profile-link" to={playerStatsUrl}>
+      <Link className="home-profile-link" prefetch="intent" to={playerStatsUrl}>
         <span>
           <small>PLAYER RECORD</small>
           <strong>プロフィールと戦績</strong>
@@ -142,7 +142,7 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
       <PastGames games={pastGames} />
 
       <nav aria-label="その他のグループ情報" className="home-secondary-links">
-        <Link to="stats">
+        <Link prefetch="intent" to="stats">
           ランキングを見る <span aria-hidden="true">→</span>
         </Link>
         <Link to="about">
@@ -199,6 +199,7 @@ function GameListRow({
   return (
     <Link
       className="home-game-row"
+      prefetch="intent"
       to={buildGameUrl(game, isOrganizer, isPast)}
     >
       <time dateTime={game.playedAt}>{formatGameDateShort(game.playedAt)}</time>

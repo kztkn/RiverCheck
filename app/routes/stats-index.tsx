@@ -95,6 +95,7 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
                     player.rank <= 3 ? " is-top-three" : ""
                   }`}
                   key={player.groupPlayerId}
+                  prefetch="intent"
                   to={player.groupPlayerId}
                 >
                   <RankingPosition
