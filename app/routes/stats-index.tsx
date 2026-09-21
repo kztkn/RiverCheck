@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { GroupSiteHeader } from "~/components/site-menu";
-import { Link } from "react-router";
+import { NavLink } from "react-router";
 import { PlayerAvatar } from "~/components/player-avatar";
 import { AchievementBadge } from "~/components/achievement-badge";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
@@ -90,10 +90,10 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
             {visibleRanking.map((player) => {
               const metric = getRankingMetric(player, activeSort);
               return (
-                <Link
-                  className={`stats-ranking-card${
+                <NavLink
+                  className={({ isPending }) => `stats-ranking-card${
                     player.rank <= 3 ? " is-top-three" : ""
-                  }`}
+                  }${isPending ? " is-pending" : ""}`}
                   key={player.groupPlayerId}
                   prefetch="intent"
                   to={player.groupPlayerId}
@@ -143,7 +143,7 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
                     </strong>
                   </span>
                   <span className="card-arrow" aria-hidden="true">→</span>
-                </Link>
+                </NavLink>
               );
             })}
           </div>

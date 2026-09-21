@@ -72,6 +72,55 @@ a {
   text-decoration: none;
 }
 
+
+.route-link-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  border: 2px solid rgba(57, 222, 141, 0.24);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: route-link-spin 650ms linear infinite;
+}
+
+.home-profile-link.is-pending,
+.home-game-row.is-pending,
+.home-live-table-mini.is-pending,
+.stats-ranking-card.is-pending {
+  cursor: progress;
+}
+
+.home-profile-link.is-pending,
+.home-game-row.is-pending,
+.stats-ranking-card.is-pending {
+  background: rgba(57, 222, 141, 0.045);
+}
+
+.home-live-table-mini.is-pending {
+  border-color: rgba(57, 222, 141, 0.48);
+}
+
+.home-game-row-arrow:has(.route-link-spinner) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes route-link-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-link-spinner {
+    animation: none;
+    border-color: var(--green);
+    opacity: 0.7;
+  }
+}
+
 .pwa-update-notice {
   position: fixed;
   right: max(16px, env(safe-area-inset-right));

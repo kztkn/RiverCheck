@@ -30,3 +30,10 @@ describe("group top navigation", () => {
     expect(buildGameUrl(game, true, true)).toBe(`games/${game.id}`);
   });
 });
+
+
+describe("group top pending navigation", () => {
+  it("keeps URL construction independent from pending UI", () => {
+    expect(buildGameUrl(game, false, true)).toBe(`games/${game.id}`);
+  });
+});

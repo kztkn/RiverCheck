@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
+import { NavLink } from "react-router";
 import {
   IconArrowUp,
   IconBomb,
@@ -216,34 +216,44 @@ export function LiveTableMini({
   ].filter((item) => item.visible);
 
   return (
-    <Link
+    <NavLink
       aria-label="開催中のテーブルを開く"
-      className="home-live-table-mini"
+      className={({ isPending }) =>
+        `home-live-table-mini${isPending ? " is-pending" : ""}`
+      }
       prefetch="viewport"
       to={to}
     >
-      <span className="home-live-table-mini-heading">
-        <span aria-hidden="true" className="home-live-dot" />
-        <strong>LIVE TABLE</strong>
-      </span>
-
-      <span className="home-live-table-mini-stats">
-        {items.map(({ Icon, key, label, value }) => (
-          <span className="home-live-table-mini-stat" key={key}>
-            <Icon aria-hidden="true" stroke={1.7} />
-            <span>
-              <strong>{value}</strong>
-              <small>{label}</small>
-            </span>
+      {({ isPending }) => (
+        <>
+          <span className="home-live-table-mini-heading">
+            <span aria-hidden="true" className="home-live-dot" />
+            <strong>LIVE TABLE</strong>
           </span>
-        ))}
-      </span>
 
-      <span className="home-live-table-mini-cta">
-        テーブルに戻る
-        <b aria-hidden="true">→</b>
-      </span>
-    </Link>
+          <span className="home-live-table-mini-stats">
+            {items.map(({ Icon, key, label, value }) => (
+              <span className="home-live-table-mini-stat" key={key}>
+                <Icon aria-hidden="true" stroke={1.7} />
+                <span>
+                  <strong>{value}</strong>
+                  <small>{label}</small>
+                </span>
+              </span>
+            ))}
+          </span>
+
+          <span className="home-live-table-mini-cta">
+            {isPending ? "開いています" : "テーブルに戻る"}
+            {isPending ? (
+              <span aria-hidden="true" className="route-link-spinner" />
+            ) : (
+              <b aria-hidden="true">→</b>
+            )}
+          </span>
+        </>
+      )}
+    </NavLink>
   );
 }
 

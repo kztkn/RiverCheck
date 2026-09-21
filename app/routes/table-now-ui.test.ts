@@ -50,6 +50,7 @@ describe("LIVE TABLE presentation", () => {
     expect(markup).toContain("ALL IN");
     expect(markup).toContain("72o");
     expect(markup).toContain("テーブルに戻る");
+    expect(markup).toContain('href="/g/river-check/games/game-1"');
     expect(markup).not.toContain("BOMB POT");
   });
 });

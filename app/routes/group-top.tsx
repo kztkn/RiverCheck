@@ -1,4 +1,4 @@
-import { Link, useRouteLoaderData } from "react-router";
+import { Link, NavLink, useRouteLoaderData } from "react-router";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { LiveTableMini } from "~/components/table-now";
 import { orderActiveGamesBySchedule } from "@domain/game/order-active-games";
@@ -130,14 +130,24 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
         )}
       </section>
 
-      <Link className="home-profile-link" prefetch="intent" to={playerStatsUrl}>
-        <span>
-          <small>PLAYER RECORD</small>
-          <strong>プロフィールと戦績</strong>
-          <span>損益・順位・MY HANDを振り返る</span>
-        </span>
-        <span aria-hidden="true">→</span>
-      </Link>
+      <NavLink
+        className={({ isPending }) =>
+          `home-profile-link${isPending ? " is-pending" : ""}`
+        }
+        prefetch="intent"
+        to={playerStatsUrl}
+      >
+        {({ isPending }) => (
+          <>
+            <span>
+              <small>PLAYER RECORD</small>
+              <strong>プロフィールと戦績</strong>
+              <span>損益・順位・MY HANDを振り返る</span>
+            </span>
+            <RoutePendingMark pending={isPending} />
+          </>
+        )}
+      </NavLink>
 
       <PastGames games={pastGames} />
 
@@ -197,23 +207,30 @@ function GameListRow({
   isOrganizer?: boolean;
 }) {
   return (
-    <Link
-      className="home-game-row"
+    <NavLink
+      className={({ isPending }) =>
+        `home-game-row${isPending ? " is-pending" : ""}`
+      }
       prefetch="intent"
       to={buildGameUrl(game, isOrganizer, isPast)}
     >
-      <time dateTime={game.playedAt}>{formatGameDateShort(game.playedAt)}</time>
-      <span className="home-game-row-main">
-        <strong>{game.title}</strong>
-        <small>
-          参加者 {game.participantCount}人
-          {isPast ? ` ・ 優勝 ${game.winnerName ?? "—"}` : ""}
-        </small>
-      </span>
-      <span aria-hidden="true" className="home-game-row-arrow">
-        →
-      </span>
-    </Link>
+      {({ isPending }) => (
+        <>
+          <time dateTime={game.playedAt}>{formatGameDateShort(game.playedAt)}</time>
+          <span className="home-game-row-main">
+            <strong>{game.title}</strong>
+            <small>
+              参加者 {game.participantCount}人
+              {isPast ? ` ・ 優勝 ${game.winnerName ?? "—"}` : ""}
+            </small>
+          </span>
+          <RoutePendingMark
+            className="home-game-row-arrow"
+            pending={isPending}
+          />
+        </>
+      )}
+    </NavLink>
   );
 }
 
@@ -249,4 +266,27 @@ export function buildGameUrl(
 ) {
   const suffix = isOrganizer && !isPast ? "/admin" : "";
   return `games/${game.id}${suffix}`;
+}
+
+
+function RoutePendingMark({
+  className,
+  pending,
+}: {
+  className?: string;
+  pending: boolean;
+}) {
+  return (
+    <span
+      aria-label={pending ? "読み込み中" : undefined}
+      className={className}
+      role={pending ? "status" : undefined}
+    >
+      {pending ? (
+        <span aria-hidden="true" className="route-link-spinner" />
+      ) : (
+        <span aria-hidden="true">→</span>
+      )}
+    </span>
+  );
 }
