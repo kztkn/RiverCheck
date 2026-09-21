@@ -128,16 +128,18 @@ export function shouldUseStickyRebuyActions(
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const context = await requireGame(params.groupCode, params.gameId);
-  const [isOrganizer, profileOverview] = await Promise.all([
-    isOrganizerAuthenticated(request),
-    getAuthenticatedPlayerProfile(request, params.groupCode),
-  ]);
   const url = new URL(request.url);
   const participantToken = readParticipantToken(request, params.gameId);
-  const participantTokenHash = participantToken
-    ? await hashToken(participantToken)
-    : null;
+  const participantTokenHashPromise = participantToken
+    ? hashToken(participantToken)
+    : Promise.resolve(null);
+  const [context, isOrganizer, profileOverview, participantTokenHash] =
+    await Promise.all([
+      requireGame(params.groupCode, params.gameId),
+      isOrganizerAuthenticated(request),
+      getAuthenticatedPlayerProfile(request, params.groupCode),
+      participantTokenHashPromise,
+    ]);
   const [participant, participantRoster, tableEventCounts, tableEvents] = await Promise.all([
     profileOverview?.profile
       ? findParticipantByGroupPlayerId(
@@ -851,7 +853,7 @@ export default function GameParticipant({
         {loaderData.isOrganizer && loaderData.game.status === "open" ? (
           <Link
             className="button button-secondary participant-admin-link"
-            reloadDocument
+            prefetch="intent"
             to={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/admin`}
           >
             開催管理へ

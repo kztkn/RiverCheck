@@ -1103,7 +1103,7 @@ export default function GameAdmin({
 
         <Link
           className="button button-secondary admin-own-play-link"
-          reloadDocument
+          prefetch="intent"
           to={loaderData.participantUrl}
         >
           {loaderData.currentParticipant
