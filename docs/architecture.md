@@ -230,7 +230,7 @@ UI はアバターと縦ラインを軸にしたミニマルな時系列表示�
 - 候補が0件なら公開グループへフォールバックせず、open開催の招待URLを要求する
 - root loaderは未所属・非主催者のgroup routeを原則403にし、open開催の入口として必要なgame participant route、organizer login、profile claim、avatar routeだけを例外として通す
 - game participant loaderは同一URLをstatusで分岐する。openは未所属者にも参加導線を許可し、finalizedは推測困難なgame URLをcapability URLとして確定結果だけを公開する。draftはgroup member、organizer、またはその開催の有効なparticipant tokenを持つ既存参加者だけへ公開する
-- finalizedの未所属ゲストは `canBrowseGroup=false` とし、ヘッダーメニュー、player statsリンク、過去開催ナビ、PayPay、TABLE STORIESを返却・表示しない。これにより結果URLからグループ内を横断できない
+- finalizedの未所属ゲストは `canBrowseGroup=false` とし、ヘッダーメニュー、player statsリンク、過去開催ナビ、PayPay、TABLE STORIESを返却・表示しない。さらに`isPublicResultViewer`では`game_results.cost_share`と訂正履歴内のcostShareを0へマスクし、LINE共有文も返さない。UI側でも各人の会費、精算トータル、会費だけの訂正履歴を描画しない。順位・損益BB・アイコンなど戦績データは従来どおり表示する。これにより結果URLからグループ内を横断できず、内部精算額も公開結果payloadへ露出しない
 - `/r/:resultCode` はfinalized gameのcanonical participant routeへredirectする短縮URLであり、redirect後は同じ公開結果ルールに従う
 
 ## RiverCheck UI の視覚言語

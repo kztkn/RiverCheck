@@ -207,6 +207,22 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     context.game.status === "finalized"
       ? await listResultRevisions(context.group.id, params.gameId)
       : [];
+  const publicResults = isPublicResultViewer
+    ? results.map((result) => ({ ...result, costShare: 0 }))
+    : results;
+  const publicRevisions = isPublicResultViewer
+    ? revisions.map((revision) => ({
+        ...revision,
+        beforeResults: revision.beforeResults.map((result) => ({
+          ...result,
+          costShare: 0,
+        })),
+        afterResults: revision.afterResults.map((result) => ({
+          ...result,
+          costShare: 0,
+        })),
+      }))
+    : revisions;
   const storyPosts =
     context.game.status === "finalized" && !isPublicResultViewer
       ? await getPublishedGameStoryPosts(context.group.id, params.gameId)
@@ -302,7 +318,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         groupPlayerId: player.id,
       }),
     })),
-    results: results.map((result) => ({
+    results: publicResults.map((result) => ({
       ...result,
       avatarUrl: buildPlayerAvatarUrl({
         avatarUpdatedAt: result.avatarUpdatedAt,
@@ -311,7 +327,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       }),
     })),
     costShareReceipts,
-    revisions,
+    revisions: publicRevisions,
     ownStoryPost,
     ownStoryPhotoUrl: ownStoryPost
       ? buildGameStoryPhotoUrl({
@@ -334,7 +350,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       }),
     })),
     lineText:
-      results.length > 0
+      !isPublicResultViewer && results.length > 0
         ? formatLineResult(
           context.game.title,
           results,
@@ -899,6 +915,7 @@ export default function GameParticipant({
             results={loaderData.results}
             revisions={loaderData.revisions}
             shareUrl={loaderData.shareUrl}
+            showSettlementAmounts={!loaderData.isPublicResultViewer}
             showSharePanel={loaderData.isOrganizer}
           />
           {loaderData.isOrganizer ? (
