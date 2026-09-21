@@ -219,7 +219,6 @@ export function LiveTableMini({
     <Link
       aria-label="開催中のテーブルを開く"
       className="home-live-table-mini"
-      prefetch="viewport"
       to={to}
     >
       <span className="home-live-table-mini-heading">
