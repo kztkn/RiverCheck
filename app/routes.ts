@@ -38,6 +38,10 @@ export default [
     "routes/game-table-events.ts",
   ),
   route(
+    "g/:groupCode/games/:gameId/players/:groupPlayerId/quick-stats",
+    "routes/game-player-quick-stats.ts",
+  ),
+  route(
     "g/:groupCode/games/:gameId/cost-share-receipts",
     "routes/game-cost-share-receipts.ts",
   ),
