@@ -163,6 +163,16 @@ export async function getAuthenticatedPlayerProfile(
   return { group, profile };
 }
 
+export async function getAuthenticatedPlayerProfileByGroupId(
+  request: Request,
+  groupId: string,
+): Promise<PlayerProfileRecord | null> {
+  const token = readPlayerProfileToken(request);
+  return token
+    ? findPlayerProfileBySession(groupId, await hashToken(token))
+    : null;
+}
+
 export async function savePlayerProfile(
   current: PlayerProfileRecord,
   input: {

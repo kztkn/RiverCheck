@@ -137,7 +137,9 @@ import {
   ParticipantResultEntrySection,
   ParticipantRosterSheet,
   SettlementPlanSheet,
+  projectRebuyState,
   resolveUndoableRebuyAction,
+  shouldRevalidate,
   shouldShowLocalRules,
   shouldUseStickyRebuyActions,
 } from "./game-participant";
@@ -696,6 +698,7 @@ describe("game participant route", () => {
 
     expect(result).toMatchObject({
       ok: true,
+      commandId: "77777777-7777-4777-8777-777777777777",
       intent: "record-rebuy",
       state: { totalRebuyCount: 1, outstandingRebuyCount: 1 },
     });
@@ -788,6 +791,40 @@ describe("participant quick rebuy actions", () => {
     expect(shouldUseStickyRebuyActions("joined")).toBe(true);
     expect(shouldUseStickyRebuyActions("submitted")).toBe(false);
     expect(shouldUseStickyRebuyActions("locked")).toBe(false);
+  });
+
+  it("projects every rebuy, repayment and undo before the server replies", () => {
+    const initial = { totalRebuyCount: 2, outstandingRebuyCount: 1 };
+    const rebuy = projectRebuyState(initial, "record-rebuy");
+    expect(rebuy).toEqual({ totalRebuyCount: 3, outstandingRebuyCount: 2 });
+    expect(projectRebuyState(rebuy!, "undo-rebuy", "record-rebuy"))
+      .toEqual(initial);
+    const repayment = projectRebuyState(initial, "record-repayment");
+    expect(repayment).toEqual({ totalRebuyCount: 2, outstandingRebuyCount: 0 });
+    expect(projectRebuyState(repayment!, "undo-rebuy", "record-repayment"))
+      .toEqual(initial);
+    expect(projectRebuyState(repayment!, "record-repayment")).toBeNull();
+    expect(initial).toEqual({ totalRebuyCount: 2, outstandingRebuyCount: 1 });
+  });
+
+  it("skips the full loader after successful rebuy writes, but refreshes on failure", () => {
+    const options = (actionResult: unknown) => ({
+      actionResult,
+      currentUrl: new URL("https://example.com/g/river-check/games/game-1"),
+      defaultShouldRevalidate: true,
+      nextUrl: new URL("https://example.com/g/river-check/games/game-1"),
+    }) as Parameters<typeof shouldRevalidate>[0];
+    expect(shouldRevalidate(options({
+      ok: true, intent: "record-rebuy",
+    }))).toBe(false);
+    expect(shouldRevalidate(options({
+      ok: true, intent: "undo-rebuy",
+    }))).toBe(false);
+    expect(shouldRevalidate(options({
+      ok: false, intent: "record-repayment",
+    }))).toBe(true);
+    expect(shouldRevalidate(options({ ok: true, intent: "save-input" })))
+      .toBe(true);
   });
 });
 

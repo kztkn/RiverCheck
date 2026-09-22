@@ -33,9 +33,22 @@ describe("root navigation revalidation", () => {
     ).toBe(true);
   });
 
+  it("成功したリバイとUNDOでは共通データの再取得を省く", () => {
+    for (const intent of ["record-rebuy", "record-repayment", "undo-rebuy"]) {
+      expect(shouldRevalidateRootData({
+        actionResult: { ok: true, intent },
+        currentPathname: "/g/river-check/games/game-1",
+        defaultShouldRevalidate: true,
+        formMethod: "POST",
+        nextPathname: "/g/river-check/games/game-1",
+      })).toBe(false);
+    }
+  });
+
   it("別グループへの移動は標準の再取得判定に従う", () => {
     expect(
       shouldRevalidateRootData({
+        actionResult: { ok: true, intent: "record-rebuy" },
         currentPathname: "/g/river-check",
         defaultShouldRevalidate: true,
         nextPathname: "/g/another-group",

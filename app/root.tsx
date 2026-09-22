@@ -96,12 +96,14 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export function shouldRevalidate({
+  actionResult,
   currentUrl,
   defaultShouldRevalidate,
   formMethod,
   nextUrl,
 }: ShouldRevalidateFunctionArgs): boolean {
   return shouldRevalidateRootData({
+    actionResult,
     currentPathname: currentUrl.pathname,
     defaultShouldRevalidate,
     formMethod,

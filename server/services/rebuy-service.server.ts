@@ -6,7 +6,7 @@ import {
   type RebuyMutationResult,
   type RebuyTarget,
 } from "@server/repositories/rebuy-repository.server";
-import { getAuthenticatedPlayerProfile } from "./player-profile-service.server";
+import { getAuthenticatedPlayerProfileByGroupId } from "./player-profile-service.server";
 import { readParticipantToken } from "./participant-session.server";
 import { hashToken } from "./token.server";
 
@@ -161,22 +161,22 @@ export async function adjustOrganizerRebuyState(input: {
 
 async function resolveOwnTargets(
   request: Request,
-  input: { gameId: string; groupCode: string },
+  input: { gameId: string; groupId: string },
 ): Promise<RebuyTarget[]> {
   const targets: RebuyTarget[] = [];
-  const profile = await getAuthenticatedPlayerProfile(
-    request,
-    input.groupCode,
-  );
-  if (profile?.profile?.groupPlayerId) {
+  const token = readParticipantToken(request, input.gameId);
+  const [profile, participantTokenHash] = await Promise.all([
+    getAuthenticatedPlayerProfileByGroupId(request, input.groupId),
+    token ? hashToken(token) : Promise.resolve(null),
+  ]);
+  if (profile?.groupPlayerId) {
     targets.push({
       kind: "group-player",
-      value: profile.profile.groupPlayerId,
+      value: profile.groupPlayerId,
     });
   }
-  const token = readParticipantToken(request, input.gameId);
-  if (token) {
-    targets.push({ kind: "participant-token", value: await hashToken(token) });
+  if (participantTokenHash) {
+    targets.push({ kind: "participant-token", value: participantTokenHash });
   }
   return targets;
 }

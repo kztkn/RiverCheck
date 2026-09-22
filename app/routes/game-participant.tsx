@@ -6,6 +6,7 @@ import {
   useFetcher,
   useNavigation,
   useRevalidator,
+  type ShouldRevalidateFunctionArgs,
 } from "react-router";
 import {
   useEffect,
@@ -99,9 +100,18 @@ import { TableNow } from "~/components/table-now";
 import { openTableEventRecorder } from "~/components/table-event-recorder";
 import { listOpenGameTableEvents } from "@server/repositories/table-event-repository.server";
 import { scheduleAchievementRefresh } from "@server/services/achievement-service.server";
+import { isSuccessfulRebuyActionResult } from "@domain/routing/should-revalidate-root-data";
+import {
+  applyRebuyDelta,
+  transitionRebuyState,
+  type RebuyState,
+} from "@domain/rebuy/rebuy-state";
 
 type RebuyActionIntent = "record-rebuy" | "record-repayment" | "undo-rebuy";
-type RebuyActionData = RebuyServiceResult & { intent: RebuyActionIntent };
+type RebuyActionData = RebuyServiceResult & {
+  commandId: string;
+  intent: RebuyActionIntent;
+};
 type ParticipantStatusActionData = {
   intent: "update-table-status";
   ok: boolean;
@@ -125,6 +135,38 @@ export function shouldUseStickyRebuyActions(
   status: "joined" | "submitted" | "locked",
 ): boolean {
   return status === "joined";
+}
+
+export function projectRebuyState(
+  state: RebuyState,
+  intent: RebuyActionIntent,
+  undoneIntent?: UndoableRebuyAction["intent"],
+): RebuyState | null {
+  try {
+    if (intent === "record-rebuy") return transitionRebuyState(state, "rebuy");
+    if (intent === "record-repayment") return transitionRebuyState(state, "repayment");
+    if (undoneIntent === "record-rebuy") {
+      return applyRebuyDelta(state, { totalDelta: -1, outstandingDelta: -1 });
+    }
+    if (undoneIntent === "record-repayment") {
+      return applyRebuyDelta(state, { totalDelta: 0, outstandingDelta: 1 });
+    }
+  } catch {
+    // An invalid or stale local state must wait for the authoritative response.
+  }
+  return null;
+}
+
+export function shouldRevalidate({
+  actionResult,
+  currentUrl,
+  defaultShouldRevalidate,
+  nextUrl,
+}: ShouldRevalidateFunctionArgs) {
+  return currentUrl.pathname === nextUrl.pathname &&
+    isSuccessfulRebuyActionResult(actionResult)
+    ? false
+    : defaultShouldRevalidate;
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -668,7 +710,7 @@ export async function action({ request, params }: Route.ActionArgs) {
           groupCode: params.groupCode,
           groupId: context.group.id,
         });
-    return { ...result, intent };
+    return { ...result, commandId, intent };
   }
 
   const token = readParticipantToken(request, params.gameId);
@@ -771,6 +813,54 @@ export default function GameParticipant({
   const isSubmitting = navigation.state === "submitting";
   const [isEditing, setIsEditing] = useState(false);
   const [rosterOpenSignal, setRosterOpenSignal] = useState(0);
+  const [rebuyLocal, setRebuyLocal] = useState<{
+    participant: NonNullable<typeof loaderData.participant>;
+    confirmed: RebuyState | null;
+    pending: { commandId: string; state: RebuyState | null } | null;
+  } | null>(null);
+  const localRebuy = rebuyLocal?.participant === loaderData.participant
+    ? rebuyLocal
+    : null;
+  const serverRebuy: RebuyState = {
+    totalRebuyCount: loaderData.participant?.totalRebuyCount ?? 0,
+    outstandingRebuyCount: loaderData.participant?.outstandingRebuyCount ?? 0,
+  };
+  const visibleRebuy = localRebuy?.pending?.state ??
+    localRebuy?.confirmed ?? {
+      totalRebuyCount: loaderData.participant?.totalRebuyCount ?? null,
+      outstandingRebuyCount: serverRebuy.outstandingRebuyCount,
+    };
+
+  useEffect(() => {
+    const result = rebuyFetcher.data;
+    if (!result || !loaderData.participant) return;
+    setRebuyLocal((current) => {
+      if (current?.pending?.commandId !== result.commandId) return current;
+      return {
+        participant: loaderData.participant!,
+        confirmed: result.ok ? result.state : current.confirmed,
+        pending: null,
+      };
+    });
+  }, [rebuyFetcher.data, loaderData.participant]);
+
+  function anticipateRebuy(
+    commandId: string,
+    intent: RebuyActionIntent,
+    undoneIntent?: UndoableRebuyAction["intent"],
+  ) {
+    if (!loaderData.participant) return;
+    const confirmed = localRebuy?.confirmed ?? null;
+    const base = confirmed ?? serverRebuy;
+    setRebuyLocal({
+      participant: loaderData.participant,
+      confirmed,
+      pending: {
+        commandId,
+        state: projectRebuyState(base, intent, undoneIntent),
+      },
+    });
+  }
   const noticeMessage = getParticipantNotice(loaderData.notice);
   const [showNoticeToast, setShowNoticeToast] = useState(Boolean(noticeMessage));
 
@@ -1013,13 +1103,12 @@ export default function GameParticipant({
             <RebuyTracker
               canRecord={loaderData.participant.status !== "locked"}
               fetcher={rebuyFetcher}
-              outstandingRebuyCount={
-                loaderData.participant.outstandingRebuyCount
-              }
+              onOptimistic={anticipateRebuy}
+              outstandingRebuyCount={visibleRebuy.outstandingRebuyCount}
               stickyActions={shouldUseStickyRebuyActions(
                 loaderData.participant.status,
               )}
-              totalRebuyCount={loaderData.participant.totalRebuyCount}
+              totalRebuyCount={visibleRebuy.totalRebuyCount}
             />
           </section>
 
@@ -1069,7 +1158,7 @@ export default function GameParticipant({
                     <span>累計リバイ</span>
                     <strong>
                       {formatTotalRebuyCount(
-                        loaderData.participant.totalRebuyCount,
+                        visibleRebuy.totalRebuyCount,
                       )}
                     </strong>
                   </div>
@@ -1082,7 +1171,7 @@ export default function GameParticipant({
                 </div>
                 <RebuyMatchStatus
                   outstandingRebuyCount={
-                    loaderData.participant.outstandingRebuyCount
+                    visibleRebuy.outstandingRebuyCount
                   }
                   settlementRebuyCount={
                     loaderData.participant.settlementRebuyCount ?? 0
@@ -1108,14 +1197,12 @@ export default function GameParticipant({
               <ResultEntryForm
                 initialChips={loaderData.game.initialChips}
                 isSubmitting={isSubmitting}
-                outstandingRebuyCount={
-                  loaderData.participant.outstandingRebuyCount
-                }
+                outstandingRebuyCount={visibleRebuy.outstandingRebuyCount}
                 remainingChips={loaderData.participant.remainingChips}
                 settlementRebuyCount={
                   loaderData.participant.settlementRebuyCount
                 }
-                totalRebuyCount={loaderData.participant.totalRebuyCount}
+                totalRebuyCount={visibleRebuy.totalRebuyCount}
               />
             </ParticipantResultEntrySection>
           )}
@@ -1192,32 +1279,74 @@ export default function GameParticipant({
                     名前を追加して参加できます。次回から一覧に表示されます。
                   </p>
                 </div>
-                <Form className="new-player-form" method="post" reloadDocument>
-                  <input name="intent" type="hidden" value="join-new" />
-                  <label className="field">
-                    <span className="field-label">表示名</span>
-                    <input
-                      maxLength={PLAYER_DISPLAY_NAME_MAX_LENGTH}
-                      name="displayName"
-                      placeholder="例：プレイヤー"
-                      required
-                    />
-                    <span className="field-hint">最大{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字</span>
-                  </label>
-                  <button
-                    className="button button-secondary"
-                    disabled={isSubmitting}
-                    type="submit"
-                  >
-                    この名前で参加
-                  </button>
-                </Form>
+                <JoinNewPlayerForm />
               </section>
             </>
           )}
         </div>
       )}
     </main>
+  );
+}
+
+function JoinNewPlayerForm() {
+  const submittingRef = useRef(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    function restoreOnBackNavigation(event: PageTransitionEvent) {
+      if (!event.persisted) return;
+      submittingRef.current = false;
+      setSubmitting(false);
+      if (buttonRef.current) {
+        buttonRef.current.disabled = false;
+        buttonRef.current.textContent = "この名前で参加";
+      }
+    }
+    window.addEventListener("pageshow", restoreOnBackNavigation);
+    return () => window.removeEventListener("pageshow", restoreOnBackNavigation);
+  }, []);
+
+  return (
+    <Form
+      className="new-player-form"
+      method="post"
+      onSubmit={(event) => {
+        if (submittingRef.current) {
+          event.preventDefault();
+          return;
+        }
+        submittingRef.current = true;
+        setSubmitting(true);
+        // A native POST may navigate before React gets a chance to paint.
+        if (buttonRef.current) {
+          buttonRef.current.textContent = "登録中…";
+          buttonRef.current.disabled = true;
+        }
+      }}
+      reloadDocument
+    >
+      <input name="intent" type="hidden" value="join-new" />
+      <label className="field">
+        <span className="field-label">表示名</span>
+        <input
+          maxLength={PLAYER_DISPLAY_NAME_MAX_LENGTH}
+          name="displayName"
+          placeholder="例：プレイヤー"
+          required
+        />
+        <span className="field-hint">最大{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字</span>
+      </label>
+      <button
+        className="button button-secondary"
+        disabled={submitting}
+        ref={buttonRef}
+        type="submit"
+      >
+        {submitting ? "登録中…" : "この名前で参加"}
+      </button>
+    </Form>
   );
 }
 
@@ -1845,12 +1974,18 @@ export function shouldShowLocalRules(status: GameStatus): boolean {
 function RebuyTracker({
   canRecord,
   fetcher,
+  onOptimistic,
   outstandingRebuyCount,
   stickyActions,
   totalRebuyCount,
 }: {
   canRecord: boolean;
   fetcher: ReturnType<typeof useFetcher<RebuyActionData>>;
+  onOptimistic: (
+    commandId: string,
+    intent: RebuyActionIntent,
+    undoneIntent?: UndoableRebuyAction["intent"],
+  ) => void;
   outstandingRebuyCount: number;
   stickyActions: boolean;
   totalRebuyCount: number | null;
@@ -1874,8 +2009,10 @@ function RebuyTracker({
   function submit(intent: "record-rebuy" | "record-repayment") {
     if (submissionPendingRef.current) return;
     submissionPendingRef.current = true;
+    const commandId = createCommandId();
+    onOptimistic(commandId, intent);
     void fetcher.submit(
-      { commandId: createCommandId(), intent },
+      { commandId, intent },
       { method: "post" },
     );
   }
@@ -1884,9 +2021,11 @@ function RebuyTracker({
     if (!undoableAction) return;
     if (submissionPendingRef.current) return;
     submissionPendingRef.current = true;
+    const commandId = createCommandId();
+    onOptimistic(commandId, "undo-rebuy", undoableAction.intent);
     void fetcher.submit(
       {
-        commandId: createCommandId(),
+        commandId,
         eventId: undoableAction.eventId,
         intent: "undo-rebuy",
       },
@@ -2005,7 +2144,7 @@ function RebuyTracker({
 
 export function resolveUndoableRebuyAction(
   current: UndoableRebuyAction | null,
-  result: RebuyActionData | undefined,
+  result: (RebuyServiceResult & { intent: RebuyActionIntent }) | undefined,
 ): UndoableRebuyAction | null {
   if (!result?.ok) return current;
   if (result.intent === "undo-rebuy") return null;

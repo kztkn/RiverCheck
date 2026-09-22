@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocked = vi.hoisted(() => ({
   adjustRebuyState: vi.fn(),
   applyRebuyAction: vi.fn(),
-  getAuthenticatedPlayerProfile: vi.fn(),
+  getAuthenticatedPlayerProfileByGroupId: vi.fn(),
   hashToken: vi.fn(),
   readParticipantToken: vi.fn(),
   undoRebuyAction: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock("@server/repositories/rebuy-repository.server", () => ({
   undoRebuyAction: mocked.undoRebuyAction,
 }));
 vi.mock("@server/services/player-profile-service.server", () => ({
-  getAuthenticatedPlayerProfile: mocked.getAuthenticatedPlayerProfile,
+  getAuthenticatedPlayerProfileByGroupId: mocked.getAuthenticatedPlayerProfileByGroupId,
 }));
 vi.mock("@server/services/participant-session.server", () => ({
   readParticipantToken: mocked.readParticipantToken,
@@ -36,16 +36,14 @@ const commandId = "55555555-5555-4555-8555-555555555555";
 
 beforeEach(() => {
   vi.resetAllMocks();
-  mocked.getAuthenticatedPlayerProfile.mockResolvedValue(null);
+  mocked.getAuthenticatedPlayerProfileByGroupId.mockResolvedValue(null);
   mocked.readParticipantToken.mockReturnValue(null);
   mocked.hashToken.mockResolvedValue("hashed-token");
 });
 
 describe("rebuy service", () => {
   it("プロフィール認証済み本人のgroupPlayerIdだけを更新対象にする", async () => {
-    mocked.getAuthenticatedPlayerProfile.mockResolvedValue({
-      profile: { groupPlayerId },
-    });
+    mocked.getAuthenticatedPlayerProfileByGroupId.mockResolvedValue({ groupPlayerId });
     mocked.applyRebuyAction.mockResolvedValue({
       ok: true,
       eventId: "66666666-6666-4666-8666-666666666666",
@@ -61,6 +59,10 @@ describe("rebuy service", () => {
     });
 
     expect(result.ok).toBe(true);
+    expect(mocked.getAuthenticatedPlayerProfileByGroupId).toHaveBeenCalledWith(
+      expect.any(Request),
+      groupId,
+    );
     expect(mocked.applyRebuyAction).toHaveBeenCalledWith({
       actorType: "participant",
       actionType: "rebuy",
