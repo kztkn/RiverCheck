@@ -226,6 +226,16 @@ export function TableEventRecorder() {
 
   return (
     <>
+      {isParticipantTableEventsPath(location.pathname) ? (
+        <button
+          aria-label="テーブルイベントを記録"
+          className="participant-table-event-button"
+          onClick={openTableEventRecorder}
+          type="button"
+        >
+          <span aria-hidden="true">♠</span> EVENT
+        </button>
+      ) : null}
       <dialog
         aria-labelledby="table-event-title"
         className="app-dialog table-event-dialog"
@@ -375,6 +385,10 @@ export function TableEventRecorder() {
 export function buildTableEventsPath(pathname: string): string | null {
   const match = pathname.match(/^(\/g\/[^/]+\/games\/[^/]+)(?:\/admin)?\/?$/u);
   return match ? `${match[1]}/table-events` : null;
+}
+
+export function isParticipantTableEventsPath(pathname: string): boolean {
+  return /^\/g\/[^/]+\/games\/[^/]+\/?$/u.test(pathname);
 }
 
 function baseCommand(intent: string): FormData {

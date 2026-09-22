@@ -6,9 +6,22 @@
 }
 
 .participant-table-event-button {
-  gap: 5px;
+  position: fixed;
+  z-index: 34;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(233, 186, 90, 0.42);
+  border-radius: 999px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.32);
+  padding: 0 15px;
   font-size: 0.7rem;
   letter-spacing: 0.04em;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 
 .participant-table-event-button > span {

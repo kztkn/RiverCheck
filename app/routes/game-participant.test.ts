@@ -141,7 +141,6 @@ import {
   resolveUndoableRebuyAction,
   shouldRevalidate,
   shouldShowLocalRules,
-  shouldUseStickyRebuyActions,
 } from "./game-participant";
 
 const group = {
@@ -468,7 +467,7 @@ describe("game participant route", () => {
     expect(markup).toContain("2,000円");
   });
 
-  it("未入力の最終結果フォームは閉じておき、終了操作から開く", () => {
+  it("未入力の結果フォームは閉じておき、結果入力から開く", () => {
     const markup = renderToStaticMarkup(
       createElement(
         ParticipantResultEntrySection,
@@ -477,9 +476,9 @@ describe("game participant route", () => {
       ),
     );
 
-    expect(markup).toContain("終了して入力する");
+    expect(markup).toContain("結果を入力する");
     expect(markup).toContain(
-      "ゲームが終了したら、残りチップと手元のリバイ証を入力します。",
+      "残りチップと手元のリバイ証を保存します。主催者の確定前は修正できます。",
     );
     expect(markup).toContain("入力フォーム");
     expect(markup).toContain("<details");
@@ -492,7 +491,7 @@ describe("game participant route", () => {
       createElement(ParticipantResultEntrySection, { initiallyOpen: true, children: "入力フォーム" }),
     );
     expect(markup).toContain('open=""');
-    expect(markup).toContain("最終結果を入力");
+    expect(markup).toContain("結果を入力中");
   });
 
   it("最終結果だけを保存し、TABLE STORYは更新しない", async () => {
@@ -787,12 +786,6 @@ describe("game participant route", () => {
 });
 
 describe("participant quick rebuy actions", () => {
-  it("keeps the bottom quick actions only while the player is actively playing", () => {
-    expect(shouldUseStickyRebuyActions("joined")).toBe(true);
-    expect(shouldUseStickyRebuyActions("submitted")).toBe(false);
-    expect(shouldUseStickyRebuyActions("locked")).toBe(false);
-  });
-
   it("projects every rebuy, repayment and undo before the server replies", () => {
     const initial = { totalRebuyCount: 2, outstandingRebuyCount: 1 };
     const rebuy = projectRebuyState(initial, "record-rebuy");

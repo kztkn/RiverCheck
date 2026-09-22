@@ -4347,20 +4347,13 @@ input[aria-invalid="true"] {
 
 .participant-quick-action-buttons {
   display: grid;
-  grid-template-columns:
-    minmax(0, 1fr)
-    minmax(0, 1fr)
-    minmax(72px, 0.72fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 9px;
 }
 
 .rebuy-actions {
   display: grid;
   gap: 9px;
-}
-
-.participant-quick-actions-status {
-  display: none;
 }
 
 .rebuy-state-grid > div {
@@ -4456,7 +4449,7 @@ input[aria-invalid="true"] {
 
 /* Participant play surface */
 .participant-page {
-  padding-bottom: max(64px, env(safe-area-inset-bottom));
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
 }
 
 .participant-hero {
@@ -4649,71 +4642,6 @@ input[aria-invalid="true"] {
   touch-action: manipulation;
 }
 
-@media (max-width: 639px) {
-  .participant-page.has-sticky-rebuy-actions {
-    padding-bottom: calc(154px + env(safe-area-inset-bottom));
-  }
-
-  .participant-session .participant-quick-actions.is-sticky {
-    position: fixed;
-    z-index: 35;
-    bottom: calc(10px + env(safe-area-inset-bottom));
-    left: 50%;
-    width: min(calc(100vw - 24px), 620px);
-    gap: 8px;
-    border: 1px solid rgba(223, 236, 227, 0.15);
-    border-radius: 18px;
-    background: rgba(7, 21, 15, 0.94);
-    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
-    padding: 9px;
-    transform: translateX(-50%);
-    backdrop-filter: blur(18px);
-  }
-
-  .participant-quick-actions.is-sticky .participant-quick-actions-status {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 14px;
-    padding: 0 5px 1px;
-  }
-
-  .participant-quick-actions-status > span {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 6px;
-  }
-
-  .participant-quick-actions-status small {
-    color: #83978c;
-    font-size: 0.56rem;
-    font-weight: 800;
-    letter-spacing: 0.09em;
-  }
-
-  .participant-quick-actions-status strong {
-    color: #dfece5;
-    font-size: 0.72rem;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .participant-session .participant-quick-actions.is-sticky .participant-quick-action-buttons {
-    gap: 8px;
-  }
-
-  .participant-session .participant-quick-actions.is-sticky .button {
-    min-height: 52px;
-  }
-
-  .participant-quick-actions.is-sticky .rebuy-action-feedback {
-    margin-top: 0;
-  }
-
-  .participant-quick-actions.is-sticky .rebuy-action-error {
-    padding-inline: 5px;
-  }
-}
-
 .participant-session > .participant-phase-after {
   gap: 15px;
   margin-top: 20px;
@@ -4728,16 +4656,11 @@ input[aria-invalid="true"] {
   color: #a99360;
 }
 
-.participant-session > .participant-after-entry {
+.participant-session .participant-after-entry {
   display: block;
   overflow: visible;
   border-bottom: 1px solid var(--line);
   padding: 0;
-}
-
-.participant-session .participant-after-entry > .participant-phase-heading {
-  min-height: 76px;
-  padding: 0 3px;
 }
 
 .participant-session .participant-after-entry-body {
@@ -4822,6 +4745,16 @@ input[aria-invalid="true"] {
   border-radius: 0;
   background: transparent;
   padding: 0;
+}
+
+.participant-result-section .result-review-notice {
+  margin: 0;
+  border-left: 3px solid var(--gold);
+  background: rgba(233, 186, 90, 0.09);
+  color: #f0d392;
+  padding: 10px 12px;
+  font-size: 0.76rem;
+  line-height: 1.6;
 }
 
 .participant-session .submitted-input-values {

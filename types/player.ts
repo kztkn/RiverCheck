@@ -44,6 +44,7 @@ export interface GameParticipantSummary {
   totalRebuyCount: number | null;
   outstandingRebuyCount: number;
   settlementRebuyCount: number | null;
+  resultNeedsReview?: boolean;
   deviceLocked: boolean;
   avatarUpdatedAt: string | null;
 }

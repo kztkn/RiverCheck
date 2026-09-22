@@ -4,6 +4,7 @@ import {
   NavLink,
   redirect,
   useFetcher,
+  useLocation,
   useNavigation,
   useRevalidator,
   type ShouldRevalidateFunctionArgs,
@@ -97,7 +98,6 @@ import { OrganizerCostShareCollection } from "~/components/organizer-cost-share-
 import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-preview-draft";
 import { INVITE_REQUIRED_RESPONSE_TEXT } from "@domain/routing/public-group-entry";
 import { TableNow } from "~/components/table-now";
-import { openTableEventRecorder } from "~/components/table-event-recorder";
 import { listOpenGameTableEvents } from "@server/repositories/table-event-repository.server";
 import { scheduleAchievementRefresh } from "@server/services/achievement-service.server";
 import { isSuccessfulRebuyActionResult } from "@domain/routing/should-revalidate-root-data";
@@ -130,12 +130,6 @@ export type UndoableRebuyAction = {
   eventId: string;
   intent: "record-rebuy" | "record-repayment";
 };
-
-export function shouldUseStickyRebuyActions(
-  status: "joined" | "submitted" | "locked",
-): boolean {
-  return status === "joined";
-}
 
 export function projectRebuyState(
   state: RebuyState,
@@ -807,6 +801,7 @@ export default function GameParticipant({
   actionData,
 }: Route.ComponentProps) {
   const navigation = useNavigation();
+  const location = useLocation();
   const rebuyFetcher = useFetcher<RebuyActionData>();
   const statusFetcher = useFetcher<ParticipantStatusActionData>();
   const revalidator = useRevalidator();
@@ -816,6 +811,7 @@ export default function GameParticipant({
   const [rebuyLocal, setRebuyLocal] = useState<{
     participant: NonNullable<typeof loaderData.participant>;
     confirmed: RebuyState | null;
+    needsReview: boolean;
     pending: { commandId: string; state: RebuyState | null } | null;
   } | null>(null);
   const localRebuy = rebuyLocal?.participant === loaderData.participant
@@ -839,6 +835,8 @@ export default function GameParticipant({
       return {
         participant: loaderData.participant!,
         confirmed: result.ok ? result.state : current.confirmed,
+        needsReview: current.needsReview ||
+          (result.ok && current.participant.status === "submitted"),
         pending: null,
       };
     });
@@ -855,6 +853,7 @@ export default function GameParticipant({
     setRebuyLocal({
       participant: loaderData.participant,
       confirmed,
+      needsReview: localRebuy?.needsReview ?? false,
       pending: {
         commandId,
         state: projectRebuyState(base, intent, undoneIntent),
@@ -866,7 +865,7 @@ export default function GameParticipant({
 
   useEffect(() => {
     if (loaderData.notice === "saved") setIsEditing(false);
-  }, [loaderData.notice]);
+  }, [loaderData.notice, location.key]);
 
   useEffect(() => {
     if (loaderData.notice !== "finalized") return;
@@ -906,14 +905,8 @@ export default function GameParticipant({
   return (
     <main
       className={`page-shell participant-page${loaderData.game.status === "open" && !loaderData.participant
-          ? " participant-selection-page"
-          : ""
-        }${loaderData.game.status === "open" &&
-          loaderData.participant &&
-          shouldUseStickyRebuyActions(loaderData.participant.status)
-          ? " has-sticky-rebuy-actions"
-          : ""
-        }`}
+        ? " participant-selection-page"
+        : ""}`}
     >
       <GroupSiteHeader
         groupCode={loaderData.group.publicCode}
@@ -1079,16 +1072,8 @@ export default function GameParticipant({
               </div>
             </div>
             <div className="participant-session-state">
-              <strong>
-                {loaderData.participant.status === "submitted"
-                  ? "入力済み"
-                  : "ゲーム中"}
-              </strong>
-              <small>
-                {loaderData.participant.status === "submitted"
-                  ? "主催者の確定待ち"
-                  : "参加済み"}
-              </small>
+              <strong>ゲーム中</strong>
+              <small>参加済み</small>
             </div>
           </div>
 
@@ -1105,9 +1090,6 @@ export default function GameParticipant({
               fetcher={rebuyFetcher}
               onOptimistic={anticipateRebuy}
               outstandingRebuyCount={visibleRebuy.outstandingRebuyCount}
-              stickyActions={shouldUseStickyRebuyActions(
-                loaderData.participant.status,
-              )}
               totalRebuyCount={visibleRebuy.totalRebuyCount}
             />
           </section>
@@ -1132,18 +1114,17 @@ export default function GameParticipant({
             />
           ) : null}
 
-          {loaderData.participant.status === "submitted" && !isEditing ? (
-            <section
-              className="participant-phase participant-phase-after"
-              aria-label="保存済みの結果"
-            >
-              <div className="participant-phase-heading">
-                <div>
-                  <span className="participant-phase-label">ゲーム終了後</span>
-                  <h3>入力済み</h3>
-                  <p>主催者の確定待ちです。確定までは修正できます。</p>
-                </div>
+          <section className="participant-phase participant-phase-after participant-result-section" aria-label="結果入力">
+            <div className="participant-phase-heading">
+              <div>
+                <span className="participant-phase-label">結果</span>
+                <h3>残りチップとリバイ証</h3>
+                <p>{loaderData.participant.status === "submitted"
+                  ? "保存済み・主催者の確定待ち。確定前は修正できます。"
+                  : "主催者の確定前に、いつでも保存・修正できます。"}</p>
               </div>
+            </div>
+            {loaderData.participant.status === "submitted" && !isEditing ? (
               <div className="submitted-input">
                 <div className="submitted-input-values rebuy-submitted-values">
                   <div>
@@ -1177,6 +1158,11 @@ export default function GameParticipant({
                     loaderData.participant.settlementRebuyCount ?? 0
                   }
                 />
+                {loaderData.participant.resultNeedsReview || localRebuy?.needsReview ? (
+                  <p className="result-review-notice" role="status">
+                    保存後にリバイの記録が変わりました。残りチップとリバイ証を確認し、結果を再保存してください。
+                  </p>
+                ) : null}
                 <div className="submitted-input-actions">
                   <button
                     className="button button-secondary"
@@ -1188,24 +1174,22 @@ export default function GameParticipant({
                   <FinalResultRefreshControl />
                 </div>
               </div>
-            </section>
-          ) : (
-            <ParticipantResultEntrySection
-              key={loaderData.game.id}
-              initiallyOpen={isEditing || Boolean(actionData?.error)}
-            >
-              <ResultEntryForm
-                initialChips={loaderData.game.initialChips}
-                isSubmitting={isSubmitting}
-                outstandingRebuyCount={visibleRebuy.outstandingRebuyCount}
-                remainingChips={loaderData.participant.remainingChips}
-                settlementRebuyCount={
-                  loaderData.participant.settlementRebuyCount
-                }
-                totalRebuyCount={visibleRebuy.totalRebuyCount}
-              />
-            </ParticipantResultEntrySection>
-          )}
+            ) : (
+              <ParticipantResultEntrySection
+                key={loaderData.game.id}
+                initiallyOpen={isEditing || Boolean(actionData?.error)}
+              >
+                <ResultEntryForm
+                  initialChips={loaderData.game.initialChips}
+                  isSubmitting={isSubmitting}
+                  outstandingRebuyCount={visibleRebuy.outstandingRebuyCount}
+                  remainingChips={loaderData.participant.remainingChips}
+                  settlementRebuyCount={loaderData.participant.settlementRebuyCount}
+                  totalRebuyCount={visibleRebuy.totalRebuyCount}
+                />
+              </ParticipantResultEntrySection>
+            )}
+          </section>
 
           <ParticipantLeaveControl isSubmitting={isSubmitting} />
         </section>
@@ -1976,7 +1960,6 @@ function RebuyTracker({
   fetcher,
   onOptimistic,
   outstandingRebuyCount,
-  stickyActions,
   totalRebuyCount,
 }: {
   canRecord: boolean;
@@ -1987,7 +1970,6 @@ function RebuyTracker({
     undoneIntent?: UndoableRebuyAction["intent"],
   ) => void;
   outstandingRebuyCount: number;
-  stickyActions: boolean;
   totalRebuyCount: number | null;
 }) {
   const isPending = fetcher.state !== "idle";
@@ -2060,20 +2042,7 @@ function RebuyTracker({
         </div>
       </div>
       {canRecord ? (
-        <div
-          aria-label="リバイのクイック操作"
-          className={`rebuy-actions participant-quick-actions${stickyActions ? " is-sticky" : ""}`}
-        >
-          <div aria-hidden="true" className="participant-quick-actions-status">
-            <span>
-              <small>REBUY</small>
-              <strong>{formatTotalRebuyCount(totalRebuyCount)}</strong>
-            </span>
-            <span>
-              <small>未返済</small>
-              <strong>{outstandingRebuyCount}口</strong>
-            </span>
-          </div>
+        <div aria-label="リバイの操作" className="rebuy-actions participant-quick-actions">
           <div className="participant-quick-action-buttons">
             <button
               className="button button-primary"
@@ -2095,15 +2064,6 @@ function RebuyTracker({
                 fetcher.formData?.get("intent") === "record-repayment"
                 ? "返済中…"
                 : "100BB返済"}
-            </button>
-            <button
-              aria-label="テーブルイベントを記録"
-              className="button participant-table-event-button"
-              onClick={openTableEventRecorder}
-              type="button"
-            >
-              <span aria-hidden="true">♠</span>
-              EVENT
             </button>
           </div>
           {result?.ok === false ? (
@@ -2188,6 +2148,7 @@ function ResultEntryForm({
       className="result-entry-form"
       method="post"
       noValidate
+      preventScrollReset
     >
       <input name="intent" type="hidden" value="save-input" />
       <label className="field">
@@ -2256,18 +2217,18 @@ export function ParticipantResultEntrySection({
 
   return (
     <details
-      aria-label="ゲーム終了時の入力"
-      className="participant-phase participant-phase-after participant-after-entry"
+      aria-label="残りチップとリバイ証を入力"
+      className="participant-after-entry"
       open={open}
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
       <summary className="participant-result-entry-trigger">
-        <span>{open ? "最終結果を入力" : "終了して入力する"}</span>
+        <span>{open ? "結果を入力中" : "結果を入力する"}</span>
         <span aria-hidden="true">{open ? "−" : "＋"}</span>
       </summary>
       <div className="participant-after-entry-body">
         <p className="muted-copy">
-          ゲームが終了したら、残りチップと手元のリバイ証を入力します。
+          残りチップと手元のリバイ証を保存します。主催者の確定前は修正できます。
         </p>
         {children}
       </div>
@@ -2279,7 +2240,7 @@ function getParticipantNotice(notice: string | null): string | null {
   const messages: Record<string, string> = {
     joined: "参加しました。ゲーム中の操作を開始できます。",
     "group-joined": "グループに参加し、この開催へ登録しました。",
-    saved: "最終結果を保存しました。",
+    saved: "結果を保存しました。主催者の確定待ちです。",
     "story-saved": "TABLE STORIESへの投稿を保存しました。",
     "story-deleted": "投稿を削除しました。",
     left: "参加を取り消しました。",

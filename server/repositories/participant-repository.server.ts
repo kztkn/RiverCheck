@@ -14,6 +14,7 @@ interface ParticipantRow {
   total_rebuy_count: number | null;
   outstanding_rebuy_count: number;
   settlement_rebuy_count: number | null;
+  result_needs_review?: boolean;
   device_locked: boolean;
   avatar_uploaded_at: Date | null;
 }
@@ -192,6 +193,11 @@ export async function findParticipantByTokenHash(
         participant.total_rebuy_count,
         participant.outstanding_rebuy_count,
         participant.settlement_rebuy_count,
+        EXISTS (
+          SELECT 1 FROM game_rebuy_events AS event
+          WHERE event.game_participant_id = participant.id
+            AND event.recorded_at > participant.submitted_at
+        ) AS result_needs_review,
         TRUE AS device_locked,
         player.avatar_uploaded_at
       FROM game_participants AS participant
@@ -226,6 +232,11 @@ export async function findParticipantByGroupPlayerId(
         participant.total_rebuy_count,
         participant.outstanding_rebuy_count,
         participant.settlement_rebuy_count,
+        EXISTS (
+          SELECT 1 FROM game_rebuy_events AS event
+          WHERE event.game_participant_id = participant.id
+            AND event.recorded_at > participant.submitted_at
+        ) AS result_needs_review,
         participant.participant_token_hash IS NOT NULL AS device_locked,
         player.avatar_uploaded_at
       FROM game_participants AS participant
@@ -605,6 +616,7 @@ function mapParticipant(row: ParticipantRow): GameParticipantSummary {
     totalRebuyCount: row.total_rebuy_count,
     outstandingRebuyCount: row.outstanding_rebuy_count,
     settlementRebuyCount: row.settlement_rebuy_count,
+    resultNeedsReview: row.result_needs_review ?? false,
     deviceLocked: row.device_locked,
     avatarUpdatedAt: row.avatar_uploaded_at?.toISOString() ?? null,
   };
