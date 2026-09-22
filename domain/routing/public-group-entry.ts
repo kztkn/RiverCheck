@@ -34,5 +34,15 @@ export function isPublicGroupEntryPath(
   ) {
     return true;
   }
+  if (
+    rest.length === 5 &&
+    rest[0] === "games" &&
+    Boolean(rest[1]) &&
+    rest[2] === "players" &&
+    Boolean(rest[3]) &&
+    rest[4] === "quick-stats"
+  ) {
+    return true;
+  }
   return rest.length === 2 && rest[0] === "games" && Boolean(rest[1]);
 }

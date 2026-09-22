@@ -33,6 +33,12 @@ describe("isPublicGroupEntryPath", () => {
         "river-check",
       ),
     ).toBe(true);
+    expect(
+      isPublicGroupEntryPath(
+        "/g/river-check/games/game-id/players/player-id/quick-stats",
+        "river-check",
+      ),
+    ).toBe(true);
   });
 
   it("グループ内画面や開催管理は公開しない", () => {

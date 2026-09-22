@@ -238,6 +238,12 @@ UI はアバターと縦ラインを軸にしたミニマルな時系列表示�
 - finalizedの未所属ゲストは `canBrowseGroup=false` とし、ヘッダーメニュー、player statsリンク、過去開催ナビ、PayPay、TABLE STORIESを返却・表示しない。さらに`isPublicResultViewer`では`game_results.cost_share`と訂正履歴内のcostShareを0へマスクし、LINE共有文も返さない。UI側でも各人の会費、精算トータル、会費だけの訂正履歴を描画しない。順位・損益BB・アイコンなど戦績データは従来どおり表示する。これにより結果URLからグループ内を横断できず、内部精算額も公開結果payloadへ露出しない
 - `/r/:resultCode` はfinalized gameのcanonical participant routeへredirectする短縮URLであり、redirect後は同じ公開結果ルールに従う
 
+### 参加者一覧のPLAYER SNAPSHOT
+
+open開催の参加者一覧は名簿表示を維持し、本人行だけ「今日のひとこと」編集、他参加者行だけTablerの人型アイコンからPLAYER SNAPSHOTを開く。同じdialog内で一覧ビューと詳細ビューを切り替え、dialogを二重化しない。詳細を開く直前のscrollTopを保持して戻る時に復元する。
+
+簡易戦績は一覧loaderへ全員分を載せず、対象プレイヤーを押した時だけ `/g/:groupCode/games/:gameId/players/:groupPlayerId/quick-stats` のresource loaderから取得する。resource loaderは開催がopenであること、閲覧者がグループ所属・主催者・同開催participant tokenのいずれかであること、対象groupPlayerIdが同開催へ実際に参加中であることを検証する。返却値はfinalized済み開催から算出する累計損益BB、直近3戦合計BB、参加回数、優勝回数、TOP3率だけとし、現在開催のリバイ、未返済、チップ、終了入力、精算情報を含めない。取得済みのPLAYER SNAPSHOTは参加者画面のコンポーネント内でgroupPlayerId単位にキャッシュし、同じシートを開いている間の再通信を避ける。
+
 ## RiverCheck UI の視覚言語
 
 - RiverCheck はポーカーテーブル上の道具や情報を連想できる、深緑を基調とした落ち着いた卓上UIを優先する。

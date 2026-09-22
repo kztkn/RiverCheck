@@ -16,6 +16,11 @@ import {
   type ReactNode,
 } from "react";
 import {
+  IconChevronLeft,
+  IconPencil,
+  IconUserCircle,
+} from "@tabler/icons-react";
+import {
   findGameWithGroupByPublicCode,
   listGamesForGroup,
 } from "@server/repositories/game-repository.server";
@@ -43,6 +48,7 @@ import {
 } from "@server/services/participant-session.server";
 import { generateOpaqueToken, hashToken } from "@server/services/token.server";
 import { formatLineResult } from "@domain/result-sharing/format-line-result";
+import { formatSignedBbValue } from "@domain/score/bb-score";
 import { encodeResultCode } from "@domain/result-sharing/result-code";
 import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
 import {
@@ -118,6 +124,23 @@ type ParticipantStatusActionData = {
   error?: string;
   statusText?: string | null;
 };
+
+type ParticipantQuickStatsData =
+  | {
+      ok: true;
+      groupPlayerId: string;
+      displayName: string;
+      avatarUrl: string | null;
+      gamesPlayed: number;
+      wins: number;
+      topThreeRate: number;
+      totalNetBb: number;
+      recentThreeNetBb: number | null;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
 
 const PARTICIPANT_STATUS_PRESETS = [
   "絶好調 🔥",
@@ -355,7 +378,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     participantRoster: {
       available: participantRoster.available,
       items: participantRoster.participants.map((currentParticipant) => ({
+        groupPlayerId: currentParticipant.groupPlayerId,
         displayName: currentParticipant.displayName,
+        avatarUrl: buildPlayerAvatarUrl({
+          avatarUpdatedAt: currentParticipant.avatarUpdatedAt,
+          groupCode: params.groupCode,
+          groupPlayerId: currentParticipant.groupPlayerId,
+        }),
         isCurrentUser:
           currentParticipant.groupPlayerId ===
           participant?.groupPlayerId,
@@ -804,6 +833,7 @@ export default function GameParticipant({
   const location = useLocation();
   const rebuyFetcher = useFetcher<RebuyActionData>();
   const statusFetcher = useFetcher<ParticipantStatusActionData>();
+  const quickStatsFetcher = useFetcher<ParticipantQuickStatsData>();
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
   const [isEditing, setIsEditing] = useState(false);
@@ -972,6 +1002,19 @@ export default function GameParticipant({
                 void revalidator.revalidate();
               }
             }}
+            profileBasePath={
+              loaderData.canBrowseGroup
+                ? `/g/${loaderData.group.publicCode}/stats`
+                : undefined
+            }
+            quickStatsBasePath={
+              loaderData.participant ||
+              loaderData.isOrganizer ||
+              loaderData.canBrowseGroup
+                ? `/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/players`
+                : undefined
+            }
+            quickStatsFetcher={quickStatsFetcher}
             statusFetcher={loaderData.participant ? statusFetcher : undefined}
           />
         </>
@@ -1426,13 +1469,18 @@ function ParticipantLeaveControl({
 }
 
 interface ParticipantRosterItem {
+  groupPlayerId: string;
   displayName: string;
+  avatarUrl: string | null;
   isCurrentUser: boolean;
   statusText?: string;
 }
 
 type ParticipantStatusFetcher = ReturnType<
   typeof useFetcher<ParticipantStatusActionData>
+>;
+type ParticipantQuickStatsFetcher = ReturnType<
+  typeof useFetcher<ParticipantQuickStatsData>
 >;
 
 export function ParticipantRosterSheet({
@@ -1441,6 +1489,9 @@ export function ParticipantRosterSheet({
   hideTrigger = false,
   items,
   onOpen,
+  profileBasePath,
+  quickStatsBasePath,
+  quickStatsFetcher,
   statusFetcher,
 }: {
   available: boolean;
@@ -1448,19 +1499,46 @@ export function ParticipantRosterSheet({
   hideTrigger?: boolean;
   items: ParticipantRosterItem[];
   onOpen?: () => void;
+  profileBasePath?: string;
+  quickStatsBasePath?: string;
+  quickStatsFetcher?: ParticipantQuickStatsFetcher;
   statusFetcher?: ParticipantStatusFetcher;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingStatus, setIsEditingStatus] = useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [quickStatsCache, setQuickStatsCache] = useState<
+    Record<string, Extract<ParticipantQuickStatsData, { ok: true }>>
+  >({});
+  const [quickStatsErrors, setQuickStatsErrors] = useState<
+    Record<string, string>
+  >({});
   const currentItem = items.find((item) => item.isCurrentUser) ?? null;
+  const selectedItem = selectedPlayerId
+    ? items.find((item) => item.groupPlayerId === selectedPlayerId) ?? null
+    : null;
+  const selectedStats = selectedPlayerId
+    ? quickStatsCache[selectedPlayerId] ?? null
+    : null;
+  const selectedError = selectedPlayerId
+    ? quickStatsErrors[selectedPlayerId] ?? null
+    : null;
   const [statusDraft, setStatusDraft] = useState(currentItem?.statusText ?? "");
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const rosterScrollRef = useRef<HTMLDivElement>(null);
+  const rosterScrollTopRef = useRef(0);
+  const pendingQuickStatsPlayerIdRef = useRef<string | null>(null);
   const countLabel = available ? String(items.length) : "—";
   const statusLength = Array.from(statusDraft).length;
   const statusFetcherData = statusFetcher?.data;
   const statusFetcherState = statusFetcher?.state ?? "idle";
   const statusPending = statusFetcherState !== "idle";
+  const quickStatsPending =
+    Boolean(selectedPlayerId) &&
+    !selectedStats &&
+    !selectedError &&
+    quickStatsFetcher?.state !== "idle";
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -1492,13 +1570,42 @@ export function ParticipantRosterSheet({
     setIsEditingStatus(false);
   }, [statusFetcherData, statusFetcherState]);
 
+  useEffect(() => {
+    const playerId = pendingQuickStatsPlayerIdRef.current;
+    const data = quickStatsFetcher?.data;
+    if (!playerId || quickStatsFetcher?.state !== "idle" || !data) return;
+
+    pendingQuickStatsPlayerIdRef.current = null;
+    if (data.ok) {
+      setQuickStatsCache((current) => ({ ...current, [playerId]: data }));
+      setQuickStatsErrors((current) => {
+        const next = { ...current };
+        delete next[playerId];
+        return next;
+      });
+    } else {
+      setQuickStatsErrors((current) => ({
+        ...current,
+        [playerId]: data.error,
+      }));
+    }
+  }, [quickStatsFetcher?.data, quickStatsFetcher?.state]);
+
+  useEffect(() => {
+    if (!selectedPlayerId) return;
+    if (items.some((item) => item.groupPlayerId === selectedPlayerId)) return;
+    setSelectedPlayerId(null);
+  }, [items, selectedPlayerId]);
+
   function closeSheet() {
     setIsEditingStatus(false);
+    setSelectedPlayerId(null);
     setIsOpen(false);
   }
 
   function handleDialogClose() {
     setIsEditingStatus(false);
+    setSelectedPlayerId(null);
     setIsOpen(false);
     triggerRef.current?.focus();
   }
@@ -1521,6 +1628,36 @@ export function ParticipantRosterSheet({
   function cancelStatusEdit() {
     setStatusDraft(currentItem?.statusText ?? "");
     setIsEditingStatus(false);
+  }
+
+  function loadQuickStats(playerId: string) {
+    if (!quickStatsBasePath || !quickStatsFetcher) return;
+    pendingQuickStatsPlayerIdRef.current = playerId;
+    setQuickStatsErrors((current) => {
+      const next = { ...current };
+      delete next[playerId];
+      return next;
+    });
+    void quickStatsFetcher.load(
+      `${quickStatsBasePath}/${encodeURIComponent(playerId)}/quick-stats`,
+    );
+  }
+
+  function openPlayerSnapshot(item: ParticipantRosterItem) {
+    rosterScrollTopRef.current = rosterScrollRef.current?.scrollTop ?? 0;
+    setSelectedPlayerId(item.groupPlayerId);
+    if (!quickStatsCache[item.groupPlayerId]) {
+      loadQuickStats(item.groupPlayerId);
+    }
+  }
+
+  function returnToRoster() {
+    setSelectedPlayerId(null);
+    window.requestAnimationFrame(() => {
+      if (rosterScrollRef.current) {
+        rosterScrollRef.current.scrollTop = rosterScrollTopRef.current;
+      }
+    });
   }
 
   return (
@@ -1554,12 +1691,23 @@ export function ParticipantRosterSheet({
       >
         <div className="participant-roster-sheet">
           <header className="participant-roster-header">
-            <div>
-              <p className="eyebrow">CURRENT PLAYERS</p>
-              <h2 id="participant-roster-title">
-                参加者 {countLabel}
-              </h2>
-            </div>
+            {selectedItem ? (
+              <button
+                className="participant-roster-back"
+                onClick={returnToRoster}
+                type="button"
+              >
+                <IconChevronLeft aria-hidden="true" stroke={1.8} />
+                <span>参加者一覧</span>
+              </button>
+            ) : (
+              <div>
+                <p className="eyebrow">CURRENT PLAYERS</p>
+                <h2 id="participant-roster-title">
+                  参加者 {countLabel}
+                </h2>
+              </div>
+            )}
             <button
               aria-label="参加者一覧を閉じる"
               className="participant-roster-close"
@@ -1571,126 +1719,259 @@ export function ParticipantRosterSheet({
               </svg>
             </button>
           </header>
-          <div className="participant-roster-scroll">
-            {!available ? (
-              <p className="participant-roster-empty" role="status">
-                参加者一覧を読み込めませんでした。
-              </p>
-            ) : items.length === 0 ? (
-              <p className="participant-roster-empty">参加者はいません</p>
-            ) : (
-              <ul className="participant-roster-list">
-                {items.map((item, index) => (
-                  <li
-                    className={item.isCurrentUser ? "is-current-user" : undefined}
-                    key={item.displayName + "-" + index}
-                  >
-                    <div
-                      aria-label={
-                        item.isCurrentUser
-                          ? `${item.displayName}（あなた）`
-                          : undefined
-                      }
-                      className="participant-roster-row"
+          {selectedItem ? (
+            <ParticipantPlayerSnapshot
+              error={selectedError}
+              item={selectedItem}
+              loading={quickStatsPending}
+              onRetry={() => loadQuickStats(selectedItem.groupPlayerId)}
+              profileHref={
+                profileBasePath
+                  ? `${profileBasePath}/${selectedItem.groupPlayerId}`
+                  : undefined
+              }
+              stats={selectedStats}
+            />
+          ) : (
+            <div className="participant-roster-scroll" ref={rosterScrollRef}>
+              {!available ? (
+                <p className="participant-roster-empty" role="status">
+                  参加者一覧を読み込めませんでした。
+                </p>
+              ) : items.length === 0 ? (
+                <p className="participant-roster-empty">参加者はいません</p>
+              ) : (
+                <ul className="participant-roster-list">
+                  {items.map((item) => (
+                    <li
+                      className={item.isCurrentUser ? "is-current-user" : undefined}
+                      key={item.groupPlayerId}
                     >
-                      <span className="participant-roster-copy">
-                        <strong>{item.displayName}</strong>
-                        {item.statusText ? (
-                          <small className="participant-roster-status">
-                            {item.statusText}
-                          </small>
-                        ) : null}
-                      </span>
-                      {item.isCurrentUser && statusFetcher ? (
-                        <button
-                          aria-label="今日のひとことを編集"
-                          className="participant-roster-edit"
-                          onClick={startStatusEdit}
-                          type="button"
-                        >
-                          <svg aria-hidden="true" viewBox="0 0 24 24">
-                            <path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z" />
-                            <path d="m13.8 8.2 3 3" />
-                          </svg>
-                        </button>
-                      ) : null}
-                    </div>
-                    {item.isCurrentUser && isEditingStatus && statusFetcher ? (
-                      <statusFetcher.Form
-                        className="participant-status-editor"
-                        method="post"
+                      <div
+                        aria-label={
+                          item.isCurrentUser
+                            ? `${item.displayName}（あなた）`
+                            : undefined
+                        }
+                        className="participant-roster-row"
                       >
-                        <input
-                          name="intent"
-                          type="hidden"
-                          value="update-table-status"
-                        />
-                        <div
-                          aria-label="ひとこと候補"
-                          className="participant-status-presets"
-                        >
-                          {PARTICIPANT_STATUS_PRESETS.map((preset) => (
-                            <button
-                              className="participant-status-preset"
-                              key={preset}
-                              onClick={() => setStatusDraft(preset)}
-                              type="button"
-                            >
-                              {preset}
-                            </button>
-                          ))}
-                        </div>
-                        <label className="participant-status-field">
-                          <input
-                            autoFocus
-                            maxLength={PARTICIPANT_TABLE_STATUS_MAX_LENGTH}
-                            name="statusText"
-                            onChange={(event) =>
-                              setStatusDraft(event.currentTarget.value)
-                            }
-                            placeholder="例：今日はブラフ多め😈"
-                            value={statusDraft}
-                          />
-                          <span className="participant-status-meta">
-                            {statusLength}/{PARTICIPANT_TABLE_STATUS_MAX_LENGTH}
-                          </span>
-                        </label>
-                        {statusFetcherData?.ok === false ? (
-                          <p className="participant-status-error" role="alert">
-                            {statusFetcherData.error}
-                          </p>
-                        ) : null}
-                        <div className="participant-status-actions">
+                        <span className="participant-roster-copy">
+                          <strong>{item.displayName}</strong>
+                          {item.statusText ? (
+                            <small className="participant-roster-status">
+                              {item.statusText}
+                            </small>
+                          ) : null}
+                        </span>
+                        {item.isCurrentUser && statusFetcher ? (
                           <button
-                            className="button button-secondary"
-                            disabled={statusPending}
-                            onClick={cancelStatusEdit}
+                            aria-label="今日のひとことを編集"
+                            className="participant-roster-edit"
+                            onClick={startStatusEdit}
                             type="button"
                           >
-                            キャンセル
+                            <IconPencil aria-hidden="true" stroke={1.7} />
                           </button>
+                        ) : !item.isCurrentUser &&
+                          quickStatsBasePath &&
+                          quickStatsFetcher ? (
                           <button
-                            className="button button-primary"
-                            disabled={
-                              statusPending ||
-                              statusLength > PARTICIPANT_TABLE_STATUS_MAX_LENGTH
-                            }
-                            type="submit"
+                            aria-label={`${item.displayName}の簡易戦績を見る`}
+                            className="participant-roster-profile"
+                            onClick={() => openPlayerSnapshot(item)}
+                            type="button"
                           >
-                            {statusPending ? "保存中…" : "保存"}
+                            <IconUserCircle aria-hidden="true" stroke={1.7} />
                           </button>
-                        </div>
-                      </statusFetcher.Form>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                        ) : null}
+                      </div>
+                      {item.isCurrentUser && isEditingStatus && statusFetcher ? (
+                        <statusFetcher.Form
+                          className="participant-status-editor"
+                          method="post"
+                        >
+                          <input
+                            name="intent"
+                            type="hidden"
+                            value="update-table-status"
+                          />
+                          <div
+                            aria-label="ひとこと候補"
+                            className="participant-status-presets"
+                          >
+                            {PARTICIPANT_STATUS_PRESETS.map((preset) => (
+                              <button
+                                className="participant-status-preset"
+                                key={preset}
+                                onClick={() => setStatusDraft(preset)}
+                                type="button"
+                              >
+                                {preset}
+                              </button>
+                            ))}
+                          </div>
+                          <label className="participant-status-field">
+                            <input
+                              autoFocus
+                              maxLength={PARTICIPANT_TABLE_STATUS_MAX_LENGTH}
+                              name="statusText"
+                              onChange={(event) =>
+                                setStatusDraft(event.currentTarget.value)
+                              }
+                              placeholder="例：今日はブラフ多め😈"
+                              value={statusDraft}
+                            />
+                            <span className="participant-status-meta">
+                              {statusLength}/{PARTICIPANT_TABLE_STATUS_MAX_LENGTH}
+                            </span>
+                          </label>
+                          {statusFetcherData?.ok === false ? (
+                            <p className="participant-status-error" role="alert">
+                              {statusFetcherData.error}
+                            </p>
+                          ) : null}
+                          <div className="participant-status-actions">
+                            <button
+                              className="button button-secondary"
+                              disabled={statusPending}
+                              onClick={cancelStatusEdit}
+                              type="button"
+                            >
+                              キャンセル
+                            </button>
+                            <button
+                              className="button button-primary"
+                              disabled={
+                                statusPending ||
+                                statusLength > PARTICIPANT_TABLE_STATUS_MAX_LENGTH
+                              }
+                              type="submit"
+                            >
+                              {statusPending ? "保存中…" : "保存"}
+                            </button>
+                          </div>
+                        </statusFetcher.Form>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       </dialog>
     </>
   );
+}
+
+export function ParticipantPlayerSnapshot({
+  error,
+  item,
+  loading,
+  onRetry,
+  profileHref,
+  stats,
+}: {
+  error: string | null;
+  item: ParticipantRosterItem;
+  loading: boolean;
+  onRetry: () => void;
+  profileHref?: string;
+  stats: Extract<ParticipantQuickStatsData, { ok: true }> | null;
+}) {
+  const hasGames = Boolean(stats && stats.gamesPlayed > 0);
+  return (
+    <div className="participant-snapshot">
+      <div className="participant-snapshot-identity">
+        <PlayerAvatar
+          avatarUrl={item.avatarUrl}
+          className="participant-snapshot-avatar"
+          displayName={item.displayName}
+        />
+        <div>
+          <p className="eyebrow">PLAYER SNAPSHOT</p>
+          <h2 id="participant-roster-title">{item.displayName}</h2>
+          {item.statusText ? (
+            <p className="participant-snapshot-status">{item.statusText}</p>
+          ) : null}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="participant-snapshot-loading" role="status">
+          <span aria-hidden="true" className="route-link-spinner" />
+          <span>戦績を読み込み中</span>
+        </div>
+      ) : error ? (
+        <div className="participant-snapshot-error" role="alert">
+          <p>{error}</p>
+          <button className="button button-secondary" onClick={onRetry} type="button">
+            もう一度読み込む
+          </button>
+        </div>
+      ) : stats ? (
+        <>
+          <div className="participant-snapshot-profit">
+            <span>TOTAL PROFIT</span>
+            <strong className={getSnapshotBbTone(stats.totalNetBb, hasGames)}>
+              {hasGames ? formatSignedBbValue(stats.totalNetBb) : "—"}
+            </strong>
+            <div>
+              <span>直近3戦</span>
+              <strong
+                className={getSnapshotBbTone(
+                  stats.recentThreeNetBb ?? 0,
+                  stats.recentThreeNetBb !== null,
+                )}
+              >
+                {stats.recentThreeNetBb === null
+                  ? "—"
+                  : formatSignedBbValue(stats.recentThreeNetBb)}
+              </strong>
+            </div>
+          </div>
+          <dl className="participant-snapshot-metrics">
+            <div>
+              <dt>参加回数</dt>
+              <dd>{stats.gamesPlayed}戦</dd>
+            </div>
+            <div>
+              <dt>優勝</dt>
+              <dd>{stats.wins}回</dd>
+            </div>
+            <div>
+              <dt>TOP3率</dt>
+              <dd>
+                {stats.gamesPlayed > 0
+                  ? `${formatSnapshotPercent(stats.topThreeRate)}%`
+                  : "—"}
+              </dd>
+            </div>
+          </dl>
+        </>
+      ) : null}
+
+      {profileHref ? (
+        <Link
+          className="participant-snapshot-profile-link"
+          prefetch="intent"
+          to={profileHref}
+        >
+          プロフィールを詳しく見る
+          <span aria-hidden="true">›</span>
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+function getSnapshotBbTone(value: number, available: boolean): string {
+  if (!available || value === 0) return "bb-neutral";
+  return value > 0 ? "bb-positive" : "bb-negative";
+}
+
+function formatSnapshotPercent(value: number): string {
+  return value.toLocaleString("ja-JP", { maximumFractionDigits: 1 });
 }
 
 function FinalResultRefreshControl() {

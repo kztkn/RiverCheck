@@ -135,6 +135,7 @@ import {
   loader,
   LocalRulesSheet,
   ParticipantResultEntrySection,
+  ParticipantPlayerSnapshot,
   ParticipantRosterSheet,
   SettlementPlanSheet,
   projectRebuyState,
@@ -264,8 +265,12 @@ describe("game participant route", () => {
     const otherGroupPlayerId = "66666666-6666-4666-8666-666666666666";
     mocked.findParticipantByGroupPlayerId.mockResolvedValue(participant);
     mocked.listCurrentGameParticipants.mockResolvedValue([
-      { displayName: "Alice", groupPlayerId },
-      { displayName: "Bob", groupPlayerId: otherGroupPlayerId },
+      { displayName: "Alice", groupPlayerId, avatarUpdatedAt: null },
+      {
+        displayName: "Bob",
+        groupPlayerId: otherGroupPlayerId,
+        avatarUpdatedAt: null,
+      },
     ]);
 
     const result = await loader(loaderArgs());
@@ -273,8 +278,18 @@ describe("game participant route", () => {
     expect(result.participantRoster).toEqual({
       available: true,
       items: [
-        { displayName: "Alice", isCurrentUser: true },
-        { displayName: "Bob", isCurrentUser: false },
+        {
+          groupPlayerId,
+          displayName: "Alice",
+          avatarUrl: null,
+          isCurrentUser: true,
+        },
+        {
+          groupPlayerId: otherGroupPlayerId,
+          displayName: "Bob",
+          avatarUrl: null,
+          isCurrentUser: false,
+        },
       ],
     });
     expect(mocked.listCurrentGameParticipants).toHaveBeenCalledWith(
@@ -289,14 +304,21 @@ describe("game participant route", () => {
       profile: null,
     });
     mocked.listCurrentGameParticipants.mockResolvedValue([
-      { displayName: "Alice", groupPlayerId },
+      { displayName: "Alice", groupPlayerId, avatarUpdatedAt: null },
     ]);
 
     const result = await loader(loaderArgs());
 
     expect(result.participantRoster).toEqual({
       available: true,
-      items: [{ displayName: "Alice", isCurrentUser: false }],
+      items: [
+        {
+          groupPlayerId,
+          displayName: "Alice",
+          avatarUrl: null,
+          isCurrentUser: false,
+        },
+      ],
     });
   });
 
@@ -422,8 +444,18 @@ describe("game participant route", () => {
       createElement(ParticipantRosterSheet, {
         available: true,
         items: [
-          { displayName: "Alice", isCurrentUser: true },
-          { displayName: "Bob", isCurrentUser: false },
+          {
+            groupPlayerId,
+            displayName: "Alice",
+            avatarUrl: null,
+            isCurrentUser: true,
+          },
+          {
+            groupPlayerId: "66666666-6666-4666-8666-666666666666",
+            displayName: "Bob",
+            avatarUrl: null,
+            isCurrentUser: false,
+          },
         ],
       }),
     );
@@ -437,6 +469,73 @@ describe("game participant route", () => {
     expect(markup).not.toContain("リバイ回数");
     expect(markup).not.toContain("未返済");
     expect(markup).not.toContain("残りチップ");
+  });
+
+  it("他参加者には簡易戦績ボタンを表示し、本人の編集操作と役割を分ける", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ParticipantRosterSheet, {
+        available: true,
+        items: [
+          {
+            groupPlayerId,
+            displayName: "Alice",
+            avatarUrl: null,
+            isCurrentUser: true,
+          },
+          {
+            groupPlayerId: "66666666-6666-4666-8666-666666666666",
+            displayName: "Bob",
+            avatarUrl: null,
+            isCurrentUser: false,
+          },
+        ],
+        quickStatsBasePath: `/g/river-check/games/${gameId}/players`,
+        quickStatsFetcher: {
+          state: "idle",
+          data: undefined,
+        } as never,
+      }),
+    );
+
+    expect(markup).toContain("Bobの簡易戦績を見る");
+    expect(markup).not.toContain("Aliceの簡易戦績を見る");
+  });
+
+  it("PLAYER SNAPSHOTはゲーム中に必要な5指標へ絞る", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ParticipantPlayerSnapshot, {
+        error: null,
+        item: {
+          groupPlayerId: "66666666-6666-4666-8666-666666666666",
+          displayName: "Bob",
+          avatarUrl: null,
+          isCurrentUser: false,
+          statusText: "今日は堅め",
+        },
+        loading: false,
+        onRetry: () => undefined,
+        stats: {
+          ok: true,
+          groupPlayerId: "66666666-6666-4666-8666-666666666666",
+          displayName: "Bob",
+          avatarUrl: null,
+          gamesPlayed: 12,
+          wins: 3,
+          topThreeRate: 50,
+          totalNetBb: 320,
+          recentThreeNetBb: 85,
+        },
+      }),
+    );
+
+    expect(markup).toContain("PLAYER SNAPSHOT");
+    expect(markup).toContain("+320BB");
+    expect(markup).toContain("+85BB");
+    expect(markup).toContain("12戦");
+    expect(markup).toContain("3回");
+    expect(markup).toContain("50%");
+    expect(markup).not.toContain("最大勝ち");
+    expect(markup).not.toContain("最大負け");
   });
 
   it("参加者0件では空状態を描画する", () => {
