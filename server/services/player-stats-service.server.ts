@@ -33,6 +33,14 @@ export interface PlayerStatsDetailOverview {
   playerStats: PlayerStatsDetail;
 }
 
+export interface PlayerQuickStats {
+  gamesPlayed: number;
+  wins: number;
+  topThreeRate: number;
+  totalNetBb: number;
+  recentThreeNetBb: number | null;
+}
+
 export function parsePlayerStatsSort(value: string | null): PlayerStatsSort {
   return PLAYER_STATS_SORTS.includes(value as PlayerStatsSort)
     ? value as PlayerStatsSort
@@ -92,5 +100,29 @@ export async function getPlayerStatsDetail(
         };
       }),
     },
+  };
+}
+
+
+export async function getPlayerQuickStats(
+  groupId: string,
+  groupPlayerId: string,
+): Promise<PlayerQuickStats> {
+  const finalizedGames = await listFinalizedPlayerGameStats(
+    groupId,
+    groupPlayerId,
+  );
+  const aggregate = calculatePlayerStats(finalizedGames);
+  const recentGames = finalizedGames.slice(-3);
+
+  return {
+    gamesPlayed: aggregate.gamesPlayed,
+    wins: aggregate.wins,
+    topThreeRate: aggregate.topThreeRate,
+    totalNetBb: aggregate.totalNetBb,
+    recentThreeNetBb:
+      recentGames.length === 0
+        ? null
+        : recentGames.reduce((total, game) => total + game.netBb, 0),
   };
 }
