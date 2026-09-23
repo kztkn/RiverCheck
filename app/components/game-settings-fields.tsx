@@ -9,8 +9,7 @@ import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import { calculateFinalResults } from "@domain/finalization/calculate-final-results";
 import { BB_RATE_OPTIONS } from "@domain/settlement/calculate-game-settlements";
 import {
-  INITIAL_STACK_BB_OPTIONS,
-  calculateBlindStructure,
+  calculateInitialStackBb,
   formatChipValue,
 } from "@domain/score/bb-score";
 import type { GameParticipantSummary } from "@shared-types/player";
@@ -29,7 +28,9 @@ export interface GameSettingsValues {
   title: string;
   playedAt: string;
   initialChips: string;
-  initialStackBb: string;
+  smallBlindChips: string;
+  bigBlindChips: string;
+  bigBlindAnteChips: string;
   venueCost: string;
   firstPlaceCost: string;
   secondPlaceCost: string;
@@ -71,8 +72,10 @@ export function GameSettingsFields({
   values,
 }: GameSettingsFieldsProps) {
   const [initialChipsInput, setInitialChipsInput] = useState(values.initialChips);
-  const [initialStackBbInput, setInitialStackBbInput] = useState(
-    values.initialStackBb || "100",
+  const [smallBlindInput, setSmallBlindInput] = useState(values.smallBlindChips);
+  const [bigBlindInput, setBigBlindInput] = useState(values.bigBlindChips);
+  const [bigBlindAnteInput, setBigBlindAnteInput] = useState(
+    values.bigBlindAnteChips,
   );
   const [venueCost, setVenueCost] = useState(values.venueCost);
   const [participantCountInput, setParticipantCountInput] = useState(
@@ -109,23 +112,50 @@ export function GameSettingsFields({
 
   useEffect(() => {
     setInitialChipsInput(values.initialChips);
-    setInitialStackBbInput(values.initialStackBb || "100");
-  }, [values.initialChips, values.initialStackBb]);
+    setSmallBlindInput(values.smallBlindChips);
+    setBigBlindInput(values.bigBlindChips);
+    setBigBlindAnteInput(values.bigBlindAnteChips);
+  }, [
+    values.bigBlindAnteChips,
+    values.bigBlindChips,
+    values.initialChips,
+    values.smallBlindChips,
+  ]);
 
-  const blindStructure = useMemo(() => {
+  const stackPreview = useMemo(() => {
     const initialChips = Number(initialChipsInput);
-    const initialStackBb = Number(initialStackBbInput);
+    const smallBlindChips = Number(smallBlindInput);
+    const bigBlindChips = Number(bigBlindInput);
+    const bigBlindAnteChips = Number(bigBlindAnteInput);
     if (
       !Number.isSafeInteger(initialChips) ||
       initialChips <= 0 ||
-      !INITIAL_STACK_BB_OPTIONS.includes(
-        initialStackBb as (typeof INITIAL_STACK_BB_OPTIONS)[number],
-      )
+      !Number.isSafeInteger(smallBlindChips) ||
+      smallBlindChips <= 0 ||
+      !Number.isSafeInteger(bigBlindChips) ||
+      bigBlindChips <= smallBlindChips ||
+      !Number.isSafeInteger(bigBlindAnteChips) ||
+      bigBlindAnteChips < 0
     ) {
       return null;
     }
-    return calculateBlindStructure(initialChips, initialStackBb);
-  }, [initialChipsInput, initialStackBbInput]);
+    try {
+      return {
+        initialStackBb: calculateInitialStackBb(initialChips, bigBlindChips),
+        initialChips,
+        smallBlindChips,
+        bigBlindChips,
+        bigBlindAnteChips,
+      };
+    } catch {
+      return null;
+    }
+  }, [
+    bigBlindAnteInput,
+    bigBlindInput,
+    initialChipsInput,
+    smallBlindInput,
+  ]);
 
   const analysis = useMemo(
     () => analyzeSettlement(venueCost, participantCountInput, shareValues),
@@ -152,7 +182,13 @@ export function GameSettingsFields({
       const calculated = calculateFinalResults(
         {
           initialChips,
-          initialStackBb: parsePreviewInteger(values.initialStackBb || "100"),
+          smallBlindChips: parsePreviewInteger(values.smallBlindChips),
+          bigBlindChips: parsePreviewInteger(values.bigBlindChips),
+          bigBlindAnteChips: parsePreviewInteger(values.bigBlindAnteChips),
+          initialStackBb: calculateInitialStackBb(
+            initialChips,
+            parsePreviewInteger(values.bigBlindChips),
+          ),
           rebuyChips: initialChips,
           venueCost: parsePreviewInteger(venueCost),
           firstPlaceCost: parsePreviewInteger(shareValues[0] ?? ""),
@@ -186,8 +222,10 @@ export function GameSettingsFields({
     participantCountInput,
     settlementParticipants,
     shareValues,
+    values.bigBlindAnteChips,
+    values.bigBlindChips,
     values.initialChips,
-    values.initialStackBb,
+    values.smallBlindChips,
     venueCost,
   ]);
 
@@ -489,62 +527,81 @@ export function GameSettingsFields({
               type="number"
               value={initialChipsInput}
             />
-            <div className="field">
-              <span className="field-label">開始スタック</span>
-              <div aria-label="開始スタック" className="initial-stack-options">
-                {INITIAL_STACK_BB_OPTIONS.map((stackBb) => (
-                  <label className="initial-stack-option" key={stackBb}>
-                    <input
-                      checked={Number(initialStackBbInput) === stackBb}
-                      name="initialStackBb"
-                      onChange={() => setInitialStackBbInput(String(stackBb))}
-                      type="radio"
-                      value={stackBb}
-                    />
-                    <span>{stackBb}BB</span>
-                  </label>
-                ))}
-              </div>
-              {errors.initialStackBb ? (
-                <span className="field-error">{errors.initialStackBb}</span>
-              ) : null}
+            <div className="blind-input-grid">
+              <Field
+                error={errors.smallBlindChips}
+                inputMode="numeric"
+                label="SB"
+                min={1}
+                name="smallBlindChips"
+                onChange={(event) => setSmallBlindInput(event.target.value)}
+                required
+                type="number"
+                value={smallBlindInput}
+              />
+              <Field
+                error={errors.bigBlindChips}
+                inputMode="numeric"
+                label="BB"
+                min={1}
+                name="bigBlindChips"
+                onChange={(event) => setBigBlindInput(event.target.value)}
+                required
+                type="number"
+                value={bigBlindInput}
+              />
+              <Field
+                error={errors.bigBlindAnteChips}
+                inputMode="numeric"
+                label="BBA"
+                min={0}
+                name="bigBlindAnteChips"
+                onChange={(event) => setBigBlindAnteInput(event.target.value)}
+                required
+                type="number"
+                value={bigBlindAnteInput}
+              />
             </div>
-            <div
-              aria-live="polite"
-              className="blind-structure-preview"
-            >
+            <p className="field-hint">
+              BBAなしなら0。ブラインドを基準に開始BBを自動計算します。
+            </p>
+            <div aria-live="polite" className="blind-structure-preview">
               <div className="blind-structure-heading">
-                <span>今回のブラインド</span>
-                <small>SB / BB / BBA</small>
+                <span>今回のゲーム構成</span>
+                <small>STACK / BLINDS</small>
               </div>
-              {blindStructure ? (
+              {stackPreview ? (
                 <>
                   <div className="blind-structure-values">
                     <span>
-                      <small>SB</small>
-                      <strong>{formatChipValue(blindStructure.smallBlindChips)}</strong>
+                      <small>START</small>
+                      <strong>{stackPreview.initialStackBb}BB</strong>
                     </span>
                     <span>
-                      <small>BB</small>
-                      <strong>{formatChipValue(blindStructure.bigBlindChips)}</strong>
+                      <small>BLINDS</small>
+                      <strong>
+                        {formatChipValue(stackPreview.smallBlindChips)} /{" "}
+                        {formatChipValue(stackPreview.bigBlindChips)}
+                      </strong>
                     </span>
                     <span>
                       <small>BBA</small>
-                      <strong>{formatChipValue(blindStructure.bigBlindAnteChips)}</strong>
+                      <strong>{formatChipValue(stackPreview.bigBlindAnteChips)}</strong>
                     </span>
                   </div>
                   <p>
-                    1BB = {formatChipValue(blindStructure.bigBlindChips)}チップ。
-                    実卓のブラインドと一致しているか開始前に確認してください。
+                    初期 {formatChipValue(stackPreview.initialChips)}チップ ÷
+                    BB {formatChipValue(stackPreview.bigBlindChips)} =
+                    {stackPreview.initialStackBb}BB。リバイも同じ
+                    {stackPreview.initialStackBb}BBです。
                   </p>
                 </>
               ) : (
-                <p>初期チップと開始スタックを設定するとブラインドを表示します。</p>
+                <p>
+                  初期チップはBBの整数倍にし、SBはBBより小さく設定してください。
+                </p>
               )}
             </div>
-            <p className="field-hint">
-              リバイも開始時と同じチップ枚数・BBです。
-            </p>
           </fieldset>
 
           <fieldset className="form-section local-rule-create-section">
