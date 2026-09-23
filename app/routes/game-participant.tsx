@@ -49,7 +49,6 @@ import {
 import { generateOpaqueToken, hashToken } from "@server/services/token.server";
 import { formatLineResult } from "@domain/result-sharing/format-line-result";
 import {
-  calculateBlindStructure,
   formatChipValue,
   formatSignedBbValue,
 } from "@domain/score/bb-score";
@@ -1028,10 +1027,13 @@ export default function GameParticipant({
       {shouldShowLocalRules(loaderData.game.status) && !loaderData.participant ? (
         <>
           <LocalRulesSheet
+            bigBlindAnteChips={loaderData.game.bigBlindAnteChips}
+            bigBlindChips={loaderData.game.bigBlindChips}
             bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
             initialChips={loaderData.game.initialChips}
             initialStackBb={loaderData.game.initialStackBb}
             sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
+            smallBlindChips={loaderData.game.smallBlindChips}
           />
           {loaderData.game.settlementPlanPublishedAt && loaderData.game.costShares ? (
             <SettlementPlanSheet
@@ -1155,10 +1157,13 @@ export default function GameParticipant({
             />
           ) : null}
           <LocalRulesSheet
+            bigBlindAnteChips={loaderData.game.bigBlindAnteChips}
+            bigBlindChips={loaderData.game.bigBlindChips}
             bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
             initialChips={loaderData.game.initialChips}
             initialStackBb={loaderData.game.initialStackBb}
             sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
+            smallBlindChips={loaderData.game.smallBlindChips}
           />
           {loaderData.game.settlementPlanPublishedAt && loaderData.game.costShares ? (
             <SettlementPlanSheet
@@ -2030,15 +2035,21 @@ function FinalResultRefreshControl() {
 }
 
 export function LocalRulesSheet({
+  bigBlindAnteChips,
+  bigBlindChips,
   bombPotRuleEnabled,
   initialChips,
   initialStackBb = 100,
   sevenDeuceRuleEnabled,
+  smallBlindChips,
 }: {
+  bigBlindAnteChips: number;
+  bigBlindChips: number;
   bombPotRuleEnabled: boolean;
   initialChips: number;
   initialStackBb?: number;
   sevenDeuceRuleEnabled: boolean;
+  smallBlindChips: number;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -2075,10 +2086,6 @@ export function LocalRulesSheet({
   const rules = buildLocalRules(
     sevenDeuceRuleEnabled,
     bombPotRuleEnabled,
-    initialStackBb,
-  );
-  const blindStructure = calculateBlindStructure(
-    initialChips,
     initialStackBb,
   );
 
@@ -2137,20 +2144,20 @@ export function LocalRulesSheet({
               <div className="local-rules-blind-values">
                 <span>
                   <small>SB</small>
-                  <strong>{formatChipValue(blindStructure.smallBlindChips)}</strong>
+                  <strong>{formatChipValue(smallBlindChips)}</strong>
                 </span>
                 <span>
                   <small>BB</small>
-                  <strong>{formatChipValue(blindStructure.bigBlindChips)}</strong>
+                  <strong>{formatChipValue(bigBlindChips)}</strong>
                 </span>
                 <span>
                   <small>BBA</small>
-                  <strong>{formatChipValue(blindStructure.bigBlindAnteChips)}</strong>
+                  <strong>{formatChipValue(bigBlindAnteChips)}</strong>
                 </span>
               </div>
               <p>
                 初期 {initialChips.toLocaleString("ja-JP")}チップ ・
-                1BB = {formatChipValue(blindStructure.bigBlindChips)}チップ
+                1BB = {formatChipValue(bigBlindChips)}チップ
               </p>
             </section>
             {rules.map((rule) => (
