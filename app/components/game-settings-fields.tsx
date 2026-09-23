@@ -182,9 +182,6 @@ export function GameSettingsFields({
       const calculated = calculateFinalResults(
         {
           initialChips,
-          smallBlindChips: parsePreviewInteger(values.smallBlindChips),
-          bigBlindChips: parsePreviewInteger(values.bigBlindChips),
-          bigBlindAnteChips: parsePreviewInteger(values.bigBlindAnteChips),
           initialStackBb: calculateInitialStackBb(
             initialChips,
             parsePreviewInteger(values.bigBlindChips),
