@@ -40,7 +40,9 @@ const defaultCostShares = calculateCostShares({
 const defaults = {
   title: "",
   initialChips: "20000",
-  initialStackBb: "100",
+  smallBlindChips: "100",
+  bigBlindChips: "200",
+  bigBlindAnteChips: "200",
   venueCost: "11330",
   firstPlaceCost: "0",
   secondPlaceCost: "500",
