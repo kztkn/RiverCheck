@@ -979,6 +979,7 @@ describe("LocalRulesSheet", () => {
     const html = renderToStaticMarkup(
       createElement(LocalRulesSheet, {
         bombPotRuleEnabled: true,
+        initialChips: 20_000,
         sevenDeuceRuleEnabled: true,
       }),
     );
@@ -990,12 +991,33 @@ describe("LocalRulesSheet", () => {
     expect(html).toContain("ボムポット");
     expect(html).toContain("プリフロップ");
     expect(html).toContain("適用中");
+    expect(html).toContain("STARTING STACK");
+    expect(html).toContain("<small>SB</small><strong>100</strong>");
+    expect(html).toContain("<small>BB</small><strong>200</strong>");
+    expect(html).toContain("<small>BBA</small><strong>200</strong>");
+  });
+
+  it("25BB・500チップでは10/20/20を開始前に確認できる", () => {
+    const html = renderToStaticMarkup(
+      createElement(LocalRulesSheet, {
+        bombPotRuleEnabled: true,
+        initialChips: 500,
+        initialStackBb: 25,
+        sevenDeuceRuleEnabled: true,
+      }),
+    );
+
+    expect(html).toContain("<small>SB</small><strong>10</strong>");
+    expect(html).toContain("<small>BB</small><strong>20</strong>");
+    expect(html).toContain("<small>BBA</small><strong>20</strong>");
+    expect(html).toContain("初期 500チップ ・1BB = 20チップ");
   });
 
   it("開催設定が無効なら72oルールをOFFと表示する", () => {
     const html = renderToStaticMarkup(
       createElement(LocalRulesSheet, {
         bombPotRuleEnabled: false,
+        initialChips: 20_000,
         sevenDeuceRuleEnabled: false,
       }),
     );
