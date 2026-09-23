@@ -7,7 +7,9 @@ const baseValues: GameSettingsValues = {
   title: "テスト開催",
   playedAt: "2026-08-29",
   initialChips: "20000",
-  initialStackBb: "100",
+  smallBlindChips: "100",
+  bigBlindChips: "200",
+  bigBlindAnteChips: "200",
   venueCost: "12000",
   firstPlaceCost: "0",
   secondPlaceCost: "500",
@@ -20,43 +22,41 @@ const baseValues: GameSettingsValues = {
 };
 
 describe("GameSettingsFields local rules", () => {
-  it("開始スタックは50BBと100BBから選べる", () => {
+  it("ブラインドを入力し開始スタックBBを自動表示する", () => {
     const markup = renderToStaticMarkup(
       createElement(GameSettingsFields, {
         errors: {},
-        values: { ...baseValues, initialStackBb: "50" },
+        values: baseValues,
       }),
     );
 
-    expect(markup).toContain('aria-label="開始スタック"');
-    expect(markup).toContain('checked="" value="50"');
-    expect(markup).toContain('value="100"');
-    expect(markup).toContain("リバイも開始時と同じチップ枚数・BBです。");
+    expect(markup).toContain('name="smallBlindChips"');
+    expect(markup).toContain('name="bigBlindChips"');
+    expect(markup).toContain('name="bigBlindAnteChips"');
+    expect(markup).not.toContain('aria-label="開始スタック"');
+    expect(markup).toContain("<small>START</small><strong>100BB</strong>");
+    expect(markup).toContain("<small>BLINDS</small><strong>100 / 200</strong>");
+    expect(markup).toContain("<small>BBA</small><strong>200</strong>");
   });
 
-  it("初期チップと開始BBからSB・BB・BBAを見える化する", () => {
-    const standardMarkup = renderToStaticMarkup(
-      createElement(GameSettingsFields, { errors: {}, values: baseValues }),
-    );
-    expect(standardMarkup).toContain("今回のブラインド");
-    expect(standardMarkup).toContain("<small>SB</small><strong>100</strong>");
-    expect(standardMarkup).toContain("<small>BB</small><strong>200</strong>");
-    expect(standardMarkup).toContain("<small>BBA</small><strong>200</strong>");
-
-    const compactMarkup = renderToStaticMarkup(
+  it("500チップ・10/20/20なら25BBとして表示する", () => {
+    const markup = renderToStaticMarkup(
       createElement(GameSettingsFields, {
         errors: {},
         values: {
           ...baseValues,
-          initialChips: "10000",
-          initialStackBb: "100",
+          initialChips: "500",
+          smallBlindChips: "10",
+          bigBlindChips: "20",
+          bigBlindAnteChips: "20",
         },
       }),
     );
-    expect(compactMarkup).toContain("<small>SB</small><strong>50</strong>");
-    expect(compactMarkup).toContain("<small>BB</small><strong>100</strong>");
-    expect(compactMarkup).toContain("<small>BBA</small><strong>100</strong>");
-    expect(compactMarkup).toContain("1BB = 100チップ");
+
+    expect(markup).toContain("<small>START</small><strong>25BB</strong>");
+    expect(markup).toContain("<small>BLINDS</small><strong>10 / 20</strong>");
+    expect(markup).toContain("<small>BBA</small><strong>20</strong>");
+    expect(markup).toContain("初期 500チップ ÷BB 20 =25BB");
   });
 
   it("ローカルルールを初期状態では閉じ、現在のON/OFFを要約表示する", () => {
