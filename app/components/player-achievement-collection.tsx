@@ -1,26 +1,46 @@
-import { IconCheck } from "@tabler/icons-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { IconCheck, IconX } from "@tabler/icons-react";
 import { AchievementIcon } from "./achievement-icon";
 import type {
   PlayerAchievementCollection,
   PlayerAchievementItem,
 } from "@shared-types/achievement";
 
+type CollectionTab = "unlocked" | "locked";
+
 export function PlayerAchievementCollectionView({
   collection,
 }: {
   collection: PlayerAchievementCollection;
 }) {
-  const unlockedItems = [
-    ...collection.items.filter(
-      (achievement) => achievement.isUnlocked && achievement.isEquipped,
-    ),
-    ...collection.items.filter(
-      (achievement) => achievement.isUnlocked && !achievement.isEquipped,
-    ),
-  ];
+  const unlockedItems = sortUnlockedAchievements(
+    collection.items.filter((achievement) => achievement.isUnlocked),
+  );
   const lockedItems = collection.items.filter(
     (achievement) => !achievement.isUnlocked,
   );
+  const previewItems = unlockedItems.slice(0, 5);
+  const [collectionOpen, setCollectionOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<CollectionTab>("unlocked");
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const headingId = useId();
+  const unlockedTabId = useId();
+  const lockedTabId = useId();
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (collectionOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!collectionOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [collectionOpen]);
+
+  function openCollection() {
+    setActiveTab(unlockedItems.length > 0 ? "unlocked" : "locked");
+    setCollectionOpen(true);
+  }
 
   return (
     <section
@@ -34,48 +54,163 @@ export function PlayerAchievementCollectionView({
         </span>
       </div>
 
-      <div className="achievement-unlocked-section">
-        <h3>獲得済み</h3>
-        {unlockedItems.length === 0 ? (
-          <p className="achievement-empty">まだ獲得した称号はありません。</p>
-        ) : (
-          <div
-            aria-label="獲得済み称号"
-            className="achievement-unlocked-grid"
-          >
-            {unlockedItems.map((achievement) => (
-              <UnlockedAchievement
-                achievement={achievement}
-                key={achievement.id}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      {previewItems.length === 0 ? (
+        <p className="achievement-empty">まだ獲得した称号はありません。</p>
+      ) : (
+        <div
+          aria-label="獲得済み称号のプレビュー"
+          className="achievement-preview-rail"
+        >
+          {previewItems.map((achievement) => (
+            <AchievementPreview
+              achievement={achievement}
+              key={achievement.id}
+            />
+          ))}
+        </div>
+      )}
 
-      {lockedItems.length > 0 ? (
-        <details className="achievement-locked-disclosure">
-          <summary>
-            <span>
-              未獲得 <strong>{lockedItems.length}</strong>
-            </span>
-            <span className="achievement-disclosure-action">
-              <span className="when-closed">すべて見る</span>
-              <span className="when-open">閉じる</span>
-              <span aria-hidden="true">⌄</span>
-            </span>
-          </summary>
-          <ul aria-label="未獲得称号" className="achievement-locked-list">
-            {lockedItems.map((achievement) => (
-              <LockedAchievement
-                achievement={achievement}
-                key={achievement.id}
-              />
-            ))}
-          </ul>
-        </details>
+      {collection.totalCount > 0 ? (
+        <button
+          className="achievement-collection-open"
+          onClick={openCollection}
+          type="button"
+        >
+          <span>コレクションを見る</span>
+          <span aria-hidden="true">›</span>
+        </button>
+      ) : null}
+
+      {collection.totalCount > 0 ? (
+        <dialog
+          aria-labelledby={headingId}
+          className="achievement-collection-dialog"
+          onCancel={() => setCollectionOpen(false)}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setCollectionOpen(false);
+          }}
+          onClose={() => setCollectionOpen(false)}
+          ref={dialogRef}
+        >
+          <div className="achievement-collection-sheet">
+            <header className="achievement-collection-dialog-header">
+              <div>
+                <p className="eyebrow">TITLE COLLECTION</p>
+                <h2 id={headingId}>称号コレクション</h2>
+                <p>
+                  {collection.unlockedCount} / {collection.totalCount} 獲得
+                </p>
+              </div>
+              <button
+                aria-label="称号コレクションを閉じる"
+                className="achievement-collection-close"
+                onClick={() => setCollectionOpen(false)}
+                type="button"
+              >
+                <IconX aria-hidden="true" />
+              </button>
+            </header>
+
+            <div
+              aria-label="称号の獲得状態"
+              className="achievement-collection-tabs"
+              role="tablist"
+            >
+              <button
+                aria-controls={`${unlockedTabId}-panel`}
+                aria-selected={activeTab === "unlocked"}
+                id={unlockedTabId}
+                onClick={() => setActiveTab("unlocked")}
+                role="tab"
+                type="button"
+              >
+                獲得済み <span>{unlockedItems.length}</span>
+              </button>
+              <button
+                aria-controls={`${lockedTabId}-panel`}
+                aria-selected={activeTab === "locked"}
+                id={lockedTabId}
+                onClick={() => setActiveTab("locked")}
+                role="tab"
+                type="button"
+              >
+                未獲得 <span>{lockedItems.length}</span>
+              </button>
+            </div>
+
+            <div className="achievement-collection-dialog-body">
+              <div
+                aria-labelledby={unlockedTabId}
+                hidden={activeTab !== "unlocked"}
+                id={`${unlockedTabId}-panel`}
+                role="tabpanel"
+              >
+                {unlockedItems.length === 0 ? (
+                  <p className="achievement-modal-empty">
+                    まだ獲得した称号はありません。
+                  </p>
+                ) : (
+                  <div
+                    aria-label="獲得済み称号"
+                    className="achievement-unlocked-grid"
+                  >
+                    {unlockedItems.map((achievement) => (
+                      <UnlockedAchievement
+                        achievement={achievement}
+                        key={achievement.id}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div
+                aria-labelledby={lockedTabId}
+                hidden={activeTab !== "locked"}
+                id={`${lockedTabId}-panel`}
+                role="tabpanel"
+              >
+                {lockedItems.length === 0 ? (
+                  <p className="achievement-modal-empty">
+                    すべての称号を獲得しています。
+                  </p>
+                ) : (
+                  <ul
+                    aria-label="未獲得称号"
+                    className="achievement-locked-list"
+                  >
+                    {lockedItems.map((achievement) => (
+                      <LockedAchievement
+                        achievement={achievement}
+                        key={achievement.id}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        </dialog>
       ) : null}
     </section>
+  );
+}
+
+function AchievementPreview({
+  achievement,
+}: {
+  achievement: PlayerAchievementItem;
+}) {
+  return (
+    <article
+      className="achievement-preview-card"
+      data-achievement-category={achievement.category}
+    >
+      <span className="achievement-preview-icon">
+        <AchievementIcon iconKey={achievement.iconKey} />
+      </span>
+      <strong>{achievement.name}</strong>
+      <small>{achievement.isEquipped ? "装備中" : "獲得済み"}</small>
+    </article>
   );
 }
 
@@ -107,9 +242,7 @@ function UnlockedAchievement({
             {formatAchievementDate(achievement.unlockedAt)} 獲得
           </time>
           {achievement.sourceGame ? (
-            <span>
-              {achievement.sourceGame.title}
-            </span>
+            <span>{achievement.sourceGame.title}</span>
           ) : null}
         </div>
       </div>
@@ -117,7 +250,11 @@ function UnlockedAchievement({
   );
 }
 
-function LockedAchievement({ achievement }: { achievement: PlayerAchievementItem }) {
+function LockedAchievement({
+  achievement,
+}: {
+  achievement: PlayerAchievementItem;
+}) {
   const concealed = achievement.isHidden;
   return (
     <li data-achievement-category={achievement.category}>
@@ -131,6 +268,26 @@ function LockedAchievement({ achievement }: { achievement: PlayerAchievementItem
       <span className="achievement-locked-label">未獲得</span>
     </li>
   );
+}
+
+function sortUnlockedAchievements(
+  items: PlayerAchievementItem[],
+): PlayerAchievementItem[] {
+  return [...items].sort((left, right) => {
+    if (left.isEquipped !== right.isEquipped) {
+      return left.isEquipped ? -1 : 1;
+    }
+    const unlockedDifference =
+      achievementTime(right.unlockedAt) - achievementTime(left.unlockedAt);
+    if (unlockedDifference !== 0) return unlockedDifference;
+    return left.name.localeCompare(right.name, "ja");
+  });
+}
+
+function achievementTime(value: string | null): number {
+  if (!value) return 0;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 function formatAchievementDate(value: string | null): string {

@@ -120,7 +120,7 @@ describe("PlayerGameHistory", () => {
 });
 
 describe("PlayerAchievementCollectionView", () => {
-  it("shows equipped and other unlocked titles first, then keeps locked titles collapsed", () => {
+  it("previews equipped and recent titles, then exposes the full collection in tabs", () => {
     const collection: PlayerAchievementCollection = {
       unlockedCount: 2,
       totalCount: 4,
@@ -197,12 +197,15 @@ describe("PlayerAchievementCollectionView", () => {
     expect(markup).toContain("装備中");
     expect(markup).toContain("第1回ポーカー会");
     expect(markup).not.toContain("/games/game-1");
-    expect(markup).toContain("<details");
-    expect(markup).toContain("未獲得");
-    expect(markup).toContain("すべて見る");
+    expect(markup).toContain("コレクションを見る");
+    expect(markup).toContain("<dialog");
+    expect(markup).toContain('role="tablist"');
+    expect(markup).toContain("獲得済み <span>2</span>");
+    expect(markup).toContain("未獲得 <span>2</span>");
     expect(markup).toContain("BB長者");
     expect(markup).toContain("条件は秘密");
     expect(markup).not.toContain("秘密の称号");
+    expect(markup).not.toContain("<details");
   });
 
   it("keeps zero and twenty-title collections structurally compact", () => {
@@ -213,7 +216,8 @@ describe("PlayerAchievementCollectionView", () => {
       items: [],
     });
     expect(emptyMarkup).toContain("まだ獲得した称号はありません");
-    expect(emptyMarkup).not.toContain("<details");
+    expect(emptyMarkup).not.toContain("コレクションを見る");
+    expect(emptyMarkup).not.toContain("<dialog");
 
     const lockedItems = Array.from({ length: 20 }, (_, index) => ({
       id: `locked-${index}`,
@@ -234,9 +238,53 @@ describe("PlayerAchievementCollectionView", () => {
       equippedAchievement: null,
       items: lockedItems,
     });
-    expect(largeMarkup).toContain("未獲得 <strong>20</strong>");
+    expect(largeMarkup).toContain("コレクションを見る");
+    expect(largeMarkup).toContain("未獲得 <span>20</span>");
     expect(largeMarkup.match(/data-achievement-category/g)).toHaveLength(20);
-    expect(largeMarkup.match(/<details/g)).toHaveLength(1);
+    expect(largeMarkup.match(/<dialog/g)).toHaveLength(1);
+    expect(largeMarkup).not.toContain("<details");
+  });
+
+  it("limits the inline preview to equipped plus four newest unlocked titles", () => {
+    const items = Array.from({ length: 7 }, (_, index) => ({
+      id: `unlocked-${index}`,
+      code: `unlocked-${index}`,
+      name: index === 0 ? "装備称号" : `称号${index}`,
+      description: "獲得条件",
+      iconKey: "badge-check" as const,
+      category: "record",
+      isHidden: false,
+      isUnlocked: true,
+      isEquipped: index === 0,
+      unlockedAt: `2026-08-0${index + 1}T12:00:00.000Z`,
+      sourceGame: null,
+    }));
+    const markup = renderAchievementCollection({
+      unlockedCount: 7,
+      totalCount: 7,
+      equippedAchievement: {
+        id: "unlocked-0",
+        code: "unlocked-0",
+        name: "装備称号",
+        description: "獲得条件",
+        iconKey: "badge-check",
+        category: "record",
+      },
+      items,
+    });
+    const previewMarkup = markup.slice(
+      markup.indexOf("achievement-preview-rail"),
+      markup.indexOf("achievement-collection-open"),
+    );
+
+    expect(previewMarkup.match(/class="achievement-preview-card"/g)).toHaveLength(
+      5,
+    );
+    expect(previewMarkup.indexOf("装備称号")).toBeLessThan(
+      previewMarkup.indexOf("称号6"),
+    );
+    expect(previewMarkup).toContain("称号3");
+    expect(previewMarkup).not.toContain("称号2");
   });
 });
 
