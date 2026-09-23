@@ -20,7 +20,7 @@ const baseValues: GameSettingsValues = {
 };
 
 describe("GameSettingsFields local rules", () => {
-  it("開始スタックは25BB・50BB・100BBから選べる", () => {
+  it("開始スタックは50BBと100BBから選べる", () => {
     const markup = renderToStaticMarkup(
       createElement(GameSettingsFields, {
         errors: {},
@@ -29,7 +29,6 @@ describe("GameSettingsFields local rules", () => {
     );
 
     expect(markup).toContain('aria-label="開始スタック"');
-    expect(markup).toContain('value="25"');
     expect(markup).toContain('checked="" value="50"');
     expect(markup).toContain('value="100"');
     expect(markup).toContain("リバイも開始時と同じチップ枚数・BBです。");
@@ -44,20 +43,20 @@ describe("GameSettingsFields local rules", () => {
     expect(standardMarkup).toContain("<small>BB</small><strong>200</strong>");
     expect(standardMarkup).toContain("<small>BBA</small><strong>200</strong>");
 
-    const shortMarkup = renderToStaticMarkup(
+    const compactMarkup = renderToStaticMarkup(
       createElement(GameSettingsFields, {
         errors: {},
         values: {
           ...baseValues,
-          initialChips: "500",
-          initialStackBb: "25",
+          initialChips: "10000",
+          initialStackBb: "100",
         },
       }),
     );
-    expect(shortMarkup).toContain("<small>SB</small><strong>10</strong>");
-    expect(shortMarkup).toContain("<small>BB</small><strong>20</strong>");
-    expect(shortMarkup).toContain("<small>BBA</small><strong>20</strong>");
-    expect(shortMarkup).toContain("1BB = 20チップ");
+    expect(compactMarkup).toContain("<small>SB</small><strong>50</strong>");
+    expect(compactMarkup).toContain("<small>BB</small><strong>100</strong>");
+    expect(compactMarkup).toContain("<small>BBA</small><strong>100</strong>");
+    expect(compactMarkup).toContain("1BB = 100チップ");
   });
 
   it("ローカルルールを初期状態では閉じ、現在のON/OFFを要約表示する", () => {
