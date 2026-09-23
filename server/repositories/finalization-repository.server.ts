@@ -20,6 +20,9 @@ interface GameRow {
   played_at: Date;
   status: GameStatus;
   initial_chips: string;
+  small_blind_chips: string | null;
+  big_blind_chips: string | null;
+  big_blind_ante_chips: string | null;
   initial_stack_bb: number;
   rebuy_chips: string;
   preview_participant_count: number;
@@ -73,6 +76,7 @@ export async function lockGameForFinalization(
   const result = await transaction.query<GameRow>(
     `
       SELECT id, group_id, title, played_at, status, initial_chips,
+             small_blind_chips, big_blind_chips, big_blind_ante_chips,
              initial_stack_bb, rebuy_chips, preview_participant_count, venue_cost,
              first_place_cost, second_place_cost, third_place_cost,
              cost_shares, settlement_plan_published_at,
@@ -328,6 +332,18 @@ function mapGame(row: GameRow): GameDetails {
     playedAt: row.played_at.toISOString(),
     status: row.status,
     initialChips: Number(row.initial_chips),
+    smallBlindChips: readBlindChipValue(
+      row.small_blind_chips,
+      Number(row.initial_chips) / row.initial_stack_bb / 2,
+    ),
+    bigBlindChips: readBlindChipValue(
+      row.big_blind_chips,
+      Number(row.initial_chips) / row.initial_stack_bb,
+    ),
+    bigBlindAnteChips: readBlindChipValue(
+      row.big_blind_ante_chips,
+      Number(row.initial_chips) / row.initial_stack_bb,
+    ),
     initialStackBb: row.initial_stack_bb,
     rebuyChips: Number(row.rebuy_chips),
     previewParticipantCount: row.preview_participant_count,
@@ -501,6 +517,10 @@ function normalizeRevisionResult(
     settlementRebuyCount,
     gameSettlementAmount: result.gameSettlementAmount ?? 0,
   };
+}
+
+function readBlindChipValue(value: string | null, fallback: number): number {
+  return value === null ? fallback : Number(value);
 }
 
 function mapResultRow(row: ResultRow): GameResultSummary {
