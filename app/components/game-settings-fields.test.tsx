@@ -56,7 +56,7 @@ describe("GameSettingsFields local rules", () => {
     expect(markup).toContain("<small>START</small><strong>25BB</strong>");
     expect(markup).toContain("<small>BLINDS</small><strong>10 / 20</strong>");
     expect(markup).toContain("<small>BBA</small><strong>20</strong>");
-    expect(markup).toContain("初期 500チップ ÷BB 20 =25BB");
+    expect(markup).toContain("初期 500チップ ÷ BB 20 =25BB");
   });
 
   it("ローカルルールを初期状態では閉じ、現在のON/OFFを要約表示する", () => {
