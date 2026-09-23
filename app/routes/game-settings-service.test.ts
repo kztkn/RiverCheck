@@ -29,7 +29,9 @@ const validValues: GameSettingsFormValues = {
   title: "8月のポーカー会",
   playedAt: "2026-08-16",
   initialChips: "20000",
-  initialStackBb: "100",
+  smallBlindChips: "100",
+  bigBlindChips: "200",
+  bigBlindAnteChips: "200",
   venueCost: "11330",
   firstPlaceCost: "1800",
   secondPlaceCost: "2000",
@@ -46,29 +48,53 @@ describe("open game configuration", () => {
     vi.resetAllMocks();
   });
 
-  it("初期チップと開始BBを整数へ変換する", () => {
+  it("実卓ブラインドから開始スタックBBを算出する", () => {
     expect(
       validateGameConfigurationForm({
-        initialChips: "10000",
-        initialStackBb: "50",
+        initialChips: "500",
+        smallBlindChips: "10",
+        bigBlindChips: "20",
+        bigBlindAnteChips: "20",
       }),
     ).toEqual({
       ok: true,
-      input: { initialChips: 10_000, initialStackBb: 50 },
+      input: {
+        initialChips: 500,
+        smallBlindChips: 10,
+        bigBlindChips: 20,
+        bigBlindAnteChips: 20,
+        initialStackBb: 25,
+      },
     });
   });
 
-  it("初期チップ0と未対応の開始BBを拒否する", () => {
+  it("BBAなしの0を許可する", () => {
     expect(
       validateGameConfigurationForm({
-        initialChips: "0",
-        initialStackBb: "75",
+        initialChips: "20000",
+        smallBlindChips: "100",
+        bigBlindChips: "200",
+        bigBlindAnteChips: "0",
+      }),
+    ).toMatchObject({
+      ok: true,
+      input: { initialStackBb: 100, bigBlindAnteChips: 0 },
+    });
+  });
+
+  it("SBがBB以上またはスタックがBBの整数倍でない設定を拒否する", () => {
+    expect(
+      validateGameConfigurationForm({
+        initialChips: "500",
+        smallBlindChips: "20",
+        bigBlindChips: "30",
+        bigBlindAnteChips: "30",
       }),
     ).toEqual({
       ok: false,
       errors: {
-        initialChips: "1以上の整数で入力してください。",
-        initialStackBb: "開始スタックは50BBまたは100BBを選んでください。",
+        smallBlindChips: "SBはBBより小さいチップ数にしてください。",
+        bigBlindChips: "初期チップがBBの整数倍になるように設定してください。",
       },
     });
   });
@@ -82,7 +108,12 @@ describe("open game configuration", () => {
       updateOpenGameConfigurationForGroup(
         "group-1",
         "game-1",
-        { initialChips: "10000", initialStackBb: "50" },
+        {
+          initialChips: "500",
+          smallBlindChips: "10",
+          bigBlindChips: "20",
+          bigBlindAnteChips: "20",
+        },
         false,
       ),
     ).resolves.toMatchObject({
@@ -92,21 +123,32 @@ describe("open game configuration", () => {
     });
   });
 
-  it("確認済みのゲーム設定をrepositoryへ渡す", async () => {
+  it("確認済みのブラインド設定と算出BBをrepositoryへ渡す", async () => {
     mocked.updateOpenGameConfiguration.mockResolvedValue("updated");
 
     await expect(
       updateOpenGameConfigurationForGroup(
         "group-1",
         "game-1",
-        { initialChips: "10000", initialStackBb: "50" },
+        {
+          initialChips: "500",
+          smallBlindChips: "10",
+          bigBlindChips: "20",
+          bigBlindAnteChips: "20",
+        },
         true,
       ),
     ).resolves.toEqual({ ok: true });
     expect(mocked.updateOpenGameConfiguration).toHaveBeenCalledWith(
       "group-1",
       "game-1",
-      { initialChips: 10_000, initialStackBb: 50 },
+      {
+        initialChips: 500,
+        smallBlindChips: 10,
+        bigBlindChips: 20,
+        bigBlindAnteChips: 20,
+        initialStackBb: 25,
+      },
       true,
     );
   });
@@ -118,7 +160,9 @@ describe("game settings cost shares", () => {
     formData.set("title", validValues.title);
     formData.set("playedAt", validValues.playedAt);
     formData.set("initialChips", validValues.initialChips);
-    formData.set("initialStackBb", "50");
+    formData.set("smallBlindChips", validValues.smallBlindChips);
+    formData.set("bigBlindChips", validValues.bigBlindChips);
+    formData.set("bigBlindAnteChips", validValues.bigBlindAnteChips);
     formData.set("venueCost", validValues.venueCost);
     formData.set(
       "previewParticipantCount",
@@ -136,7 +180,9 @@ describe("game settings cost shares", () => {
       sevenDeuceRuleEnabled: true,
       bombPotRuleEnabled: true,
       bbRate: "5",
-      initialStackBb: "50",
+      smallBlindChips: "100",
+      bigBlindChips: "200",
+      bigBlindAnteChips: "200",
     });
   });
 
@@ -174,40 +220,26 @@ describe("game settings cost shares", () => {
     );
   });
 
-  it("開始スタックが未送信なら後方互換の100BBとして扱う", () => {
-    expect(readGameSettingsForm(new FormData()).initialStackBb).toBe("");
+  it("500チップ・10/20/20を25BBの保存用入力へ変換する", () => {
     expect(
-      validateGameSettingsForm({ ...validValues, initialStackBb: "" }),
-    ).toEqual(
-      expect.objectContaining({
-        ok: true,
-        input: expect.objectContaining({ initialStackBb: 100 }),
+      validateGameSettingsForm({
+        ...validValues,
+        initialChips: "500",
+        smallBlindChips: "10",
+        bigBlindChips: "20",
+        bigBlindAnteChips: "20",
       }),
-    );
-  });
-
-  it("50BB開始を保存用入力へ変換する", () => {
-    expect(
-      validateGameSettingsForm({ ...validValues, initialStackBb: "50" }),
     ).toEqual(
       expect.objectContaining({
         ok: true,
         input: expect.objectContaining({
-          initialStackBb: 50,
-          initialChips: 20_000,
-          rebuyChips: 20_000,
+          initialChips: 500,
+          smallBlindChips: 10,
+          bigBlindChips: 20,
+          bigBlindAnteChips: 20,
+          initialStackBb: 25,
+          rebuyChips: 500,
         }),
-      }),
-    );
-  });
-
-  it("プリセット外の開始スタックを拒否する", () => {
-    expect(
-      validateGameSettingsForm({ ...validValues, initialStackBb: "75" }),
-    ).toEqual(
-      expect.objectContaining({
-        ok: false,
-        errors: expect.objectContaining({ initialStackBb: expect.stringContaining("50BB") }),
       }),
     );
   });
