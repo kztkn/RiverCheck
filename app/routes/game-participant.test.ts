@@ -978,8 +978,11 @@ describe("LocalRulesSheet", () => {
   it("適用中の72oルールと既存の100BB返済ルールを一緒に表示する", () => {
     const html = renderToStaticMarkup(
       createElement(LocalRulesSheet, {
+        bigBlindAnteChips: 200,
+        bigBlindChips: 200,
         bombPotRuleEnabled: true,
         initialChips: 20_000,
+        smallBlindChips: 100,
         sevenDeuceRuleEnabled: true,
       }),
     );
@@ -997,27 +1000,33 @@ describe("LocalRulesSheet", () => {
     expect(html).toContain("<small>BBA</small><strong>200</strong>");
   });
 
-  it("初期チップが変わっても開始前にブラインドを確認できる", () => {
+  it("保存済みの実卓ブラインドと25BB開始を確認できる", () => {
     const html = renderToStaticMarkup(
       createElement(LocalRulesSheet, {
+        bigBlindAnteChips: 20,
+        bigBlindChips: 20,
         bombPotRuleEnabled: true,
-        initialChips: 10_000,
-        initialStackBb: 100,
+        initialChips: 500,
+        initialStackBb: 25,
+        smallBlindChips: 10,
         sevenDeuceRuleEnabled: true,
       }),
     );
 
-    expect(html).toContain("<small>SB</small><strong>50</strong>");
-    expect(html).toContain("<small>BB</small><strong>100</strong>");
-    expect(html).toContain("<small>BBA</small><strong>100</strong>");
-    expect(html).toContain("初期 10,000チップ ・ 1BB = 100チップ");
+    expect(html).toContain("<small>SB</small><strong>10</strong>");
+    expect(html).toContain("<small>BB</small><strong>20</strong>");
+    expect(html).toContain("<small>BBA</small><strong>20</strong>");
+    expect(html).toContain("初期 500チップ ・ 1BB = 20チップ");
   });
 
   it("開催設定が無効なら72oルールをOFFと表示する", () => {
     const html = renderToStaticMarkup(
       createElement(LocalRulesSheet, {
+        bigBlindAnteChips: 200,
+        bigBlindChips: 200,
         bombPotRuleEnabled: false,
         initialChips: 20_000,
+        smallBlindChips: 100,
         sevenDeuceRuleEnabled: false,
       }),
     );
