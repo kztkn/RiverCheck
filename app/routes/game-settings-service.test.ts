@@ -68,20 +68,8 @@ describe("open game configuration", () => {
       ok: false,
       errors: {
         initialChips: "1以上の整数で入力してください。",
-        initialStackBb: "開始スタックは25BB、50BB、100BBから選んでください。",
+        initialStackBb: "開始スタックは50BBまたは100BBを選んでください。",
       },
-    });
-  });
-
-  it("25BB開始を許可する", () => {
-    expect(
-      validateGameConfigurationForm({
-        initialChips: "500",
-        initialStackBb: "25",
-      }),
-    ).toEqual({
-      ok: true,
-      input: { initialChips: 500, initialStackBb: 25 },
     });
   });
 
