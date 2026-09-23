@@ -308,7 +308,7 @@ export function validateGameConfigurationForm(values: GameConfigurationFormValue
     initialStackBb !== null &&
     !isSupportedInitialStackBb(initialStackBb)
   ) {
-    errors.initialStackBb = "開始スタックは25BB、50BB、100BBから選んでください。";
+    errors.initialStackBb = "開始スタックは50BBまたは100BBを選んでください。";
   }
 
   if (
@@ -352,7 +352,7 @@ export function validateGameSettingsForm(
     initialStackBb !== null &&
     !isSupportedInitialStackBb(initialStackBb)
   ) {
-    errors.initialStackBb = "開始スタックは25BB、50BB、100BBから選んでください。";
+    errors.initialStackBb = "開始スタックは50BBまたは100BBを選んでください。";
   }
   const venueCost = parseNonNegativeInteger(
     values.venueCost,
