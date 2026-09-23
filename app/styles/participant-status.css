@@ -393,3 +393,69 @@
 .participant-snapshot-profile-link:focus-visible {
   color: var(--green);
 }
+
+
+.local-rules-blinds {
+  display: grid;
+  gap: 11px;
+  border: 1px solid rgba(233, 186, 90, 0.22);
+  border-radius: 14px;
+  background: rgba(233, 186, 90, 0.045);
+  padding: 13px 14px;
+}
+
+.local-rules-blinds > div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.local-rules-blinds > div:first-child span {
+  color: #8f9f96;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.local-rules-blinds > div:first-child strong {
+  color: #e9ba5a;
+  font-size: 0.9rem;
+}
+
+.local-rules-blind-values {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-block: 1px solid rgba(233, 186, 90, 0.14);
+}
+
+.local-rules-blind-values > span {
+  display: grid;
+  gap: 3px;
+  padding: 9px 7px;
+  text-align: center;
+}
+
+.local-rules-blind-values > span + span {
+  border-left: 1px solid rgba(233, 186, 90, 0.14);
+}
+
+.local-rules-blind-values small {
+  color: #8f9f96;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.local-rules-blind-values strong {
+  color: var(--ink);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.local-rules-blinds > p {
+  margin: 0;
+  color: #8f9f96;
+  font-size: 0.68rem;
+  line-height: 1.5;
+}

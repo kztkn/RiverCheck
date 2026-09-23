@@ -44,7 +44,11 @@ import {
   updateOpenGameIdentityForGroup,
   validateGameSettingsForm,
 } from "@server/services/game-service.server";
-import { INITIAL_STACK_BB_OPTIONS } from "@domain/score/bb-score";
+import {
+  INITIAL_STACK_BB_OPTIONS,
+  calculateBlindStructure,
+  formatChipValue,
+} from "@domain/score/bb-score";
 import { GAME_TITLE_MAX_LENGTH } from "@domain/game/game-title";
 import {
   buildFinalizationState,
@@ -548,6 +552,10 @@ export default function GameAdmin({
     values.previewParticipantCount,
   );
   const [settlementBbRate, setSettlementBbRate] = useState(values.bbRate);
+  const [gameConfigurationInitialChips, setGameConfigurationInitialChips] =
+    useState(String(loaderData.game.initialChips));
+  const [gameConfigurationInitialStackBb, setGameConfigurationInitialStackBb] =
+    useState(String(loaderData.game.initialStackBb));
   const [publishFailureCount, setPublishFailureCount] = useState(0);
   const [persistentPublishError, setPersistentPublishError] = useState<string | null>(null);
   const [optimisticallyRemoved, setOptimisticallyRemoved] = useState<{
@@ -672,7 +680,14 @@ export default function GameAdmin({
   const inputProgressPercent = visibleParticipants.length === 0
     ? 0
     : Math.round((submittedCount / visibleParticipants.length) * 100);
-
+  const savedBlindStructure = calculateBlindStructure(
+    loaderData.game.initialChips,
+    loaderData.game.initialStackBb,
+  );
+  const draftBlindStructure = getBlindStructurePreview(
+    gameConfigurationInitialChips,
+    gameConfigurationInitialStackBb,
+  );
 
   useEffect(() => {
     if (!notice) return;
@@ -1502,7 +1517,9 @@ export default function GameAdmin({
               </div>
               <span className="local-rules-summary-status">
                 {loaderData.game.initialChips.toLocaleString("ja-JP")}チップ ・{" "}
-                {loaderData.game.initialStackBb}BB開始
+                {loaderData.game.initialStackBb}BB開始 ・ SB{" "}
+                {formatChipValue(savedBlindStructure.smallBlindChips)} / BB{" "}
+                {formatChipValue(savedBlindStructure.bigBlindChips)}
               </span>
               <span aria-hidden="true" className="local-rules-summary-chevron">›</span>
             </summary>
@@ -1518,15 +1535,15 @@ export default function GameAdmin({
                       ? true
                       : undefined
                   }
-                  defaultValue={
-                    gameConfigurationError?.values.initialChips ??
-                    String(loaderData.game.initialChips)
-                  }
                   inputMode="numeric"
                   min={1}
                   name="initialChips"
+                  onChange={(event) =>
+                    setGameConfigurationInitialChips(event.target.value)
+                  }
                   required
                   type="number"
+                  value={gameConfigurationInitialChips}
                 />
                 {gameConfigurationError?.errors.initialChips ? (
                   <span className="field-error">
@@ -1540,13 +1557,13 @@ export default function GameAdmin({
                   {INITIAL_STACK_BB_OPTIONS.map((stackBb) => (
                     <label className="initial-stack-option" key={stackBb}>
                       <input
-                        defaultChecked={
-                          Number(
-                            gameConfigurationError?.values.initialStackBb ??
-                              loaderData.game.initialStackBb,
-                          ) === stackBb
+                        checked={
+                          Number(gameConfigurationInitialStackBb) === stackBb
                         }
                         name="initialStackBb"
+                        onChange={() =>
+                          setGameConfigurationInitialStackBb(String(stackBb))
+                        }
                         type="radio"
                         value={stackBb}
                       />
@@ -1560,6 +1577,42 @@ export default function GameAdmin({
                   </span>
                 ) : null}
               </fieldset>
+              <div aria-live="polite" className="blind-structure-preview">
+                <div className="blind-structure-heading">
+                  <span>今回のブラインド</span>
+                  <small>SB / BB / BBA</small>
+                </div>
+                {draftBlindStructure ? (
+                  <>
+                    <div className="blind-structure-values">
+                      <span>
+                        <small>SB</small>
+                        <strong>
+                          {formatChipValue(draftBlindStructure.smallBlindChips)}
+                        </strong>
+                      </span>
+                      <span>
+                        <small>BB</small>
+                        <strong>
+                          {formatChipValue(draftBlindStructure.bigBlindChips)}
+                        </strong>
+                      </span>
+                      <span>
+                        <small>BBA</small>
+                        <strong>
+                          {formatChipValue(draftBlindStructure.bigBlindAnteChips)}
+                        </strong>
+                      </span>
+                    </div>
+                    <p>
+                      1BB = {formatChipValue(draftBlindStructure.bigBlindChips)}
+                      チップ。実卓のブラインドと一致しているか開始前に確認してください。
+                    </p>
+                  </>
+                ) : (
+                  <p>初期チップと開始スタックを設定するとブラインドを表示します。</p>
+                )}
+              </div>
               {gameConfigurationError?.confirmationRequired ? (
                 <label className="confirmation-check">
                   <input
@@ -2115,6 +2168,24 @@ function readAdminCostSettingsForm(
       .filter((value): value is string => typeof value === "string"),
     bbRate: readString(formData, "bbRate"),
   };
+}
+
+function getBlindStructurePreview(
+  initialChipsValue: string,
+  initialStackBbValue: string,
+) {
+  const initialChips = Number(initialChipsValue);
+  const initialStackBb = Number(initialStackBbValue);
+  if (
+    !Number.isSafeInteger(initialChips) ||
+    initialChips <= 0 ||
+    !INITIAL_STACK_BB_OPTIONS.includes(
+      initialStackBb as (typeof INITIAL_STACK_BB_OPTIONS)[number],
+    )
+  ) {
+    return null;
+  }
+  return calculateBlindStructure(initialChips, initialStackBb);
 }
 
 function parseNonNegativeInteger(value: string): number | null {

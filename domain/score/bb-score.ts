@@ -1,6 +1,12 @@
 export const INITIAL_STACK_BB = 100;
 export const INITIAL_STACK_BB_OPTIONS = [50, 100] as const;
 
+export interface BlindStructure {
+  smallBlindChips: number;
+  bigBlindChips: number;
+  bigBlindAnteChips: number;
+}
+
 export interface BbScoreInput {
   score: number;
   initialChips: number;
@@ -39,7 +45,26 @@ export function formatChipsPerBb(
   initialChips: number,
   initialStackBb = INITIAL_STACK_BB,
 ): string {
-  return formatBbNumber(calculateChipsPerBb(initialChips, initialStackBb));
+  return formatChipNumber(calculateChipsPerBb(initialChips, initialStackBb));
+}
+
+export function calculateBlindStructure(
+  initialChips: number,
+  initialStackBb = INITIAL_STACK_BB,
+): BlindStructure {
+  const bigBlindChips = calculateChipsPerBb(initialChips, initialStackBb);
+  return {
+    smallBlindChips: bigBlindChips / 2,
+    bigBlindChips,
+    bigBlindAnteChips: bigBlindChips,
+  };
+}
+
+export function formatChipValue(value: number): string {
+  if (!Number.isFinite(value)) {
+    throw new RangeError("chip value must be finite");
+  }
+  return formatChipNumber(value);
 }
 
 export function formatSignedBbValue(value: number): string {
@@ -50,6 +75,12 @@ export function formatSignedBbValue(value: number): string {
 }
 
 function formatBbNumber(value: number): string {
+  return value.toLocaleString("ja-JP", {
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatChipNumber(value: number): string {
   return value.toLocaleString("ja-JP", {
     maximumFractionDigits: 2,
   });

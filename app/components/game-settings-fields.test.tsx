@@ -34,6 +34,31 @@ describe("GameSettingsFields local rules", () => {
     expect(markup).toContain("リバイも開始時と同じチップ枚数・BBです。");
   });
 
+  it("初期チップと開始BBからSB・BB・BBAを見える化する", () => {
+    const standardMarkup = renderToStaticMarkup(
+      createElement(GameSettingsFields, { errors: {}, values: baseValues }),
+    );
+    expect(standardMarkup).toContain("今回のブラインド");
+    expect(standardMarkup).toContain("<small>SB</small><strong>100</strong>");
+    expect(standardMarkup).toContain("<small>BB</small><strong>200</strong>");
+    expect(standardMarkup).toContain("<small>BBA</small><strong>200</strong>");
+
+    const compactMarkup = renderToStaticMarkup(
+      createElement(GameSettingsFields, {
+        errors: {},
+        values: {
+          ...baseValues,
+          initialChips: "10000",
+          initialStackBb: "100",
+        },
+      }),
+    );
+    expect(compactMarkup).toContain("<small>SB</small><strong>50</strong>");
+    expect(compactMarkup).toContain("<small>BB</small><strong>100</strong>");
+    expect(compactMarkup).toContain("<small>BBA</small><strong>100</strong>");
+    expect(compactMarkup).toContain("1BB = 100チップ");
+  });
+
   it("ローカルルールを初期状態では閉じ、現在のON/OFFを要約表示する", () => {
     const markup = renderToStaticMarkup(
       createElement(GameSettingsFields, { errors: {}, values: baseValues }),

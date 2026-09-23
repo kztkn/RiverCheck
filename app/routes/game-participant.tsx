@@ -48,7 +48,11 @@ import {
 } from "@server/services/participant-session.server";
 import { generateOpaqueToken, hashToken } from "@server/services/token.server";
 import { formatLineResult } from "@domain/result-sharing/format-line-result";
-import { formatSignedBbValue } from "@domain/score/bb-score";
+import {
+  calculateBlindStructure,
+  formatChipValue,
+  formatSignedBbValue,
+} from "@domain/score/bb-score";
 import { encodeResultCode } from "@domain/result-sharing/result-code";
 import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
 import {
@@ -1025,6 +1029,7 @@ export default function GameParticipant({
         <>
           <LocalRulesSheet
             bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
+            initialChips={loaderData.game.initialChips}
             initialStackBb={loaderData.game.initialStackBb}
             sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
           />
@@ -1151,6 +1156,7 @@ export default function GameParticipant({
           ) : null}
           <LocalRulesSheet
             bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
+            initialChips={loaderData.game.initialChips}
             initialStackBb={loaderData.game.initialStackBb}
             sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
           />
@@ -2025,10 +2031,12 @@ function FinalResultRefreshControl() {
 
 export function LocalRulesSheet({
   bombPotRuleEnabled,
+  initialChips,
   initialStackBb = 100,
   sevenDeuceRuleEnabled,
 }: {
   bombPotRuleEnabled: boolean;
+  initialChips: number;
   initialStackBb?: number;
   sevenDeuceRuleEnabled: boolean;
 }) {
@@ -2067,6 +2075,10 @@ export function LocalRulesSheet({
   const rules = buildLocalRules(
     sevenDeuceRuleEnabled,
     bombPotRuleEnabled,
+    initialStackBb,
+  );
+  const blindStructure = calculateBlindStructure(
+    initialChips,
     initialStackBb,
   );
 
@@ -2117,6 +2129,30 @@ export function LocalRulesSheet({
             className="participant-roster-scroll rebuy-rules-content local-rules-content"
             id="local-rules-description"
           >
+            <section className="local-rules-blinds" aria-label="ブラインド">
+              <div>
+                <span>STARTING STACK</span>
+                <strong>{initialStackBb}BB</strong>
+              </div>
+              <div className="local-rules-blind-values">
+                <span>
+                  <small>SB</small>
+                  <strong>{formatChipValue(blindStructure.smallBlindChips)}</strong>
+                </span>
+                <span>
+                  <small>BB</small>
+                  <strong>{formatChipValue(blindStructure.bigBlindChips)}</strong>
+                </span>
+                <span>
+                  <small>BBA</small>
+                  <strong>{formatChipValue(blindStructure.bigBlindAnteChips)}</strong>
+                </span>
+              </div>
+              <p>
+                初期 {initialChips.toLocaleString("ja-JP")}チップ ・
+                1BB = {formatChipValue(blindStructure.bigBlindChips)}チップ
+              </p>
+            </section>
             {rules.map((rule) => (
               <section
                 className={`local-rule-card${rule.enabled ? "" : " is-disabled"}`}

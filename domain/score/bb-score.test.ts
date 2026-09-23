@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  calculateBlindStructure,
   calculateChipsPerBb,
   calculateNetBb,
   formatChipsPerBb,
@@ -18,6 +19,19 @@ describe("BB score", () => {
     expect(calculateNetBb({ score: -180_000, initialChips: 20_000 })).toBe(
       -1_000,
     );
+  });
+
+  it("初期チップに応じてSB・BB・BBAを算出する", () => {
+    expect(calculateBlindStructure(20_000, 100)).toEqual({
+      smallBlindChips: 100,
+      bigBlindChips: 200,
+      bigBlindAnteChips: 200,
+    });
+    expect(calculateBlindStructure(10_000, 100)).toEqual({
+      smallBlindChips: 50,
+      bigBlindChips: 100,
+      bigBlindAnteChips: 100,
+    });
   });
 
   it("50BB開始では同じチップ差分を50BB基準で換算する", () => {
