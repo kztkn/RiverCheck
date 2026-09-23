@@ -21,12 +21,16 @@ describe("BB score", () => {
     );
   });
 
-  it("25BB開始の500チップを10/20/20として扱える", () => {
-    expect(calculateChipsPerBb(500, 25)).toBe(20);
-    expect(calculateBlindStructure(500, 25)).toEqual({
-      smallBlindChips: 10,
-      bigBlindChips: 20,
-      bigBlindAnteChips: 20,
+  it("初期チップに応じてSB・BB・BBAを算出する", () => {
+    expect(calculateBlindStructure(20_000, 100)).toEqual({
+      smallBlindChips: 100,
+      bigBlindChips: 200,
+      bigBlindAnteChips: 200,
+    });
+    expect(calculateBlindStructure(10_000, 100)).toEqual({
+      smallBlindChips: 50,
+      bigBlindChips: 100,
+      bigBlindAnteChips: 100,
     });
   });
 
