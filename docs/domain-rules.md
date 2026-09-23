@@ -14,15 +14,15 @@ score = remaining_chips - settlement_rebuy_count × rebuy_chips
 
 ## 損益BB
 
-リングゲームは開催ごとに初期スタックを50BBまたは100BBから選ぶ。既定値と既存開催は100BBとする。確定結果、共有文、個人戦績では保存済みの整数`score`から初期チップを差し引いた「損益BB」を表示する。
+リングゲームは開催ごとに初期チップと実卓のSB / BB / BBAを設定する。BBのチップ量を1BBの正本とし、開始スタックBBは入力項目ではなく`initial_chips / big_blind_chips`から自動算出する。新規・更新開催ではSB / BB / BBAを明示保存し、算出した`initial_stack_bb`も既存の結果・統計処理との互換値として保存する。BBAなしは0を許可し、SBは1以上かつBB未満、初期チップはBBの整数倍とする。
 
 ```text
-chips_per_bb = initial_chips / initial_stack_bb
-net_bb       = (score - initial_chips) / chips_per_bb
-             = (score - initial_chips) × initial_stack_bb / initial_chips
+initial_stack_bb = initial_chips / big_blind_chips
+net_bb           = (score - initial_chips) / big_blind_chips
+                 = (score - initial_chips) × initial_stack_bb / initial_chips
 ```
 
-100BB開始・初期チップ20,000の場合は1BB=200チップとなり、40,000点は+100BB、20,000点は0BB、10,000点は-50BBとなる。50BB開始なら1BB=400チップとなり、同じ点数はそれぞれ+50BB、0BB、-25BBとなる。画面上のブラインド表示はSB=0.5BB、BB=1BB、BBA=1BBとして算出する。たとえば100BB開始・初期チップ20,000なら100 / 200 / 200、100BB開始・初期チップ10,000なら50 / 100 / 100となる。表示は正数に`+`、負数に`-`を付け、0は符号なしとする。小数は最大小数第2位とし、不要な末尾の0は表示しない。確定結果では損益BBの正数を緑、負数を赤、0をニュートラル色で表示する。順位判定とDB保存は誤差を避けるため従来どおり整数`score`を使用し、BB値では順位を計算しない。
+初期チップ20,000・SB100 / BB200 / BBA200なら100BB開始となり、40,000点は+100BB、20,000点は0BB、10,000点は-50BBとなる。初期チップ500・SB10 / BB20 / BBA20なら25BB開始となる。SBとBBAはBBから逆算せず、実卓の構造をそのまま保存する。表示は正数に`+`、負数に`-`を付け、0は符号なしとする。小数は最大小数第2位とし、不要な末尾の0は表示しない。確定結果では損益BBの正数を緑、負数を赤、0をニュートラル色で表示する。順位判定とDB保存は誤差を避けるため従来どおり整数`score`を使用し、BB値では順位を計算しない。
 
 ## 順位
 
