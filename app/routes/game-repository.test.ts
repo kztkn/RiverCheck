@@ -233,7 +233,7 @@ describe("game repository open game management", () => {
     ]);
   });
 
-  it("初期チップ・リバイチップ・開始BBをゲーム設定として揃えて更新する", async () => {
+  it("初期チップ・実卓ブラインド・算出開始BBを揃えて更新する", async () => {
     mocked.queryDatabase.mockResolvedValue({
       rows: [{ status: "updated" }],
     });
@@ -242,7 +242,13 @@ describe("game repository open game management", () => {
       updateOpenGameConfiguration(
         "group-1",
         "game-1",
-        { initialChips: 10_000, initialStackBb: 50 },
+        {
+          initialChips: 500,
+          smallBlindChips: 10,
+          bigBlindChips: 20,
+          bigBlindAnteChips: 20,
+          initialStackBb: 25,
+        },
         false,
       ),
     ).resolves.toBe("updated");
@@ -250,14 +256,20 @@ describe("game repository open game management", () => {
     const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
     expect(sql).toContain("initial_chips = $3");
     expect(sql).toContain("rebuy_chips = $3");
-    expect(sql).toContain("initial_stack_bb = $4");
+    expect(sql).toContain("small_blind_chips = $4");
+    expect(sql).toContain("big_blind_chips = $5");
+    expect(sql).toContain("big_blind_ante_chips = $6");
+    expect(sql).toContain("initial_stack_bb = $7");
     expect(sql).toContain("game_rebuy_events");
     expect(sql).toContain("participant.submitted_at IS NOT NULL");
     expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
       "game-1",
       "group-1",
-      10_000,
-      50,
+      500,
+      10,
+      20,
+      20,
+      25,
       false,
     ]);
   });
@@ -271,7 +283,13 @@ describe("game repository open game management", () => {
       updateOpenGameConfiguration(
         "group-1",
         "game-1",
-        { initialChips: 10_000, initialStackBb: 50 },
+        {
+          initialChips: 500,
+          smallBlindChips: 10,
+          bigBlindChips: 20,
+          bigBlindAnteChips: 20,
+          initialStackBb: 25,
+        },
         false,
       ),
     ).resolves.toBe("confirmation-required");
