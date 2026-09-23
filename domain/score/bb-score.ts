@@ -1,5 +1,5 @@
 export const INITIAL_STACK_BB = 100;
-export const INITIAL_STACK_BB_OPTIONS = [25, 50, 100] as const;
+export const INITIAL_STACK_BB_OPTIONS = [50, 100] as const;
 
 export interface BlindStructure {
   smallBlindChips: number;
