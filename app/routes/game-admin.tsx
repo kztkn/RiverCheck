@@ -37,10 +37,14 @@ import {
 } from "@server/services/rebuy-service.server";
 import {
   removeOpenGameForGroup,
+  type GameConfigurationFormErrors,
+  type GameConfigurationFormValues,
   type GameSettingsFormValues,
+  updateOpenGameConfigurationForGroup,
   updateOpenGameIdentityForGroup,
   validateGameSettingsForm,
 } from "@server/services/game-service.server";
+import { INITIAL_STACK_BB_OPTIONS } from "@domain/score/bb-score";
 import { GAME_TITLE_MAX_LENGTH } from "@domain/game/game-title";
 import {
   buildFinalizationState,
@@ -90,6 +94,19 @@ type LocalRulesActionData =
       ok: false;
       intent: "save-local-rules";
       error: string;
+    };
+type GameConfigurationActionData =
+  | {
+      ok: true;
+      intent: "save-game-configuration";
+    }
+  | {
+      ok: false;
+      intent: "save-game-configuration";
+      confirmationRequired?: boolean;
+      errors: GameConfigurationFormErrors;
+      error: string;
+      values: GameConfigurationFormValues;
     };
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -248,15 +265,44 @@ export async function action({ request, params }: Route.ActionArgs) {
     };
   }
 
+  if (intent === "save-game-configuration") {
+    const values = {
+      initialChips: readString(formData, "initialChips"),
+      initialStackBb: readString(formData, "initialStackBb"),
+    };
+    try {
+      const result = await updateOpenGameConfigurationForGroup(
+        authorized.group.id,
+        params.gameId,
+        values,
+        readString(formData, "confirmExistingActivity") === "yes",
+      );
+      return {
+        ...result,
+        intent: "save-game-configuration" as const,
+        ...(result.ok ? {} : { values }),
+      };
+    } catch (error) {
+      console.error("Failed to update open game configuration", error);
+      return {
+        ok: false as const,
+        intent: "save-game-configuration" as const,
+        values,
+        errors: {},
+        error:
+          "ゲーム設定を保存できませんでした。画面を更新してもう一度お試しください。",
+      };
+    }
+  }
+
   if (intent === "update-game-identity") {
     const title = readString(formData, "title");
     const playedAt = readString(formData, "playedAt");
-    const initialStackBb = readString(formData, "initialStackBb");
     try {
       const result = await updateOpenGameIdentityForGroup(
         authorized.group.id,
         params.gameId,
-        { title, playedAt, initialStackBb },
+        { title, playedAt },
       );
       if (!result.ok) {
         return {
@@ -264,7 +310,6 @@ export async function action({ request, params }: Route.ActionArgs) {
           intent: "update-game-identity" as const,
           title,
           playedAt,
-          initialStackBb,
         };
       }
     } catch (error) {
@@ -274,10 +319,9 @@ export async function action({ request, params }: Route.ActionArgs) {
         intent: "update-game-identity" as const,
         title,
         playedAt,
-        initialStackBb,
         errors: {},
         error:
-          "開催設定を保存できませんでした。画面を更新してもう一度お試しください。",
+          "基本情報を保存できませんでした。画面を更新してもう一度お試しください。",
       };
     }
     return redirect(
@@ -446,16 +490,27 @@ export default function GameAdmin({
   const rebuyFetcher = useFetcher<OrganizerRebuyActionData>();
   const participantInputFetcher =
     useFetcher<OrganizerParticipantInputActionData>();
+  const gameConfigurationFetcher = useFetcher<GameConfigurationActionData>();
   const localRulesFetcher = useFetcher<LocalRulesActionData>();
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
   const failedAction =
-    actionData?.ok === false && "values" in actionData ? actionData : null;
+    actionData?.ok === false &&
+    "values" in actionData &&
+    (!("intent" in actionData) ||
+      actionData.intent === "publish-settlement-plan" ||
+      actionData.intent === "finalize")
+      ? actionData
+      : null;
   const settingsAction =
     failedAction && "errors" in failedAction ? failedAction : null;
   const localRulesError =
     localRulesFetcher.data?.ok === false
       ? localRulesFetcher.data.error
+      : null;
+  const gameConfigurationError =
+    gameConfigurationFetcher.data?.ok === false
+      ? gameConfigurationFetcher.data
       : null;
   const gameIdentityAction =
     actionData?.ok === false &&
@@ -524,6 +579,7 @@ export default function GameAdmin({
   const participantLinkRef = useRef<HTMLInputElement>(null);
   const rebuySubmissionPendingRef = useRef(false);
   const participantInputSubmissionPendingRef = useRef(false);
+  const gameConfigurationSubmissionPendingRef = useRef(false);
   const localRulesSubmissionPendingRef = useRef(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [gameSettingsOpen, setGameSettingsOpen] = useState(
@@ -680,6 +736,25 @@ export default function GameAdmin({
     revalidator,
   ]);
 
+
+  useEffect(() => {
+    const data = consumeCompletedFetcherSubmission(
+      gameConfigurationSubmissionPendingRef,
+      gameConfigurationFetcher.state,
+      gameConfigurationFetcher.data,
+    );
+    if (!data) return;
+    setToast({
+      id: Date.now(),
+      message: data.ok ? "ゲーム設定を保存しました。" : data.error,
+      tone: data.ok ? "success" : "error",
+    });
+    if (data.ok) void revalidator.revalidate();
+  }, [
+    gameConfigurationFetcher.data,
+    gameConfigurationFetcher.state,
+    revalidator,
+  ]);
 
   useEffect(() => {
     const data = consumeCompletedFetcherSubmission(
@@ -868,13 +943,13 @@ export default function GameAdmin({
             ) : null}
           </div>
           <button
-            aria-label="開催設定を開く"
+            aria-label="基本情報を開く"
             className="admin-game-settings-trigger"
             onClick={() => setGameSettingsOpen(true)}
             type="button"
           >
             <IconPencil aria-hidden="true" stroke={1.8} />
-            開催設定
+            基本情報
           </button>
         </div>
         <p>条件・受付・参加者をまとめて管理できます。</p>
@@ -893,9 +968,9 @@ export default function GameAdmin({
       >
         <div className="dialog-card">
           <div>
-            <p className="eyebrow">GAME SETTINGS</p>
-            <h2 id="game-settings-dialog-title">開催設定</h2>
-            <p>参加者用リンクはそのまま、開催名・開催日・開始スタックを変更できます。</p>
+            <p className="eyebrow">BASIC INFO</p>
+            <h2 id="game-settings-dialog-title">基本情報</h2>
+            <p>参加者用リンクはそのまま、開催名と開催日を変更できます。</p>
           </div>
           <Form className="game-title-edit-form" method="post" noValidate>
             <input name="intent" type="hidden" value="update-game-identity" />
@@ -914,32 +989,6 @@ export default function GameAdmin({
                 <span className="field-error">{gameIdentityAction.errors.title}</span>
               ) : null}
             </label>
-            <fieldset className="field">
-              <legend className="field-label">開始スタック</legend>
-              <div aria-label="開始スタック" className="initial-stack-options">
-                {[50, 100].map((stackBb) => (
-                  <label className="initial-stack-option" key={stackBb}>
-                    <input
-                      defaultChecked={
-                        Number(
-                          gameIdentityAction?.initialStackBb ??
-                            loaderData.game.initialStackBb,
-                        ) === stackBb
-                      }
-                      name="initialStackBb"
-                      type="radio"
-                      value={stackBb}
-                    />
-                    <span>{stackBb}BB</span>
-                  </label>
-                ))}
-              </div>
-              {gameIdentityAction?.errors.initialStackBb ? (
-                <span className="field-error">
-                  {gameIdentityAction.errors.initialStackBb}
-                </span>
-              ) : null}
-            </fieldset>
             <label className="field">
               <span className="field-label">開催日</span>
               <input
@@ -1429,6 +1478,123 @@ export default function GameAdmin({
             </div>
           )}
         </section>
+
+        <gameConfigurationFetcher.Form
+          className="admin-local-rules admin-game-configuration"
+          method="post"
+          onSubmit={() => {
+            gameConfigurationSubmissionPendingRef.current = true;
+          }}
+        >
+          <input
+            name="intent"
+            type="hidden"
+            value="save-game-configuration"
+          />
+          <details
+            className="local-rules-disclosure"
+            open={gameConfigurationError ? true : undefined}
+          >
+            <summary className="local-rules-disclosure-summary">
+              <div>
+                <p className="form-brand-label">GAME SETTINGS</p>
+                <h2>ゲーム設定</h2>
+              </div>
+              <span className="local-rules-summary-status">
+                {loaderData.game.initialChips.toLocaleString("ja-JP")}チップ ・{" "}
+                {loaderData.game.initialStackBb}BB開始
+              </span>
+              <span aria-hidden="true" className="local-rules-summary-chevron">›</span>
+            </summary>
+            <div className="local-rules-disclosure-body">
+              <p className="local-rules-description">
+                初期チップと開始BBを設定します。リバイも同じチップ枚数・BBへ自動で揃います。
+              </p>
+              <label className="field">
+                <span className="field-label">初期チップ</span>
+                <input
+                  aria-invalid={
+                    gameConfigurationError?.errors.initialChips
+                      ? true
+                      : undefined
+                  }
+                  defaultValue={
+                    gameConfigurationError?.values.initialChips ??
+                    String(loaderData.game.initialChips)
+                  }
+                  inputMode="numeric"
+                  min={1}
+                  name="initialChips"
+                  required
+                  type="number"
+                />
+                {gameConfigurationError?.errors.initialChips ? (
+                  <span className="field-error">
+                    {gameConfigurationError.errors.initialChips}
+                  </span>
+                ) : null}
+              </label>
+              <fieldset className="field">
+                <legend className="field-label">開始スタック</legend>
+                <div aria-label="開始スタック" className="initial-stack-options">
+                  {INITIAL_STACK_BB_OPTIONS.map((stackBb) => (
+                    <label className="initial-stack-option" key={stackBb}>
+                      <input
+                        defaultChecked={
+                          Number(
+                            gameConfigurationError?.values.initialStackBb ??
+                              loaderData.game.initialStackBb,
+                          ) === stackBb
+                        }
+                        name="initialStackBb"
+                        type="radio"
+                        value={stackBb}
+                      />
+                      <span>{stackBb}BB</span>
+                    </label>
+                  ))}
+                </div>
+                {gameConfigurationError?.errors.initialStackBb ? (
+                  <span className="field-error">
+                    {gameConfigurationError.errors.initialStackBb}
+                  </span>
+                ) : null}
+              </fieldset>
+              {gameConfigurationError?.confirmationRequired ? (
+                <label className="confirmation-check">
+                  <input
+                    name="confirmExistingActivity"
+                    required
+                    type="checkbox"
+                    value="yes"
+                  />
+                  <span className="confirmation-copy">
+                    <strong>記録済みの内容への影響を確認しました</strong>
+                    <small>
+                      既存のリバイは新しい初期チップ、結果入力は新しい開始条件で再計算されます。
+                    </small>
+                  </span>
+                </label>
+              ) : null}
+              {gameConfigurationError ? (
+                <p className="error-notice" role="alert">
+                  {gameConfigurationError.error}
+                </p>
+              ) : null}
+              <button
+                className="button button-secondary"
+                disabled={gameConfigurationFetcher.state !== "idle"}
+                type="submit"
+              >
+                {gameConfigurationFetcher.state !== "idle"
+                  ? "保存中…"
+                  : gameConfigurationError?.confirmationRequired
+                    ? "確認して変更"
+                    : "ゲーム設定を保存"}
+              </button>
+            </div>
+          </details>
+        </gameConfigurationFetcher.Form>
 
         <localRulesFetcher.Form
           className="admin-local-rules"
@@ -1992,7 +2158,7 @@ function noticeText(notice: string | null): string | null {
   if (notice === "finalized") return "結果を確定しました。";
   if (notice === "local-rules-saved") return "ローカルルールを保存しました。";
   if (notice === "settlement-plan-published") return "今日の精算予定を参加者に公開しました。";
-  if (notice === "game-settings-updated") return "開催設定を保存しました。";
+  if (notice === "game-settings-updated") return "基本情報を保存しました。";
   if (notice === "finalization-reopened") return "結果確定を取り消しました。";
   if (notice === "corrected") return "確定結果を訂正しました。";
   return null;

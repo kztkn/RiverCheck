@@ -144,6 +144,8 @@ BBレート有効時は`sum(score - initial_chips) = 0`、すなわちチップ�
 
 `rebuy_chips` は常に `initial_chips` と同じ値にし、1リバイのBB数も`initial_stack_bb`と同じにする。画面ではリバイチップを個別設定しない。
 
+open中に`initial_chips`または`initial_stack_bb`を変更する場合も、`rebuy_chips`を`initial_chips`と同時に更新する。リバイ記録または終了入力が存在する開催では、既存記録の換算とチップ総量へ影響するため主催者の明示確認を必須とする。finalized後は変更しない。
+
 ## TABLE STORIES
 
 - 参加者投稿は`game_participant`へ紐づき、1参加者・1開催につき最大1件とする

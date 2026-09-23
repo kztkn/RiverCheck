@@ -14,6 +14,7 @@ import {
   findGameWithGroupByPublicCode,
   listGamesForGroupByPublicCode,
   updateLocalRules,
+  updateOpenGameConfiguration,
   updateOpenGameIdentity,
   updateOpenGameTitle,
 } from "@server/repositories/game-repository.server";
@@ -212,26 +213,68 @@ describe("game repository open game management", () => {
     ]);
   });
 
-  it("受付中開催の開始スタックを開催名・日付と同時に変更する", async () => {
+  it("受付中開催の基本情報として開催名と日付だけを変更する", async () => {
     mocked.queryDatabase.mockResolvedValue({ rowCount: 1, rows: [] });
 
     await expect(
       updateOpenGameIdentity("group-1", "game-1", {
         title: "9月のポーカー会",
         playedAt: "2026-09-23T00:00:00.000Z",
-        initialStackBb: 50,
       }),
     ).resolves.toBe(true);
 
     const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
-    expect(sql).toContain("initial_stack_bb = $5");
+    expect(sql).not.toContain("initial_stack_bb");
     expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
       "game-1",
       "group-1",
       "9月のポーカー会",
       "2026-09-23T00:00:00.000Z",
-      50,
     ]);
+  });
+
+  it("初期チップ・リバイチップ・開始BBをゲーム設定として揃えて更新する", async () => {
+    mocked.queryDatabase.mockResolvedValue({
+      rows: [{ status: "updated" }],
+    });
+
+    await expect(
+      updateOpenGameConfiguration(
+        "group-1",
+        "game-1",
+        { initialChips: 10_000, initialStackBb: 50 },
+        false,
+      ),
+    ).resolves.toBe("updated");
+
+    const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
+    expect(sql).toContain("initial_chips = $3");
+    expect(sql).toContain("rebuy_chips = $3");
+    expect(sql).toContain("initial_stack_bb = $4");
+    expect(sql).toContain("game_rebuy_events");
+    expect(sql).toContain("participant.submitted_at IS NOT NULL");
+    expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
+      "game-1",
+      "group-1",
+      10_000,
+      50,
+      false,
+    ]);
+  });
+
+  it("記録済みならゲーム設定変更の確認を要求する", async () => {
+    mocked.queryDatabase.mockResolvedValue({
+      rows: [{ status: "confirmation-required" }],
+    });
+
+    await expect(
+      updateOpenGameConfiguration(
+        "group-1",
+        "game-1",
+        { initialChips: 10_000, initialStackBb: 50 },
+        false,
+      ),
+    ).resolves.toBe("confirmation-required");
   });
 
   it("同じグループの受付中開催だけ削除する", async () => {

@@ -369,22 +369,101 @@ export async function updateOpenGameTitle(
 export async function updateOpenGameIdentity(
   groupId: string,
   gameId: string,
-  values: { title: string; playedAt: string; initialStackBb: number },
+  values: { title: string; playedAt: string },
 ): Promise<boolean> {
   const result = await queryDatabase(
     `
       UPDATE games
       SET title = $3,
           played_at = $4,
-          initial_stack_bb = $5,
           updated_at = NOW()
       WHERE id = $1
         AND group_id = $2
         AND status = 'open'
     `,
-    [gameId, groupId, values.title, values.playedAt, values.initialStackBb],
+    [gameId, groupId, values.title, values.playedAt],
   );
   return result.rowCount === 1;
+}
+
+export type OpenGameConfigurationUpdateResult =
+  | "updated"
+  | "confirmation-required"
+  | "not-found";
+
+export async function updateOpenGameConfiguration(
+  groupId: string,
+  gameId: string,
+  values: { initialChips: number; initialStackBb: number },
+  confirmExistingActivity: boolean,
+): Promise<OpenGameConfigurationUpdateResult> {
+  const result = await queryDatabase<{
+    status: OpenGameConfigurationUpdateResult;
+  }>(`
+      WITH target AS MATERIALIZED (
+        SELECT
+          game.id,
+          EXISTS (
+            SELECT 1
+            FROM game_participants AS participant
+            WHERE participant.game_id = game.id
+              AND (
+                participant.submitted_at IS NOT NULL OR
+                participant.remaining_chips IS NOT NULL OR
+                participant.settlement_rebuy_count IS NOT NULL OR
+                COALESCE(participant.total_rebuy_count, 0) <> 0 OR
+                participant.outstanding_rebuy_count <> 0
+              )
+          ) OR EXISTS (
+            SELECT 1
+            FROM game_rebuy_events AS event
+            INNER JOIN game_participants AS participant
+              ON participant.id = event.game_participant_id
+            WHERE participant.game_id = game.id
+          ) AS has_activity,
+          (
+            game.initial_chips <> $3 OR
+            game.rebuy_chips <> $3 OR
+            game.initial_stack_bb <> $4
+          ) AS has_change
+        FROM games AS game
+        WHERE game.id = $1
+          AND game.group_id = $2
+          AND game.status = 'open'
+      ),
+      updated AS (
+        UPDATE games AS game
+        SET initial_chips = $3,
+            rebuy_chips = $3,
+            initial_stack_bb = $4,
+            updated_at = NOW()
+        FROM target
+        WHERE game.id = target.id
+          AND (
+            $5::BOOLEAN OR
+            NOT target.has_activity OR
+            NOT target.has_change
+          )
+        RETURNING game.id
+      )
+      SELECT
+        CASE
+          WHEN updated.id IS NOT NULL THEN 'updated'
+          ELSE 'confirmation-required'
+        END AS status
+      FROM target
+      LEFT JOIN updated ON TRUE
+      LIMIT 1
+    `,
+    [
+      gameId,
+      groupId,
+      values.initialChips,
+      values.initialStackBb,
+      confirmExistingActivity,
+    ],
+  );
+  return result.rows[0]?.status ?? "not-found";
 }
 
 export async function deleteOpenGame(

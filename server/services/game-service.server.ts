@@ -1,6 +1,7 @@
 import {
   deleteOpenGame,
   insertGame,
+  updateOpenGameConfiguration,
   updateOpenGameIdentity,
   updateOpenGameTitle,
 } from "@server/repositories/game-repository.server";
@@ -43,11 +44,19 @@ export interface GameSettingsFormValues {
 export interface GameIdentityFormValues {
   title: string;
   playedAt: string;
-  initialStackBb: string;
 }
 
 export type GameIdentityFormErrors = Partial<
   Record<keyof GameIdentityFormValues, string>
+>;
+
+export interface GameConfigurationFormValues {
+  initialChips: string;
+  initialStackBb: string;
+}
+
+export type GameConfigurationFormErrors = Partial<
+  Record<keyof GameConfigurationFormValues, string>
 >;
 
 export type CreateGameFormValues = GameSettingsFormValues;
@@ -79,7 +88,6 @@ export function readGameIdentityForm(
   return {
     title: readString(formData, "title"),
     playedAt: readString(formData, "playedAt"),
-    initialStackBb: readString(formData, "initialStackBb"),
   };
 }
 
@@ -164,7 +172,7 @@ export async function updateOpenGameIdentityForGroup(
       error:
         validation.errors.title ??
         validation.errors.playedAt ??
-        "開催設定を確認してください。",
+        "基本情報を確認してください。",
     };
   }
 
@@ -178,8 +186,57 @@ export async function updateOpenGameIdentityForGroup(
     : {
         ok: false,
         errors: {},
-        error: "開催設定を保存できませんでした。画面を更新してください。",
+        error: "基本情報を保存できませんでした。画面を更新してください。",
       };
+}
+
+export async function updateOpenGameConfigurationForGroup(
+  groupId: string,
+  gameId: string,
+  values: GameConfigurationFormValues,
+  confirmExistingActivity: boolean,
+): Promise<
+  | { ok: true }
+  | {
+      ok: false;
+      confirmationRequired?: boolean;
+      errors: GameConfigurationFormErrors;
+      error: string;
+    }
+> {
+  const validation = validateGameConfigurationForm(values);
+  if (!validation.ok) {
+    return {
+      ok: false,
+      errors: validation.errors,
+      error:
+        validation.errors.initialChips ??
+        validation.errors.initialStackBb ??
+        "ゲーム設定を確認してください。",
+    };
+  }
+
+  const result = await updateOpenGameConfiguration(
+    groupId,
+    gameId,
+    validation.input,
+    confirmExistingActivity,
+  );
+  if (result === "updated") return { ok: true };
+  if (result === "confirmation-required") {
+    return {
+      ok: false,
+      confirmationRequired: true,
+      errors: {},
+      error:
+        "リバイ記録または終了入力があります。変更するとチップ総量と損益BBの計算が変わります。",
+    };
+  }
+  return {
+    ok: false,
+    errors: {},
+    error: "ゲーム設定を保存できませんでした。画面を更新してください。",
+  };
 }
 
 export async function renameOpenGameForGroup(
@@ -214,7 +271,7 @@ export async function removeOpenGameForGroup(
 }
 
 export function validateGameIdentityForm(values: GameIdentityFormValues):
-  | { ok: true; input: { title: string; playedAt: string; initialStackBb: number } }
+  | { ok: true; input: { title: string; playedAt: string } }
   | { ok: false; errors: GameIdentityFormErrors } {
   const errors: GameIdentityFormErrors = {};
   const title = values.title.trim();
@@ -226,16 +283,42 @@ export function validateGameIdentityForm(values: GameIdentityFormValues):
   if (!playedAt) {
     errors.playedAt = "有効な開催日を入力してください。";
   }
-  const initialStackBb = Number(values.initialStackBb || "100");
-  if (!isSupportedInitialStackBb(initialStackBb)) {
-    errors.initialStackBb = "開始スタックは50BBまたは100BBを選んでください。";
-  }
-
   if (Object.keys(errors).length > 0 || !playedAt) {
     return { ok: false, errors };
   }
 
-  return { ok: true, input: { title, playedAt, initialStackBb } };
+  return { ok: true, input: { title, playedAt } };
+}
+
+export function validateGameConfigurationForm(values: GameConfigurationFormValues):
+  | { ok: true; input: { initialChips: number; initialStackBb: number } }
+  | { ok: false; errors: GameConfigurationFormErrors } {
+  const errors: GameConfigurationFormErrors = {};
+  const initialChips = parsePositiveInteger(
+    values.initialChips,
+    "initialChips",
+    errors,
+  );
+  const initialStackBb = parsePositiveInteger(
+    values.initialStackBb,
+    "initialStackBb",
+    errors,
+  );
+  if (
+    initialStackBb !== null &&
+    !isSupportedInitialStackBb(initialStackBb)
+  ) {
+    errors.initialStackBb = "開始スタックは50BBまたは100BBを選んでください。";
+  }
+
+  if (
+    Object.keys(errors).length > 0 ||
+    initialChips === null ||
+    initialStackBb === null
+  ) {
+    return { ok: false, errors };
+  }
+  return { ok: true, input: { initialChips, initialStackBb } };
 }
 
 export function validateGameSettingsForm(

@@ -8,6 +8,7 @@ const mocked = vi.hoisted(() => ({
   publishSettlementPlan: vi.fn(),
   removeOpenGameForGroup: vi.fn(),
   updateLocalRules: vi.fn(),
+  updateOpenGameConfigurationForGroup: vi.fn(),
   updateOpenGameIdentityForGroup: vi.fn(),
   validateGameSettingsForm: vi.fn(),
   requireOrganizer: vi.fn(),
@@ -45,6 +46,8 @@ vi.mock("@server/services/rebuy-service.server", () => ({
 }));
 vi.mock("@server/services/game-service.server", () => ({
   removeOpenGameForGroup: mocked.removeOpenGameForGroup,
+  updateOpenGameConfigurationForGroup:
+    mocked.updateOpenGameConfigurationForGroup,
   updateOpenGameIdentityForGroup: mocked.updateOpenGameIdentityForGroup,
   validateGameSettingsForm: mocked.validateGameSettingsForm,
 }));
@@ -69,6 +72,7 @@ const game = {
   firstPlaceCost: 1_000,
   id: "22222222-2222-4222-8222-222222222222",
   initialChips: 20_000,
+  initialStackBb: 100,
   playedAt: "2026-08-10T00:00:00.000Z",
   previewParticipantCount: 2,
   secondPlaceCost: 2_000,
@@ -132,7 +136,7 @@ describe("game admin management action", () => {
     );
   });
 
-  it("開催設定の保存1回で開催名と開催日をまとめて更新する", async () => {
+  it("基本情報の保存1回で開催名と開催日をまとめて更新する", async () => {
     mocked.updateOpenGameIdentityForGroup.mockResolvedValue({ ok: true });
 
     const result = await action(
@@ -140,7 +144,6 @@ describe("game admin management action", () => {
         intent: "update-game-identity",
         title: "9月の会",
         playedAt: "2026-09-11",
-        initialStackBb: "50",
       }),
     );
 
@@ -151,13 +154,56 @@ describe("game admin management action", () => {
     expect(mocked.updateOpenGameIdentityForGroup).toHaveBeenCalledWith(
       group.id,
       game.id,
-      { title: "9月の会", playedAt: "2026-09-11", initialStackBb: "50" },
+      { title: "9月の会", playedAt: "2026-09-11" },
     );
     expect(result).toBeInstanceOf(Response);
     const response = result as Response;
     expect(response.status).toBe(303);
     expect(response.headers.get("Location")).toBe(
       `/g/river-check/games/${game.id}/admin?notice=game-settings-updated`,
+    );
+  });
+
+  it("初期チップと開始BBをゲーム設定として保存する", async () => {
+    mocked.updateOpenGameConfigurationForGroup.mockResolvedValue({ ok: true });
+
+    const result = await action(
+      actionArgs({
+        intent: "save-game-configuration",
+        initialChips: "10000",
+        initialStackBb: "50",
+      }),
+    );
+
+    expect(mocked.updateOpenGameConfigurationForGroup).toHaveBeenCalledWith(
+      group.id,
+      game.id,
+      { initialChips: "10000", initialStackBb: "50" },
+      false,
+    );
+    expect(result).toEqual({
+      ok: true,
+      intent: "save-game-configuration",
+    });
+  });
+
+  it("記録済みのゲーム設定変更は確認値をserviceへ渡す", async () => {
+    mocked.updateOpenGameConfigurationForGroup.mockResolvedValue({ ok: true });
+
+    await action(
+      actionArgs({
+        intent: "save-game-configuration",
+        initialChips: "10000",
+        initialStackBb: "50",
+        confirmExistingActivity: "yes",
+      }),
+    );
+
+    expect(mocked.updateOpenGameConfigurationForGroup).toHaveBeenCalledWith(
+      group.id,
+      game.id,
+      { initialChips: "10000", initialStackBb: "50" },
+      true,
     );
   });
 

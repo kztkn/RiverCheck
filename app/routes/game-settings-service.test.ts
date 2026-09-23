@@ -1,8 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocked = vi.hoisted(() => ({
+  updateOpenGameConfiguration: vi.fn(),
+}));
 
 vi.mock("@server/repositories/game-repository.server", () => ({
   deleteOpenGame: vi.fn(),
   insertGame: vi.fn(),
+  updateOpenGameConfiguration: mocked.updateOpenGameConfiguration,
   updateOpenGameTitle: vi.fn(),
 }));
 vi.mock("@server/repositories/group-repository.server", () => ({
@@ -14,6 +19,8 @@ vi.mock("@server/services/push-notification-service.server", () => ({
 
 import {
   readGameSettingsForm,
+  updateOpenGameConfigurationForGroup,
+  validateGameConfigurationForm,
   validateGameSettingsForm,
   type GameSettingsFormValues,
 } from "@server/services/game-service.server";
@@ -33,6 +40,77 @@ const validValues: GameSettingsFormValues = {
   sevenDeuceRuleEnabled: true,
   bombPotRuleEnabled: true,
 };
+
+describe("open game configuration", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("初期チップと開始BBを整数へ変換する", () => {
+    expect(
+      validateGameConfigurationForm({
+        initialChips: "10000",
+        initialStackBb: "50",
+      }),
+    ).toEqual({
+      ok: true,
+      input: { initialChips: 10_000, initialStackBb: 50 },
+    });
+  });
+
+  it("初期チップ0と未対応の開始BBを拒否する", () => {
+    expect(
+      validateGameConfigurationForm({
+        initialChips: "0",
+        initialStackBb: "75",
+      }),
+    ).toEqual({
+      ok: false,
+      errors: {
+        initialChips: "1以上の整数で入力してください。",
+        initialStackBb: "開始スタックは50BBまたは100BBを選んでください。",
+      },
+    });
+  });
+
+  it("記録済みなら影響確認を要求する", async () => {
+    mocked.updateOpenGameConfiguration.mockResolvedValue(
+      "confirmation-required",
+    );
+
+    await expect(
+      updateOpenGameConfigurationForGroup(
+        "group-1",
+        "game-1",
+        { initialChips: "10000", initialStackBb: "50" },
+        false,
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      confirmationRequired: true,
+      errors: {},
+    });
+  });
+
+  it("確認済みのゲーム設定をrepositoryへ渡す", async () => {
+    mocked.updateOpenGameConfiguration.mockResolvedValue("updated");
+
+    await expect(
+      updateOpenGameConfigurationForGroup(
+        "group-1",
+        "game-1",
+        { initialChips: "10000", initialStackBb: "50" },
+        true,
+      ),
+    ).resolves.toEqual({ ok: true });
+    expect(mocked.updateOpenGameConfiguration).toHaveBeenCalledWith(
+      "group-1",
+      "game-1",
+      { initialChips: 10_000, initialStackBb: 50 },
+      true,
+    );
+  });
+});
 
 describe("game settings cost shares", () => {
   it("全順位の配分を順位順のまま読み取る", () => {

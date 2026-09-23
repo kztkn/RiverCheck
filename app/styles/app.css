@@ -4234,6 +4234,10 @@ input[aria-invalid="true"] {
   justify-self: end;
 }
 
+.admin-game-configuration .field {
+  max-width: 340px;
+}
+
 .rebuy-rules-list {
   display: grid;
   margin: 0;
