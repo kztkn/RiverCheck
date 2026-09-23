@@ -86,7 +86,7 @@ describe("open game configuration", () => {
     expect(
       validateGameConfigurationForm({
         initialChips: "500",
-        smallBlindChips: "20",
+        smallBlindChips: "30",
         bigBlindChips: "30",
         bigBlindAnteChips: "30",
       }),
