@@ -27,6 +27,7 @@ const values: CreateGameFormValues = {
   title: "8月のポーカー会",
   playedAt: "2026-08-30",
   initialChips: "20000",
+  initialStackBb: "100",
   venueCost: "11300",
   firstPlaceCost: "0",
   secondPlaceCost: "500",

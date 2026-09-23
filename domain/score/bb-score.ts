@@ -1,26 +1,45 @@
 export const INITIAL_STACK_BB = 100;
+export const INITIAL_STACK_BB_OPTIONS = [50, 100] as const;
 
 export interface BbScoreInput {
   score: number;
   initialChips: number;
+  initialStackBb?: number;
 }
 
-export function calculateNetBb({ score, initialChips }: BbScoreInput): number {
-  assertBbScoreInput(score, initialChips);
-  return ((score - initialChips) / initialChips) * INITIAL_STACK_BB;
+export function isSupportedInitialStackBb(value: number): boolean {
+  return INITIAL_STACK_BB_OPTIONS.includes(
+    value as (typeof INITIAL_STACK_BB_OPTIONS)[number],
+  );
 }
 
-export function calculateChipsPerBb(initialChips: number): number {
+export function calculateNetBb({
+  score,
+  initialChips,
+  initialStackBb = INITIAL_STACK_BB,
+}: BbScoreInput): number {
+  assertBbScoreInput(score, initialChips, initialStackBb);
+  return ((score - initialChips) / initialChips) * initialStackBb;
+}
+
+export function calculateChipsPerBb(
+  initialChips: number,
+  initialStackBb = INITIAL_STACK_BB,
+): number {
   assertPositiveSafeInteger(initialChips, "initialChips");
-  return initialChips / INITIAL_STACK_BB;
+  assertSupportedInitialStackBb(initialStackBb);
+  return initialChips / initialStackBb;
 }
 
 export function formatNetBb(input: BbScoreInput): string {
   return formatSignedBbValue(calculateNetBb(input));
 }
 
-export function formatChipsPerBb(initialChips: number): string {
-  return formatBbNumber(calculateChipsPerBb(initialChips));
+export function formatChipsPerBb(
+  initialChips: number,
+  initialStackBb = INITIAL_STACK_BB,
+): string {
+  return formatBbNumber(calculateChipsPerBb(initialChips, initialStackBb));
 }
 
 export function formatSignedBbValue(value: number): string {
@@ -36,11 +55,22 @@ function formatBbNumber(value: number): string {
   });
 }
 
-function assertBbScoreInput(score: number, initialChips: number): void {
+function assertBbScoreInput(
+  score: number,
+  initialChips: number,
+  initialStackBb: number,
+): void {
   if (!Number.isSafeInteger(score)) {
     throw new RangeError("score must be a safe integer");
   }
   assertPositiveSafeInteger(initialChips, "initialChips");
+  assertSupportedInitialStackBb(initialStackBb);
+}
+
+function assertSupportedInitialStackBb(value: number): void {
+  if (!isSupportedInitialStackBb(value)) {
+    throw new RangeError("initialStackBb is not supported");
+  }
 }
 
 function assertPositiveSafeInteger(value: number, name: string): void {

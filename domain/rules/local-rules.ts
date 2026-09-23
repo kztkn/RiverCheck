@@ -9,6 +9,7 @@ export interface LocalRuleDefinition {
 export function buildLocalRules(
   sevenDeuceRuleEnabled: boolean,
   bombPotRuleEnabled: boolean,
+  rebuyStackBb = 100,
 ): LocalRuleDefinition[] {
   return [
     {
@@ -16,15 +17,15 @@ export function buildLocalRules(
       key: "rebuy-repayment",
       note: "現在のスタックをRiverCheckへ入力する必要はありません。",
       steps: [
-        { label: "150BB超", text: "任意で100BBを返済できます" },
-        { label: "300BB超", text: "100BBを返済してください" },
+        { label: "150BB超", text: `任意で${rebuyStackBb}BBを返済できます` },
+        { label: "300BB超", text: `${rebuyStackBb}BBを返済してください` },
         {
           label: "返済後",
           text: "まだ300BBを超える場合は、未返済がある限り繰り返します",
         },
         { label: "記録", text: "ポット精算後に本人が記録します" },
       ],
-      title: "100BB返済ルール",
+      title: `${rebuyStackBb}BB返済ルール`,
     },
     {
       enabled: sevenDeuceRuleEnabled,

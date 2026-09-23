@@ -74,7 +74,7 @@ export async function listPlayerStatsRankingSnapshots(
   const result = await queryDatabase<RankingRow>(
     `
       WITH finalized_games AS (
-        SELECT id, played_at, finalized_at, initial_chips,
+        SELECT id, played_at, finalized_at, initial_chips, initial_stack_bb,
           ROW_NUMBER() OVER (
             ORDER BY played_at DESC, finalized_at DESC, id DESC
           ) AS game_number
@@ -88,6 +88,7 @@ export async function listPlayerStatsRankingSnapshots(
           game_result.group_player_id,
           game_result.rank,
           game.initial_chips,
+          game.initial_stack_bb,
           COUNT(*) OVER (
             PARTITION BY comparison.scope, game_result.game_id
           )::INTEGER AS participant_count,
@@ -97,7 +98,7 @@ export async function listPlayerStatsRankingSnapshots(
           ) AS recent_number,
           CASE
             WHEN game.initial_chips > 0 THEN
-              ((game_result.score - game.initial_chips)::NUMERIC * 100)
+              ((game_result.score - game.initial_chips)::NUMERIC * game.initial_stack_bb)
                 / game.initial_chips
             ELSE NULL
           END AS net_bb
@@ -292,7 +293,7 @@ export async function listFinalizedPlayerGameStats(
         game.initial_chips,
         CASE
           WHEN game.initial_chips > 0 THEN
-            ((game_result.score - game.initial_chips)::NUMERIC * 100)
+            ((game_result.score - game.initial_chips)::NUMERIC * game.initial_stack_bb)
               / game.initial_chips
           ELSE NULL
         END AS net_bb

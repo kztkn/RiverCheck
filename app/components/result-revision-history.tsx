@@ -6,11 +6,13 @@ import type { GameResultRevision } from "@shared-types/result";
 export function ResultRevisionHistory({
   bbRate = 0,
   initialChips,
+  initialStackBb = 100,
   revisions,
   showCostShareChanges = true,
 }: {
   bbRate?: number;
   initialChips: number;
+  initialStackBb?: number;
   revisions: GameResultRevision[];
   showCostShareChanges?: boolean;
 }) {
@@ -99,10 +101,12 @@ export function ResultRevisionHistory({
                           after={formatNetBb({
                             score: change.after.score,
                             initialChips,
+                            initialStackBb,
                           })}
                           before={formatNetBb({
                             score: change.before.score,
                             initialChips,
+                            initialStackBb,
                           })}
                           label="損益BB"
                         />

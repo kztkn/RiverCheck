@@ -8,6 +8,7 @@ import { MINIMUM_PODIUM_PARTICIPANT_COUNT } from "@domain/cost-sharing/calculate
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import { calculateFinalResults } from "@domain/finalization/calculate-final-results";
 import { BB_RATE_OPTIONS } from "@domain/settlement/calculate-game-settlements";
+import { INITIAL_STACK_BB_OPTIONS } from "@domain/score/bb-score";
 import type { GameParticipantSummary } from "@shared-types/player";
 import {
   recommendTopCosts,
@@ -24,6 +25,7 @@ export interface GameSettingsValues {
   title: string;
   playedAt: string;
   initialChips: string;
+  initialStackBb: string;
   venueCost: string;
   firstPlaceCost: string;
   secondPlaceCost: string;
@@ -122,6 +124,7 @@ export function GameSettingsFields({
       const calculated = calculateFinalResults(
         {
           initialChips,
+          initialStackBb: parsePreviewInteger(values.initialStackBb || "100"),
           rebuyChips: initialChips,
           venueCost: parsePreviewInteger(venueCost),
           firstPlaceCost: parsePreviewInteger(shareValues[0] ?? ""),
@@ -156,6 +159,7 @@ export function GameSettingsFields({
     settlementParticipants,
     shareValues,
     values.initialChips,
+    values.initialStackBb,
     venueCost,
   ]);
 
@@ -450,14 +454,35 @@ export function GameSettingsFields({
               defaultValue={values.initialChips}
               error={errors.initialChips}
               inputMode="numeric"
-              label="初期チップ（100BB）"
+              label="初期チップ"
               min={1}
               name="initialChips"
               required
               type="number"
             />
+            <div className="field">
+              <span className="field-label">開始スタック</span>
+              <div aria-label="開始スタック" className="initial-stack-options">
+                {INITIAL_STACK_BB_OPTIONS.map((stackBb) => (
+                  <label className="initial-stack-option" key={stackBb}>
+                    <input
+                      defaultChecked={
+                        Number(values.initialStackBb || "100") === stackBb
+                      }
+                      name="initialStackBb"
+                      type="radio"
+                      value={stackBb}
+                    />
+                    <span>{stackBb}BB</span>
+                  </label>
+                ))}
+              </div>
+              {errors.initialStackBb ? (
+                <span className="field-error">{errors.initialStackBb}</span>
+              ) : null}
+            </div>
             <p className="field-hint">
-              リバイ時も初期チップと同じチップを追加します。
+              リバイも開始時と同じチップ枚数・BBです。
             </p>
           </fieldset>
 

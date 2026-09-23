@@ -22,6 +22,7 @@ const validValues: GameSettingsFormValues = {
   title: "8月のポーカー会",
   playedAt: "2026-08-16",
   initialChips: "20000",
+  initialStackBb: "100",
   venueCost: "11330",
   firstPlaceCost: "1800",
   secondPlaceCost: "2000",
@@ -39,6 +40,7 @@ describe("game settings cost shares", () => {
     formData.set("title", validValues.title);
     formData.set("playedAt", validValues.playedAt);
     formData.set("initialChips", validValues.initialChips);
+    formData.set("initialStackBb", "50");
     formData.set("venueCost", validValues.venueCost);
     formData.set(
       "previewParticipantCount",
@@ -56,6 +58,7 @@ describe("game settings cost shares", () => {
       sevenDeuceRuleEnabled: true,
       bombPotRuleEnabled: true,
       bbRate: "5",
+      initialStackBb: "50",
     });
   });
 
@@ -89,6 +92,44 @@ describe("game settings cost shares", () => {
       expect.objectContaining({
         ok: true,
         input: expect.objectContaining({ bbRate: 0 }),
+      }),
+    );
+  });
+
+  it("開始スタックが未送信なら後方互換の100BBとして扱う", () => {
+    expect(readGameSettingsForm(new FormData()).initialStackBb).toBe("");
+    expect(
+      validateGameSettingsForm({ ...validValues, initialStackBb: "" }),
+    ).toEqual(
+      expect.objectContaining({
+        ok: true,
+        input: expect.objectContaining({ initialStackBb: 100 }),
+      }),
+    );
+  });
+
+  it("50BB開始を保存用入力へ変換する", () => {
+    expect(
+      validateGameSettingsForm({ ...validValues, initialStackBb: "50" }),
+    ).toEqual(
+      expect.objectContaining({
+        ok: true,
+        input: expect.objectContaining({
+          initialStackBb: 50,
+          initialChips: 20_000,
+          rebuyChips: 20_000,
+        }),
+      }),
+    );
+  });
+
+  it("プリセット外の開始スタックを拒否する", () => {
+    expect(
+      validateGameSettingsForm({ ...validValues, initialStackBb: "75" }),
+    ).toEqual(
+      expect.objectContaining({
+        ok: false,
+        errors: expect.objectContaining({ initialStackBb: expect.stringContaining("50BB") }),
       }),
     );
   });

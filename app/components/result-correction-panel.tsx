@@ -238,11 +238,13 @@ export function ResultCorrectionPanel({
                     className={scoreClassName(
                       result.score,
                       game.initialChips,
+                      game.initialStackBb,
                     )}
                   >
                     {formatNetBb({
                       score: result.score,
                       initialChips: game.initialChips,
+                      initialStackBb: game.initialStackBb,
                     })}
                   </span>
                   <strong>
@@ -333,8 +335,12 @@ function parseNonNegativeInteger(value: string): number {
   return parsed;
 }
 
-function scoreClassName(score: number, initialChips: number): string {
-  const netBb = calculateNetBb({ score, initialChips });
+function scoreClassName(
+  score: number,
+  initialChips: number,
+  initialStackBb = 100,
+): string {
+  const netBb = calculateNetBb({ score, initialChips, initialStackBb });
   return netBb > 0
     ? "result-score-positive"
     : netBb < 0

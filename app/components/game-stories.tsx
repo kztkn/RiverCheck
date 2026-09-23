@@ -26,6 +26,7 @@ export interface GameStoryPostView extends PublishedGameStoryPost {
 export function GameStories({
   canPost,
   initialChips,
+  initialStackBb = 100,
   isOrganizer,
   ownPhotoUrl,
   ownPost,
@@ -34,6 +35,7 @@ export function GameStories({
 }: {
   canPost: boolean;
   initialChips: number;
+  initialStackBb?: number;
   isOrganizer: boolean;
   ownPhotoUrl: string | null;
   ownPost: OwnGameStoryPost | null;
@@ -64,7 +66,7 @@ export function GameStories({
 
   return (
     <>
-      <GameTimeline />
+      <GameTimeline initialStackBb={initialStackBb} />
       {showStories ? (
         <section className="game-stories-panel" aria-labelledby="game-stories-heading">
           <GameStoryReactionProvider>
@@ -115,6 +117,7 @@ export function GameStories({
                             <small>
                               {formatOrdinal(result.rank)} ・ {formatNetBb({
                                 initialChips,
+                                initialStackBb,
                                 score: result.score,
                               })}
                             </small>

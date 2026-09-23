@@ -251,11 +251,12 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "update-game-identity") {
     const title = readString(formData, "title");
     const playedAt = readString(formData, "playedAt");
+    const initialStackBb = readString(formData, "initialStackBb");
     try {
       const result = await updateOpenGameIdentityForGroup(
         authorized.group.id,
         params.gameId,
-        { title, playedAt },
+        { title, playedAt, initialStackBb },
       );
       if (!result.ok) {
         return {
@@ -263,6 +264,7 @@ export async function action({ request, params }: Route.ActionArgs) {
           intent: "update-game-identity" as const,
           title,
           playedAt,
+          initialStackBb,
         };
       }
     } catch (error) {
@@ -272,6 +274,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         intent: "update-game-identity" as const,
         title,
         playedAt,
+        initialStackBb,
         errors: {},
         error:
           "開催設定を保存できませんでした。画面を更新してもう一度お試しください。",
@@ -704,9 +707,9 @@ export default function GameAdmin({
     if (!data) return;
     const message = data.ok
       ? data.intent === "record-rebuy"
-        ? "リバイを記録しました。"
+        ? `${loaderData.game.initialStackBb}BBのリバイを記録しました。`
         : data.intent === "record-repayment"
-          ? "100BBの返済を記録しました。"
+          ? `${loaderData.game.initialStackBb}BBの返済を記録しました。`
           : data.intent === "undo-rebuy"
             ? "直前のリバイ操作を元に戻しました。"
             : "リバイ記録を修正しました。"
@@ -892,7 +895,7 @@ export default function GameAdmin({
           <div>
             <p className="eyebrow">GAME SETTINGS</p>
             <h2 id="game-settings-dialog-title">開催設定</h2>
-            <p>参加者用リンクはそのまま、開催名と開催日を変更できます。</p>
+            <p>参加者用リンクはそのまま、開催名・開催日・開始スタックを変更できます。</p>
           </div>
           <Form className="game-title-edit-form" method="post" noValidate>
             <input name="intent" type="hidden" value="update-game-identity" />
@@ -911,6 +914,32 @@ export default function GameAdmin({
                 <span className="field-error">{gameIdentityAction.errors.title}</span>
               ) : null}
             </label>
+            <fieldset className="field">
+              <legend className="field-label">開始スタック</legend>
+              <div aria-label="開始スタック" className="initial-stack-options">
+                {[50, 100].map((stackBb) => (
+                  <label className="initial-stack-option" key={stackBb}>
+                    <input
+                      defaultChecked={
+                        Number(
+                          gameIdentityAction?.initialStackBb ??
+                            loaderData.game.initialStackBb,
+                        ) === stackBb
+                      }
+                      name="initialStackBb"
+                      type="radio"
+                      value={stackBb}
+                    />
+                    <span>{stackBb}BB</span>
+                  </label>
+                ))}
+              </div>
+              {gameIdentityAction?.errors.initialStackBb ? (
+                <span className="field-error">
+                  {gameIdentityAction.errors.initialStackBb}
+                </span>
+              ) : null}
+            </fieldset>
             <label className="field">
               <span className="field-label">開催日</span>
               <input
@@ -1211,7 +1240,7 @@ export default function GameAdmin({
               <strong>{totalRebuyCount}回</strong>
             </span>
             <span>
-              <small>100BB返済</small>
+              <small>{loaderData.game.initialStackBb}BB返済</small>
               <strong>{totalRepaymentCount}回</strong>
             </span>
           </div>
@@ -1274,7 +1303,7 @@ export default function GameAdmin({
                             <span>
                               リバイ {formatTotalRebuyCount(participant.totalRebuyCount)}
                             </span>
-                            <span>100BB返済 {repaymentCount}回</span>
+                            <span>{loaderData.game.initialStackBb}BB返済 {repaymentCount}回</span>
                             <span>未返済 {participant.outstandingRebuyCount}口</span>
                           </div>
                         </div>
@@ -1330,7 +1359,7 @@ export default function GameAdmin({
                             >
                               {pendingIntent === "record-rebuy"
                                 ? "記録中…"
-                                : "＋ リバイ"}
+                                : `＋ ${loaderData.game.initialStackBb}BBリバイ`}
                             </button>
                             <button
                               className="button button-secondary button-small"
@@ -1348,7 +1377,7 @@ export default function GameAdmin({
                             >
                               {pendingIntent === "record-repayment"
                                 ? "記録中…"
-                                : "100BB返済"}
+                                : `${loaderData.game.initialStackBb}BB返済`}
                             </button>
                           </>
                         ) : null}
@@ -1879,6 +1908,7 @@ function gameToFormValues(game: Route.ComponentProps["loaderData"]["game"]) {
     title: game.title,
     playedAt: localDate,
     initialChips: String(game.initialChips),
+    initialStackBb: String(game.initialStackBb),
     venueCost: String(game.venueCost),
     firstPlaceCost: String(game.firstPlaceCost),
     secondPlaceCost: String(game.secondPlaceCost),

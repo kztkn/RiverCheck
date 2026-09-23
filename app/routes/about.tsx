@@ -61,7 +61,7 @@ export function AboutGuide() {
   return (
     <section className="about-guide" aria-label="RiverCheckの使い方">
       <AboutItem number="01" title="参加する">
-        OPEN GAMESまたは主催者から届いたリンクを開き、自分の名前で参加します。プレイ中はリバイと100BB返済を記録し、終了後に残りチップと手元のリバイ証を入力します。
+        OPEN GAMESまたは主催者から届いたリンクを開き、自分の名前で参加します。プレイ中はリバイと開催設定に応じたBB返済を記録し、終了後に残りチップと手元のリバイ証を入力します。
       </AboutItem>
       <AboutItem number="02" title="結果と精算を確認する">
         主催者が確定すると、順位、損益BB、会費の負担額を同じリンクから確認できます。精算は結果画面からPayPayへ進めます。

@@ -140,6 +140,7 @@ describe("game admin management action", () => {
         intent: "update-game-identity",
         title: "9月の会",
         playedAt: "2026-09-11",
+        initialStackBb: "50",
       }),
     );
 
@@ -150,7 +151,7 @@ describe("game admin management action", () => {
     expect(mocked.updateOpenGameIdentityForGroup).toHaveBeenCalledWith(
       group.id,
       game.id,
-      { title: "9月の会", playedAt: "2026-09-11" },
+      { title: "9月の会", playedAt: "2026-09-11", initialStackBb: "50" },
     );
     expect(result).toBeInstanceOf(Response);
     const response = result as Response;

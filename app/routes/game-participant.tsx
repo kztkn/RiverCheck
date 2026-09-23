@@ -439,6 +439,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
           results,
           context.game.initialChips,
           context.game.bbRate,
+          context.game.initialStackBb,
         )
         : "",
     shareUrl: `${url.origin}/r/${encodeResultCode(params.gameId)}`,
@@ -1024,6 +1025,7 @@ export default function GameParticipant({
         <>
           <LocalRulesSheet
             bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
+            initialStackBb={loaderData.game.initialStackBb}
             sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
           />
           {loaderData.game.settlementPlanPublishedAt && loaderData.game.costShares ? (
@@ -1066,6 +1068,7 @@ export default function GameParticipant({
                 : undefined
             }
             initialChips={loaderData.game.initialChips}
+            initialStackBb={loaderData.game.initialStackBb}
             linkPlayerProfiles={loaderData.canBrowseGroup}
             playedAt={loaderData.game.playedAt}
             payPay={loaderData.payPay}
@@ -1085,6 +1088,7 @@ export default function GameParticipant({
             <GameStories
               canPost={Boolean(loaderData.participant)}
               initialChips={loaderData.game.initialChips}
+              initialStackBb={loaderData.game.initialStackBb}
               isOrganizer={loaderData.isOrganizer}
               ownPhotoUrl={loaderData.ownStoryPhotoUrl}
               ownPost={loaderData.ownStoryPost}
@@ -1125,13 +1129,14 @@ export default function GameParticipant({
               <div>
                 <span className="participant-phase-label">プレイ中</span>
                 <h3>リバイ</h3>
-                <p>リバイと100BB返済を、その場で記録します。</p>
+                <p>リバイと{loaderData.game.initialStackBb}BB返済を、その場で記録します。</p>
               </div>
             </div>
             <RebuyTracker
               canRecord={loaderData.participant.status !== "locked"}
               fetcher={rebuyFetcher}
               onOptimistic={anticipateRebuy}
+              initialStackBb={loaderData.game.initialStackBb}
               outstandingRebuyCount={visibleRebuy.outstandingRebuyCount}
               totalRebuyCount={visibleRebuy.totalRebuyCount}
             />
@@ -1146,6 +1151,7 @@ export default function GameParticipant({
           ) : null}
           <LocalRulesSheet
             bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
+            initialStackBb={loaderData.game.initialStackBb}
             sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
           />
           {loaderData.game.settlementPlanPublishedAt && loaderData.game.costShares ? (
@@ -2019,9 +2025,11 @@ function FinalResultRefreshControl() {
 
 export function LocalRulesSheet({
   bombPotRuleEnabled,
+  initialStackBb = 100,
   sevenDeuceRuleEnabled,
 }: {
   bombPotRuleEnabled: boolean;
+  initialStackBb?: number;
   sevenDeuceRuleEnabled: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -2059,6 +2067,7 @@ export function LocalRulesSheet({
   const rules = buildLocalRules(
     sevenDeuceRuleEnabled,
     bombPotRuleEnabled,
+    initialStackBb,
   );
 
   return (
@@ -2239,12 +2248,14 @@ export function shouldShowLocalRules(status: GameStatus): boolean {
 function RebuyTracker({
   canRecord,
   fetcher,
+  initialStackBb,
   onOptimistic,
   outstandingRebuyCount,
   totalRebuyCount,
 }: {
   canRecord: boolean;
   fetcher: ReturnType<typeof useFetcher<RebuyActionData>>;
+  initialStackBb: number;
   onOptimistic: (
     commandId: string,
     intent: RebuyActionIntent,
@@ -2298,9 +2309,9 @@ function RebuyTracker({
 
   const feedbackMessage =
     undoableAction?.intent === "record-rebuy"
-      ? "直前：＋ リバイ"
+      ? `直前：＋ ${initialStackBb}BBリバイ`
       : undoableAction?.intent === "record-repayment"
-        ? "直前：100BB返済"
+        ? `直前：${initialStackBb}BB返済`
         : null;
 
   return (
@@ -2318,7 +2329,7 @@ function RebuyTracker({
           <span>未返済</span>
           <strong>
             {outstandingRebuyCount}口
-            <small> / {outstandingRebuyCount * 100}BB</small>
+            <small> / {outstandingRebuyCount * initialStackBb}BB</small>
           </strong>
         </div>
       </div>
@@ -2333,7 +2344,7 @@ function RebuyTracker({
             >
               {isPending && fetcher.formData?.get("intent") === "record-rebuy"
                 ? "記録中…"
-                : "＋ リバイ"}
+                : `＋ ${initialStackBb}BBリバイ`}
             </button>
             <button
               className="button button-secondary"
@@ -2344,7 +2355,7 @@ function RebuyTracker({
               {isPending &&
                 fetcher.formData?.get("intent") === "record-repayment"
                 ? "返済中…"
-                : "100BB返済"}
+                : `${initialStackBb}BB返済`}
             </button>
           </div>
           {result?.ok === false ? (

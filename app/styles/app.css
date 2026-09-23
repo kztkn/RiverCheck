@@ -4949,6 +4949,48 @@ input[aria-invalid="true"] {
   max-width: 340px;
 }
 
+.initial-stack-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.initial-stack-option {
+  position: relative;
+  display: grid;
+  cursor: pointer;
+}
+
+.initial-stack-option > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.initial-stack-option > span {
+  display: grid;
+  min-height: 46px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.initial-stack-option > input:checked + span {
+  border-color: rgba(233, 186, 90, 0.65);
+  background: rgba(233, 186, 90, 0.13);
+  color: #e9ba5a;
+}
+
+.initial-stack-option:has(input:focus-visible) > span {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
 .game-form .venue-cost-field {
   max-width: 340px;
 }

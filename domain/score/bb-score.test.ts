@@ -20,6 +20,24 @@ describe("BB score", () => {
     );
   });
 
+  it("50BB開始では同じチップ差分を50BB基準で換算する", () => {
+    expect(calculateChipsPerBb(20_000, 50)).toBe(400);
+    expect(
+      formatNetBb({
+        score: 40_000,
+        initialChips: 20_000,
+        initialStackBb: 50,
+      }),
+    ).toBe("+50BB");
+    expect(
+      formatNetBb({
+        score: 0,
+        initialChips: 20_000,
+        initialStackBb: 50,
+      }),
+    ).toBe("-50BB");
+  });
+
   it("損益BBを初期スタック0BB基準で表示する", () => {
     expect(formatNetBb({ score: 40_000, initialChips: 20_000 })).toBe(
       "+100BB",

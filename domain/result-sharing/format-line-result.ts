@@ -13,6 +13,7 @@ export function formatLineResult(
   results: LineResultEntry[],
   initialChips: number,
   bbRate = 0,
+  initialStackBb = 100,
 ): string {
   const settlementTotal = results.reduce(
     (sum, result) => sum + result.costShare,
@@ -28,11 +29,11 @@ export function formatLineResult(
             ? "🥉"
             : "";
     if (bbRate === 0) {
-      return `${medal}${result.rank}位：${result.displayName} ${formatNetBb({ score: result.score, initialChips })} ${formatNumber(result.costShare)}円`;
+      return `${medal}${result.rank}位：${result.displayName} ${formatNetBb({ score: result.score, initialChips, initialStackBb })} ${formatNumber(result.costShare)}円`;
     }
     const gameAmount = result.gameSettlementAmount ?? 0;
     const balance = gameAmount - result.costShare;
-    return `${medal}${result.rank}位：${result.displayName} ${formatNetBb({ score: result.score, initialChips })} 最終 ${formatSignedYen(balance)}（ゲーム ${formatSignedYen(gameAmount)} / 会費 -${formatNumber(result.costShare)}円）`;
+    return `${medal}${result.rank}位：${result.displayName} ${formatNetBb({ score: result.score, initialChips, initialStackBb })} 最終 ${formatSignedYen(balance)}（ゲーム ${formatSignedYen(gameAmount)} / 会費 -${formatNumber(result.costShare)}円）`;
   });
 
   return [

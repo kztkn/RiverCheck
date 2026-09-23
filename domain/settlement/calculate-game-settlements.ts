@@ -1,4 +1,8 @@
 import { assertNonNegativeSafeInteger } from "../shared/validation";
+import {
+  INITIAL_STACK_BB,
+  isSupportedInitialStackBb,
+} from "../score/bb-score";
 
 export const BB_RATE_OPTIONS = [0, 5, 10, 20] as const;
 export const SETTLEMENT_ROUNDING_UNIT = 100;
@@ -20,11 +24,15 @@ export function calculateRoundedGameSettlements(
   entries: GameSettlementEntry[],
   initialChips: number,
   bbRate: number,
+  initialStackBb = INITIAL_STACK_BB,
 ): RoundedGameSettlement[] {
   assertPositiveSafeInteger(initialChips, "initialChips");
   assertNonNegativeSafeInteger(bbRate, "bbRate");
   if (!isSupportedBbRate(bbRate)) {
     throw new RangeError("bbRate is not supported");
+  }
+  if (!isSupportedInitialStackBb(initialStackBb)) {
+    throw new RangeError("initialStackBb is not supported");
   }
 
   const validated = entries.map((entry) => {
@@ -50,11 +58,13 @@ export function calculateRoundedGameSettlements(
     throw new RangeError("game score total must be zero-sum");
   }
 
-  const denominator = initialChipsBigInt;
+  const denominator = initialChipsBigInt * 100n;
   const rounded = validated.map((entry) => {
-    // game yen / 100 = (score - initialChips) * bbRate / initialChips.
+    // game yen / 100 = net BB * bbRate / 100.
     const numerator =
-      (BigInt(entry.score) - initialChipsBigInt) * BigInt(bbRate);
+      (BigInt(entry.score) - initialChipsBigInt) *
+      BigInt(initialStackBb) *
+      BigInt(bbRate);
     const roundedUnits = roundRatioHalfAwayFromZero(numerator, denominator);
     return { entry, numerator, roundedUnits };
   });

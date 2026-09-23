@@ -14,6 +14,7 @@ import {
   findGameWithGroupByPublicCode,
   listGamesForGroupByPublicCode,
   updateLocalRules,
+  updateOpenGameIdentity,
   updateOpenGameTitle,
 } from "@server/repositories/game-repository.server";
 
@@ -37,6 +38,7 @@ describe("game repository navigation lookups", () => {
         group_public_code: "river-check",
         id: "game-1",
         initial_chips: "20000",
+        initial_stack_bb: 50,
         played_at: new Date("2026-09-21T03:00:00.000Z"),
         preview_participant_count: 8,
         rebuy_chips: "20000",
@@ -67,6 +69,7 @@ describe("game repository navigation lookups", () => {
         groupId: "group-1",
         id: "game-1",
         initialChips: 20000,
+        initialStackBb: 50,
         playedAt: "2026-09-21T03:00:00.000Z",
         status: "open",
         title: "9月の会",
@@ -206,6 +209,28 @@ describe("game repository open game management", () => {
       "game-1",
       "group-1",
       "9月のポーカー会",
+    ]);
+  });
+
+  it("受付中開催の開始スタックを開催名・日付と同時に変更する", async () => {
+    mocked.queryDatabase.mockResolvedValue({ rowCount: 1, rows: [] });
+
+    await expect(
+      updateOpenGameIdentity("group-1", "game-1", {
+        title: "9月のポーカー会",
+        playedAt: "2026-09-23T00:00:00.000Z",
+        initialStackBb: 50,
+      }),
+    ).resolves.toBe(true);
+
+    const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
+    expect(sql).toContain("initial_stack_bb = $5");
+    expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
+      "game-1",
+      "group-1",
+      "9月のポーカー会",
+      "2026-09-23T00:00:00.000Z",
+      50,
     ]);
   });
 

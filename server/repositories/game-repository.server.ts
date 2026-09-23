@@ -23,6 +23,7 @@ interface GameDetailsRow {
   status: GameStatus;
   group_id: string;
   initial_chips: string;
+  initial_stack_bb: number;
   rebuy_chips: string;
   preview_participant_count: number;
   venue_cost: string;
@@ -127,6 +128,7 @@ export async function findGameForGroup(
         played_at,
         status,
         initial_chips,
+        initial_stack_bb,
         rebuy_chips,
         preview_participant_count,
         venue_cost,
@@ -160,6 +162,7 @@ export async function findGameWithGroupByPublicCode(
         game.played_at,
         game.status,
         game.initial_chips,
+        game.initial_stack_bb,
         game.rebuy_chips,
         game.preview_participant_count,
         game.venue_cost,
@@ -230,6 +233,7 @@ export async function insertGame(
         played_at,
         status,
         initial_chips,
+        initial_stack_bb,
         rebuy_chips,
         venue_cost,
         rounding_unit,
@@ -242,7 +246,7 @@ export async function insertGame(
         seven_deuce_rule_enabled,
         bomb_pot_rule_enabled
       )
-      VALUES ($1, $2, $3, 'open', $4, $5, $6, 100, $7, $8, $9, $10, $11::BIGINT[], $12, $13, $14)
+      VALUES ($1, $2, $3, 'open', $4, $5, $6, $7, 100, $8, $9, $10, $11, $12::BIGINT[], $13, $14, $15)
       RETURNING id
     `,
     [
@@ -250,6 +254,7 @@ export async function insertGame(
       input.title,
       input.playedAt,
       input.initialChips,
+      input.initialStackBb,
       input.rebuyChips,
       input.venueCost,
       input.firstPlaceCost,
@@ -364,19 +369,20 @@ export async function updateOpenGameTitle(
 export async function updateOpenGameIdentity(
   groupId: string,
   gameId: string,
-  values: { title: string; playedAt: string },
+  values: { title: string; playedAt: string; initialStackBb: number },
 ): Promise<boolean> {
   const result = await queryDatabase(
     `
       UPDATE games
       SET title = $3,
           played_at = $4,
+          initial_stack_bb = $5,
           updated_at = NOW()
       WHERE id = $1
         AND group_id = $2
         AND status = 'open'
     `,
-    [gameId, groupId, values.title, values.playedAt],
+    [gameId, groupId, values.title, values.playedAt, values.initialStackBb],
   );
   return result.rowCount === 1;
 }
@@ -405,6 +411,7 @@ function mapGameDetails(row: GameDetailsRow): GameDetails {
     playedAt: row.played_at.toISOString(),
     status: row.status,
     initialChips: Number(row.initial_chips),
+    initialStackBb: row.initial_stack_bb,
     rebuyChips: Number(row.rebuy_chips),
     previewParticipantCount: row.preview_participant_count,
     venueCost: Number(row.venue_cost),

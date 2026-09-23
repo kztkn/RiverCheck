@@ -19,6 +19,7 @@ export function FinalResults({
   editUrl,
   bbRate = 0,
   initialChips,
+  initialStackBb = 100,
   linkPlayerProfiles = true,
   playedAt,
   payPay,
@@ -33,6 +34,7 @@ export function FinalResults({
   editUrl?: string;
   bbRate?: number;
   initialChips: number;
+  initialStackBb?: number;
   linkPlayerProfiles?: boolean;
   playedAt: string;
   payPay: { link: string; paymentAmount: number | null } | null;
@@ -177,9 +179,9 @@ export function FinalResults({
           </div>
           <div className="result-values result-winner-values">
             <b
-              className={`result-score result-score-${scoreTone(winner.score, initialChips)}`}
+              className={`result-score result-score-${scoreTone(winner.score, initialChips, initialStackBb)}`}
             >
-              {formatNetBb({ score: winner.score, initialChips })}
+              {formatNetBb({ score: winner.score, initialChips, initialStackBb })}
             </b>
             {showSettlementAmounts ? (
               <ResultSettlementAmount bbRate={bbRate} result={winner} />
@@ -213,9 +215,9 @@ export function FinalResults({
             </div>
             <div className="result-values">
               <strong
-                className={`result-score result-score-${scoreTone(result.score, initialChips)}`}
+                className={`result-score result-score-${scoreTone(result.score, initialChips, initialStackBb)}`}
               >
-                {formatNetBb({ score: result.score, initialChips })}
+                {formatNetBb({ score: result.score, initialChips, initialStackBb })}
               </strong>
               {showSettlementAmounts ? (
                 <ResultSettlementAmount bbRate={bbRate} result={result} />
@@ -246,7 +248,7 @@ export function FinalResults({
             </div>
           ) : null}
           <p className="bb-basis">
-            1BB = {formatChipsPerBb(initialChips)}チップ
+            {initialStackBb}BB開始 ・ 1BB = {formatChipsPerBb(initialChips, initialStackBb)}チップ
           </p>
           {bbRate > 0 ? (
             <p className="bb-basis">精算レート 1BB = {formatNumber(bbRate)}円</p>
@@ -256,6 +258,7 @@ export function FinalResults({
       <ResultRevisionHistory
         bbRate={bbRate}
         initialChips={initialChips}
+        initialStackBb={initialStackBb}
         revisions={revisions}
         showCostShareChanges={showSettlementAmounts}
       />
@@ -384,8 +387,9 @@ function ResultParticipantMeta({
 function scoreTone(
   score: number,
   initialChips: number,
+  initialStackBb = 100,
 ): "positive" | "negative" | "neutral" {
-  const netBb = calculateNetBb({ score, initialChips });
+  const netBb = calculateNetBb({ score, initialChips, initialStackBb });
   if (netBb > 0) return "positive";
   if (netBb < 0) return "negative";
   return "neutral";

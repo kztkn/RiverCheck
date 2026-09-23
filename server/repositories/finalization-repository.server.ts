@@ -20,6 +20,7 @@ interface GameRow {
   played_at: Date;
   status: GameStatus;
   initial_chips: string;
+  initial_stack_bb: number;
   rebuy_chips: string;
   preview_participant_count: number;
   venue_cost: string;
@@ -72,7 +73,7 @@ export async function lockGameForFinalization(
   const result = await transaction.query<GameRow>(
     `
       SELECT id, group_id, title, played_at, status, initial_chips,
-             rebuy_chips, preview_participant_count, venue_cost,
+             initial_stack_bb, rebuy_chips, preview_participant_count, venue_cost,
              first_place_cost, second_place_cost, third_place_cost,
              cost_shares, settlement_plan_published_at,
              bb_rate,
@@ -327,6 +328,7 @@ function mapGame(row: GameRow): GameDetails {
     playedAt: row.played_at.toISOString(),
     status: row.status,
     initialChips: Number(row.initial_chips),
+    initialStackBb: row.initial_stack_bb,
     rebuyChips: Number(row.rebuy_chips),
     previewParticipantCount: row.preview_participant_count,
     venueCost: Number(row.venue_cost),

@@ -16,13 +16,13 @@
 
 ## 損益BB
 
-初期チップを100BBとして、開催ごとに次で計算する。
+開催ごとの開始スタックBB（50または100）を使って計算する。
 
 ```text
 score        = remaining_chips - settlement_rebuy_count × rebuy_chips
 profit_chips = score - initial_chips
-net_bb       = profit_chips ÷ (initial_chips ÷ 100)
-             = (score - initial_chips) × 100 ÷ initial_chips
+net_bb       = profit_chips ÷ (initial_chips ÷ initial_stack_bb)
+             = (score - initial_chips) × initial_stack_bb ÷ initial_chips
 ```
 
 確定結果画面、共有文、個人戦績はすべて同じ損益BBを使用する。`initial_chips`は開催作成時に正の整数として検証する。万一0以下の確定済みデータが存在した場合は黙って除外せず、集計エラーとして検出する。

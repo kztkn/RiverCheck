@@ -19,6 +19,7 @@ import { notifyNewGameCreated } from "@server/services/push-notification-service
 
 import { validateCostSharePlan } from "@domain/cost-sharing/validate-cost-share-plan";
 import { isSupportedBbRate } from "@domain/settlement/calculate-game-settlements";
+import { isSupportedInitialStackBb } from "@domain/score/bb-score";
 
 const JST_OFFSET_MILLISECONDS = 9 * 60 * 60 * 1_000;
 const LOCAL_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -27,6 +28,7 @@ export interface GameSettingsFormValues {
   title: string;
   playedAt: string;
   initialChips: string;
+  initialStackBb: string;
   venueCost: string;
   firstPlaceCost: string;
   secondPlaceCost: string;
@@ -41,6 +43,7 @@ export interface GameSettingsFormValues {
 export interface GameIdentityFormValues {
   title: string;
   playedAt: string;
+  initialStackBb: string;
 }
 
 export type GameIdentityFormErrors = Partial<
@@ -76,6 +79,7 @@ export function readGameIdentityForm(
   return {
     title: readString(formData, "title"),
     playedAt: readString(formData, "playedAt"),
+    initialStackBb: readString(formData, "initialStackBb"),
   };
 }
 
@@ -86,6 +90,7 @@ export function readGameSettingsForm(
     title: readString(formData, "title"),
     playedAt: readString(formData, "playedAt"),
     initialChips: readString(formData, "initialChips"),
+    initialStackBb: readString(formData, "initialStackBb"),
     venueCost: readString(formData, "venueCost"),
     firstPlaceCost: readString(formData, "firstPlaceCost"),
     secondPlaceCost: readString(formData, "secondPlaceCost"),
@@ -209,7 +214,7 @@ export async function removeOpenGameForGroup(
 }
 
 export function validateGameIdentityForm(values: GameIdentityFormValues):
-  | { ok: true; input: { title: string; playedAt: string } }
+  | { ok: true; input: { title: string; playedAt: string; initialStackBb: number } }
   | { ok: false; errors: GameIdentityFormErrors } {
   const errors: GameIdentityFormErrors = {};
   const title = values.title.trim();
@@ -221,12 +226,16 @@ export function validateGameIdentityForm(values: GameIdentityFormValues):
   if (!playedAt) {
     errors.playedAt = "有効な開催日を入力してください。";
   }
+  const initialStackBb = Number(values.initialStackBb || "100");
+  if (!isSupportedInitialStackBb(initialStackBb)) {
+    errors.initialStackBb = "開始スタックは50BBまたは100BBを選んでください。";
+  }
 
   if (Object.keys(errors).length > 0 || !playedAt) {
     return { ok: false, errors };
   }
 
-  return { ok: true, input: { title, playedAt } };
+  return { ok: true, input: { title, playedAt, initialStackBb } };
 }
 
 export function validateGameSettingsForm(
@@ -251,6 +260,17 @@ export function validateGameSettingsForm(
     "initialChips",
     errors,
   );
+  const initialStackBb = parsePositiveInteger(
+    values.initialStackBb || "100",
+    "initialStackBb",
+    errors,
+  );
+  if (
+    initialStackBb !== null &&
+    !isSupportedInitialStackBb(initialStackBb)
+  ) {
+    errors.initialStackBb = "開始スタックは50BBまたは100BBを選んでください。";
+  }
   const venueCost = parseNonNegativeInteger(
     values.venueCost,
     "venueCost",
@@ -376,6 +396,7 @@ export function validateGameSettingsForm(
       title,
       playedAt,
       initialChips: initialChips!,
+      initialStackBb: initialStackBb!,
       rebuyChips: initialChips!,
       previewParticipantCount: previewParticipantCount!,
       venueCost: venueCost!,

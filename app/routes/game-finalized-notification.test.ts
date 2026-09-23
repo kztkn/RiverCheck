@@ -53,6 +53,7 @@ const settings = {
   title: "8月のポーカー会",
   playedAt: "2026-08-30T00:00:00.000Z",
   initialChips: 20_000,
+  initialStackBb: 100,
   rebuyChips: 10_000,
   previewParticipantCount: 4,
   venueCost: 10_000,

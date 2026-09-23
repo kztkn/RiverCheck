@@ -25,4 +25,13 @@ describe("buildLocalRules", () => {
       ]),
     );
   });
+
+  it("50BB開始では返済単位も50BBとして案内する", () => {
+    expect(buildLocalRules(true, true, 50)[0]).toMatchObject({
+      title: "50BB返済ルール",
+      steps: expect.arrayContaining([
+        { label: "150BB超", text: "任意で50BBを返済できます" },
+      ]),
+    });
+  });
 });

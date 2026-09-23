@@ -103,11 +103,12 @@ export async function listAchievementHistoryGames(
           game_result.tracked_outstanding_rebuy_count,
           game_result.settlement_rebuy_count,
           game.initial_chips,
+          game.initial_stack_bb,
           game.played_at,
           game.finalized_at,
           CASE
             WHEN game.initial_chips > 0 THEN
-              ((game_result.score - game.initial_chips)::NUMERIC * 100)
+              ((game_result.score - game.initial_chips)::NUMERIC * game.initial_stack_bb)
                 / game.initial_chips
             ELSE NULL
           END AS net_bb

@@ -57,7 +57,7 @@ interface AttachedRebuy {
   event: RebuyTimelineEvent;
 }
 
-export function GameTimeline() {
+export function GameTimeline({ initialStackBb = 100 }: { initialStackBb?: number }) {
   const [events, setEvents] = useState<GameTimelineEventView[]>([]);
   const timelinePath =
     typeof window === "undefined"
@@ -88,13 +88,15 @@ export function GameTimeline() {
     return () => controller.abort();
   }, [timelinePath]);
 
-  return <GameTimelineView events={events} />;
+  return <GameTimelineView events={events} initialStackBb={initialStackBb} />;
 }
 
 export function GameTimelineView({
   events,
+  initialStackBb = 100,
 }: {
   events: GameTimelineEventView[];
+  initialStackBb?: number;
 }) {
   const relatedRebuys = useMemo(() => attachNearbyRebuys(events), [events]);
   const attachedRebuyIds = new Set(relatedRebuys.map((item) => item.event.id));
@@ -118,6 +120,7 @@ export function GameTimelineView({
         {visibleEvents.map((event) => (
           <TimelineItem
             event={event}
+            initialStackBb={initialStackBb}
             key={event.id}
             relatedRebuy={
               event.type === "all_in"
@@ -133,9 +136,11 @@ export function GameTimelineView({
 
 function TimelineItem({
   event,
+  initialStackBb,
   relatedRebuy,
 }: {
   event: GameTimelineEventView;
+  initialStackBb: number;
   relatedRebuy: RebuyTimelineEvent | null;
 }) {
   const isHighlight =
@@ -166,7 +171,7 @@ function TimelineItem({
           />
           <div>
             <strong>{event.displayName}</strong>
-            <p>{event.type === "rebuy" ? "リバイ" : "100BB返済"}</p>
+            <p>{event.type === "rebuy" ? `${initialStackBb}BBリバイ` : `${initialStackBb}BB返済`}</p>
           </div>
         </div>
       ) : event.type === "seven_deuce" ? (

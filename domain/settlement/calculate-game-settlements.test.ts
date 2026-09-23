@@ -38,6 +38,23 @@ describe("calculateRoundedGameSettlements", () => {
     expect(results.map((result) => result.gameSettlementAmount)).toEqual([0, 0, 0]);
   });
 
+  it("50BB開始は同じチップ差分を50BB基準で精算する", () => {
+    const results = calculateRoundedGameSettlements(
+      [
+        { groupPlayerId: "a", score: 40_000 },
+        { groupPlayerId: "b", score: 0 },
+      ],
+      20_000,
+      10,
+      50,
+    );
+
+    expect(results.map((result) => result.gameSettlementAmount)).toEqual([
+      500,
+      -500,
+    ]);
+  });
+
   it("bbRate 0では差分があっても全員0円にする", () => {
     expect(
       calculateRoundedGameSettlements(

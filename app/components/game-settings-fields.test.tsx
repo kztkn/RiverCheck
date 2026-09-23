@@ -7,6 +7,7 @@ const baseValues: GameSettingsValues = {
   title: "テスト開催",
   playedAt: "2026-08-29",
   initialChips: "20000",
+  initialStackBb: "100",
   venueCost: "12000",
   firstPlaceCost: "0",
   secondPlaceCost: "500",
@@ -19,6 +20,20 @@ const baseValues: GameSettingsValues = {
 };
 
 describe("GameSettingsFields local rules", () => {
+  it("開始スタックは50BBと100BBから選べる", () => {
+    const markup = renderToStaticMarkup(
+      createElement(GameSettingsFields, {
+        errors: {},
+        values: { ...baseValues, initialStackBb: "50" },
+      }),
+    );
+
+    expect(markup).toContain('aria-label="開始スタック"');
+    expect(markup).toContain('checked="" value="50"');
+    expect(markup).toContain('value="100"');
+    expect(markup).toContain("リバイも開始時と同じチップ枚数・BBです。");
+  });
+
   it("ローカルルールを初期状態では閉じ、現在のON/OFFを要約表示する", () => {
     const markup = renderToStaticMarkup(
       createElement(GameSettingsFields, { errors: {}, values: baseValues }),
