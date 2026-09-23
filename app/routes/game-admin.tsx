@@ -45,8 +45,7 @@ import {
   validateGameSettingsForm,
 } from "@server/services/game-service.server";
 import {
-  INITIAL_STACK_BB_OPTIONS,
-  calculateBlindStructure,
+  calculateInitialStackBb,
   formatChipValue,
 } from "@domain/score/bb-score";
 import { GAME_TITLE_MAX_LENGTH } from "@domain/game/game-title";
@@ -272,7 +271,9 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "save-game-configuration") {
     const values = {
       initialChips: readString(formData, "initialChips"),
-      initialStackBb: readString(formData, "initialStackBb"),
+      smallBlindChips: readString(formData, "smallBlindChips"),
+      bigBlindChips: readString(formData, "bigBlindChips"),
+      bigBlindAnteChips: readString(formData, "bigBlindAnteChips"),
     };
     try {
       const result = await updateOpenGameConfigurationForGroup(
@@ -554,8 +555,12 @@ export default function GameAdmin({
   const [settlementBbRate, setSettlementBbRate] = useState(values.bbRate);
   const [gameConfigurationInitialChips, setGameConfigurationInitialChips] =
     useState(String(loaderData.game.initialChips));
-  const [gameConfigurationInitialStackBb, setGameConfigurationInitialStackBb] =
-    useState(String(loaderData.game.initialStackBb));
+  const [gameConfigurationSmallBlind, setGameConfigurationSmallBlind] =
+    useState(String(loaderData.game.smallBlindChips));
+  const [gameConfigurationBigBlind, setGameConfigurationBigBlind] =
+    useState(String(loaderData.game.bigBlindChips));
+  const [gameConfigurationBigBlindAnte, setGameConfigurationBigBlindAnte] =
+    useState(String(loaderData.game.bigBlindAnteChips));
   const [publishFailureCount, setPublishFailureCount] = useState(0);
   const [persistentPublishError, setPersistentPublishError] = useState<string | null>(null);
   const [optimisticallyRemoved, setOptimisticallyRemoved] = useState<{
@@ -680,13 +685,11 @@ export default function GameAdmin({
   const inputProgressPercent = visibleParticipants.length === 0
     ? 0
     : Math.round((submittedCount / visibleParticipants.length) * 100);
-  const savedBlindStructure = calculateBlindStructure(
-    loaderData.game.initialChips,
-    loaderData.game.initialStackBb,
-  );
   const draftBlindStructure = getBlindStructurePreview(
     gameConfigurationInitialChips,
-    gameConfigurationInitialStackBb,
+    gameConfigurationSmallBlind,
+    gameConfigurationBigBlind,
+    gameConfigurationBigBlindAnte,
   );
 
   useEffect(() => {
@@ -2127,7 +2130,9 @@ function gameToFormValues(game: Route.ComponentProps["loaderData"]["game"]) {
     title: game.title,
     playedAt: localDate,
     initialChips: String(game.initialChips),
-    initialStackBb: String(game.initialStackBb),
+    smallBlindChips: String(game.smallBlindChips),
+    bigBlindChips: String(game.bigBlindChips),
+    bigBlindAnteChips: String(game.bigBlindAnteChips),
     venueCost: String(game.venueCost),
     firstPlaceCost: String(game.firstPlaceCost),
     secondPlaceCost: String(game.secondPlaceCost),
@@ -2172,20 +2177,37 @@ function readAdminCostSettingsForm(
 
 function getBlindStructurePreview(
   initialChipsValue: string,
-  initialStackBbValue: string,
+  smallBlindValue: string,
+  bigBlindValue: string,
+  bigBlindAnteValue: string,
 ) {
   const initialChips = Number(initialChipsValue);
-  const initialStackBb = Number(initialStackBbValue);
+  const smallBlindChips = Number(smallBlindValue);
+  const bigBlindChips = Number(bigBlindValue);
+  const bigBlindAnteChips = Number(bigBlindAnteValue);
   if (
     !Number.isSafeInteger(initialChips) ||
     initialChips <= 0 ||
-    !INITIAL_STACK_BB_OPTIONS.includes(
-      initialStackBb as (typeof INITIAL_STACK_BB_OPTIONS)[number],
-    )
+    !Number.isSafeInteger(smallBlindChips) ||
+    smallBlindChips <= 0 ||
+    !Number.isSafeInteger(bigBlindChips) ||
+    bigBlindChips <= smallBlindChips ||
+    !Number.isSafeInteger(bigBlindAnteChips) ||
+    bigBlindAnteChips < 0
   ) {
     return null;
   }
-  return calculateBlindStructure(initialChips, initialStackBb);
+  try {
+    return {
+      initialChips,
+      smallBlindChips,
+      bigBlindChips,
+      bigBlindAnteChips,
+      initialStackBb: calculateInitialStackBb(initialChips, bigBlindChips),
+    };
+  } catch {
+    return null;
+  }
 }
 
 function parseNonNegativeInteger(value: string): number | null {
