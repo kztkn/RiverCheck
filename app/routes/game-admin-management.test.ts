@@ -164,21 +164,28 @@ describe("game admin management action", () => {
     );
   });
 
-  it("初期チップと開始BBをゲーム設定として保存する", async () => {
+  it("初期チップと実卓ブラインドをゲーム設定として保存する", async () => {
     mocked.updateOpenGameConfigurationForGroup.mockResolvedValue({ ok: true });
 
     const result = await action(
       actionArgs({
         intent: "save-game-configuration",
-        initialChips: "10000",
-        initialStackBb: "50",
+        initialChips: "500",
+        smallBlindChips: "10",
+        bigBlindChips: "20",
+        bigBlindAnteChips: "20",
       }),
     );
 
     expect(mocked.updateOpenGameConfigurationForGroup).toHaveBeenCalledWith(
       group.id,
       game.id,
-      { initialChips: "10000", initialStackBb: "50" },
+      {
+        initialChips: "500",
+        smallBlindChips: "10",
+        bigBlindChips: "20",
+        bigBlindAnteChips: "20",
+      },
       false,
     );
     expect(result).toEqual({
@@ -193,8 +200,10 @@ describe("game admin management action", () => {
     await action(
       actionArgs({
         intent: "save-game-configuration",
-        initialChips: "10000",
-        initialStackBb: "50",
+        initialChips: "500",
+        smallBlindChips: "10",
+        bigBlindChips: "20",
+        bigBlindAnteChips: "20",
         confirmExistingActivity: "yes",
       }),
     );
@@ -202,7 +211,12 @@ describe("game admin management action", () => {
     expect(mocked.updateOpenGameConfigurationForGroup).toHaveBeenCalledWith(
       group.id,
       game.id,
-      { initialChips: "10000", initialStackBb: "50" },
+      {
+        initialChips: "500",
+        smallBlindChips: "10",
+        bigBlindChips: "20",
+        bigBlindAnteChips: "20",
+      },
       true,
     );
   });
