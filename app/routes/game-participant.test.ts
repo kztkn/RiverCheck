@@ -1010,7 +1010,7 @@ describe("LocalRulesSheet", () => {
     expect(html).toContain("<small>SB</small><strong>10</strong>");
     expect(html).toContain("<small>BB</small><strong>20</strong>");
     expect(html).toContain("<small>BBA</small><strong>20</strong>");
-    expect(html).toContain("初期 500チップ ・1BB = 20チップ");
+    expect(html).toContain("初期 500チップ ・ 1BB = 20チップ");
   });
 
   it("開催設定が無効なら72oルールをOFFと表示する", () => {
