@@ -1520,15 +1520,16 @@ export default function GameAdmin({
               </div>
               <span className="local-rules-summary-status">
                 {loaderData.game.initialChips.toLocaleString("ja-JP")}チップ ・{" "}
-                {loaderData.game.initialStackBb}BB開始 ・ SB{" "}
-                {formatChipValue(savedBlindStructure.smallBlindChips)} / BB{" "}
-                {formatChipValue(savedBlindStructure.bigBlindChips)}
+                {loaderData.game.initialStackBb}BB ・ SB{" "}
+                {formatChipValue(loaderData.game.smallBlindChips)} / BB{" "}
+                {formatChipValue(loaderData.game.bigBlindChips)} / BBA{" "}
+                {formatChipValue(loaderData.game.bigBlindAnteChips)}
               </span>
               <span aria-hidden="true" className="local-rules-summary-chevron">›</span>
             </summary>
             <div className="local-rules-disclosure-body">
               <p className="local-rules-description">
-                初期チップと開始BBを設定します。リバイも同じチップ枚数・BBへ自動で揃います。
+                初期チップと実卓のSB / BB / BBAを設定します。開始スタックBBはBBから自動計算します。
               </p>
               <label className="field">
                 <span className="field-label">初期チップ</span>
@@ -1554,49 +1555,97 @@ export default function GameAdmin({
                   </span>
                 ) : null}
               </label>
-              <fieldset className="field">
-                <legend className="field-label">開始スタック</legend>
-                <div aria-label="開始スタック" className="initial-stack-options">
-                  {INITIAL_STACK_BB_OPTIONS.map((stackBb) => (
-                    <label className="initial-stack-option" key={stackBb}>
-                      <input
-                        checked={
-                          Number(gameConfigurationInitialStackBb) === stackBb
-                        }
-                        name="initialStackBb"
-                        onChange={() =>
-                          setGameConfigurationInitialStackBb(String(stackBb))
-                        }
-                        type="radio"
-                        value={stackBb}
-                      />
-                      <span>{stackBb}BB</span>
-                    </label>
-                  ))}
-                </div>
-                {gameConfigurationError?.errors.initialStackBb ? (
-                  <span className="field-error">
-                    {gameConfigurationError.errors.initialStackBb}
-                  </span>
-                ) : null}
-              </fieldset>
+              <div className="blind-input-grid">
+                <label className="field">
+                  <span className="field-label">SB</span>
+                  <input
+                    aria-invalid={
+                      gameConfigurationError?.errors.smallBlindChips
+                        ? true
+                        : undefined
+                    }
+                    inputMode="numeric"
+                    min={1}
+                    name="smallBlindChips"
+                    onChange={(event) =>
+                      setGameConfigurationSmallBlind(event.target.value)
+                    }
+                    required
+                    type="number"
+                    value={gameConfigurationSmallBlind}
+                  />
+                  {gameConfigurationError?.errors.smallBlindChips ? (
+                    <span className="field-error">
+                      {gameConfigurationError.errors.smallBlindChips}
+                    </span>
+                  ) : null}
+                </label>
+                <label className="field">
+                  <span className="field-label">BB</span>
+                  <input
+                    aria-invalid={
+                      gameConfigurationError?.errors.bigBlindChips
+                        ? true
+                        : undefined
+                    }
+                    inputMode="numeric"
+                    min={1}
+                    name="bigBlindChips"
+                    onChange={(event) =>
+                      setGameConfigurationBigBlind(event.target.value)
+                    }
+                    required
+                    type="number"
+                    value={gameConfigurationBigBlind}
+                  />
+                  {gameConfigurationError?.errors.bigBlindChips ? (
+                    <span className="field-error">
+                      {gameConfigurationError.errors.bigBlindChips}
+                    </span>
+                  ) : null}
+                </label>
+                <label className="field">
+                  <span className="field-label">BBA</span>
+                  <input
+                    aria-invalid={
+                      gameConfigurationError?.errors.bigBlindAnteChips
+                        ? true
+                        : undefined
+                    }
+                    inputMode="numeric"
+                    min={0}
+                    name="bigBlindAnteChips"
+                    onChange={(event) =>
+                      setGameConfigurationBigBlindAnte(event.target.value)
+                    }
+                    required
+                    type="number"
+                    value={gameConfigurationBigBlindAnte}
+                  />
+                  {gameConfigurationError?.errors.bigBlindAnteChips ? (
+                    <span className="field-error">
+                      {gameConfigurationError.errors.bigBlindAnteChips}
+                    </span>
+                  ) : null}
+                </label>
+              </div>
+              <p className="field-hint">BBAなしなら0。</p>
               <div aria-live="polite" className="blind-structure-preview">
                 <div className="blind-structure-heading">
-                  <span>今回のブラインド</span>
-                  <small>SB / BB / BBA</small>
+                  <span>今回のゲーム構成</span>
+                  <small>STACK / BLINDS</small>
                 </div>
                 {draftBlindStructure ? (
                   <>
                     <div className="blind-structure-values">
                       <span>
-                        <small>SB</small>
-                        <strong>
-                          {formatChipValue(draftBlindStructure.smallBlindChips)}
-                        </strong>
+                        <small>START</small>
+                        <strong>{draftBlindStructure.initialStackBb}BB</strong>
                       </span>
                       <span>
-                        <small>BB</small>
+                        <small>BLINDS</small>
                         <strong>
+                          {formatChipValue(draftBlindStructure.smallBlindChips)} /{" "}
                           {formatChipValue(draftBlindStructure.bigBlindChips)}
                         </strong>
                       </span>
@@ -1608,12 +1657,16 @@ export default function GameAdmin({
                       </span>
                     </div>
                     <p>
-                      1BB = {formatChipValue(draftBlindStructure.bigBlindChips)}
-                      チップ。実卓のブラインドと一致しているか開始前に確認してください。
+                      初期 {formatChipValue(draftBlindStructure.initialChips)}チップ ÷
+                      BB {formatChipValue(draftBlindStructure.bigBlindChips)} =
+                      {draftBlindStructure.initialStackBb}BB。リバイも同じ
+                      {draftBlindStructure.initialStackBb}BBです。
                     </p>
                   </>
                 ) : (
-                  <p>初期チップと開始スタックを設定するとブラインドを表示します。</p>
+                  <p>
+                    初期チップはBBの整数倍にし、SBはBBより小さく設定してください。
+                  </p>
                 )}
               </div>
               {gameConfigurationError?.confirmationRequired ? (
