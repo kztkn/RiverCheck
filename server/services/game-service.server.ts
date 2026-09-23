@@ -20,7 +20,7 @@ import { notifyNewGameCreated } from "@server/services/push-notification-service
 
 import { validateCostSharePlan } from "@domain/cost-sharing/validate-cost-share-plan";
 import { isSupportedBbRate } from "@domain/settlement/calculate-game-settlements";
-import { isSupportedInitialStackBb } from "@domain/score/bb-score";
+import { calculateInitialStackBb } from "@domain/score/bb-score";
 
 const JST_OFFSET_MILLISECONDS = 9 * 60 * 60 * 1_000;
 const LOCAL_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -29,7 +29,9 @@ export interface GameSettingsFormValues {
   title: string;
   playedAt: string;
   initialChips: string;
-  initialStackBb: string;
+  smallBlindChips: string;
+  bigBlindChips: string;
+  bigBlindAnteChips: string;
   venueCost: string;
   firstPlaceCost: string;
   secondPlaceCost: string;
@@ -52,7 +54,9 @@ export type GameIdentityFormErrors = Partial<
 
 export interface GameConfigurationFormValues {
   initialChips: string;
-  initialStackBb: string;
+  smallBlindChips: string;
+  bigBlindChips: string;
+  bigBlindAnteChips: string;
 }
 
 export type GameConfigurationFormErrors = Partial<
@@ -98,7 +102,9 @@ export function readGameSettingsForm(
     title: readString(formData, "title"),
     playedAt: readString(formData, "playedAt"),
     initialChips: readString(formData, "initialChips"),
-    initialStackBb: readString(formData, "initialStackBb"),
+    smallBlindChips: readString(formData, "smallBlindChips"),
+    bigBlindChips: readString(formData, "bigBlindChips"),
+    bigBlindAnteChips: readString(formData, "bigBlindAnteChips"),
     venueCost: readString(formData, "venueCost"),
     firstPlaceCost: readString(formData, "firstPlaceCost"),
     secondPlaceCost: readString(formData, "secondPlaceCost"),
@@ -211,7 +217,9 @@ export async function updateOpenGameConfigurationForGroup(
       errors: validation.errors,
       error:
         validation.errors.initialChips ??
-        validation.errors.initialStackBb ??
+        validation.errors.smallBlindChips ??
+        validation.errors.bigBlindChips ??
+        validation.errors.bigBlindAnteChips ??
         "ゲーム設定を確認してください。",
     };
   }
@@ -290,35 +298,26 @@ export function validateGameIdentityForm(values: GameIdentityFormValues):
   return { ok: true, input: { title, playedAt } };
 }
 
-export function validateGameConfigurationForm(values: GameConfigurationFormValues):
-  | { ok: true; input: { initialChips: number; initialStackBb: number } }
+export function validateGameConfigurationForm(
+  values: GameConfigurationFormValues,
+):
+  | {
+      ok: true;
+      input: {
+        initialChips: number;
+        smallBlindChips: number;
+        bigBlindChips: number;
+        bigBlindAnteChips: number;
+        initialStackBb: number;
+      };
+    }
   | { ok: false; errors: GameConfigurationFormErrors } {
   const errors: GameConfigurationFormErrors = {};
-  const initialChips = parsePositiveInteger(
-    values.initialChips,
-    "initialChips",
-    errors,
-  );
-  const initialStackBb = parsePositiveInteger(
-    values.initialStackBb,
-    "initialStackBb",
-    errors,
-  );
-  if (
-    initialStackBb !== null &&
-    !isSupportedInitialStackBb(initialStackBb)
-  ) {
-    errors.initialStackBb = "開始スタックは50BBまたは100BBを選んでください。";
-  }
-
-  if (
-    Object.keys(errors).length > 0 ||
-    initialChips === null ||
-    initialStackBb === null
-  ) {
+  const blinds = parseBlindConfiguration(values, errors);
+  if (!blinds || Object.keys(errors).length > 0) {
     return { ok: false, errors };
   }
-  return { ok: true, input: { initialChips, initialStackBb } };
+  return { ok: true, input: blinds };
 }
 
 export function validateGameSettingsForm(
@@ -338,22 +337,8 @@ export function validateGameSettingsForm(
     errors.playedAt = "有効な開催日を入力してください。";
   }
 
-  const initialChips = parsePositiveInteger(
-    values.initialChips,
-    "initialChips",
-    errors,
-  );
-  const initialStackBb = parsePositiveInteger(
-    values.initialStackBb || "100",
-    "initialStackBb",
-    errors,
-  );
-  if (
-    initialStackBb !== null &&
-    !isSupportedInitialStackBb(initialStackBb)
-  ) {
-    errors.initialStackBb = "開始スタックは50BBまたは100BBを選んでください。";
-  }
+  const blinds = parseBlindConfiguration(values, errors);
+  const initialChips = blinds?.initialChips ?? null;
   const venueCost = parseNonNegativeInteger(
     values.venueCost,
     "venueCost",
@@ -479,7 +464,10 @@ export function validateGameSettingsForm(
       title,
       playedAt,
       initialChips: initialChips!,
-      initialStackBb: initialStackBb!,
+      smallBlindChips: blinds!.smallBlindChips,
+      bigBlindChips: blinds!.bigBlindChips,
+      bigBlindAnteChips: blinds!.bigBlindAnteChips,
+      initialStackBb: blinds!.initialStackBb,
       rebuyChips: initialChips!,
       previewParticipantCount: previewParticipantCount!,
       venueCost: venueCost!,
@@ -491,6 +479,78 @@ export function validateGameSettingsForm(
       sevenDeuceRuleEnabled: values.sevenDeuceRuleEnabled,
       bombPotRuleEnabled: values.bombPotRuleEnabled,
     },
+  };
+}
+
+function parseBlindConfiguration(
+  values: Pick<
+    GameConfigurationFormValues,
+    "initialChips" | "smallBlindChips" | "bigBlindChips" | "bigBlindAnteChips"
+  >,
+  errors: Partial<Record<string, string>>,
+): {
+  initialChips: number;
+  smallBlindChips: number;
+  bigBlindChips: number;
+  bigBlindAnteChips: number;
+  initialStackBb: number;
+} | null {
+  const initialChips = parsePositiveInteger(
+    values.initialChips,
+    "initialChips",
+    errors,
+  );
+  const smallBlindChips = parsePositiveInteger(
+    values.smallBlindChips,
+    "smallBlindChips",
+    errors,
+  );
+  const bigBlindChips = parsePositiveInteger(
+    values.bigBlindChips,
+    "bigBlindChips",
+    errors,
+  );
+  const bigBlindAnteChips = parseNonNegativeInteger(
+    values.bigBlindAnteChips,
+    "bigBlindAnteChips",
+    errors,
+  );
+
+  if (
+    smallBlindChips !== null &&
+    bigBlindChips !== null &&
+    smallBlindChips >= bigBlindChips
+  ) {
+    errors.smallBlindChips = "SBはBBより小さいチップ数にしてください。";
+  }
+
+  let initialStackBb: number | null = null;
+  if (initialChips !== null && bigBlindChips !== null) {
+    try {
+      initialStackBb = calculateInitialStackBb(initialChips, bigBlindChips);
+    } catch {
+      errors.bigBlindChips =
+        "初期チップがBBの整数倍になるように設定してください。";
+    }
+  }
+
+  if (
+    Object.keys(errors).length > 0 ||
+    initialChips === null ||
+    smallBlindChips === null ||
+    bigBlindChips === null ||
+    bigBlindAnteChips === null ||
+    initialStackBb === null
+  ) {
+    return null;
+  }
+
+  return {
+    initialChips,
+    smallBlindChips,
+    bigBlindChips,
+    bigBlindAnteChips,
+    initialStackBb,
   };
 }
 
@@ -515,8 +575,8 @@ function readStrings(formData: FormData, name: string): string[] {
 
 function parseNonNegativeInteger(
   value: string,
-  field: keyof GameSettingsFormErrors,
-  errors: GameSettingsFormErrors,
+  field: string,
+  errors: Partial<Record<string, string>>,
 ): number | null {
   const normalized = value.trim();
   if (!/^\d+$/.test(normalized)) {
@@ -535,8 +595,8 @@ function parseNonNegativeInteger(
 
 function parsePositiveInteger(
   value: string,
-  field: keyof GameSettingsFormErrors,
-  errors: GameSettingsFormErrors,
+  field: string,
+  errors: Partial<Record<string, string>>,
 ): number | null {
   const parsed = parseNonNegativeInteger(value, field, errors);
   if (parsed === 0) {
@@ -548,8 +608,8 @@ function parsePositiveInteger(
 
 function validateRoundedCost(
   value: number | null,
-  field: keyof GameSettingsFormErrors,
-  errors: GameSettingsFormErrors,
+  field: string,
+  errors: Partial<Record<string, string>>,
 ): void {
   if (value !== null && value % COST_ROUNDING_UNIT !== 0) {
     errors[field] = "100円単位で入力してください。";
