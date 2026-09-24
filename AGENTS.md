@@ -77,4 +77,7 @@ npm run build
 - commit、push、デプロイはユーザーから依頼された範囲でのみ行う。
 - commit前に差分を確認し、今回の作業と無関係な変更を含めない。
 - `git push` の前に必ず `npm run build` の成功を確認する。
+- ChatGPT WorkでGitHub連携のGit Data API（blob、tree、commit、ref更新）が利用できる場合、main反映はHTTPSの`git push`ではなくGitHub連携を使用する。このリポジトリの実行環境にはpush用のGitHub資格情報がないことがあるため、`git push`の認証失敗を作業完了の停止理由にしない。
+- GitHub連携でmainへ反映する場合も、開始時に取得した`origin/main`とGitHub上の現在のmain SHAが一致することを確認する。変更ファイルからblobとbase tree付きtreeを作成し、そのSHAを親にcommitを作り、`force: false`でmain refを更新する。mainが進んでいた場合は更新せず、最新mainから再構成する。
+- GitHub連携が利用できず、通常の`git push`にも認証情報がない場合だけ、main反映を停止してユーザーへ報告する。
 - 既定のデプロイ先は Cloudflare Workers である。

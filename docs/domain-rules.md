@@ -283,8 +283,9 @@ TOP3回数は確定結果で3位以内に入った開催数とし、個人詳細
 
 ## 精算予定の公開
 
-- settlement_plan_published_at が設定されている open 開催だけ、参加者へ games の venue_cost / preview_participant_count / cost_shares を公開する。
+- settlement_plan_published_at が設定されている open 開催だけ、参加者へ games の venue_cost / preview_participant_count / cost_shares / bb_rate を公開する。
 - 公開操作は精算ドラフトを検証後に保存し、編集中の localStorage 値は共有しない。
+- 参加者向け表示では`bb_rate > 0`なら「1BB = ○円」、`bb_rate = 0`なら「ゲーム収支なし（会費のみ）」を明示し、行自体を省略しない。
 - 最終確定時は従来どおり最新の精算設定で games と game_results を確定する。
 
 ### 2人・3人開催

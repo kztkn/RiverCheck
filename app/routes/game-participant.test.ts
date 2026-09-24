@@ -205,7 +205,10 @@ describe("game participant route", () => {
     );
     mocked.isOrganizerAuthenticated.mockResolvedValue(false);
     mocked.getGameManagementActor.mockResolvedValue(null);
-    mocked.requireGameManager.mockResolvedValue({ kind: "admin", playerId: null });
+    mocked.requireGameManager.mockResolvedValue({
+      kind: "admin",
+      playerId: null,
+    });
     mocked.getAuthenticatedPlayerIdentity.mockResolvedValue(null);
     mocked.getAuthenticatedPlayerProfile.mockResolvedValue({
       group,
@@ -428,7 +431,10 @@ describe("game participant route", () => {
       status: "finalized",
     });
     mocked.isOrganizerAuthenticated.mockResolvedValue(true);
-    mocked.getGameManagementActor.mockResolvedValue({ kind: "admin", playerId: null });
+    mocked.getGameManagementActor.mockResolvedValue({
+      kind: "admin",
+      playerId: null,
+    });
     mocked.listGameCostShareReceipts.mockResolvedValue([
       {
         costShare: 500,
@@ -578,6 +584,20 @@ describe("game participant route", () => {
     expect(markup).toContain("2位");
     expect(markup).toContain("1,000円");
     expect(markup).toContain("2,000円");
+    expect(markup).toContain("ゲーム収支：なし（会費のみで精算します）");
+  });
+
+  it("公開済みの精算予定に有効なゲーム収支レートを表示する", () => {
+    const markup = renderToStaticMarkup(
+      createElement(SettlementPlanSheet, {
+        bbRate: 10,
+        costShares: [1_000, 2_000],
+        participantCount: 2,
+        venueCost: 3_000,
+      }),
+    );
+
+    expect(markup).toContain("ゲーム収支を 1BB = 10円で最終精算に含めます。");
   });
 
   it("未入力の結果フォームは閉じておき、結果入力から開く", () => {

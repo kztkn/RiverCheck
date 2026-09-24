@@ -44,10 +44,7 @@ import {
   updateOpenGameIdentityForGroup,
   validateGameSettingsForm,
 } from "@server/services/game-service.server";
-import {
-  formatBigBlindAnte,
-  formatChipValue,
-} from "@domain/score/bb-score";
+import { formatBigBlindAnte, formatChipValue } from "@domain/score/bb-score";
 import { GAME_TITLE_MAX_LENGTH } from "@domain/game/game-title";
 import {
   buildFinalizationState,
@@ -172,7 +169,10 @@ export async function action({ request, params }: Route.ActionArgs) {
       actor.playerId,
     );
     return result.ok
-      ? redirect(`/g/${params.groupCode}/games/${params.gameId}/admin?notice=paypay-saved`, { status: 303 })
+      ? redirect(
+          `/g/${params.groupCode}/games/${params.gameId}/admin?notice=paypay-saved`,
+          { status: 303 },
+        )
       : { ...result, intent: "save-game-paypay-link" as const };
   }
 
@@ -350,7 +350,8 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   if (intent === "delete-game") {
-    if (actor.kind !== "admin") throw new Response("Forbidden", { status: 403 });
+    if (actor.kind !== "admin")
+      throw new Response("Forbidden", { status: 403 });
     try {
       const result = await removeOpenGameForGroup(
         authorized.group.id,
@@ -553,15 +554,9 @@ export default function GameAdmin({
       ? actionData
       : null;
   const finalizeError =
-    actionData?.ok === false &&
-    "error" in actionData &&
-    !(
-      "intent" in actionData &&
-      (actionData.intent === "save-local-rules" ||
-        actionData.intent === "update-game-identity" ||
-        actionData.intent === "delete-game")
-    )
-      ? actionData.error
+    failedAction &&
+    (!("intent" in failedAction) || failedAction.intent === "finalize")
+      ? failedAction.error
       : null;
   const actionErrors = settingsAction?.errors ?? {};
   const settlementDraftBaseValues = gameToFormValues(loaderData.game);
@@ -1085,82 +1080,86 @@ export default function GameAdmin({
               </button>
             </div>
           </Form>
-          {loaderData.canDeleteGame ? <div className="game-danger-zone">
-            <div>
-              <strong>この開催を削除</strong>
-              <p>参加者、チップ入力、リバイ履歴もすべて削除されます。</p>
+          {loaderData.canDeleteGame ? (
+            <div className="game-danger-zone">
+              <div>
+                <strong>この開催を削除</strong>
+                <p>参加者、チップ入力、リバイ履歴もすべて削除されます。</p>
+              </div>
+              <button
+                className="game-delete-trigger"
+                onClick={() => {
+                  setGameSettingsOpen(false);
+                  setGameDeletionPending(true);
+                }}
+                type="button"
+              >
+                <IconTrash aria-hidden="true" stroke={1.8} />
+                削除する
+              </button>
             </div>
-            <button
-              className="game-delete-trigger"
-              onClick={() => {
-                setGameSettingsOpen(false);
-                setGameDeletionPending(true);
-              }}
-              type="button"
-            >
-              <IconTrash aria-hidden="true" stroke={1.8} />
-              削除する
-            </button>
-          </div> : null}
+          ) : null}
         </div>
       </dialog>
 
-      {loaderData.canDeleteGame ? <dialog
-        aria-labelledby="game-deletion-dialog-title"
-        className="app-dialog"
-        onCancel={() => setGameDeletionPending(false)}
-        onClick={(event) => {
-          if (event.target === event.currentTarget) {
-            setGameDeletionPending(false);
-          }
-        }}
-        onClose={() => setGameDeletionPending(false)}
-        ref={gameDeletionDialogRef}
-      >
-        <div className="dialog-card">
-          <span aria-hidden="true" className="dialog-danger-icon">
-            ×
-          </span>
-          <div>
-            <p className="eyebrow">DELETE GAME</p>
-            <h2 id="game-deletion-dialog-title">開催を削除しますか？</h2>
-            <p>
-              <strong>{loaderData.game.title}</strong>
-              を削除します。参加者{loaderData.participants.length}人の入力と
-              リバイ履歴を含め、元に戻せません。
-            </p>
-          </div>
-          {deleteAction ? (
-            <p className="error-notice" role="alert">
-              {deleteAction.error}
-            </p>
-          ) : null}
-          <Form className="dialog-actions" method="post">
-            <input name="intent" type="hidden" value="delete-game" />
-            <button
-              autoFocus
-              className="button button-secondary"
-              onClick={() => setGameDeletionPending(false)}
-              type="button"
-            >
-              キャンセル
-            </button>
-            <button
-              className="button button-danger"
-              disabled={
-                navigation.state === "submitting" &&
+      {loaderData.canDeleteGame ? (
+        <dialog
+          aria-labelledby="game-deletion-dialog-title"
+          className="app-dialog"
+          onCancel={() => setGameDeletionPending(false)}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setGameDeletionPending(false);
+            }
+          }}
+          onClose={() => setGameDeletionPending(false)}
+          ref={gameDeletionDialogRef}
+        >
+          <div className="dialog-card">
+            <span aria-hidden="true" className="dialog-danger-icon">
+              ×
+            </span>
+            <div>
+              <p className="eyebrow">DELETE GAME</p>
+              <h2 id="game-deletion-dialog-title">開催を削除しますか？</h2>
+              <p>
+                <strong>{loaderData.game.title}</strong>
+                を削除します。参加者{loaderData.participants.length}人の入力と
+                リバイ履歴を含め、元に戻せません。
+              </p>
+            </div>
+            {deleteAction ? (
+              <p className="error-notice" role="alert">
+                {deleteAction.error}
+              </p>
+            ) : null}
+            <Form className="dialog-actions" method="post">
+              <input name="intent" type="hidden" value="delete-game" />
+              <button
+                autoFocus
+                className="button button-secondary"
+                onClick={() => setGameDeletionPending(false)}
+                type="button"
+              >
+                キャンセル
+              </button>
+              <button
+                className="button button-danger"
+                disabled={
+                  navigation.state === "submitting" &&
+                  navigation.formData?.get("intent") === "delete-game"
+                }
+                type="submit"
+              >
+                {navigation.state === "submitting" &&
                 navigation.formData?.get("intent") === "delete-game"
-              }
-              type="submit"
-            >
-              {navigation.state === "submitting" &&
-              navigation.formData?.get("intent") === "delete-game"
-                ? "削除中…"
-                : "開催を削除"}
-            </button>
-          </Form>
-        </div>
-      </dialog> : null}
+                  ? "削除中…"
+                  : "開催を削除"}
+              </button>
+            </Form>
+          </div>
+        </dialog>
+      ) : null}
 
       <>
         <section
@@ -1309,22 +1308,6 @@ export default function GameAdmin({
           </div>
           <ParticipantLinkQr url={loaderData.participantUrl} />
         </section>
-
-        <PayPayLinkEditor
-          actionUrl={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/admin`}
-          cancelUrl={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}`}
-          error={payPayAction?.error ?? null}
-          intent="save-game-paypay-link"
-          intro="この開催の結果画面だけで使用します。更新した人が送金先として表示されます。"
-          isSubmitting={
-            navigation.state === "submitting" &&
-            navigation.formData?.get("intent") === "save-game-paypay-link"
-          }
-          link={loaderData.game.payPayRecipientLink}
-          registeredAt={loaderData.game.payPayLinkRegisteredAt}
-          recipientName={loaderData.game.payPayOwnerDisplayName}
-          value={payPayAction?.value ?? null}
-        />
 
         <section className="admin-participants" id="admin-participants">
           <div className="section-heading">
@@ -1757,8 +1740,7 @@ export default function GameAdmin({
             showCoreSettings={false}
             values={values}
           />
-          <FinalizationPanel
-            bbRate={Number(settlementBbRate) || 0}
+          <SettlementPublishControls
             error={
               persistentPublishError
                 ? `${persistentPublishError}${
@@ -1766,11 +1748,21 @@ export default function GameAdmin({
                       ? `（${publishFailureCount}回連続で失敗）`
                       : ""
                   }`
-                : finalizeError
+                : null
             }
-            finalization={loaderData.finalization}
             isSubmitting={isSubmitting}
             publishedAt={loaderData.game.settlementPlanPublishedAt}
+            submittingIntent={
+              typeof navigation.formData?.get("intent") === "string"
+                ? String(navigation.formData?.get("intent"))
+                : null
+            }
+          />
+          <FinalizationPanel
+            bbRate={Number(settlementBbRate) || 0}
+            error={finalizeError}
+            finalization={loaderData.finalization}
+            isSubmitting={isSubmitting}
             settlementParticipantCount={settlementParticipantCount}
             submittingIntent={
               typeof navigation.formData?.get("intent") === "string"
@@ -1779,6 +1771,22 @@ export default function GameAdmin({
             }
           />
         </Form>
+
+        <PayPayLinkEditor
+          actionUrl={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/admin`}
+          cancelUrl={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}`}
+          error={payPayAction?.error ?? null}
+          intent="save-game-paypay-link"
+          intro="この開催の結果画面だけで使用します。更新した人が送金先として表示されます。"
+          isSubmitting={
+            navigation.state === "submitting" &&
+            navigation.formData?.get("intent") === "save-game-paypay-link"
+          }
+          link={loaderData.game.payPayRecipientLink}
+          registeredAt={loaderData.game.payPayLinkRegisteredAt}
+          recipientName={loaderData.game.payPayOwnerDisplayName}
+          value={payPayAction?.value ?? null}
+        />
         <dialog
           aria-labelledby="participant-action-title"
           className="participant-action-dialog"
@@ -2232,12 +2240,61 @@ function noticeText(notice: string | null): string | null {
   return null;
 }
 
+function SettlementPublishControls({
+  error,
+  isSubmitting,
+  publishedAt,
+  submittingIntent,
+}: {
+  error: string | null;
+  isSubmitting: boolean;
+  publishedAt: string | null;
+  submittingIntent: string | null;
+}) {
+  return (
+    <section className="settlement-publish-panel">
+      <div>
+        <p className="form-brand-label">SHARE WITH PLAYERS</p>
+        <h2>参加者への公開</h2>
+        <p>
+          会費配分とゲーム収支を、参加者画面の「今日の精算予定」へ反映します。
+        </p>
+      </div>
+      {error ? (
+        <p className="error-notice finalize-error" role="alert">
+          <span aria-hidden="true" className="finalize-error-icon">
+            !
+          </span>
+          <span>{error}</span>
+        </p>
+      ) : null}
+      <button
+        className="button button-secondary"
+        disabled={isSubmitting}
+        name="intent"
+        type="submit"
+        value="publish-settlement-plan"
+      >
+        {submittingIntent === "publish-settlement-plan"
+          ? "公開中…"
+          : publishedAt
+            ? "公開内容を更新"
+            : "参加者に公開"}
+      </button>
+      <p className="field-hint settlement-publish-status">
+        {publishedAt
+          ? "現在の精算予定は参加者に公開中です。変更はこのボタンを押すまで公開されません。"
+          : "入力中の下書きは、公開するまで参加者には見えません。"}
+      </p>
+    </section>
+  );
+}
+
 function FinalizationPanel({
   bbRate,
   error,
   finalization,
   isSubmitting,
-  publishedAt,
   settlementParticipantCount,
   submittingIntent,
 }: {
@@ -2245,7 +2302,6 @@ function FinalizationPanel({
   error: string | null;
   finalization: Route.ComponentProps["loaderData"]["finalization"];
   isSubmitting: boolean;
-  publishedAt: string | null;
   settlementParticipantCount: string;
   submittingIntent: string | null;
 }) {
@@ -2395,22 +2451,6 @@ function FinalizationPanel({
             </span>
             <span>{error}</span>
           </p>
-        ) : null}
-        <button
-          className="button button-secondary"
-          disabled={isSubmitting}
-          name="intent"
-          type="submit"
-          value="publish-settlement-plan"
-        >
-          {submittingIntent === "publish-settlement-plan"
-            ? "公開中…"
-            : publishedAt
-              ? "公開内容を更新"
-              : "参加者に公開"}
-        </button>
-        {publishedAt ? (
-          <p className="field-hint">現在の精算予定は参加者に公開中です。</p>
         ) : null}
         <button
           className="button button-primary"

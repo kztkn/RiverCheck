@@ -87,6 +87,17 @@ export function GameSettingsFields({
   const [gameSettlementOpen, setGameSettlementOpen] = useState(
     (values.bbRate || "0") !== "0" || Boolean(errors.bbRate),
   );
+  const [costSettingsOpen, setCostSettingsOpen] = useState(
+    showCoreSettings ||
+      Boolean(
+        errors.venueCost ||
+        errors.previewParticipantCount ||
+        errors.costShares ||
+        errors.firstPlaceCost ||
+        errors.secondPlaceCost ||
+        errors.thirdPlaceCost,
+      ),
+  );
   const [adjustmentMode, setAdjustmentMode] =
     useState<AdjustmentMode>("top-three");
   const [editingRank, setEditingRank] = useState<number | null>(null);
@@ -197,6 +208,26 @@ export function GameSettingsFields({
   useEffect(() => {
     if (errors.bbRate) setGameSettlementOpen(true);
   }, [errors.bbRate]);
+
+  useEffect(() => {
+    if (
+      errors.venueCost ||
+      errors.previewParticipantCount ||
+      errors.costShares ||
+      errors.firstPlaceCost ||
+      errors.secondPlaceCost ||
+      errors.thirdPlaceCost
+    ) {
+      setCostSettingsOpen(true);
+    }
+  }, [
+    errors.costShares,
+    errors.firstPlaceCost,
+    errors.previewParticipantCount,
+    errors.secondPlaceCost,
+    errors.thirdPlaceCost,
+    errors.venueCost,
+  ]);
 
   useEffect(() => {
     if (!settlementDraftStorageKey) {
@@ -553,248 +584,271 @@ export function GameSettingsFields({
           <span>{showCoreSettings ? "04" : "03"}</span>
           精算設定
         </legend>
-        <Field
-          containerClassName="venue-cost-field"
-          error={errors.venueCost}
-          inputMode="numeric"
-          label="会費"
-          name="venueCost"
-          onChange={(event) => {
-            const nextVenueCost = event.target.value;
-            setVenueCost(nextVenueCost);
-            setRecommendationNotice(null);
-            replaceWithRecommendation(
-              nextVenueCost,
-              participantCountInput,
-              recommendationMode,
-              false,
-            );
-          }}
-          placeholder="12000"
-          required
-          suffix="円"
-          type="number"
-          value={venueCost}
-        />
-        <p className="field-hint">精算総額は100円単位で切り上げます。</p>
-
-        <section className="cost-preview" aria-live="polite">
-          <div className="cost-preview-heading">
-            <div>
-              <h2>精算プレビュー</h2>
-              {settlementDraftStorageKey && draftSaved ? (
-                <div className="settlement-draft-indicator">
-                  <span role="status">● 下書き保存済み</span>
-                  <button
-                    className="text-button"
-                    onClick={resetSettlementDraft}
-                    type="button"
-                  >
-                    元の設定に戻す
-                  </button>
-                </div>
-              ) : null}
-            </div>
+        <details
+          className="settlement-cost-disclosure"
+          onToggle={(event) => setCostSettingsOpen(event.currentTarget.open)}
+          open={costSettingsOpen}
+        >
+          <summary>
+            <span>
+              <strong>会費設定</strong>
+              <small>
+                {formatOptionalYen(analysis.settlementTotal)} ・{" "}
+                {participantCountInput || "—"}人想定 ・ 順位別配分
+              </small>
+            </span>
+          </summary>
+          <div className="settlement-cost-disclosure-body">
             <Field
-              containerClassName="preview-count-field"
-              error={errors.previewParticipantCount}
+              containerClassName="venue-cost-field"
+              error={errors.venueCost}
               inputMode="numeric"
-              label="人数"
-              min={2}
-              name="previewParticipantCount"
+              label="会費"
+              name="venueCost"
               onChange={(event) => {
-                const nextParticipantCount = event.target.value;
+                const nextVenueCost = event.target.value;
+                setVenueCost(nextVenueCost);
                 setRecommendationNotice(null);
-                setParticipantCountInput(nextParticipantCount);
-                onParticipantCountChange?.(nextParticipantCount);
                 replaceWithRecommendation(
-                  venueCost,
-                  nextParticipantCount,
+                  nextVenueCost,
+                  participantCountInput,
                   recommendationMode,
                   false,
                 );
               }}
+              placeholder="12000"
               required
-              suffix="人"
+              suffix="円"
               type="number"
-              value={participantCountInput}
+              value={venueCost}
             />
-          </div>
+            <p className="field-hint">精算総額は100円単位で切り上げます。</p>
 
-          {recommendationAvailable ? (
-            <div className="recommendation-card">
-              <div>
-                <p className="recommendation-title">おすすめ配分をすぐ反映</p>
-                <p>
-                  表彰台は1〜3位を優遇、標準は順位差をしっかり、ゆる傾斜は差を小さく、割り勘はほぼ均等です。
-                </p>
-                {recommendationNotice ? (
-                  <small className="recommendation-notice">
-                    {recommendationNotice}
-                  </small>
-                ) : !podiumRecommendationAvailable ? (
-                  <small>表彰台ボーナスは6人以上で利用できます。</small>
-                ) : null}
+            <section className="cost-preview" aria-live="polite">
+              <div className="cost-preview-heading">
+                <div>
+                  <h2>精算プレビュー</h2>
+                  {settlementDraftStorageKey && draftSaved ? (
+                    <div className="settlement-draft-indicator">
+                      <span role="status">● 下書き保存済み</span>
+                      <button
+                        className="text-button"
+                        onClick={resetSettlementDraft}
+                        type="button"
+                      >
+                        元の設定に戻す
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                <Field
+                  containerClassName="preview-count-field"
+                  error={errors.previewParticipantCount}
+                  inputMode="numeric"
+                  label="人数"
+                  min={2}
+                  name="previewParticipantCount"
+                  onChange={(event) => {
+                    const nextParticipantCount = event.target.value;
+                    setRecommendationNotice(null);
+                    setParticipantCountInput(nextParticipantCount);
+                    onParticipantCountChange?.(nextParticipantCount);
+                    replaceWithRecommendation(
+                      venueCost,
+                      nextParticipantCount,
+                      recommendationMode,
+                      false,
+                    );
+                  }}
+                  required
+                  suffix="人"
+                  type="number"
+                  value={participantCountInput}
+                />
               </div>
-              <div className="recommendation-actions">
-                <button
-                  aria-pressed={recommendationMode === "podium"}
-                  className={`button button-small button-secondary${recommendationMode === "podium" ? " is-active" : ""}`}
-                  disabled={!podiumRecommendationAvailable}
-                  onClick={() => applyRecommendation("podium")}
-                  title={
-                    podiumRecommendationAvailable
-                      ? undefined
-                      : "表彰台ボーナスは6人以上で利用できます"
-                  }
-                  type="button"
-                >
-                  表彰台を反映
-                </button>
-                <button
-                  aria-pressed={recommendationMode === "standard"}
-                  className={`button button-small button-secondary${recommendationMode === "standard" ? " is-active" : ""}`}
-                  onClick={() => applyRecommendation("standard")}
-                  type="button"
-                >
-                  標準を反映
-                </button>
-                <button
-                  aria-pressed={recommendationMode === "gentle"}
-                  className={`button button-small button-secondary${recommendationMode === "gentle" ? " is-active" : ""}`}
-                  onClick={() => applyRecommendation("gentle")}
-                  type="button"
-                >
-                  ゆる傾斜を反映
-                </button>
-                <button
-                  aria-pressed={recommendationMode === "simple"}
-                  className={`button button-small button-secondary${recommendationMode === "simple" ? " is-active" : ""}`}
-                  onClick={() => applyRecommendation("simple")}
-                  type="button"
-                >
-                  割り勘を反映
-                </button>
-              </div>
-            </div>
-          ) : null}
 
-          <div
-            aria-label="精算額の調整方法"
-            className="settlement-adjustment-control"
-            role="group"
-          >
-            <span>調整方法</span>
-            <div>
-              <button
-                aria-pressed={adjustmentMode === "top-three"}
-                className={adjustmentMode === "top-three" ? "is-active" : ""}
-                onClick={applyTopThreeDistribution}
-                type="button"
-              >
-                {Number(participantCountInput) < 4
-                  ? "順位を個別調整"
-                  : "上位3位から配分"}
-              </button>
-              <button
-                aria-pressed={adjustmentMode === "individual"}
-                className={adjustmentMode === "individual" ? "is-active" : ""}
-                onClick={() => setAdjustmentMode("individual")}
-                type="button"
-              >
-                全順位を個別調整
-              </button>
-            </div>
-          </div>
-          <p className="settlement-edit-hint">
-            {adjustmentMode === "top-three"
-              ? Number(participantCountInput) < 4
-                ? "2〜3人開催では各順位を直接調整します。"
-                : "1〜3位を変えると、4位以下を自動で再配分します。"
-              : "変更した順位だけを調整します。"}
-          </p>
-          <div className="share-grid">
-            {shareValues.map((share, index) => (
+              {recommendationAvailable ? (
+                <div className="recommendation-card">
+                  <div>
+                    <p className="recommendation-title">
+                      おすすめ配分をすぐ反映
+                    </p>
+                    <p>
+                      表彰台は1〜3位を優遇、標準は順位差をしっかり、ゆる傾斜は差を小さく、割り勘はほぼ均等です。
+                    </p>
+                    {recommendationNotice ? (
+                      <small className="recommendation-notice">
+                        {recommendationNotice}
+                      </small>
+                    ) : !podiumRecommendationAvailable ? (
+                      <small>表彰台ボーナスは6人以上で利用できます。</small>
+                    ) : null}
+                  </div>
+                  <div className="recommendation-actions">
+                    <button
+                      aria-pressed={recommendationMode === "podium"}
+                      className={`button button-small button-secondary${recommendationMode === "podium" ? " is-active" : ""}`}
+                      disabled={!podiumRecommendationAvailable}
+                      onClick={() => applyRecommendation("podium")}
+                      title={
+                        podiumRecommendationAvailable
+                          ? undefined
+                          : "表彰台ボーナスは6人以上で利用できます"
+                      }
+                      type="button"
+                    >
+                      表彰台を反映
+                    </button>
+                    <button
+                      aria-pressed={recommendationMode === "standard"}
+                      className={`button button-small button-secondary${recommendationMode === "standard" ? " is-active" : ""}`}
+                      onClick={() => applyRecommendation("standard")}
+                      type="button"
+                    >
+                      標準を反映
+                    </button>
+                    <button
+                      aria-pressed={recommendationMode === "gentle"}
+                      className={`button button-small button-secondary${recommendationMode === "gentle" ? " is-active" : ""}`}
+                      onClick={() => applyRecommendation("gentle")}
+                      type="button"
+                    >
+                      ゆる傾斜を反映
+                    </button>
+                    <button
+                      aria-pressed={recommendationMode === "simple"}
+                      className={`button button-small button-secondary${recommendationMode === "simple" ? " is-active" : ""}`}
+                      onClick={() => applyRecommendation("simple")}
+                      type="button"
+                    >
+                      割り勘を反映
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               <div
-                className={`share-item${analysis.invalidRankIndex === index ? " is-invalid" : ""}`}
-                key={index}
+                aria-label="精算額の調整方法"
+                className="settlement-adjustment-control"
+                role="group"
               >
-                <span>{formatOrdinal(index + 1)}</span>
-                {editingRank === index ? (
-                  <span className="share-amount-input-wrap">
-                    <input
-                      aria-label={`${index + 1}位の負担額`}
-                      autoFocus
-                      className="share-amount-input"
-                      inputMode="numeric"
-                      min={0}
-                      onBlur={() => setEditingRank(null)}
-                      onChange={(event) =>
-                        updateShare(index, event.target.value)
-                      }
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          event.currentTarget.blur();
-                        }
-                      }}
-                      pattern="[0-9]*"
-                      type="text"
-                      value={share}
-                    />
-                    <span>円</span>
-                  </span>
-                ) : (
+                <span>調整方法</span>
+                <div>
                   <button
-                    aria-label={`${index + 1}位の負担額 ${formatShareValue(share)}。タップして編集`}
-                    className="share-amount-button"
-                    onClick={() => {
-                      if (index >= 3) {
-                        setAdjustmentMode("individual");
-                      }
-                      setEditingRank(index);
-                    }}
+                    aria-pressed={adjustmentMode === "top-three"}
+                    className={
+                      adjustmentMode === "top-three" ? "is-active" : ""
+                    }
+                    onClick={applyTopThreeDistribution}
                     type="button"
                   >
-                    <strong>{formatShareValue(share)}</strong>
+                    {Number(participantCountInput) < 4
+                      ? "順位を個別調整"
+                      : "上位3位から配分"}
                   </button>
-                )}
-                <input name="costShare" type="hidden" value={share} />
+                  <button
+                    aria-pressed={adjustmentMode === "individual"}
+                    className={
+                      adjustmentMode === "individual" ? "is-active" : ""
+                    }
+                    onClick={() => setAdjustmentMode("individual")}
+                    type="button"
+                  >
+                    全順位を個別調整
+                  </button>
+                </div>
               </div>
-            ))}
+              <p className="settlement-edit-hint">
+                {adjustmentMode === "top-three"
+                  ? Number(participantCountInput) < 4
+                    ? "2〜3人開催では各順位を直接調整します。"
+                    : "1〜3位を変えると、4位以下を自動で再配分します。"
+                  : "変更した順位だけを調整します。"}
+              </p>
+              <div className="share-grid">
+                {shareValues.map((share, index) => (
+                  <div
+                    className={`share-item${analysis.invalidRankIndex === index ? " is-invalid" : ""}`}
+                    key={index}
+                  >
+                    <span>{formatOrdinal(index + 1)}</span>
+                    {editingRank === index ? (
+                      <span className="share-amount-input-wrap">
+                        <input
+                          aria-label={`${index + 1}位の負担額`}
+                          autoFocus
+                          className="share-amount-input"
+                          inputMode="numeric"
+                          min={0}
+                          onBlur={() => setEditingRank(null)}
+                          onChange={(event) =>
+                            updateShare(index, event.target.value)
+                          }
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              event.currentTarget.blur();
+                            }
+                          }}
+                          pattern="[0-9]*"
+                          type="text"
+                          value={share}
+                        />
+                        <span>円</span>
+                      </span>
+                    ) : (
+                      <button
+                        aria-label={`${index + 1}位の負担額 ${formatShareValue(share)}。タップして編集`}
+                        className="share-amount-button"
+                        onClick={() => {
+                          if (index >= 3) {
+                            setAdjustmentMode("individual");
+                          }
+                          setEditingRank(index);
+                        }}
+                        type="button"
+                      >
+                        <strong>{formatShareValue(share)}</strong>
+                      </button>
+                    )}
+                    <input name="costShare" type="hidden" value={share} />
+                  </div>
+                ))}
+              </div>
+              <input
+                name="firstPlaceCost"
+                type="hidden"
+                value={shareValues[0] ?? ""}
+              />
+              <input
+                name="secondPlaceCost"
+                type="hidden"
+                value={shareValues[1] ?? ""}
+              />
+              <input
+                name="thirdPlaceCost"
+                type="hidden"
+                value={shareValues[2] ?? ""}
+              />
+              <div className="preview-totals">
+                <span>
+                  精算総額{" "}
+                  <strong>{formatOptionalYen(analysis.settlementTotal)}</strong>
+                </span>
+                <span>
+                  負担額合計{" "}
+                  <strong>{formatOptionalYen(analysis.allocatedTotal)}</strong>
+                </span>
+              </div>
+              <p
+                className={`settlement-validation ${analysis.isValid ? "is-valid" : "is-error"}`}
+                role={analysis.isValid ? "status" : "alert"}
+              >
+                {errors.costShares ?? analysis.message}
+              </p>
+            </section>
           </div>
-          <input
-            name="firstPlaceCost"
-            type="hidden"
-            value={shareValues[0] ?? ""}
-          />
-          <input
-            name="secondPlaceCost"
-            type="hidden"
-            value={shareValues[1] ?? ""}
-          />
-          <input
-            name="thirdPlaceCost"
-            type="hidden"
-            value={shareValues[2] ?? ""}
-          />
-          <div className="preview-totals">
-            <span>
-              精算総額{" "}
-              <strong>{formatOptionalYen(analysis.settlementTotal)}</strong>
-            </span>
-            <span>
-              負担額合計{" "}
-              <strong>{formatOptionalYen(analysis.allocatedTotal)}</strong>
-            </span>
-          </div>
-          <p
-            className={`settlement-validation ${analysis.isValid ? "is-valid" : "is-error"}`}
-            role={analysis.isValid ? "status" : "alert"}
-          >
-            {errors.costShares ?? analysis.message}
-          </p>
-        </section>
+        </details>
 
         <details
           className="game-settlement-option"
@@ -804,7 +858,9 @@ export function GameSettingsFields({
           <summary>
             <span>
               <strong>ゲーム収支</strong>
-              <small>1BB = {bbRate}円</small>
+              <small>
+                {bbRate === "0" ? "なし（会費のみ）" : `1BB = ${bbRate}円`}
+              </small>
             </span>
           </summary>
           <div className="game-settlement-option-body">

@@ -5526,12 +5526,12 @@ input[aria-invalid="true"] {
   gap: 17px;
   margin-top: 8px;
   border: 0;
-  border-top: 1px solid rgba(233, 186, 90, 0.26);
+  border-top: 1px solid rgba(57, 222, 141, 0.2);
   border-bottom: 1px solid var(--line);
   border-radius: 0;
   background: linear-gradient(
     180deg,
-    rgba(233, 186, 90, 0.045),
+    rgba(57, 222, 141, 0.035),
     transparent 50%
   );
   padding: 22px 0 18px;
@@ -5544,10 +5544,14 @@ input[aria-invalid="true"] {
 
 .game-form .recommendation-card {
   border: 0;
-  border-left: 2px solid rgba(233, 186, 90, 0.4);
+  border-left: 2px solid rgba(57, 222, 141, 0.42);
   border-radius: 0;
-  background: rgba(233, 186, 90, 0.035);
+  background: rgba(57, 222, 141, 0.035);
   padding: 11px 13px;
+}
+
+.game-form .recommendation-card .recommendation-title {
+  color: var(--green);
 }
 
 .game-form .share-grid {
@@ -5575,6 +5579,51 @@ input[aria-invalid="true"] {
   margin-top: 8px;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
+}
+
+.settlement-cost-disclosure {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.settlement-cost-disclosure > summary {
+  display: flex;
+  min-height: 62px;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+}
+
+.settlement-cost-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settlement-cost-disclosure > summary::after {
+  color: var(--muted);
+  content: "+";
+  font-size: 1.2rem;
+}
+
+.settlement-cost-disclosure[open] > summary::after {
+  content: "−";
+}
+
+.settlement-cost-disclosure > summary > span {
+  display: grid;
+  gap: 3px;
+}
+
+.settlement-cost-disclosure > summary small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.settlement-cost-disclosure-body {
+  display: grid;
+  gap: 16px;
+  padding: 5px 0 20px;
 }
 
 .game-settlement-option > summary {
@@ -5621,8 +5670,8 @@ input[aria-invalid="true"] {
 .bb-rate-picker {
   display: grid;
   gap: 10px;
-  border-left: 2px solid rgba(233, 186, 90, 0.4);
-  background: rgba(233, 186, 90, 0.035);
+  border-left: 2px solid rgba(57, 222, 141, 0.42);
+  background: rgba(57, 222, 141, 0.035);
   padding: 13px 14px;
 }
 
@@ -5643,9 +5692,9 @@ input[aria-invalid="true"] {
 }
 
 .bb-rate-picker button.is-active {
-  border-color: rgba(233, 186, 90, 0.65);
-  background: rgba(233, 186, 90, 0.13);
-  color: #e9ba5a;
+  border-color: rgba(57, 222, 141, 0.65);
+  background: rgba(57, 222, 141, 0.13);
+  color: var(--green);
 }
 
 .game-settlement-preview {
@@ -6766,11 +6815,46 @@ input[aria-invalid="true"] {
 }
 
 .admin-finalization-form > .form-section {
-  border-top-color: rgba(233, 186, 90, 0.36);
+  border-top-color: rgba(57, 222, 141, 0.24);
 }
 
 .admin-finalization-form > .form-section legend span {
   display: none;
+}
+
+.settlement-publish-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  border: 1px solid rgba(57, 222, 141, 0.2);
+  border-radius: 14px;
+  background: rgba(57, 222, 141, 0.035);
+  padding: 16px;
+}
+
+.settlement-publish-panel h2,
+.settlement-publish-panel p {
+  margin: 0;
+}
+
+.settlement-publish-panel h2 {
+  margin-top: 3px;
+  font-size: 1rem;
+}
+
+.settlement-publish-panel > div > p:last-child {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+.settlement-publish-panel > .button {
+  width: 100%;
+}
+
+.settlement-publish-panel .settlement-publish-status {
+  margin: 0;
 }
 
 .admin-finalize-panel {

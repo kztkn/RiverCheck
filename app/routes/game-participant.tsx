@@ -77,9 +77,7 @@ import { createPlayerProfileCookie } from "@server/services/player-profile-sessi
 import { GameStories } from "../components/game-stories";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { GroupInviteJoinPanel } from "~/components/group-invite-join-panel";
-import {
-  isOrganizerAuthenticated,
-} from "@server/services/organizer-auth.server";
+import { isOrganizerAuthenticated } from "@server/services/organizer-auth.server";
 import {
   getGameManagementActor,
   requireGameManager,
@@ -450,17 +448,16 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         : "",
     shareUrl: `${url.origin}/r/${encodeResultCode(params.gameId)}`,
     pastGameNavigation: buildPastGameNavigation(finalizedGames, params.gameId),
-    payPay:
-      payPayRecipientLink
-        ? {
-            link: payPayRecipientLink,
-            paymentAmount: payPayPaymentAmount,
-            paymentAvailable:
-              context.game.bbRate === 0 || payPayPaymentAmount !== 0,
-            ownerDisplayName: context.game.payPayOwnerDisplayName,
-            ownerGroupPlayerId: context.game.payPayOwnerGroupPlayerId,
-          }
-        : null,
+    payPay: payPayRecipientLink
+      ? {
+          link: payPayRecipientLink,
+          paymentAmount: payPayPaymentAmount,
+          paymentAvailable:
+            context.game.bbRate === 0 || payPayPaymentAmount !== 0,
+          ownerDisplayName: context.game.payPayOwnerDisplayName,
+          ownerGroupPlayerId: context.game.payPayOwnerGroupPlayerId,
+        }
+      : null,
     notice: url.searchParams.get("notice"),
   };
 }
@@ -2296,12 +2293,11 @@ export function SettlementPlanSheet({
               会場費 {venueCost.toLocaleString("ja-JP")}円 ・ {participantCount}
               人想定
             </p>
-            {bbRate > 0 ? (
-              <p className="rebuy-rules-note">
-                ゲーム収支を 1BB = {bbRate.toLocaleString("ja-JP")}
-                円で最終精算に含めます。
-              </p>
-            ) : null}
+            <p className="rebuy-rules-note">
+              {bbRate > 0
+                ? `ゲーム収支を 1BB = ${bbRate.toLocaleString("ja-JP")}円で最終精算に含めます。`
+                : "ゲーム収支：なし（会費のみで精算します）"}
+            </p>
             <ol className="rebuy-rules-list settlement-plan-list">
               {costShares.map((share, index) => (
                 <li key={index}>
