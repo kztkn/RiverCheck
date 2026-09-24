@@ -16,16 +16,15 @@
 
 ## 損益BB
 
-開催ごとの開始スタックBB（50または100）を使って計算する。
+開催ごとに保存された`big_blind_chips`をポーカー上の1BBとして計算する。開始スタックBBは入力値ではなく、初期チップとBBからの派生値である。
 
 ```text
 score        = remaining_chips - settlement_rebuy_count × rebuy_chips
 profit_chips = score - initial_chips
-net_bb       = profit_chips ÷ (initial_chips ÷ initial_stack_bb)
-             = (score - initial_chips) × initial_stack_bb ÷ initial_chips
+net_bb       = profit_chips ÷ big_blind_chips
 ```
 
-確定結果画面、共有文、個人戦績はすべて同じ損益BBを使用する。`initial_chips`は開催作成時に正の整数として検証する。万一0以下の確定済みデータが存在した場合は黙って除外せず、集計エラーとして検出する。
+確定結果画面、共有文、個人戦績はすべて同じ損益BBを使用する。`initial_chips`と`big_blind_chips`は開催作成時に正の整数として検証する。万一不正な確定済みデータが存在した場合は黙って除外せず、集計エラーとして検出する。
 
 PostgreSQLでは途中の整数除算を避けるため`NUMERIC`へ変換してから計算する。画面表示は最大小数第2位とし、正数には`+`を付ける。
 

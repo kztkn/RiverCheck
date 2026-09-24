@@ -2,7 +2,10 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { FinalResults } from "./final-results";
-import type { GameResultRevision, GameResultSummary } from "@shared-types/result";
+import type {
+  GameResultRevision,
+  GameResultSummary,
+} from "@shared-types/result";
 
 describe("FinalResults settlement visibility", () => {
   const results: GameResultSummary[] = [
@@ -45,6 +48,7 @@ describe("FinalResults settlement visibility", () => {
   it("keeps BB and player details but hides settlement amounts for public guests", () => {
     const markup = renderToStaticMarkup(
       createElement(FinalResults, {
+        bigBlindChips: 200,
         groupCode: "river-check",
         initialChips: 20000,
         lineText: "",
@@ -75,6 +79,7 @@ describe("FinalResults settlement visibility", () => {
   it("keeps settlement amounts for internal result views", () => {
     const markup = renderToStaticMarkup(
       createElement(FinalResults, {
+        bigBlindChips: 200,
         groupCode: "river-check",
         initialChips: 20000,
         lineText: "",
@@ -99,6 +104,7 @@ describe("FinalResults settlement visibility", () => {
     const markup = renderToStaticMarkup(
       createElement(FinalResults, {
         bbRate: 5,
+        bigBlindChips: 200,
         groupCode: "river-check",
         initialChips: 20_000,
         lineText: "",

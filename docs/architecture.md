@@ -134,6 +134,9 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 - `games.rounding_unit` は既存スキーマとの互換用に残すが、DB制約とrepositoryで100固定にする
 - `games.cost_shares` は検証済みの全順位負担額を`BIGINT[]`で保存する。移行前のNULLだけは1〜3位設定から従来計算する
 - `games.bb_rate` は開催単位の`BIGINT NOT NULL DEFAULT 0`とし、0 / 5 / 10 / 20だけをCHECK制約で許可する。既存開催は0となり挙動を維持する
+- `games.small_blind_chips`、`games.big_blind_chips`、`games.big_blind_ante_chips`は開催時点のブラインドを明示保存する。ポーカー上の1BBは`big_blind_chips`を正本とし、`initial_stack_bb`は`initial_chips / big_blind_chips`を保存する互換用キャッシュとする
+- migration 0033は、既存の`initial_chips / initial_stack_bb`が整数かつ算出BBが偶数の行だけ、BB、SB=BB/2、BBA=BBをbackfillする。通常の20,000 / 100BB開催は100 / 200 / 200となり、既存結果を変えない。安全に導出できない旧行はNULLのまま残し、repository読取り時だけ旧値へフォールバックする
+- `games.bb_rate`は1BBあたりの円建て精算レートであり、ブラインドのチップ量とは分離する。1チップの円換算は保存・導出しない
 - `game_results.game_settlement_amount` は確定時に計算した符号付きの100円単位`BIGINT NOT NULL DEFAULT 0`を保存する。最終精算額はこの列から`cost_share`を引いて導出し、重複保存しない
 - `games.seven_deuce_rule_enabled` は72oボーナスの開催単位スナップショットとする。新規開催の既定値はONだが、導入前データは移行時にOFFとして過去開催へ遡及させない
 - `games.bomb_pot_rule_enabled` はボムポットの開催単位スナップショットとする。新規開催の既定値はONだが、導入前データは移行時にOFFとして過去開催へ遡及させない
@@ -186,14 +189,16 @@ PIN・合言葉と32文字以上の署名鍵はCloudflare Secretで受け取る�
 ## 新規開催作成
 
 1. route action が `FormData` を service 用の値へ変換する
-2. service が必須値、全順位件数、非負整数、100円単位、順位傾斜、精算総額との合計一致を検証する
-3. repository がパラメータ化 INSERT を実行する
+2. service が初期チップとSB / BB / BBA、全順位件数、非負整数、100円単位、順位傾斜、精算総額との合計一致を検証し、`initial_stack_bb = initial_chips / big_blind_chips`を導出する
+3. repository が明示ブラインドと派生キャッシュをパラメータ化 INSERT する
 4. `open` の開催を作成し、開催の管理画面へ移動する
 5. 作成済み開催をロールバックせず、通知ONの有効メンバーへWeb Pushを送る
 
+チップ構成計算は`domain/chip-distribution`の純粋関数へ閉じ込める。正規化済みの各額面をSB候補にし、100BBの完全一致を満たす3〜4額面の整数枚数をbounded searchで探索する。合計枚数、SB額面の枚数、高額チップ比率、額面間隔を決定的にスコアリングし、最初に見つかった解ではなく最良解を返す。Reactコンポーネントは額面行の追加・削除、結果表示、明示反映だけを担当し、計算前後の額面一覧や配分はDBへ送らない。
+
 ## 受付中開催の管理
 
-開催の基本情報変更、ゲーム設定変更、開催削除は、主催者認証済みの開催管理actionからserviceを経由して実行する。基本情報は開催名・開催日だけを扱い、初期チップ・開始スタックBBは管理画面本文のゲーム設定として分離する。repositoryの`UPDATE`と`DELETE`には`group_id`と`status = 'open'`を含め、画面表示後に確定された場合や別グループIDが指定された場合は変更しない。初期チップ変更では`rebuy_chips`も同じSQLで更新し、リバイイベントまたは終了入力が存在する場合は確認なしの更新を拒否する。基本情報変更はgame IDを維持するため参加者用URLを変えず、作成時のWeb Pushは再送しない。
+開催の基本情報変更、ゲーム設定変更、開催削除は、主催者認証済みの開催管理actionからserviceを経由して実行する。基本情報は開催名・開催日だけを扱い、初期チップとSB / BB / BBAは管理画面本文のゲーム設定として分離する。serviceが開始BBを再導出し、repositoryは明示ブラインド、派生キャッシュ、`rebuy_chips`を同じUPDATEで更新する。repositoryの`UPDATE`と`DELETE`には`group_id`と`status = 'open'`を含め、画面表示後に確定された場合や別グループIDが指定された場合は変更しない。リバイイベントまたは終了入力が存在する場合は確認なしの更新を拒否する。基本情報変更はgame IDを維持するため参加者用URLを変えず、作成時のWeb Pushは再送しない。
 
 開催削除は確認ダイアログを通した物理削除とする。`game_participants`はgamesへの`ON DELETE CASCADE`、リバイイベントとTABLE STORIESはparticipantへの`ON DELETE CASCADE`で従属データを削除する。TABLE STORIESはfinalized後だけ投稿でき、finalized開催は削除対象外のため、R2投稿写真を伴う開催削除は発生しない。`game_results`と訂正履歴の`ON DELETE RESTRICT`も、確定履歴を誤って削除しないDB側の防御として維持する。
 
@@ -215,10 +220,9 @@ repositoryは訂正前後のGameResultSummary配列をJSONBとしてgame_result_
 
 結果置換後は同じトランザクション内でAchievementServiceが対象プレイヤーの確定済み参加履歴全体を再評価する。成立中の実績は`ON CONFLICT DO UPDATE`で獲得契機を同期し、成立しなくなった管理対象実績は削除する。削除する実績が装備中なら先に装備を解除する。これにより訂正開催より後の連続条件も正式な履歴と一致させる。導入時の既存確定結果はmigrationで同じ条件により再計算・同期し、個人ページのloaderは実績を読み取るだけで書込みを行わない。
 
-
 ## 確定結果とLINE共有
 
-finalizedの開催ではgame_resultsを順位順に取得し、参加者用URLと主催者画面の共通コンポーネントで表示する。順位判定とDB保存は整数scoreのまま維持し、表示時に`games.initial_chips`と`games.initial_stack_bb`から初期スタック分を差し引いた損益BBへ換算する。`initial_stack_bb`は50 / 100だけを許可し、既定値100の追加カラムとして既存開催と旧Workerの互換を維持する。共有操作は主催者画面だけに表示する。LINE用テキストはdomainの純粋関数で生成し、計算式は含めない。共有URLはgame UUIDを22文字のBase64URLへ可逆変換した`/r/:resultCode`を使用する。短縮routeは確定済み開催だけを既存の参加者用URLへredirectし、DBへの短縮コード保存や外部短縮サービスは使用しない。コピーはHTTPSまたはlocalhostではClipboard APIを優先し、同一LANのHTTPなど利用できない環境ではtextarea選択とcopy commandへフォールバックする。自動コピーが拒否された場合は選択状態にして手動コピーを案内する。
+finalizedの開催ではgame_resultsを順位順に取得し、参加者用URLと主催者画面の共通コンポーネントで表示する。順位判定とDB保存は整数scoreのまま維持し、表示時に`(score - initial_chips) / big_blind_chips`で損益BBへ換算する。`initial_stack_bb`は互換用の派生キャッシュとして残すが損益計算の正本にしない。共有操作は主催者画面だけに表示する。LINE用テキストは同じ`big_blind_chips`を受け取るdomainの純粋関数で生成し、計算式は含めない。共有URLはgame UUIDを22文字のBase64URLへ可逆変換した`/r/:resultCode`を使用する。短縮routeは確定済み開催だけを既存の参加者用URLへredirectし、DBへの短縮コード保存や外部短縮サービスは使用しない。コピーはHTTPSまたはlocalhostではClipboard APIを優先し、同一LANのHTTPなど利用できない環境ではtextarea選択とcopy commandへフォールバックする。自動コピーが拒否された場合は選択状態にして手動コピーを案内する。
 
 精算確認は既存の`game_cost_share_receipts`へ`game_id`と`group_player_id`の組み合わせ、および完了日時を保持する。BBレート0では従来の会費回収、有効時は主催者への入金または主催者からの送金の完了として再利用する。公開結果のloaderでは主催者認証済みの場合だけ取得し、更新actionも主催者認証を必須とする。更新では対象の確定結果行をロックし、最終精算額0円または確定結果に存在しない参加者への登録を拒否する。結果訂正では最終精算額が変わった参加者の確認を、結果置換と同じトランザクション内で削除する。
 
@@ -253,7 +257,6 @@ open開催の参加者一覧は名簿表示を維持し、本人行だけ「今�
 - プレイヤー一覧は一人ずつを過度にカード化せず、名札・ロスターとして読めるフラットな並びを基本とする。囲いは操作単位や展開可能な情報に必要な場合だけ使う。
 - スート記号はポーカーそのものの意味がある場面に限定し、一般的な管理状態の装飾には多用しない。
 - 状態色は原則として RiverCheck green、gold、muted を使い、赤は削除や取消など明確な危険操作に限定する。
-
 
 ### 画面遷移の先読み
 

@@ -75,9 +75,12 @@ vi.mock("@server/repositories/table-event-repository.server", () => ({
 vi.mock("@server/repositories/group-paypay-repository.server", () => ({
   findGamePaymentAmountForPlayer: mocked.findGamePaymentAmountForPlayer,
 }));
-vi.mock("@server/repositories/game-cost-share-receipt-repository.server", () => ({
-  listGameCostShareReceipts: mocked.listGameCostShareReceipts,
-}));
+vi.mock(
+  "@server/repositories/game-cost-share-receipt-repository.server",
+  () => ({
+    listGameCostShareReceipts: mocked.listGameCostShareReceipts,
+  }),
+);
 vi.mock("@server/services/game-cost-share-receipt-service.server", () => ({
   updateGameCostShareReceipt: mocked.updateGameCostShareReceipt,
 }));
@@ -323,7 +326,10 @@ describe("game participant route", () => {
   });
 
   it("別グループの本人プロフィールがある場合は共有リンクから参加候補として返す", async () => {
-    mocked.getAuthenticatedPlayerProfile.mockResolvedValue({ group, profile: null });
+    mocked.getAuthenticatedPlayerProfile.mockResolvedValue({
+      group,
+      profile: null,
+    });
     mocked.getAuthenticatedPlayerIdentity.mockResolvedValue({
       displayName: "Alice",
       playerId,
@@ -587,7 +593,10 @@ describe("game participant route", () => {
 
   it("修正中・保存失敗時のフォームは開いた状態で再表示する", () => {
     const markup = renderToStaticMarkup(
-      createElement(ParticipantResultEntrySection, { initiallyOpen: true, children: "入力フォーム" }),
+      createElement(ParticipantResultEntrySection, {
+        initiallyOpen: true,
+        children: "入力フォーム",
+      }),
     );
     expect(markup).toContain('open=""');
     expect(markup).toContain("結果を入力中");
@@ -877,9 +886,7 @@ describe("game participant route", () => {
       "a".repeat(64),
       "2027-08-10T00:00:00.000Z",
     );
-    expect(response.headers.get("Set-Cookie")).toContain(
-      "rc_participant_game",
-    );
+    expect(response.headers.get("Set-Cookie")).toContain("rc_participant_game");
     expect(response.headers.get("Set-Cookie")).toContain("rc_player_profile");
   });
 });
@@ -889,34 +896,53 @@ describe("participant quick rebuy actions", () => {
     const initial = { totalRebuyCount: 2, outstandingRebuyCount: 1 };
     const rebuy = projectRebuyState(initial, "record-rebuy");
     expect(rebuy).toEqual({ totalRebuyCount: 3, outstandingRebuyCount: 2 });
-    expect(projectRebuyState(rebuy!, "undo-rebuy", "record-rebuy"))
-      .toEqual(initial);
+    expect(projectRebuyState(rebuy!, "undo-rebuy", "record-rebuy")).toEqual(
+      initial,
+    );
     const repayment = projectRebuyState(initial, "record-repayment");
     expect(repayment).toEqual({ totalRebuyCount: 2, outstandingRebuyCount: 0 });
-    expect(projectRebuyState(repayment!, "undo-rebuy", "record-repayment"))
-      .toEqual(initial);
+    expect(
+      projectRebuyState(repayment!, "undo-rebuy", "record-repayment"),
+    ).toEqual(initial);
     expect(projectRebuyState(repayment!, "record-repayment")).toBeNull();
     expect(initial).toEqual({ totalRebuyCount: 2, outstandingRebuyCount: 1 });
   });
 
   it("skips the full loader after successful rebuy writes, but refreshes on failure", () => {
-    const options = (actionResult: unknown) => ({
-      actionResult,
-      currentUrl: new URL("https://example.com/g/river-check/games/game-1"),
-      defaultShouldRevalidate: true,
-      nextUrl: new URL("https://example.com/g/river-check/games/game-1"),
-    }) as Parameters<typeof shouldRevalidate>[0];
-    expect(shouldRevalidate(options({
-      ok: true, intent: "record-rebuy",
-    }))).toBe(false);
-    expect(shouldRevalidate(options({
-      ok: true, intent: "undo-rebuy",
-    }))).toBe(false);
-    expect(shouldRevalidate(options({
-      ok: false, intent: "record-repayment",
-    }))).toBe(true);
-    expect(shouldRevalidate(options({ ok: true, intent: "save-input" })))
-      .toBe(true);
+    const options = (actionResult: unknown) =>
+      ({
+        actionResult,
+        currentUrl: new URL("https://example.com/g/river-check/games/game-1"),
+        defaultShouldRevalidate: true,
+        nextUrl: new URL("https://example.com/g/river-check/games/game-1"),
+      }) as Parameters<typeof shouldRevalidate>[0];
+    expect(
+      shouldRevalidate(
+        options({
+          ok: true,
+          intent: "record-rebuy",
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      shouldRevalidate(
+        options({
+          ok: true,
+          intent: "undo-rebuy",
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      shouldRevalidate(
+        options({
+          ok: false,
+          intent: "record-repayment",
+        }),
+      ),
+    ).toBe(true);
+    expect(shouldRevalidate(options({ ok: true, intent: "save-input" }))).toBe(
+      true,
+    );
   });
 });
 
@@ -978,8 +1004,11 @@ describe("LocalRulesSheet", () => {
   it("適用中の72oルールと既存の100BB返済ルールを一緒に表示する", () => {
     const html = renderToStaticMarkup(
       createElement(LocalRulesSheet, {
+        bigBlindAnteChips: 200,
+        bigBlindChips: 200,
         bombPotRuleEnabled: true,
         initialChips: 20_000,
+        smallBlindChips: 100,
         sevenDeuceRuleEnabled: true,
       }),
     );
@@ -1000,9 +1029,12 @@ describe("LocalRulesSheet", () => {
   it("初期チップが変わっても開始前にブラインドを確認できる", () => {
     const html = renderToStaticMarkup(
       createElement(LocalRulesSheet, {
+        bigBlindAnteChips: 100,
+        bigBlindChips: 100,
         bombPotRuleEnabled: true,
         initialChips: 10_000,
         initialStackBb: 100,
+        smallBlindChips: 50,
         sevenDeuceRuleEnabled: true,
       }),
     );
@@ -1016,8 +1048,11 @@ describe("LocalRulesSheet", () => {
   it("開催設定が無効なら72oルールをOFFと表示する", () => {
     const html = renderToStaticMarkup(
       createElement(LocalRulesSheet, {
+        bigBlindAnteChips: 200,
+        bigBlindChips: 200,
         bombPotRuleEnabled: false,
         initialChips: 20_000,
+        smallBlindChips: 100,
         sevenDeuceRuleEnabled: false,
       }),
     );
@@ -1039,14 +1074,11 @@ function loaderArgs(
 function actionArgs(values: Record<string, string>) {
   return {
     params: { gameId, groupCode: "river-check" },
-    request: new Request(
-      `https://example.com/g/river-check/games/${gameId}`,
-      {
-        body: new URLSearchParams(values),
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        method: "POST",
-      },
-    ),
+    request: new Request(`https://example.com/g/river-check/games/${gameId}`, {
+      body: new URLSearchParams(values),
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      method: "POST",
+    }),
   } as Parameters<typeof action>[0];
 }
 

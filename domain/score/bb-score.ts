@@ -1,5 +1,6 @@
 export const INITIAL_STACK_BB = 100;
 export const INITIAL_STACK_BB_OPTIONS = [50, 100] as const;
+export const MAX_INITIAL_STACK_BB = 32_767;
 
 export interface BlindStructure {
   smallBlindChips: number;
@@ -10,49 +11,58 @@ export interface BlindStructure {
 export interface BbScoreInput {
   score: number;
   initialChips: number;
-  initialStackBb?: number;
+  bigBlindChips: number;
 }
 
 export function isSupportedInitialStackBb(value: number): boolean {
-  return INITIAL_STACK_BB_OPTIONS.includes(
-    value as (typeof INITIAL_STACK_BB_OPTIONS)[number],
+  return (
+    Number.isSafeInteger(value) && value > 0 && value <= MAX_INITIAL_STACK_BB
   );
+}
+
+export function calculateInitialStackBb(
+  initialChips: number,
+  bigBlindChips: number,
+): number {
+  assertPositiveSafeInteger(initialChips, "initialChips");
+  assertPositiveSafeInteger(bigBlindChips, "bigBlindChips");
+  if (initialChips % bigBlindChips !== 0) {
+    throw new RangeError("initialChips must be divisible by bigBlindChips");
+  }
+  const initialStackBb = initialChips / bigBlindChips;
+  assertSupportedInitialStackBb(initialStackBb);
+  return initialStackBb;
 }
 
 export function calculateNetBb({
   score,
   initialChips,
-  initialStackBb = INITIAL_STACK_BB,
+  bigBlindChips,
 }: BbScoreInput): number {
-  assertBbScoreInput(score, initialChips, initialStackBb);
-  return ((score - initialChips) / initialChips) * initialStackBb;
+  assertBbScoreInput(score, initialChips, bigBlindChips);
+  return (score - initialChips) / bigBlindChips;
 }
 
-export function calculateChipsPerBb(
-  initialChips: number,
-  initialStackBb = INITIAL_STACK_BB,
-): number {
-  assertPositiveSafeInteger(initialChips, "initialChips");
-  assertSupportedInitialStackBb(initialStackBb);
-  return initialChips / initialStackBb;
+export function calculateChipsPerBb(bigBlindChips: number): number {
+  assertPositiveSafeInteger(bigBlindChips, "bigBlindChips");
+  return bigBlindChips;
 }
 
 export function formatNetBb(input: BbScoreInput): string {
   return formatSignedBbValue(calculateNetBb(input));
 }
 
-export function formatChipsPerBb(
-  initialChips: number,
-  initialStackBb = INITIAL_STACK_BB,
-): string {
-  return formatChipNumber(calculateChipsPerBb(initialChips, initialStackBb));
+export function formatChipsPerBb(bigBlindChips: number): string {
+  return formatChipNumber(calculateChipsPerBb(bigBlindChips));
 }
 
-export function calculateBlindStructure(
+export function calculateLegacyBlindStructure(
   initialChips: number,
   initialStackBb = INITIAL_STACK_BB,
 ): BlindStructure {
-  const bigBlindChips = calculateChipsPerBb(initialChips, initialStackBb);
+  assertPositiveSafeInteger(initialChips, "initialChips");
+  assertSupportedInitialStackBb(initialStackBb);
+  const bigBlindChips = initialChips / initialStackBb;
   return {
     smallBlindChips: bigBlindChips / 2,
     bigBlindChips,
@@ -89,13 +99,13 @@ function formatChipNumber(value: number): string {
 function assertBbScoreInput(
   score: number,
   initialChips: number,
-  initialStackBb: number,
+  bigBlindChips: number,
 ): void {
   if (!Number.isSafeInteger(score)) {
     throw new RangeError("score must be a safe integer");
   }
   assertPositiveSafeInteger(initialChips, "initialChips");
-  assertSupportedInitialStackBb(initialStackBb);
+  assertPositiveSafeInteger(bigBlindChips, "bigBlindChips");
 }
 
 function assertSupportedInitialStackBb(value: number): void {

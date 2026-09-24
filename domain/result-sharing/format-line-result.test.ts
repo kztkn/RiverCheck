@@ -33,6 +33,7 @@ describe("formatLineResult", () => {
           },
         ],
         20_000,
+        200,
       ),
     ).toBe(`【8月8日 ポーカー会】
 合計：10,000円（4人）
@@ -64,6 +65,7 @@ describe("formatLineResult", () => {
           },
         ],
         20_000,
+        200,
         5,
       ),
     ).toBe(`【9月の会】

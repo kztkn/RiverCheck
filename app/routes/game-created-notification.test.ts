@@ -27,7 +27,9 @@ const values: CreateGameFormValues = {
   title: "8月のポーカー会",
   playedAt: "2026-08-30",
   initialChips: "20000",
-  initialStackBb: "100",
+  smallBlindChips: "100",
+  bigBlindChips: "200",
+  bigBlindAnteChips: "200",
   venueCost: "11300",
   firstPlaceCost: "0",
   secondPlaceCost: "500",
@@ -49,9 +51,7 @@ describe("game creation notification", () => {
       payPayRecipientLink: null,
       payPayLinkRegisteredAt: null,
     });
-    mocked.insertGame.mockResolvedValue(
-      "22222222-2222-4222-8222-222222222222",
-    );
+    mocked.insertGame.mockResolvedValue("22222222-2222-4222-8222-222222222222");
   });
 
   it("ゲーム保存後に開催情報を通知serviceへ渡す", async () => {
@@ -73,7 +73,9 @@ describe("game creation notification", () => {
 
   it("通知失敗でも作成済みゲームを成功として返す", async () => {
     mocked.notifyNewGameCreated.mockRejectedValue(new Error("push failed"));
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
     await expect(createGameForGroup("river-check", values)).resolves.toEqual({
       ok: true,

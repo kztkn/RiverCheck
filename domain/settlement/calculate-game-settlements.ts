@@ -1,8 +1,4 @@
 import { assertNonNegativeSafeInteger } from "../shared/validation";
-import {
-  INITIAL_STACK_BB,
-  isSupportedInitialStackBb,
-} from "../score/bb-score";
 
 export const BB_RATE_OPTIONS = [0, 5, 10, 20] as const;
 export const SETTLEMENT_ROUNDING_UNIT = 100;
@@ -24,16 +20,14 @@ export function calculateRoundedGameSettlements(
   entries: GameSettlementEntry[],
   initialChips: number,
   bbRate: number,
-  initialStackBb = INITIAL_STACK_BB,
+  bigBlindChips: number,
 ): RoundedGameSettlement[] {
   assertPositiveSafeInteger(initialChips, "initialChips");
   assertNonNegativeSafeInteger(bbRate, "bbRate");
   if (!isSupportedBbRate(bbRate)) {
     throw new RangeError("bbRate is not supported");
   }
-  if (!isSupportedInitialStackBb(initialStackBb)) {
-    throw new RangeError("initialStackBb is not supported");
-  }
+  assertPositiveSafeInteger(bigBlindChips, "bigBlindChips");
 
   const validated = entries.map((entry) => {
     if (!entry.groupPlayerId) throw new TypeError("groupPlayerId is required");
@@ -58,13 +52,11 @@ export function calculateRoundedGameSettlements(
     throw new RangeError("game score total must be zero-sum");
   }
 
-  const denominator = initialChipsBigInt * 100n;
+  const denominator = BigInt(bigBlindChips) * 100n;
   const rounded = validated.map((entry) => {
     // game yen / 100 = net BB * bbRate / 100.
     const numerator =
-      (BigInt(entry.score) - initialChipsBigInt) *
-      BigInt(initialStackBb) *
-      BigInt(bbRate);
+      (BigInt(entry.score) - initialChipsBigInt) * BigInt(bbRate);
     const roundedUnits = roundRatioHalfAwayFromZero(numerator, denominator);
     return { entry, numerator, roundedUnits };
   });
@@ -108,13 +100,17 @@ export function calculateRoundedGameSettlements(
     const amount = roundedUnits * BigInt(SETTLEMENT_ROUNDING_UNIT);
     const gameSettlementAmount = Number(amount);
     if (!Number.isSafeInteger(gameSettlementAmount)) {
-      throw new RangeError("game settlement amount exceeds the safe integer range");
+      throw new RangeError(
+        "game settlement amount exceeds the safe integer range",
+      );
     }
     return { ...entry, gameSettlementAmount };
   });
   if (
-    results.reduce((total, result) => total + result.gameSettlementAmount, 0) !==
-    0
+    results.reduce(
+      (total, result) => total + result.gameSettlementAmount,
+      0,
+    ) !== 0
   ) {
     throw new Error("rounded game settlements must be zero-sum");
   }

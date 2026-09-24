@@ -42,35 +42,56 @@ describe("player stats ranking repository", () => {
       ],
     });
 
-    await expect(listPlayerStatsRankingSnapshots("group-1")).resolves.toMatchObject({
+    await expect(
+      listPlayerStatsRankingSnapshots("group-1"),
+    ).resolves.toMatchObject({
       current: [{ groupPlayerId: "player-1", gamesPlayed: 1 }],
       previous: [],
     });
 
     const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
     expect(sql).toContain("INNER JOIN finalized_results AS finalized_result");
-    expect(sql).not.toContain("LEFT JOIN finalized_results AS finalized_result");
-    expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), ["group-1"]);
+    expect(sql).not.toContain(
+      "LEFT JOIN finalized_results AS finalized_result",
+    );
+    expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
+      "group-1",
+    ]);
     expect(mocked.queryDatabase).toHaveBeenCalledTimes(1);
     expect(sql).toContain("WHERE group_id = $1 AND status = 'finalized'");
     expect(sql).toContain("WHERE group_player.group_id = $1");
+    expect(sql).toContain("game.big_blind_chips::NUMERIC");
+    expect(sql).toContain(
+      "game.initial_chips::NUMERIC / NULLIF(game.initial_stack_bb, 0)",
+    );
     expect(sql).not.toContain("game_result_revisions");
   });
 
   it("最新開催を除外した集合内で直近3参加と開催人数を計算する", async () => {
     mocked.queryDatabase.mockResolvedValue({ rows: [] });
-    await expect(listPlayerStatsRankingSnapshots("group-1")).resolves.toEqual({ current: [], previous: [] });
+    await expect(listPlayerStatsRankingSnapshots("group-1")).resolves.toEqual({
+      current: [],
+      previous: [],
+    });
     const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
-    expect(sql).toContain("ORDER BY played_at DESC, finalized_at DESC, id DESC");
-    expect(sql).toContain("WHERE comparison.scope = 'current' OR game.game_number > 1");
-    expect(sql).toContain("PARTITION BY comparison.scope, game_result.group_player_id");
+    expect(sql).toContain(
+      "ORDER BY played_at DESC, finalized_at DESC, id DESC",
+    );
+    expect(sql).toContain(
+      "WHERE comparison.scope = 'current' OR game.game_number > 1",
+    );
+    expect(sql).toContain(
+      "PARTITION BY comparison.scope, game_result.group_player_id",
+    );
     expect(sql).toContain("PARTITION BY comparison.scope, game_result.game_id");
     expect(sql).toContain("WHERE finalized_result.recent_number <= 3");
     expect(sql).toContain("GROUP BY finalized_result.comparison_scope");
   });
 
   it("不正な初期チップを黙って集計しない", async () => {
-    mocked.queryDatabase.mockResolvedValue({ rows: [{ comparison_scope: "current", invalid_initial_chips_count: 1 }] });
+    mocked.queryDatabase.mockResolvedValue({
+      rows: [{ comparison_scope: "current", invalid_initial_chips_count: 1 }],
+    });
     await expect(listPlayerStatsRankingSnapshots("group-1")).rejects.toThrow();
   });
 });

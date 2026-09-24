@@ -8,12 +8,11 @@ import { MINIMUM_PODIUM_PARTICIPANT_COUNT } from "@domain/cost-sharing/calculate
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import { calculateFinalResults } from "@domain/finalization/calculate-final-results";
 import { BB_RATE_OPTIONS } from "@domain/settlement/calculate-game-settlements";
-import {
-  INITIAL_STACK_BB_OPTIONS,
-  calculateBlindStructure,
-  formatChipValue,
-} from "@domain/score/bb-score";
 import type { GameParticipantSummary } from "@shared-types/player";
+import {
+  GameConfigurationFields,
+  type GameConfigurationValues,
+} from "./game-configuration-fields";
 import {
   recommendTopCosts,
   recommendTopCostsForAttendance,
@@ -25,11 +24,9 @@ import {
   type SettlementPreviewDraft,
 } from "~/utils/settlement-preview-draft";
 
-export interface GameSettingsValues {
+export interface GameSettingsValues extends GameConfigurationValues {
   title: string;
   playedAt: string;
-  initialChips: string;
-  initialStackBb: string;
   venueCost: string;
   firstPlaceCost: string;
   secondPlaceCost: string;
@@ -70,10 +67,13 @@ export function GameSettingsFields({
   showCoreSettings = true,
   values,
 }: GameSettingsFieldsProps) {
-  const [initialChipsInput, setInitialChipsInput] = useState(values.initialChips);
-  const [initialStackBbInput, setInitialStackBbInput] = useState(
-    values.initialStackBb || "100",
-  );
+  const [gameConfiguration, setGameConfiguration] =
+    useState<GameConfigurationValues>({
+      initialChips: values.initialChips,
+      smallBlindChips: values.smallBlindChips,
+      bigBlindChips: values.bigBlindChips,
+      bigBlindAnteChips: values.bigBlindAnteChips,
+    });
   const [venueCost, setVenueCost] = useState(values.venueCost);
   const [participantCountInput, setParticipantCountInput] = useState(
     String(Math.max(2, Number(values.previewParticipantCount) || 2)),
@@ -108,24 +108,18 @@ export function GameSettingsFields({
   }, [values.bombPotRuleEnabled, values.sevenDeuceRuleEnabled]);
 
   useEffect(() => {
-    setInitialChipsInput(values.initialChips);
-    setInitialStackBbInput(values.initialStackBb || "100");
-  }, [values.initialChips, values.initialStackBb]);
-
-  const blindStructure = useMemo(() => {
-    const initialChips = Number(initialChipsInput);
-    const initialStackBb = Number(initialStackBbInput);
-    if (
-      !Number.isSafeInteger(initialChips) ||
-      initialChips <= 0 ||
-      !INITIAL_STACK_BB_OPTIONS.includes(
-        initialStackBb as (typeof INITIAL_STACK_BB_OPTIONS)[number],
-      )
-    ) {
-      return null;
-    }
-    return calculateBlindStructure(initialChips, initialStackBb);
-  }, [initialChipsInput, initialStackBbInput]);
+    setGameConfiguration({
+      initialChips: values.initialChips,
+      smallBlindChips: values.smallBlindChips,
+      bigBlindChips: values.bigBlindChips,
+      bigBlindAnteChips: values.bigBlindAnteChips,
+    });
+  }, [
+    values.bigBlindAnteChips,
+    values.bigBlindChips,
+    values.initialChips,
+    values.smallBlindChips,
+  ]);
 
   const analysis = useMemo(
     () => analyzeSettlement(venueCost, participantCountInput, shareValues),
@@ -148,11 +142,11 @@ export function GameSettingsFields({
     }
 
     try {
-      const initialChips = parsePreviewInteger(values.initialChips);
+      const initialChips = parsePreviewInteger(gameConfiguration.initialChips);
       const calculated = calculateFinalResults(
         {
           initialChips,
-          initialStackBb: parsePreviewInteger(values.initialStackBb || "100"),
+          bigBlindChips: parsePreviewInteger(gameConfiguration.bigBlindChips),
           rebuyChips: initialChips,
           venueCost: parsePreviewInteger(venueCost),
           firstPlaceCost: parsePreviewInteger(shareValues[0] ?? ""),
@@ -177,7 +171,8 @@ export function GameSettingsFields({
       return { error: null, results: calculated.results };
     } catch {
       return {
-        error: "最終精算を表示するには、会費配分を整え、チップ差分を0にしてください。",
+        error:
+          "最終精算を表示するには、会費配分を整え、チップ差分を0にしてください。",
         results: null,
       };
     }
@@ -186,8 +181,8 @@ export function GameSettingsFields({
     participantCountInput,
     settlementParticipants,
     shareValues,
-    values.initialChips,
-    values.initialStackBb,
+    gameConfiguration.bigBlindChips,
+    gameConfiguration.initialChips,
     venueCost,
   ]);
 
@@ -252,7 +247,9 @@ export function GameSettingsFields({
     const baseline: SettlementPreviewDraft = {
       version: 1,
       venueCost: baseValues.venueCost,
-      participantCount: normalizeParticipantCount(baseValues.previewParticipantCount),
+      participantCount: normalizeParticipantCount(
+        baseValues.previewParticipantCount,
+      ),
       shareValues: buildInitialShares(baseValues),
       recommendationMode: "standard",
       adjustmentMode: "top-three",
@@ -265,7 +262,10 @@ export function GameSettingsFields({
         setDraftSaved(false);
         return;
       }
-      window.localStorage.setItem(settlementDraftStorageKey, JSON.stringify(draft));
+      window.localStorage.setItem(
+        settlementDraftStorageKey,
+        JSON.stringify(draft),
+      );
       setDraftSaved(true);
     } catch {
       setDraftSaved(false);
@@ -318,9 +318,8 @@ export function GameSettingsFields({
     let adjusted;
     let effectiveMode = mode;
     try {
-      const intendedParticipantCount = parseParticipantCount(
-        nextParticipantCount,
-      );
+      const intendedParticipantCount =
+        parseParticipantCount(nextParticipantCount);
       if (
         mode === "podium" &&
         Math.max(intendedParticipantCount, actualParticipantCount) <
@@ -354,27 +353,24 @@ export function GameSettingsFields({
       mode === "podium" && effectiveMode === "standard"
         ? "表彰台ボーナスは6人以上のため、標準傾斜に切り替えました。"
         : showNotice
-        ? adjusted.adjustedToAttendance
-          ? `参加状況${actualParticipantCount}人に合わせて${recommendationLabel(effectiveMode)}を反映しました。`
-          : `${adjusted.participantCount}人想定の${recommendationLabel(effectiveMode)}を反映しました。`
-        : null,
+          ? adjusted.adjustedToAttendance
+            ? `参加状況${actualParticipantCount}人に合わせて${recommendationLabel(effectiveMode)}を反映しました。`
+            : `${adjusted.participantCount}人想定の${recommendationLabel(effectiveMode)}を反映しました。`
+          : null,
     );
   }
 
   function applyRecommendation(mode: RecommendationMode) {
-    replaceWithRecommendation(
-      venueCost,
-      participantCountInput,
-      mode,
-      true,
-    );
+    replaceWithRecommendation(venueCost, participantCountInput, mode, true);
   }
 
   function applyTopThreeDistribution() {
     const participantCount = Number(participantCountInput);
     if (participantCount < 4) {
       setAdjustmentMode("individual");
-      setRecommendationNotice(`${participantCount}人開催では各順位を個別に調整してください。`);
+      setRecommendationNotice(
+        `${participantCount}人開催では各順位を個別に調整してください。`,
+      );
       return;
     }
     try {
@@ -478,70 +474,11 @@ export function GameSettingsFields({
               <span>02</span>
               ゲーム設定
             </legend>
-            <Field
-              error={errors.initialChips}
-              inputMode="numeric"
-              label="初期チップ"
-              min={1}
-              name="initialChips"
-              onChange={(event) => setInitialChipsInput(event.target.value)}
-              required
-              type="number"
-              value={initialChipsInput}
+            <GameConfigurationFields
+              errors={errors}
+              onChange={setGameConfiguration}
+              values={gameConfiguration}
             />
-            <div className="field">
-              <span className="field-label">開始スタック</span>
-              <div aria-label="開始スタック" className="initial-stack-options">
-                {INITIAL_STACK_BB_OPTIONS.map((stackBb) => (
-                  <label className="initial-stack-option" key={stackBb}>
-                    <input
-                      checked={Number(initialStackBbInput) === stackBb}
-                      name="initialStackBb"
-                      onChange={() => setInitialStackBbInput(String(stackBb))}
-                      type="radio"
-                      value={stackBb}
-                    />
-                    <span>{stackBb}BB</span>
-                  </label>
-                ))}
-              </div>
-              {errors.initialStackBb ? (
-                <span className="field-error">{errors.initialStackBb}</span>
-              ) : null}
-            </div>
-            <div
-              aria-live="polite"
-              className="blind-structure-preview"
-            >
-              <div className="blind-structure-heading">
-                <span>今回のブラインド</span>
-                <small>SB / BB / BBA</small>
-              </div>
-              {blindStructure ? (
-                <>
-                  <div className="blind-structure-values">
-                    <span>
-                      <small>SB</small>
-                      <strong>{formatChipValue(blindStructure.smallBlindChips)}</strong>
-                    </span>
-                    <span>
-                      <small>BB</small>
-                      <strong>{formatChipValue(blindStructure.bigBlindChips)}</strong>
-                    </span>
-                    <span>
-                      <small>BBA</small>
-                      <strong>{formatChipValue(blindStructure.bigBlindAnteChips)}</strong>
-                    </span>
-                  </div>
-                  <p>
-                    1BB = {formatChipValue(blindStructure.bigBlindChips)}チップ。
-                    実卓のブラインドと一致しているか開始前に確認してください。
-                  </p>
-                </>
-              ) : (
-                <p>初期チップと開始スタックを設定するとブラインドを表示します。</p>
-              )}
-            </div>
             <p className="field-hint">
               リバイも開始時と同じチップ枚数・BBです。
             </p>
@@ -554,11 +491,19 @@ export function GameSettingsFields({
             </legend>
             <details className="local-rules-disclosure">
               <summary className="local-rules-disclosure-summary">
-                <span className="local-rules-summary-title">設定を確認・変更</span>
-                <span className="local-rules-summary-status">
-                  72o {sevenDeuceRuleEnabled ? "ON" : "OFF"} ・ ボムポット {bombPotRuleEnabled ? "ON" : "OFF"}
+                <span className="local-rules-summary-title">
+                  設定を確認・変更
                 </span>
-                <span aria-hidden="true" className="local-rules-summary-chevron">›</span>
+                <span className="local-rules-summary-status">
+                  72o {sevenDeuceRuleEnabled ? "ON" : "OFF"} ・ ボムポット{" "}
+                  {bombPotRuleEnabled ? "ON" : "OFF"}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="local-rules-summary-chevron"
+                >
+                  ›
+                </span>
               </summary>
               <div className="local-rules-disclosure-body">
                 <label className="local-rule-toggle-card">
@@ -583,7 +528,9 @@ export function GameSettingsFields({
                   <input
                     checked={bombPotRuleEnabled}
                     name="bombPotRuleEnabled"
-                    onChange={(event) => setBombPotRuleEnabled(event.target.checked)}
+                    onChange={(event) =>
+                      setBombPotRuleEnabled(event.target.checked)
+                    }
                     type="checkbox"
                     value="yes"
                   />
@@ -629,9 +576,7 @@ export function GameSettingsFields({
           type="number"
           value={venueCost}
         />
-        <p className="field-hint">
-          精算総額は100円単位で切り上げます。
-        </p>
+        <p className="field-hint">精算総額は100円単位で切り上げます。</p>
 
         <section className="cost-preview" aria-live="polite">
           <div className="cost-preview-heading">
@@ -679,9 +624,7 @@ export function GameSettingsFields({
           {recommendationAvailable ? (
             <div className="recommendation-card">
               <div>
-                <p className="recommendation-title">
-                  おすすめ配分をすぐ反映
-                </p>
+                <p className="recommendation-title">おすすめ配分をすぐ反映</p>
                 <p>
                   表彰台は1〜3位を優遇、標準は順位差をしっかり、ゆる傾斜は差を小さく、割り勘はほぼ均等です。
                 </p>
@@ -749,7 +692,9 @@ export function GameSettingsFields({
                 onClick={applyTopThreeDistribution}
                 type="button"
               >
-                {Number(participantCountInput) < 4 ? "順位を個別調整" : "上位3位から配分"}
+                {Number(participantCountInput) < 4
+                  ? "順位を個別調整"
+                  : "上位3位から配分"}
               </button>
               <button
                 aria-pressed={adjustmentMode === "individual"}
@@ -853,9 +798,7 @@ export function GameSettingsFields({
 
         <details
           className="game-settlement-option"
-          onToggle={(event) =>
-            setGameSettlementOpen(event.currentTarget.open)
-          }
+          onToggle={(event) => setGameSettlementOpen(event.currentTarget.open)}
           open={gameSettlementOpen}
         >
           <summary>
@@ -903,7 +846,10 @@ export function GameSettingsFields({
                                   : `${balance > 0 ? "受取" : "支払"} ${Math.abs(balance).toLocaleString("ja-JP")}円`}
                               </b>
                               <small>
-                                ゲーム {formatSignedYen(result.gameSettlementAmount)} / 会費 -{result.costShare.toLocaleString("ja-JP")}円
+                                ゲーム{" "}
+                                {formatSignedYen(result.gameSettlementAmount)} /
+                                会費 -{result.costShare.toLocaleString("ja-JP")}
+                                円
                               </small>
                             </span>
                           </p>
@@ -917,7 +863,9 @@ export function GameSettingsFields({
               ) : null}
             </div>
             {errors.bbRate ? (
-              <p className="field-error" role="alert">{errors.bbRate}</p>
+              <p className="field-error" role="alert">
+                {errors.bbRate}
+              </p>
             ) : null}
           </div>
         </details>
@@ -956,10 +904,7 @@ export function Field({
           aria-describedby={error ? errorId : undefined}
           aria-invalid={Boolean(error)}
           id={name}
-          min={
-            inputProps.min ??
-            (inputProps.type === "number" ? 0 : undefined)
-          }
+          min={inputProps.min ?? (inputProps.type === "number" ? 0 : undefined)}
           name={name}
         />
         {suffix ? <span className="input-suffix">{suffix}</span> : null}

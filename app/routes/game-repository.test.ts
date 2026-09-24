@@ -12,6 +12,7 @@ import {
   deleteOpenGame,
   findFinalizedGamePublicRoute,
   findGameWithGroupByPublicCode,
+  insertGame,
   listGamesForGroupByPublicCode,
   updateLocalRules,
   updateOpenGameConfiguration,
@@ -26,31 +27,36 @@ describe("game repository navigation lookups", () => {
 
   it("公開コードと開催IDからゲーム・グループを1クエリで返す", async () => {
     mocked.queryDatabase.mockResolvedValue({
-      rows: [{
-        bb_rate: "5",
-        bomb_pot_rule_enabled: true,
-        cost_shares: ["0", "500", "1000"],
-        first_place_cost: "0",
-        group_id: "group-1",
-        group_line_open_chat_url: "https://example.com/openchat",
-        group_name: "River Check",
-        group_paypay_link_registered_at: new Date("2026-09-20T00:00:00.000Z"),
-        group_paypay_recipient_link: "https://example.com/paypay",
-        group_public_code: "river-check",
-        id: "game-1",
-        initial_chips: "20000",
-        initial_stack_bb: 50,
-        played_at: new Date("2026-09-21T03:00:00.000Z"),
-        preview_participant_count: 8,
-        rebuy_chips: "20000",
-        second_place_cost: "500",
-        settlement_plan_published_at: new Date("2026-09-20T01:00:00.000Z"),
-        seven_deuce_rule_enabled: true,
-        status: "open",
-        third_place_cost: "1000",
-        title: "9月の会",
-        venue_cost: "12000",
-      }],
+      rows: [
+        {
+          bb_rate: "5",
+          bomb_pot_rule_enabled: true,
+          cost_shares: ["0", "500", "1000"],
+          first_place_cost: "0",
+          group_id: "group-1",
+          group_line_open_chat_url: "https://example.com/openchat",
+          group_name: "River Check",
+          group_paypay_link_registered_at: new Date("2026-09-20T00:00:00.000Z"),
+          group_paypay_recipient_link: "https://example.com/paypay",
+          group_public_code: "river-check",
+          id: "game-1",
+          initial_chips: "20000",
+          small_blind_chips: "200",
+          big_blind_chips: "400",
+          big_blind_ante_chips: "400",
+          initial_stack_bb: 50,
+          played_at: new Date("2026-09-21T03:00:00.000Z"),
+          preview_participant_count: 8,
+          rebuy_chips: "20000",
+          second_place_cost: "500",
+          settlement_plan_published_at: new Date("2026-09-20T01:00:00.000Z"),
+          seven_deuce_rule_enabled: true,
+          status: "open",
+          third_place_cost: "1000",
+          title: "9月の会",
+          venue_cost: "12000",
+        },
+      ],
     });
 
     await expect(
@@ -70,6 +76,9 @@ describe("game repository navigation lookups", () => {
         groupId: "group-1",
         id: "game-1",
         initialChips: 20000,
+        smallBlindChips: 200,
+        bigBlindChips: 400,
+        bigBlindAnteChips: 400,
         initialStackBb: 50,
         playedAt: "2026-09-21T03:00:00.000Z",
         status: "open",
@@ -88,28 +97,78 @@ describe("game repository navigation lookups", () => {
     ]);
   });
 
-  it("公開コードを使って開催一覧を直接取得する", async () => {
+  it("未backfillの旧行は従来値から安全なブラインド表示へフォールバックする", async () => {
     mocked.queryDatabase.mockResolvedValue({
-      rows: [{
-        id: "game-1",
-        participant_count: 4,
-        played_at: new Date("2026-09-21T03:00:00.000Z"),
-        status: "open",
-        title: "9月の会",
-        winner_name: null,
-      }],
+      rows: [
+        {
+          bb_rate: "0",
+          bomb_pot_rule_enabled: false,
+          cost_shares: null,
+          first_place_cost: "0",
+          group_id: "group-1",
+          group_line_open_chat_url: null,
+          group_name: "River Check",
+          group_paypay_link_registered_at: null,
+          group_paypay_recipient_link: null,
+          group_public_code: "river-check",
+          id: "legacy-game",
+          initial_chips: "20000",
+          small_blind_chips: null,
+          big_blind_chips: null,
+          big_blind_ante_chips: null,
+          initial_stack_bb: 100,
+          played_at: new Date("2026-09-01T00:00:00.000Z"),
+          preview_participant_count: 8,
+          rebuy_chips: "20000",
+          second_place_cost: "500",
+          settlement_plan_published_at: null,
+          seven_deuce_rule_enabled: false,
+          status: "finalized",
+          third_place_cost: "1000",
+          title: "旧開催",
+          venue_cost: "11300",
+        },
+      ],
     });
 
     await expect(
-      listGamesForGroupByPublicCode("river-check"),
-    ).resolves.toEqual([{
-      id: "game-1",
-      participantCount: 4,
-      playedAt: "2026-09-21T03:00:00.000Z",
-      status: "open",
-      title: "9月の会",
-      winnerName: null,
-    }]);
+      findGameWithGroupByPublicCode("river-check", "legacy-game"),
+    ).resolves.toMatchObject({
+      game: {
+        initialStackBb: 100,
+        smallBlindChips: 100,
+        bigBlindChips: 200,
+        bigBlindAnteChips: 200,
+      },
+    });
+  });
+
+  it("公開コードを使って開催一覧を直接取得する", async () => {
+    mocked.queryDatabase.mockResolvedValue({
+      rows: [
+        {
+          id: "game-1",
+          participant_count: 4,
+          played_at: new Date("2026-09-21T03:00:00.000Z"),
+          status: "open",
+          title: "9月の会",
+          winner_name: null,
+        },
+      ],
+    });
+
+    await expect(listGamesForGroupByPublicCode("river-check")).resolves.toEqual(
+      [
+        {
+          id: "game-1",
+          participantCount: 4,
+          playedAt: "2026-09-21T03:00:00.000Z",
+          status: "open",
+          title: "9月の会",
+          winnerName: null,
+        },
+      ],
+    );
 
     const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
     expect(sql).toContain("game_group.public_code = $1");
@@ -136,10 +195,9 @@ describe("game repository public result route", () => {
     const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
     expect(sql).toContain("game.status = 'finalized'");
     expect(sql).toContain("INNER JOIN groups");
-    expect(mocked.queryDatabase).toHaveBeenCalledWith(
-      expect.any(String),
-      ["game-1"],
-    );
+    expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
+      "game-1",
+    ]);
   });
 
   it("対象がなければnullを返す", async () => {
@@ -195,6 +253,55 @@ describe("game repository open game management", () => {
     vi.resetAllMocks();
   });
 
+  it("新規開催で明示ブラインドと派生開始BBを正しい列順に保存する", async () => {
+    mocked.queryDatabase.mockResolvedValue({ rows: [{ id: "game-1" }] });
+
+    await expect(
+      insertGame("group-1", {
+        title: "9月の会",
+        playedAt: "2026-09-23T00:00:00.000Z",
+        initialChips: 20_000,
+        smallBlindChips: 100,
+        bigBlindChips: 200,
+        bigBlindAnteChips: 200,
+        initialStackBb: 100,
+        rebuyChips: 20_000,
+        venueCost: 11_300,
+        firstPlaceCost: 0,
+        secondPlaceCost: 500,
+        thirdPlaceCost: 1_000,
+        previewParticipantCount: 8,
+        costShares: [0, 500, 1_000, 1_400, 1_800, 2_000, 2_200, 2_400],
+        bbRate: 10,
+        sevenDeuceRuleEnabled: true,
+        bombPotRuleEnabled: true,
+      }),
+    ).resolves.toBe("game-1");
+
+    const [sql, params] = mocked.queryDatabase.mock.calls[0]!;
+    expect(String(sql)).toContain("$9, $10, 100, $11");
+    expect(params).toEqual([
+      "group-1",
+      "9月の会",
+      "2026-09-23T00:00:00.000Z",
+      20_000,
+      100,
+      200,
+      200,
+      100,
+      20_000,
+      11_300,
+      0,
+      500,
+      1_000,
+      8,
+      [0, 500, 1_000, 1_400, 1_800, 2_000, 2_200, 2_400],
+      10,
+      true,
+      true,
+    ]);
+  });
+
   it("同じグループの受付中開催だけ開催名を変更する", async () => {
     mocked.queryDatabase.mockResolvedValue({ rowCount: 1, rows: [] });
 
@@ -233,7 +340,7 @@ describe("game repository open game management", () => {
     ]);
   });
 
-  it("初期チップ・リバイチップ・開始BBをゲーム設定として揃えて更新する", async () => {
+  it("初期チップ・明示ブラインド・派生開始BBを揃えて更新する", async () => {
     mocked.queryDatabase.mockResolvedValue({
       rows: [{ status: "updated" }],
     });
@@ -242,7 +349,13 @@ describe("game repository open game management", () => {
       updateOpenGameConfiguration(
         "group-1",
         "game-1",
-        { initialChips: 10_000, initialStackBb: 50 },
+        {
+          initialChips: 10_000,
+          smallBlindChips: 100,
+          bigBlindChips: 200,
+          bigBlindAnteChips: 200,
+          initialStackBb: 50,
+        },
         false,
       ),
     ).resolves.toBe("updated");
@@ -250,13 +363,19 @@ describe("game repository open game management", () => {
     const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);
     expect(sql).toContain("initial_chips = $3");
     expect(sql).toContain("rebuy_chips = $3");
-    expect(sql).toContain("initial_stack_bb = $4");
+    expect(sql).toContain("small_blind_chips = $4");
+    expect(sql).toContain("big_blind_chips = $5");
+    expect(sql).toContain("big_blind_ante_chips = $6");
+    expect(sql).toContain("initial_stack_bb = $7");
     expect(sql).toContain("game_rebuy_events");
     expect(sql).toContain("participant.submitted_at IS NOT NULL");
     expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
       "game-1",
       "group-1",
       10_000,
+      100,
+      200,
+      200,
       50,
       false,
     ]);
@@ -271,7 +390,13 @@ describe("game repository open game management", () => {
       updateOpenGameConfiguration(
         "group-1",
         "game-1",
-        { initialChips: 10_000, initialStackBb: 50 },
+        {
+          initialChips: 10_000,
+          smallBlindChips: 100,
+          bigBlindChips: 200,
+          bigBlindAnteChips: 200,
+          initialStackBb: 50,
+        },
         false,
       ),
     ).resolves.toBe("confirmation-required");

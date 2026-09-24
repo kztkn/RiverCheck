@@ -16,7 +16,7 @@ export interface FinalizationParticipant {
 
 export interface FinalizationSettings {
   initialChips: number;
-  initialStackBb?: number;
+  bigBlindChips: number;
   rebuyChips: number;
   venueCost: number;
   firstPlaceCost: number;
@@ -74,7 +74,7 @@ export function calculateFinalResults(
       })),
       settings.initialChips,
       settings.bbRate ?? 0,
-      settings.initialStackBb,
+      settings.bigBlindChips,
     ).map((settlement) => [
       settlement.groupPlayerId,
       settlement.gameSettlementAmount,

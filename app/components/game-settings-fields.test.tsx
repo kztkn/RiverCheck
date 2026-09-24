@@ -1,13 +1,18 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { GameSettingsFields, type GameSettingsValues } from "./game-settings-fields";
+import {
+  GameSettingsFields,
+  type GameSettingsValues,
+} from "./game-settings-fields";
 
 const baseValues: GameSettingsValues = {
   title: "テスト開催",
   playedAt: "2026-08-29",
   initialChips: "20000",
-  initialStackBb: "100",
+  smallBlindChips: "100",
+  bigBlindChips: "200",
+  bigBlindAnteChips: "200",
   venueCost: "12000",
   firstPlaceCost: "0",
   secondPlaceCost: "500",
@@ -20,25 +25,26 @@ const baseValues: GameSettingsValues = {
 };
 
 describe("GameSettingsFields local rules", () => {
-  it("開始スタックは50BBと100BBから選べる", () => {
+  it("50BBと100BBのショートカットはBBを変えず初期チップを調整する", () => {
     const markup = renderToStaticMarkup(
       createElement(GameSettingsFields, {
         errors: {},
-        values: { ...baseValues, initialStackBb: "50" },
+        values: { ...baseValues, initialChips: "10000" },
       }),
     );
 
-    expect(markup).toContain('aria-label="開始スタック"');
-    expect(markup).toContain('checked="" value="50"');
-    expect(markup).toContain('value="100"');
+    expect(markup).toContain('aria-label="開始スタックのショートカット"');
+    expect(markup).toContain('aria-pressed="true"');
+    expect(markup).toContain("50BB");
+    expect(markup).toContain("BBは変えず、初期チップだけを調整します。");
     expect(markup).toContain("リバイも開始時と同じチップ枚数・BBです。");
   });
 
-  it("初期チップと開始BBからSB・BB・BBAを見える化する", () => {
+  it("SB・BB・BBAを明示値として見える化する", () => {
     const standardMarkup = renderToStaticMarkup(
       createElement(GameSettingsFields, { errors: {}, values: baseValues }),
     );
-    expect(standardMarkup).toContain("今回のブラインド");
+    expect(standardMarkup).toContain("今回のゲーム設定");
     expect(standardMarkup).toContain("<small>SB</small><strong>100</strong>");
     expect(standardMarkup).toContain("<small>BB</small><strong>200</strong>");
     expect(standardMarkup).toContain("<small>BBA</small><strong>200</strong>");
@@ -49,14 +55,14 @@ describe("GameSettingsFields local rules", () => {
         values: {
           ...baseValues,
           initialChips: "10000",
-          initialStackBb: "100",
         },
       }),
     );
-    expect(compactMarkup).toContain("<small>SB</small><strong>50</strong>");
-    expect(compactMarkup).toContain("<small>BB</small><strong>100</strong>");
-    expect(compactMarkup).toContain("<small>BBA</small><strong>100</strong>");
-    expect(compactMarkup).toContain("1BB = 100チップ");
+    expect(compactMarkup).toContain("<small>SB</small><strong>100</strong>");
+    expect(compactMarkup).toContain("<small>BB</small><strong>200</strong>");
+    expect(compactMarkup).toContain("<small>BBA</small><strong>200</strong>");
+    expect(compactMarkup).toContain("開始スタック <strong>50BB</strong>");
+    expect(compactMarkup).toContain("1BB = 200チップ");
   });
 
   it("ローカルルールを初期状態では閉じ、現在のON/OFFを要約表示する", () => {
@@ -76,7 +82,7 @@ describe("GameSettingsFields local rules", () => {
 
     expect(markup).toContain("<strong>ゲーム収支</strong>");
     expect(markup).toContain("1BB = 0円");
-    expect(markup).toContain("aria-label=\"BBレート\"");
+    expect(markup).toContain('aria-label="BBレート"');
     expect(markup).toContain(">0円</button>");
     expect(markup).not.toMatch(/<details[^>]*\sopen(?:=|\s|>)/u);
   });
@@ -91,7 +97,7 @@ describe("GameSettingsFields local rules", () => {
 
     expect(markup).toContain("1BB = 5円");
     expect(markup).toContain("100円単位で調整します");
-    expect(markup).toContain("aria-pressed=\"true\"");
+    expect(markup).toContain('aria-pressed="true"');
     expect(markup).toMatch(/<details[^>]*\sopen(?:=|\s|>)/u);
   });
 

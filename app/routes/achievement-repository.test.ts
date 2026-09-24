@@ -39,90 +39,109 @@ describe("achievement repository", () => {
     ]);
     expect(query).toHaveBeenCalledTimes(1);
     expect(query.mock.calls[0]?.[0]).toContain("jsonb_to_recordset");
-    expect(query.mock.calls[0]?.[0]).toContain("ON CONFLICT (group_player_id, achievement_id) DO NOTHING");
-    expect(query.mock.calls[0]?.[0]).not.toContain("DELETE FROM player_achievements");
+    expect(query.mock.calls[0]?.[0]).toContain(
+      "ON CONFLICT (group_player_id, achievement_id) DO NOTHING",
+    );
+    expect(query.mock.calls[0]?.[0]).not.toContain(
+      "DELETE FROM player_achievements",
+    );
   });
 
   it("marks, locks, and clears achievement refresh state", async () => {
-    const query = vi.fn()
+    const query = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [], rowCount: 1 })
       .mockResolvedValueOnce({ rows: [{ id: "player-1" }], rowCount: 1 })
       .mockResolvedValueOnce({ rows: [], rowCount: 1 });
     const transaction = transactionWith(query);
 
     await markAchievementRefreshNeeded(transaction, "group-1", ["player-1"]);
-    await expect(lockAchievementRefreshTargets(
-      transaction,
-      "group-1",
-      ["player-1"],
-    )).resolves.toEqual(["player-1"]);
+    await expect(
+      lockAchievementRefreshTargets(transaction, "group-1", ["player-1"]),
+    ).resolves.toEqual(["player-1"]);
     await clearAchievementRefreshNeeded(transaction, "group-1", ["player-1"]);
 
-    expect(String(query.mock.calls[0]?.[0])).toContain("achievements_dirty = TRUE");
+    expect(String(query.mock.calls[0]?.[0])).toContain(
+      "achievements_dirty = TRUE",
+    );
     expect(String(query.mock.calls[1]?.[0])).toContain("FOR UPDATE");
-    expect(String(query.mock.calls[2]?.[0])).toContain("achievements_dirty = FALSE");
+    expect(String(query.mock.calls[2]?.[0])).toContain(
+      "achievements_dirty = FALSE",
+    );
   });
 
   it("loads finalized result, table-event, and story facts in one history query", async () => {
     const query = vi.fn().mockResolvedValue({
-      rows: [{
-        group_player_id: "player-1",
-        game_id: "game-1",
-        rank: 2,
-        participant_count: "5",
-        net_bb: "25",
-        initial_chips: "20000",
-        total_rebuy_count: null,
-        tracked_outstanding_rebuy_count: null,
-        settlement_rebuy_count: 1,
-        seven_deuce_count: 2,
-        all_in_win_count: 1,
-        all_in_loss_count: 3,
-        story_post_count: 1,
-      }],
+      rows: [
+        {
+          group_player_id: "player-1",
+          game_id: "game-1",
+          rank: 2,
+          participant_count: "5",
+          net_bb: "25",
+          initial_chips: "20000",
+          total_rebuy_count: null,
+          tracked_outstanding_rebuy_count: null,
+          settlement_rebuy_count: 1,
+          seven_deuce_count: 2,
+          all_in_win_count: 1,
+          all_in_loss_count: 3,
+          story_post_count: 1,
+        },
+      ],
     });
-    await expect(listAchievementHistoryGames(
-      transactionWith(query),
-      "group-1",
-      ["player-1"],
-    )).resolves.toEqual([{
-      groupPlayerId: "player-1",
-      gameId: "game-1",
-      rank: 2,
-      participantCount: 5,
-      netBb: 25,
-      totalRebuyCount: 1,
-      outstandingRebuyCount: null,
-      settlementRebuyCount: 1,
-      sevenDeuceCount: 2,
-      allInWinCount: 1,
-      allInLossCount: 3,
-      storyPostCount: 1,
-    }]);
+    await expect(
+      listAchievementHistoryGames(transactionWith(query), "group-1", [
+        "player-1",
+      ]),
+    ).resolves.toEqual([
+      {
+        groupPlayerId: "player-1",
+        gameId: "game-1",
+        rank: 2,
+        participantCount: 5,
+        netBb: 25,
+        totalRebuyCount: 1,
+        outstandingRebuyCount: null,
+        settlementRebuyCount: 1,
+        sevenDeuceCount: 2,
+        allInWinCount: 1,
+        allInLossCount: 3,
+        storyPostCount: 1,
+      },
+    ]);
     const sql = String(query.mock.calls[0]?.[0]);
     expect(sql).toContain("seven_deuce_metrics");
     expect(sql).toContain("all_in_metrics");
     expect(sql).toContain("story_metrics");
     expect(sql).toContain("event.canceled_at IS NULL");
+    expect(sql).toContain("game.big_blind_chips::NUMERIC");
+    expect(sql).toContain(
+      "game.initial_chips::NUMERIC / NULLIF(game.initial_stack_bb, 0)",
+    );
   });
 
   it("counts reactions by distinct story post and keeps the fifth source game", async () => {
     const query = vi.fn().mockResolvedValue({
-      rows: [{
-        group_player_id: "player-1",
-        reacted_story_post_count: 5,
-        fifth_reacted_story_game_id: "game-5",
-      }],
+      rows: [
+        {
+          group_player_id: "player-1",
+          reacted_story_post_count: 5,
+          fifth_reacted_story_game_id: "game-5",
+        },
+      ],
     });
-    await expect(listAchievementReactionSummaries(
-      transactionWith(query),
-      "group-1",
-      ["player-1"],
-    )).resolves.toEqual([{
-      groupPlayerId: "player-1",
-      reactedStoryPostCount: 5,
-      fifthReactedStoryGameId: "game-5",
-    }]);
+    await expect(
+      listAchievementReactionSummaries(transactionWith(query), "group-1", [
+        "player-1",
+      ]),
+    ).resolves.toEqual([
+      {
+        groupPlayerId: "player-1",
+        reactedStoryPostCount: 5,
+        fifthReactedStoryGameId: "game-5",
+      },
+    ]);
     expect(String(query.mock.calls[0]?.[0])).toContain("reaction_number = 5");
     expect(String(query.mock.calls[0]?.[0])).toContain("MAX(game_id::TEXT)");
   });

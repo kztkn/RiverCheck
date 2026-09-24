@@ -75,6 +75,7 @@ export async function listPlayerStatsRankingSnapshots(
     `
       WITH finalized_games AS (
         SELECT id, played_at, finalized_at, initial_chips, initial_stack_bb,
+          big_blind_chips,
           ROW_NUMBER() OVER (
             ORDER BY played_at DESC, finalized_at DESC, id DESC
           ) AS game_number
@@ -89,6 +90,7 @@ export async function listPlayerStatsRankingSnapshots(
           game_result.rank,
           game.initial_chips,
           game.initial_stack_bb,
+          game.big_blind_chips,
           COUNT(*) OVER (
             PARTITION BY comparison.scope, game_result.game_id
           )::INTEGER AS participant_count,
@@ -97,9 +99,15 @@ export async function listPlayerStatsRankingSnapshots(
             ORDER BY game.played_at DESC, game.finalized_at DESC, game.id DESC
           ) AS recent_number,
           CASE
-            WHEN game.initial_chips > 0 THEN
-              ((game_result.score - game.initial_chips)::NUMERIC * game.initial_stack_bb)
-                / game.initial_chips
+            WHEN COALESCE(
+              game.big_blind_chips::NUMERIC,
+              game.initial_chips::NUMERIC / NULLIF(game.initial_stack_bb, 0)
+            ) > 0 THEN
+              (game_result.score - game.initial_chips)::NUMERIC
+                / COALESCE(
+                    game.big_blind_chips::NUMERIC,
+                    game.initial_chips::NUMERIC / NULLIF(game.initial_stack_bb, 0)
+                  )
             ELSE NULL
           END AS net_bb
         FROM game_results AS game_result
@@ -292,9 +300,15 @@ export async function listFinalizedPlayerGameStats(
         game_result.settlement_rebuy_count,
         game.initial_chips,
         CASE
-          WHEN game.initial_chips > 0 THEN
-            ((game_result.score - game.initial_chips)::NUMERIC * game.initial_stack_bb)
-              / game.initial_chips
+          WHEN COALESCE(
+            game.big_blind_chips::NUMERIC,
+            game.initial_chips::NUMERIC / NULLIF(game.initial_stack_bb, 0)
+          ) > 0 THEN
+            (game_result.score - game.initial_chips)::NUMERIC
+              / COALESCE(
+                  game.big_blind_chips::NUMERIC,
+                  game.initial_chips::NUMERIC / NULLIF(game.initial_stack_bb, 0)
+                )
           ELSE NULL
         END AS net_bb
       FROM game_results AS game_result

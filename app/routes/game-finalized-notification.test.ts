@@ -13,11 +13,13 @@ const mocked = vi.hoisted(() => ({
 }));
 
 vi.mock("@server/db/client.server", () => ({
-  withTransaction: vi.fn(async (callback: (transaction: object) => Promise<unknown>) => {
-    const result = await callback({});
-    mocked.events.push("committed");
-    return result;
-  }),
+  withTransaction: vi.fn(
+    async (callback: (transaction: object) => Promise<unknown>) => {
+      const result = await callback({});
+      mocked.events.push("committed");
+      return result;
+    },
+  ),
 }));
 vi.mock("@server/repositories/finalization-repository.server", () => ({
   insertFinalResults: mocked.insertFinalResults,
@@ -53,6 +55,9 @@ const settings = {
   title: "8月のポーカー会",
   playedAt: "2026-08-30T00:00:00.000Z",
   initialChips: 20_000,
+  smallBlindChips: 100,
+  bigBlindChips: 200,
+  bigBlindAnteChips: 200,
   initialStackBb: 100,
   rebuyChips: 10_000,
   previewParticipantCount: 4,
@@ -77,6 +82,10 @@ describe("game finalization notification", () => {
       playedAt: settings.playedAt,
       status: "open",
       initialChips: settings.initialChips,
+      smallBlindChips: settings.smallBlindChips,
+      bigBlindChips: settings.bigBlindChips,
+      bigBlindAnteChips: settings.bigBlindAnteChips,
+      initialStackBb: settings.initialStackBb,
       rebuyChips: settings.rebuyChips,
       previewParticipantCount: 4,
       venueCost: settings.venueCost,
@@ -153,7 +162,9 @@ describe("game finalization notification", () => {
 
   it("通知失敗でも確定結果を成功として返す", async () => {
     mocked.notifyGameFinalized.mockRejectedValue(new Error("push failed"));
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
     await expect(
       finalizeGame(group, gameId, settings, false, false),

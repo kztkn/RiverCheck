@@ -1,7 +1,8 @@
-import { queryDatabase, type DatabaseTransaction } from "@server/db/client.server";
-import type {
-  AchievementUnlock,
-} from "@domain/achievement/evaluate-achievements";
+import {
+  queryDatabase,
+  type DatabaseTransaction,
+} from "@server/db/client.server";
+import type { AchievementUnlock } from "@domain/achievement/evaluate-achievements";
 import type {
   AchievementIconKey,
   PendingAchievementNotification,
@@ -104,12 +105,19 @@ export async function listAchievementHistoryGames(
           game_result.settlement_rebuy_count,
           game.initial_chips,
           game.initial_stack_bb,
+          game.big_blind_chips,
           game.played_at,
           game.finalized_at,
           CASE
-            WHEN game.initial_chips > 0 THEN
-              ((game_result.score - game.initial_chips)::NUMERIC * game.initial_stack_bb)
-                / game.initial_chips
+            WHEN COALESCE(
+              game.big_blind_chips::NUMERIC,
+              game.initial_chips::NUMERIC / NULLIF(game.initial_stack_bb, 0)
+            ) > 0 THEN
+              (game_result.score - game.initial_chips)::NUMERIC
+                / COALESCE(
+                    game.big_blind_chips::NUMERIC,
+                    game.initial_chips::NUMERIC / NULLIF(game.initial_stack_bb, 0)
+                  )
             ELSE NULL
           END AS net_bb
         FROM game_results AS game_result
@@ -208,8 +216,7 @@ export async function listAchievementHistoryGames(
     rank: row.rank,
     participantCount: Number(row.participant_count),
     netBb: Number(row.net_bb),
-    totalRebuyCount:
-      row.total_rebuy_count ?? row.settlement_rebuy_count,
+    totalRebuyCount: row.total_rebuy_count ?? row.settlement_rebuy_count,
     outstandingRebuyCount: row.tracked_outstanding_rebuy_count,
     settlementRebuyCount: row.settlement_rebuy_count,
     sevenDeuceCount: row.seven_deuce_count,

@@ -72,6 +72,9 @@ const game = {
   firstPlaceCost: 1_000,
   id: "22222222-2222-4222-8222-222222222222",
   initialChips: 20_000,
+  smallBlindChips: 100,
+  bigBlindChips: 200,
+  bigBlindAnteChips: 200,
   initialStackBb: 100,
   playedAt: "2026-08-10T00:00:00.000Z",
   previewParticipantCount: 2,
@@ -164,21 +167,28 @@ describe("game admin management action", () => {
     );
   });
 
-  it("初期チップと開始BBをゲーム設定として保存する", async () => {
+  it("初期チップと明示ブラインドをゲーム設定として保存する", async () => {
     mocked.updateOpenGameConfigurationForGroup.mockResolvedValue({ ok: true });
 
     const result = await action(
       actionArgs({
         intent: "save-game-configuration",
         initialChips: "10000",
-        initialStackBb: "50",
+        smallBlindChips: "100",
+        bigBlindChips: "200",
+        bigBlindAnteChips: "200",
       }),
     );
 
     expect(mocked.updateOpenGameConfigurationForGroup).toHaveBeenCalledWith(
       group.id,
       game.id,
-      { initialChips: "10000", initialStackBb: "50" },
+      {
+        initialChips: "10000",
+        smallBlindChips: "100",
+        bigBlindChips: "200",
+        bigBlindAnteChips: "200",
+      },
       false,
     );
     expect(result).toEqual({
@@ -194,7 +204,9 @@ describe("game admin management action", () => {
       actionArgs({
         intent: "save-game-configuration",
         initialChips: "10000",
-        initialStackBb: "50",
+        smallBlindChips: "100",
+        bigBlindChips: "200",
+        bigBlindAnteChips: "200",
         confirmExistingActivity: "yes",
       }),
     );
@@ -202,7 +214,12 @@ describe("game admin management action", () => {
     expect(mocked.updateOpenGameConfigurationForGroup).toHaveBeenCalledWith(
       group.id,
       game.id,
-      { initialChips: "10000", initialStackBb: "50" },
+      {
+        initialChips: "10000",
+        smallBlindChips: "100",
+        bigBlindChips: "200",
+        bigBlindAnteChips: "200",
+      },
       true,
     );
   });
@@ -217,14 +234,10 @@ describe("game admin management action", () => {
       }),
     );
 
-    expect(mocked.updateLocalRules).toHaveBeenCalledWith(
-      group.id,
-      game.id,
-      {
-        sevenDeuceRuleEnabled: true,
-        bombPotRuleEnabled: false,
-      },
-    );
+    expect(mocked.updateLocalRules).toHaveBeenCalledWith(group.id, game.id, {
+      sevenDeuceRuleEnabled: true,
+      bombPotRuleEnabled: false,
+    });
     expect(result).toEqual({
       ok: true,
       intent: "save-local-rules",

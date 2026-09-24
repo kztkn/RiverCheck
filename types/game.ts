@@ -15,6 +15,9 @@ export interface GameListItem extends GameSummary {
 export interface GameDetails extends GameSummary {
   groupId: string;
   initialChips: number;
+  smallBlindChips: number;
+  bigBlindChips: number;
+  bigBlindAnteChips: number;
   initialStackBb: number;
   rebuyChips: number;
   previewParticipantCount: number;
@@ -33,6 +36,9 @@ export interface CreateGameInput {
   title: string;
   playedAt: string;
   initialChips: number;
+  smallBlindChips: number;
+  bigBlindChips: number;
+  bigBlindAnteChips: number;
   initialStackBb: number;
   rebuyChips: number;
   previewParticipantCount: number;

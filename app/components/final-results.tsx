@@ -19,6 +19,7 @@ export function FinalResults({
   editUrl,
   bbRate = 0,
   initialChips,
+  bigBlindChips,
   initialStackBb = 100,
   linkPlayerProfiles = true,
   playedAt,
@@ -34,6 +35,7 @@ export function FinalResults({
   editUrl?: string;
   bbRate?: number;
   initialChips: number;
+  bigBlindChips: number;
   initialStackBb?: number;
   linkPlayerProfiles?: boolean;
   playedAt: string;
@@ -179,9 +181,13 @@ export function FinalResults({
           </div>
           <div className="result-values result-winner-values">
             <b
-              className={`result-score result-score-${scoreTone(winner.score, initialChips, initialStackBb)}`}
+              className={`result-score result-score-${scoreTone(winner.score, initialChips, bigBlindChips)}`}
             >
-              {formatNetBb({ score: winner.score, initialChips, initialStackBb })}
+              {formatNetBb({
+                score: winner.score,
+                initialChips,
+                bigBlindChips,
+              })}
             </b>
             {showSettlementAmounts ? (
               <ResultSettlementAmount bbRate={bbRate} result={winner} />
@@ -190,41 +196,47 @@ export function FinalResults({
         </ResultPlayerContainer>
       ) : null}
       <div className="result-list">
-        {results.filter((result) => result.rank !== 1).map((result) => (
-          <ResultPlayerContainer
-            ariaLabel={`${result.displayName}の戦績を見る`}
-            className={`result-row result-row-rank-${result.rank}${
-              result.rank <= 3 ? " is-top-three" : ""
-            }`}
-            groupCode={groupCode}
-            groupPlayerId={result.groupPlayerId}
-            key={result.groupPlayerId}
-            link={linkPlayerProfiles}
-          >
-            <span className={`rank-badge rank-${result.rank}`}>
-              {formatOrdinal(result.rank)}
-            </span>
-            <PlayerAvatar
-              avatarUrl={result.avatarUrl ?? null}
-              className="result-avatar"
-              displayName={result.displayName}
-            />
-            <div className="result-player">
-              <strong>{result.displayName}</strong>
-              <ResultParticipantMeta result={result} />
-            </div>
-            <div className="result-values">
-              <strong
-                className={`result-score result-score-${scoreTone(result.score, initialChips, initialStackBb)}`}
-              >
-                {formatNetBb({ score: result.score, initialChips, initialStackBb })}
-              </strong>
-              {showSettlementAmounts ? (
-                <ResultSettlementAmount bbRate={bbRate} result={result} />
-              ) : null}
-            </div>
-          </ResultPlayerContainer>
-        ))}
+        {results
+          .filter((result) => result.rank !== 1)
+          .map((result) => (
+            <ResultPlayerContainer
+              ariaLabel={`${result.displayName}の戦績を見る`}
+              className={`result-row result-row-rank-${result.rank}${
+                result.rank <= 3 ? " is-top-three" : ""
+              }`}
+              groupCode={groupCode}
+              groupPlayerId={result.groupPlayerId}
+              key={result.groupPlayerId}
+              link={linkPlayerProfiles}
+            >
+              <span className={`rank-badge rank-${result.rank}`}>
+                {formatOrdinal(result.rank)}
+              </span>
+              <PlayerAvatar
+                avatarUrl={result.avatarUrl ?? null}
+                className="result-avatar"
+                displayName={result.displayName}
+              />
+              <div className="result-player">
+                <strong>{result.displayName}</strong>
+                <ResultParticipantMeta result={result} />
+              </div>
+              <div className="result-values">
+                <strong
+                  className={`result-score result-score-${scoreTone(result.score, initialChips, bigBlindChips)}`}
+                >
+                  {formatNetBb({
+                    score: result.score,
+                    initialChips,
+                    bigBlindChips,
+                  })}
+                </strong>
+                {showSettlementAmounts ? (
+                  <ResultSettlementAmount bbRate={bbRate} result={result} />
+                ) : null}
+              </div>
+            </ResultPlayerContainer>
+          ))}
       </div>
       <div className="result-settlement-footer">
         {payPay ? (
@@ -239,7 +251,9 @@ export function FinalResults({
             <span aria-hidden="true">P</span>
             PayPayで支払う
           </button>
-        ) : <span />}
+        ) : (
+          <span />
+        )}
         <div className="result-total-summary">
           {showSettlementAmounts ? (
             <div className="result-total">
@@ -248,17 +262,20 @@ export function FinalResults({
             </div>
           ) : null}
           <p className="bb-basis">
-            {initialStackBb}BB開始 ・ 1BB = {formatChipsPerBb(initialChips, initialStackBb)}チップ
+            {initialStackBb}BB開始 ・ 1BB = {formatChipsPerBb(bigBlindChips)}
+            チップ
           </p>
           {bbRate > 0 ? (
-            <p className="bb-basis">精算レート 1BB = {formatNumber(bbRate)}円</p>
+            <p className="bb-basis">
+              精算レート 1BB = {formatNumber(bbRate)}円
+            </p>
           ) : null}
         </div>
       </div>
       <ResultRevisionHistory
         bbRate={bbRate}
+        bigBlindChips={bigBlindChips}
         initialChips={initialChips}
-        initialStackBb={initialStackBb}
         revisions={revisions}
         showCostShareChanges={showSettlementAmounts}
       />
@@ -291,18 +308,22 @@ export function FinalResults({
               {payPay.paymentAmount !== null ? (
                 <>
                   PayPayを開く際に{formatNumber(payPay.paymentAmount)}円を
-                  クリップボードへコピーします。<br />
+                  クリップボードへコピーします。
+                  <br />
                   PayPay側で金額を貼り付けてください。
                 </>
               ) : (
                 <>
-                  この結果からあなたの支払額を特定できませんでした。<br />
+                  この結果からあなたの支払額を特定できませんでした。
+                  <br />
                   結果画面で支払額を確認し、PayPayで金額を入力してください。
                 </>
               )}
             </p>
             {payPayCopyError ? (
-              <p className="error-notice" role="alert">{payPayCopyError}</p>
+              <p className="error-notice" role="alert">
+                {payPayCopyError}
+              </p>
             ) : null}
             <div className="paypay-payment-modal-actions">
               <button
@@ -336,7 +357,9 @@ function ResultSettlementAmount({
 }) {
   if (bbRate === 0) {
     return (
-      <strong className="result-cost">{formatNumber(result.costShare)}円</strong>
+      <strong className="result-cost">
+        {formatNumber(result.costShare)}円
+      </strong>
     );
   }
 
@@ -349,7 +372,8 @@ function ResultSettlementAmount({
         {balance === 0 ? "" : ` ${formatNumber(Math.abs(balance))}円`}
       </strong>
       <small>
-        ゲーム {formatSignedYen(gameAmount)} / 会費 -{formatNumber(result.costShare)}円
+        ゲーム {formatSignedYen(gameAmount)} / 会費 -
+        {formatNumber(result.costShare)}円
       </small>
     </span>
   );
@@ -365,19 +389,17 @@ function formatSignedYen(value: number): string {
   return `${value > 0 ? "+" : ""}${formatNumber(value)}円`;
 }
 
-
-function ResultParticipantMeta({
-  result,
-}: {
-  result: GameResultSummary;
-}) {
+function ResultParticipantMeta({ result }: { result: GameResultSummary }) {
   return (
     <div className="result-participant-meta">
       <span className="result-final-stack">
         最終スタック <strong>{formatNumber(result.remainingChips)}</strong>
       </span>
       <span className="result-rebuy-meta">
-        リバイ {result.totalRebuyCount === null ? "記録なし" : `${result.totalRebuyCount}回`}
+        リバイ{" "}
+        {result.totalRebuyCount === null
+          ? "記録なし"
+          : `${result.totalRebuyCount}回`}
         <span aria-hidden="true">・</span>
         終了時未返済 {result.settlementRebuyCount}口
       </span>
@@ -387,9 +409,9 @@ function ResultParticipantMeta({
 function scoreTone(
   score: number,
   initialChips: number,
-  initialStackBb = 100,
+  bigBlindChips: number,
 ): "positive" | "negative" | "neutral" {
-  const netBb = calculateNetBb({ score, initialChips, initialStackBb });
+  const netBb = calculateNetBb({ score, initialChips, bigBlindChips });
   if (netBb > 0) return "positive";
   if (netBb < 0) return "negative";
   return "neutral";

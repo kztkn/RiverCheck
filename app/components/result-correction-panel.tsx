@@ -36,9 +36,7 @@ export function ResultCorrectionPanel({
       const participants = results.map((result) => {
         const value = values[result.groupPlayerId];
         if (!value) throw new RangeError("missing correction input");
-        const totalRebuyCount = parseNonNegativeInteger(
-          value.totalRebuyCount,
-        );
+        const totalRebuyCount = parseNonNegativeInteger(value.totalRebuyCount);
         const settlementRebuyCount = parseNonNegativeInteger(
           value.settlementRebuyCount,
         );
@@ -66,7 +64,8 @@ export function ResultCorrectionPanel({
         return {
           calculated: null,
           chipDifference: chipValidation.difference,
-          error: "ゲーム収支を精算している開催は、チップ差分を0にしてください。",
+          error:
+            "ゲーム収支を精算している開催は、チップ差分を0にしてください。",
         };
       }
       return {
@@ -78,7 +77,8 @@ export function ResultCorrectionPanel({
       return {
         calculated: null,
         chipDifference: null,
-        error: "残りチップ、累計リバイ、終了時リバイ証を0以上の整数で入力してください。",
+        error:
+          "残りチップ、累計リバイ、終了時リバイ証を0以上の整数で入力してください。",
       };
     }
   }, [game, results, values]);
@@ -137,7 +137,11 @@ export function ResultCorrectionPanel({
       >
         <input name="intent" type="hidden" value="correct-results" />
         <input name="title" type="hidden" value={game.title} />
-        <input name="playedAt" type="hidden" value={toDateInputValue(game.playedAt)} />
+        <input
+          name="playedAt"
+          type="hidden"
+          value={toDateInputValue(game.playedAt)}
+        />
 
         <div className="correction-input-list">
           {results.map((result) => {
@@ -238,13 +242,13 @@ export function ResultCorrectionPanel({
                     className={scoreClassName(
                       result.score,
                       game.initialChips,
-                      game.initialStackBb,
+                      game.bigBlindChips,
                     )}
                   >
                     {formatNetBb({
                       score: result.score,
                       initialChips: game.initialChips,
-                      initialStackBb: game.initialStackBb,
+                      bigBlindChips: game.bigBlindChips,
                     })}
                   </span>
                   <strong>
@@ -338,9 +342,9 @@ function parseNonNegativeInteger(value: string): number {
 function scoreClassName(
   score: number,
   initialChips: number,
-  initialStackBb = 100,
+  bigBlindChips: number,
 ): string {
-  const netBb = calculateNetBb({ score, initialChips, initialStackBb });
+  const netBb = calculateNetBb({ score, initialChips, bigBlindChips });
   return netBb > 0
     ? "result-score-positive"
     : netBb < 0

@@ -23,6 +23,9 @@ interface GameDetailsRow {
   status: GameStatus;
   group_id: string;
   initial_chips: string;
+  small_blind_chips: string | null;
+  big_blind_chips: string | null;
+  big_blind_ante_chips: string | null;
   initial_stack_bb: number;
   rebuy_chips: string;
   preview_participant_count: number;
@@ -128,6 +131,9 @@ export async function findGameForGroup(
         played_at,
         status,
         initial_chips,
+        small_blind_chips,
+        big_blind_chips,
+        big_blind_ante_chips,
         initial_stack_bb,
         rebuy_chips,
         preview_participant_count,
@@ -162,6 +168,9 @@ export async function findGameWithGroupByPublicCode(
         game.played_at,
         game.status,
         game.initial_chips,
+        game.small_blind_chips,
+        game.big_blind_chips,
+        game.big_blind_ante_chips,
         game.initial_stack_bb,
         game.rebuy_chips,
         game.preview_participant_count,
@@ -216,9 +225,7 @@ export async function findFinalizedGamePublicRoute(
     [gameId],
   );
   const row = result.rows[0];
-  return row
-    ? { gameId: row.id, groupPublicCode: row.public_code }
-    : null;
+  return row ? { gameId: row.id, groupPublicCode: row.public_code } : null;
 }
 
 export async function insertGame(
@@ -233,6 +240,9 @@ export async function insertGame(
         played_at,
         status,
         initial_chips,
+        small_blind_chips,
+        big_blind_chips,
+        big_blind_ante_chips,
         initial_stack_bb,
         rebuy_chips,
         venue_cost,
@@ -246,7 +256,7 @@ export async function insertGame(
         seven_deuce_rule_enabled,
         bomb_pot_rule_enabled
       )
-      VALUES ($1, $2, $3, 'open', $4, $5, $6, $7, 100, $8, $9, $10, $11, $12::BIGINT[], $13, $14, $15)
+      VALUES ($1, $2, $3, 'open', $4, $5, $6, $7, $8, $9, $10, 100, $11, $12, $13, $14, $15::BIGINT[], $16, $17, $18)
       RETURNING id
     `,
     [
@@ -254,6 +264,9 @@ export async function insertGame(
       input.title,
       input.playedAt,
       input.initialChips,
+      input.smallBlindChips,
+      input.bigBlindChips,
+      input.bigBlindAnteChips,
       input.initialStackBb,
       input.rebuyChips,
       input.venueCost,
@@ -337,12 +350,7 @@ export async function updateLocalRules(
         AND group_id = $2
         AND status = 'open'
     `,
-    [
-      gameId,
-      groupId,
-      rules.sevenDeuceRuleEnabled,
-      rules.bombPotRuleEnabled,
-    ],
+    [gameId, groupId, rules.sevenDeuceRuleEnabled, rules.bombPotRuleEnabled],
   );
   return result.rowCount === 1;
 }
@@ -387,19 +395,24 @@ export async function updateOpenGameIdentity(
 }
 
 export type OpenGameConfigurationUpdateResult =
-  | "updated"
-  | "confirmation-required"
-  | "not-found";
+  "updated" | "confirmation-required" | "not-found";
 
 export async function updateOpenGameConfiguration(
   groupId: string,
   gameId: string,
-  values: { initialChips: number; initialStackBb: number },
+  values: {
+    initialChips: number;
+    smallBlindChips: number;
+    bigBlindChips: number;
+    bigBlindAnteChips: number;
+    initialStackBb: number;
+  },
   confirmExistingActivity: boolean,
 ): Promise<OpenGameConfigurationUpdateResult> {
   const result = await queryDatabase<{
     status: OpenGameConfigurationUpdateResult;
-  }>(`
+  }>(
+    `
       WITH target AS MATERIALIZED (
         SELECT
           game.id,
@@ -424,7 +437,10 @@ export async function updateOpenGameConfiguration(
           (
             game.initial_chips <> $3 OR
             game.rebuy_chips <> $3 OR
-            game.initial_stack_bb <> $4
+            game.small_blind_chips IS DISTINCT FROM $4 OR
+            game.big_blind_chips IS DISTINCT FROM $5 OR
+            game.big_blind_ante_chips IS DISTINCT FROM $6 OR
+            game.initial_stack_bb <> $7
           ) AS has_change
         FROM games AS game
         WHERE game.id = $1
@@ -435,12 +451,15 @@ export async function updateOpenGameConfiguration(
         UPDATE games AS game
         SET initial_chips = $3,
             rebuy_chips = $3,
-            initial_stack_bb = $4,
+            small_blind_chips = $4,
+            big_blind_chips = $5,
+            big_blind_ante_chips = $6,
+            initial_stack_bb = $7,
             updated_at = NOW()
         FROM target
         WHERE game.id = target.id
           AND (
-            $5::BOOLEAN OR
+            $8::BOOLEAN OR
             NOT target.has_activity OR
             NOT target.has_change
           )
@@ -459,6 +478,9 @@ export async function updateOpenGameConfiguration(
       gameId,
       groupId,
       values.initialChips,
+      values.smallBlindChips,
+      values.bigBlindChips,
+      values.bigBlindAnteChips,
       values.initialStackBb,
       confirmExistingActivity,
     ],
@@ -483,13 +505,24 @@ export async function deleteOpenGame(
 }
 
 function mapGameDetails(row: GameDetailsRow): GameDetails {
+  const initialChips = Number(row.initial_chips);
+  const legacyBigBlindChips = initialChips / row.initial_stack_bb;
   return {
     id: row.id,
     groupId: row.group_id,
     title: row.title,
     playedAt: row.played_at.toISOString(),
     status: row.status,
-    initialChips: Number(row.initial_chips),
+    initialChips,
+    smallBlindChips: readBlindChipValue(
+      row.small_blind_chips,
+      legacyBigBlindChips / 2,
+    ),
+    bigBlindChips: readBlindChipValue(row.big_blind_chips, legacyBigBlindChips),
+    bigBlindAnteChips: readBlindChipValue(
+      row.big_blind_ante_chips,
+      legacyBigBlindChips,
+    ),
     initialStackBb: row.initial_stack_bb,
     rebuyChips: Number(row.rebuy_chips),
     previewParticipantCount: row.preview_participant_count,
@@ -508,4 +541,11 @@ function mapGameDetails(row: GameDetailsRow): GameDetails {
 
 function mapCostShares(values: string[] | null): number[] | null {
   return values?.map((value) => Number(value)) ?? null;
+}
+
+function readBlindChipValue(
+  value: string | null,
+  legacyFallback: number,
+): number {
+  return value === null ? legacyFallback : Number(value);
 }

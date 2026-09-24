@@ -6,7 +6,9 @@ import {
 
 describe("calculateRoundedGameSettlements", () => {
   it("8人のBB収支を100円単位かつゼロサムへ調整する", () => {
-    const scores = [80_000, 60_000, 40_000, 30_000, 10_000, 0, -20_000, -40_000];
+    const scores = [
+      80_000, 60_000, 40_000, 30_000, 10_000, 0, -20_000, -40_000,
+    ];
     const results = calculateRoundedGameSettlements(
       scores.map((score, index) => ({
         groupPlayerId: `player-${index + 1}`,
@@ -14,6 +16,7 @@ describe("calculateRoundedGameSettlements", () => {
       })),
       20_000,
       5,
+      200,
     );
 
     expect(results.map((result) => result.gameSettlementAmount)).toEqual([
@@ -33,9 +36,12 @@ describe("calculateRoundedGameSettlements", () => {
       ],
       20_000,
       10,
+      200,
     );
 
-    expect(results.map((result) => result.gameSettlementAmount)).toEqual([0, 0, 0]);
+    expect(results.map((result) => result.gameSettlementAmount)).toEqual([
+      0, 0, 0,
+    ]);
   });
 
   it("50BB開始は同じチップ差分を50BB基準で精算する", () => {
@@ -46,12 +52,11 @@ describe("calculateRoundedGameSettlements", () => {
       ],
       20_000,
       10,
-      50,
+      400,
     );
 
     expect(results.map((result) => result.gameSettlementAmount)).toEqual([
-      500,
-      -500,
+      500, -500,
     ]);
   });
 
@@ -64,6 +69,7 @@ describe("calculateRoundedGameSettlements", () => {
         ],
         20_000,
         0,
+        200,
       ).map((result) => result.gameSettlementAmount),
     ).toEqual([0, 0]);
   });
@@ -77,6 +83,7 @@ describe("calculateRoundedGameSettlements", () => {
         ],
         20_000,
         5,
+        200,
       ),
     ).toThrow("zero-sum");
   });

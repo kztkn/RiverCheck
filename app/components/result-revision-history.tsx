@@ -5,14 +5,14 @@ import type { GameResultRevision } from "@shared-types/result";
 
 export function ResultRevisionHistory({
   bbRate = 0,
+  bigBlindChips,
   initialChips,
-  initialStackBb = 100,
   revisions,
   showCostShareChanges = true,
 }: {
   bbRate?: number;
+  bigBlindChips: number;
   initialChips: number;
-  initialStackBb?: number;
   revisions: GameResultRevision[];
   showCostShareChanges?: boolean;
 }) {
@@ -22,14 +22,15 @@ export function ResultRevisionHistory({
       changes: buildResultRevisionChanges(
         revision.beforeResults,
         revision.afterResults,
-      ).filter((change) =>
-        showCostShareChanges ||
-        change.before.remainingChips !== change.after.remainingChips ||
-        change.before.totalRebuyCount !== change.after.totalRebuyCount ||
-        change.before.settlementRebuyCount !==
-          change.after.settlementRebuyCount ||
-        change.before.score !== change.after.score ||
-        change.before.rank !== change.after.rank
+      ).filter(
+        (change) =>
+          showCostShareChanges ||
+          change.before.remainingChips !== change.after.remainingChips ||
+          change.before.totalRebuyCount !== change.after.totalRebuyCount ||
+          change.before.settlementRebuyCount !==
+            change.after.settlementRebuyCount ||
+          change.before.score !== change.after.score ||
+          change.before.rank !== change.after.rank,
       ),
     }))
     .filter(({ changes }) => changes.length > 0);
@@ -84,15 +85,21 @@ export function ResultRevisionHistory({
                       change.after.totalRebuyCount ? (
                         <ChangeValue
                           after={formatRebuyCount(change.after.totalRebuyCount)}
-                          before={formatRebuyCount(change.before.totalRebuyCount)}
+                          before={formatRebuyCount(
+                            change.before.totalRebuyCount,
+                          )}
                           label="累計リバイ"
                         />
                       ) : null}
                       {change.before.settlementRebuyCount !==
                       change.after.settlementRebuyCount ? (
                         <ChangeValue
-                          after={String(change.after.settlementRebuyCount) + "枚"}
-                          before={String(change.before.settlementRebuyCount) + "枚"}
+                          after={
+                            String(change.after.settlementRebuyCount) + "枚"
+                          }
+                          before={
+                            String(change.before.settlementRebuyCount) + "枚"
+                          }
                           label="終了時リバイ証"
                         />
                       ) : null}
@@ -101,12 +108,12 @@ export function ResultRevisionHistory({
                           after={formatNetBb({
                             score: change.after.score,
                             initialChips,
-                            initialStackBb,
+                            bigBlindChips,
                           })}
                           before={formatNetBb({
                             score: change.before.score,
                             initialChips,
-                            initialStackBb,
+                            bigBlindChips,
                           })}
                           label="損益BB"
                         />
@@ -145,8 +152,12 @@ export function ResultRevisionHistory({
                       settlementBalance(change.before) !==
                         settlementBalance(change.after) ? (
                         <ChangeValue
-                          after={formatSignedYen(settlementBalance(change.after))}
-                          before={formatSignedYen(settlementBalance(change.before))}
+                          after={formatSignedYen(
+                            settlementBalance(change.after),
+                          )}
+                          before={formatSignedYen(
+                            settlementBalance(change.before),
+                          )}
                           label="最終精算"
                         />
                       ) : null}

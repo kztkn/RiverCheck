@@ -3,6 +3,7 @@ import { calculateFinalResults } from "./calculate-final-results";
 
 const settings = {
   initialChips: 20_000,
+  bigBlindChips: 200,
   rebuyChips: 10_000,
   venueCost: 10_000,
   firstPlaceCost: 0,

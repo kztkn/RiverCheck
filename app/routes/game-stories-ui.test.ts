@@ -7,6 +7,7 @@ describe("GameStories", () => {
   it("参加者投稿を投稿時刻順で表示する", () => {
     const markup = renderToStaticMarkup(
       createElement(GameStories, {
+        bigBlindChips: 200,
         canPost: false,
         initialChips: 20_000,
         isOrganizer: false,
@@ -66,6 +67,7 @@ describe("GameStories", () => {
   it("投稿がない場合はセクションを表示しない", () => {
     const markup = renderToStaticMarkup(
       createElement(GameStories, {
+        bigBlindChips: 200,
         canPost: false,
         initialChips: 20_000,
         isOrganizer: false,
@@ -82,6 +84,7 @@ describe("GameStories", () => {
   it("参加者は投稿がなくても投稿アイコンを表示する", () => {
     const markup = renderToStaticMarkup(
       createElement(GameStories, {
+        bigBlindChips: 200,
         canPost: true,
         initialChips: 20_000,
         isOrganizer: false,
@@ -106,6 +109,7 @@ describe("GameStories", () => {
     };
     const markup = renderToStaticMarkup(
       createElement(GameStories, {
+        bigBlindChips: 200,
         canPost: true,
         initialChips: 20_000,
         isOrganizer: false,

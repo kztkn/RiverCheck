@@ -9,12 +9,7 @@ import {
   useRevalidator,
   type ShouldRevalidateFunctionArgs,
 } from "react-router";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   IconChevronLeft,
   IconPencil,
@@ -48,11 +43,7 @@ import {
 } from "@server/services/participant-session.server";
 import { generateOpaqueToken, hashToken } from "@server/services/token.server";
 import { formatLineResult } from "@domain/result-sharing/format-line-result";
-import {
-  calculateBlindStructure,
-  formatChipValue,
-  formatSignedBbValue,
-} from "@domain/score/bb-score";
+import { formatChipValue, formatSignedBbValue } from "@domain/score/bb-score";
 import { encodeResultCode } from "@domain/result-sharing/result-code";
 import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
 import {
@@ -100,9 +91,7 @@ import {
   saveFinalizedGameStory,
 } from "@server/services/game-story-service.server";
 import { buildLocalRules } from "@domain/rules/local-rules";
-import {
-  listGameCostShareReceipts,
-} from "@server/repositories/game-cost-share-receipt-repository.server";
+import { listGameCostShareReceipts } from "@server/repositories/game-cost-share-receipt-repository.server";
 import { updateGameCostShareReceipt } from "@server/services/game-cost-share-receipt-service.server";
 import { OrganizerCostShareCollection } from "~/components/organizer-cost-share-collection";
 import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-preview-draft";
@@ -165,7 +154,8 @@ export function projectRebuyState(
 ): RebuyState | null {
   try {
     if (intent === "record-rebuy") return transitionRebuyState(state, "rebuy");
-    if (intent === "record-repayment") return transitionRebuyState(state, "repayment");
+    if (intent === "record-repayment")
+      return transitionRebuyState(state, "repayment");
     if (undoneIntent === "record-rebuy") {
       return applyRebuyDelta(state, { totalDelta: -1, outstandingDelta: -1 });
     }
@@ -203,49 +193,48 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       getAuthenticatedPlayerProfile(request, params.groupCode),
       participantTokenHashPromise,
     ]);
-  const [participant, participantRoster, tableEventCounts, tableEvents] = await Promise.all([
-    profileOverview?.profile
-      ? findParticipantByGroupPlayerId(
-        context.group.id,
-        params.gameId,
-        profileOverview.profile.groupPlayerId,
-      )
-      : participantTokenHash
-        ? findParticipantByTokenHash(
+  const [participant, participantRoster, tableEventCounts, tableEvents] =
+    await Promise.all([
+      profileOverview?.profile
+        ? findParticipantByGroupPlayerId(
             context.group.id,
             params.gameId,
-            participantTokenHash,
+            profileOverview.profile.groupPlayerId,
           )
-        : Promise.resolve(null),
-    context.game.status === "open"
-      ? listCurrentGameParticipants(context.group.id, params.gameId)
-        .then((participants) => ({ available: true, participants }))
-        .catch(() => ({ available: false, participants: [] }))
-      : Promise.resolve({ available: true, participants: [] }),
-    context.game.status === "open"
-      ? getOpenGameTableEventCounts(context.group.id, params.gameId)
-      : Promise.resolve({ allInCount: 0, bombPotCount: 0, sevenDeuceCount: 0 }),
-    context.game.status === "open"
-      ? listOpenGameTableEvents(context.group.id, params.gameId, 100)
-      : Promise.resolve([]),
-  ]);
+        : participantTokenHash
+          ? findParticipantByTokenHash(
+              context.group.id,
+              params.gameId,
+              participantTokenHash,
+            )
+          : Promise.resolve(null),
+      context.game.status === "open"
+        ? listCurrentGameParticipants(context.group.id, params.gameId)
+            .then((participants) => ({ available: true, participants }))
+            .catch(() => ({ available: false, participants: [] }))
+        : Promise.resolve({ available: true, participants: [] }),
+      context.game.status === "open"
+        ? getOpenGameTableEventCounts(context.group.id, params.gameId)
+        : Promise.resolve({
+            allInCount: 0,
+            bombPotCount: 0,
+            sevenDeuceCount: 0,
+          }),
+      context.game.status === "open"
+        ? listOpenGameTableEvents(context.group.id, params.gameId, 100)
+        : Promise.resolve([]),
+    ]);
 
   const canBrowseGroup = Boolean(profileOverview?.profile) || isOrganizer;
   const isPublicResultViewer =
     context.game.status === "finalized" && !canBrowseGroup && !participant;
 
-  if (
-    context.game.status === "draft" &&
-    !canBrowseGroup &&
-    !participant
-  ) {
+  if (context.game.status === "draft" && !canBrowseGroup && !participant) {
     throw new Response(INVITE_REQUIRED_RESPONSE_TEXT, { status: 403 });
   }
 
   const groupInvitePlayer =
-    context.game.status === "open" &&
-    !participant &&
-    !profileOverview?.profile
+    context.game.status === "open" && !participant && !profileOverview?.profile
       ? await getAuthenticatedPlayerIdentity(request)
       : null;
   const players =
@@ -255,10 +244,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const ownStoryPost =
     participant && context.game.status === "finalized"
       ? await getOwnGameStoryPost(
-        context.group.id,
-        params.gameId,
-        participant.id,
-      )
+          context.group.id,
+          params.gameId,
+          participant.id,
+        )
       : null;
   const results =
     context.game.status === "finalized"
@@ -301,11 +290,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const finalizedGames =
     context.game.status === "finalized" && canBrowseGroup
       ? (await listGamesForGroup(context.group.id)).filter(
-        (game) => game.status === "finalized",
-      )
+          (game) => game.status === "finalized",
+        )
       : [];
   const payPayRecipientLink =
-    canBrowseGroup && isPayPayLinkActive({
+    canBrowseGroup &&
+    isPayPayLinkActive({
       link: context.group.payPayRecipientLink,
       registeredAt: context.group.payPayLinkRegisteredAt,
     })
@@ -313,13 +303,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       : null;
   const payPayPaymentAmount =
     context.game.status === "finalized" &&
-      payPayRecipientLink &&
-      profileOverview?.profile
+    payPayRecipientLink &&
+    profileOverview?.profile
       ? await findGamePaymentAmountForPlayer(
-        context.group.id,
-        params.gameId,
-        profileOverview.profile.playerId,
-      )
+          context.group.id,
+          params.gameId,
+          profileOverview.profile.playerId,
+        )
       : null;
   return {
     group: { name: context.group.name, publicCode: context.group.publicCode },
@@ -342,43 +332,46 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       : null,
     authenticatedPlayer: profileOverview?.profile
       ? {
-        avatarUrl: buildPlayerAvatarUrl({
-          avatarUpdatedAt: profileOverview.profile.avatarUploadedAt,
-          groupCode: params.groupCode,
+          avatarUrl: buildPlayerAvatarUrl({
+            avatarUpdatedAt: profileOverview.profile.avatarUploadedAt,
+            groupCode: params.groupCode,
+            groupPlayerId: profileOverview.profile.groupPlayerId,
+          }),
+          displayName: profileOverview.profile.displayName,
           groupPlayerId: profileOverview.profile.groupPlayerId,
-        }),
-        displayName: profileOverview.profile.displayName,
-        groupPlayerId: profileOverview.profile.groupPlayerId,
-      }
+        }
       : null,
     participant: participant
       ? {
-        ...participant,
-        avatarUrl: buildPlayerAvatarUrl({
-          avatarUpdatedAt: participant.avatarUpdatedAt,
-          groupCode: params.groupCode,
-          groupPlayerId: participant.groupPlayerId,
-        }),
-      }
-      : null,
-    tableNow: context.game.status === "open"
-      ? {
-          playerCount: participantRoster.available
-            ? participantRoster.participants.length
-            : null,
-          ...tableEventCounts,
-          events: tableEvents.map((event) => ({
-            id: event.id,
-            type: event.type,
-            recordedAt: event.recordedAt,
-            subject: event.subject ? { displayName: event.subject.displayName } : null,
-            players: event.players.map((player) => ({
-              displayName: player.displayName,
-              isWinner: player.isWinner,
-            })),
-          })),
+          ...participant,
+          avatarUrl: buildPlayerAvatarUrl({
+            avatarUpdatedAt: participant.avatarUpdatedAt,
+            groupCode: params.groupCode,
+            groupPlayerId: participant.groupPlayerId,
+          }),
         }
       : null,
+    tableNow:
+      context.game.status === "open"
+        ? {
+            playerCount: participantRoster.available
+              ? participantRoster.participants.length
+              : null,
+            ...tableEventCounts,
+            events: tableEvents.map((event) => ({
+              id: event.id,
+              type: event.type,
+              recordedAt: event.recordedAt,
+              subject: event.subject
+                ? { displayName: event.subject.displayName }
+                : null,
+              players: event.players.map((player) => ({
+                displayName: player.displayName,
+                isWinner: player.isWinner,
+              })),
+            })),
+          }
+        : null,
     participantRoster: {
       available: participantRoster.available,
       items: participantRoster.participants.map((currentParticipant) => ({
@@ -390,8 +383,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
           groupPlayerId: currentParticipant.groupPlayerId,
         }),
         isCurrentUser:
-          currentParticipant.groupPlayerId ===
-          participant?.groupPlayerId,
+          currentParticipant.groupPlayerId === participant?.groupPlayerId,
         ...(currentParticipant.statusText
           ? { statusText: currentParticipant.statusText }
           : {}),
@@ -418,10 +410,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     ownStoryPost,
     ownStoryPhotoUrl: ownStoryPost
       ? buildGameStoryPhotoUrl({
-        gameId: params.gameId,
-        groupCode: params.groupCode,
-        post: ownStoryPost,
-      })
+          gameId: params.gameId,
+          groupCode: params.groupCode,
+          post: ownStoryPost,
+        })
       : null,
     storyPosts: storyPosts.map((post) => ({
       ...post,
@@ -439,19 +431,20 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     lineText:
       !isPublicResultViewer && results.length > 0
         ? formatLineResult(
-          context.game.title,
-          results,
-          context.game.initialChips,
-          context.game.bbRate,
-          context.game.initialStackBb,
-        )
+            context.game.title,
+            results,
+            context.game.initialChips,
+            context.game.bigBlindChips,
+            context.game.bbRate,
+          )
         : "",
     shareUrl: `${url.origin}/r/${encodeResultCode(params.gameId)}`,
     pastGameNavigation: buildPastGameNavigation(finalizedGames, params.gameId),
-    payPay: payPayRecipientLink
-      && (context.game.bbRate === 0 || payPayPaymentAmount !== 0)
-      ? { link: payPayRecipientLink, paymentAmount: payPayPaymentAmount }
-      : null,
+    payPay:
+      payPayRecipientLink &&
+      (context.game.bbRate === 0 || payPayPaymentAmount !== 0)
+        ? { link: payPayRecipientLink, paymentAmount: payPayPaymentAmount }
+        : null,
     notice: url.searchParams.get("notice"),
   };
 }
@@ -522,8 +515,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
     const photoEntry = formData.get("storyPhoto");
     const storyBody = readString(formData, "storyBody");
-    const removeStoryPhoto =
-      readString(formData, "removeStoryPhoto") === "yes";
+    const removeStoryPhoto = readString(formData, "removeStoryPhoto") === "yes";
     const isDeletingOwnStory =
       storyBody.trim() === "" &&
       removeStoryPhoto &&
@@ -613,8 +605,7 @@ export async function action({ request, params }: Route.ActionArgs) {
           error: `名前を1〜${PLAYER_DISPLAY_NAME_MAX_LENGTH}文字で入力してください。`,
         };
       }
-      const profileSession =
-        await createNewPlayerProfileSessionCredentials();
+      const profileSession = await createNewPlayerProfileSessionCredentials();
       const newPlayer = await joinNewParticipant(
         context.group.id,
         params.gameId,
@@ -693,9 +684,8 @@ export async function action({ request, params }: Route.ActionArgs) {
         error: "参加状態を確認できませんでした。画面を更新してください。",
       };
     }
-    const { updateParticipantTableStatus } = await import(
-      "@server/repositories/participant-repository.server"
-    );
+    const { updateParticipantTableStatus } =
+      await import("@server/repositories/participant-repository.server");
     const updated = await updateParticipantTableStatus(
       context.group.id,
       params.gameId,
@@ -725,19 +715,19 @@ export async function action({ request, params }: Route.ActionArgs) {
     const result =
       intent === "undo-rebuy"
         ? await undoOwnRebuyAction(request, {
-          commandId,
-          eventId: readString(formData, "eventId"),
-          gameId: params.gameId,
-          groupCode: params.groupCode,
-          groupId: context.group.id,
-        })
+            commandId,
+            eventId: readString(formData, "eventId"),
+            gameId: params.gameId,
+            groupCode: params.groupCode,
+            groupId: context.group.id,
+          })
         : await recordOwnRebuyAction(request, {
-          actionType: intent === "record-rebuy" ? "rebuy" : "repayment",
-          commandId,
-          gameId: params.gameId,
-          groupCode: params.groupCode,
-          groupId: context.group.id,
-        });
+            actionType: intent === "record-rebuy" ? "rebuy" : "repayment",
+            commandId,
+            gameId: params.gameId,
+            groupCode: params.groupCode,
+            groupId: context.group.id,
+          });
     return { ...result, commandId, intent };
   }
 
@@ -770,21 +760,22 @@ export async function action({ request, params }: Route.ActionArgs) {
         error: "入力を保存できませんでした。受付状況を確認してください。",
       };
     }
-    const updated = target.kind === "group-player-id"
-      ? await updateParticipantInputByGroupPlayerId(
-        context.group.id,
-        params.gameId,
-        target.value,
-        remainingChips,
-        settlementRebuyCount,
-      )
-      : await updateParticipantInput(
-        context.group.id,
-        params.gameId,
-        target.value,
-        remainingChips,
-        settlementRebuyCount,
-      );
+    const updated =
+      target.kind === "group-player-id"
+        ? await updateParticipantInputByGroupPlayerId(
+            context.group.id,
+            params.gameId,
+            target.value,
+            remainingChips,
+            settlementRebuyCount,
+          )
+        : await updateParticipantInput(
+            context.group.id,
+            params.gameId,
+            target.value,
+            remainingChips,
+            settlementRebuyCount,
+          );
     if (!updated) {
       return {
         error: "入力を保存できませんでした。受付状況を確認してください。",
@@ -800,17 +791,13 @@ export async function action({ request, params }: Route.ActionArgs) {
     );
     let removed = groupPlayerId
       ? await leaveGameByGroupPlayerId(
-        context.group.id,
-        params.gameId,
-        groupPlayerId,
-      )
+          context.group.id,
+          params.gameId,
+          groupPlayerId,
+        )
       : false;
     if (!removed && tokenHash) {
-      removed = await leaveGame(
-        context.group.id,
-        params.gameId,
-        tokenHash,
-      );
+      removed = await leaveGame(context.group.id, params.gameId, tokenHash);
     }
     if (!removed) {
       return { error: "参加情報を確認できません。画面を更新してください。" };
@@ -849,9 +836,8 @@ export default function GameParticipant({
     needsReview: boolean;
     pending: { commandId: string; state: RebuyState | null } | null;
   } | null>(null);
-  const localRebuy = rebuyLocal?.participant === loaderData.participant
-    ? rebuyLocal
-    : null;
+  const localRebuy =
+    rebuyLocal?.participant === loaderData.participant ? rebuyLocal : null;
   const serverRebuy: RebuyState = {
     totalRebuyCount: loaderData.participant?.totalRebuyCount ?? 0,
     outstandingRebuyCount: loaderData.participant?.outstandingRebuyCount ?? 0,
@@ -870,7 +856,8 @@ export default function GameParticipant({
       return {
         participant: loaderData.participant!,
         confirmed: result.ok ? result.state : current.confirmed,
-        needsReview: current.needsReview ||
+        needsReview:
+          current.needsReview ||
           (result.ok && current.participant.status === "submitted"),
         pending: null,
       };
@@ -896,7 +883,9 @@ export default function GameParticipant({
     });
   }
   const noticeMessage = getParticipantNotice(loaderData.notice);
-  const [showNoticeToast, setShowNoticeToast] = useState(Boolean(noticeMessage));
+  const [showNoticeToast, setShowNoticeToast] = useState(
+    Boolean(noticeMessage),
+  );
 
   useEffect(() => {
     if (loaderData.notice === "saved") setIsEditing(false);
@@ -914,11 +903,7 @@ export default function GameParticipant({
     } catch {
       // Finalization already succeeded; blocked local storage must not affect results.
     }
-  }, [
-    loaderData.game.id,
-    loaderData.group.publicCode,
-    loaderData.notice,
-  ]);
+  }, [loaderData.game.id, loaderData.group.publicCode, loaderData.notice]);
 
   useEffect(() => {
     if (!noticeMessage) {
@@ -939,9 +924,11 @@ export default function GameParticipant({
 
   return (
     <main
-      className={`page-shell participant-page${loaderData.game.status === "open" && !loaderData.participant
-        ? " participant-selection-page"
-        : ""}`}
+      className={`page-shell participant-page${
+        loaderData.game.status === "open" && !loaderData.participant
+          ? " participant-selection-page"
+          : ""
+      }`}
     >
       <GroupSiteHeader
         groupCode={loaderData.group.publicCode}
@@ -1025,15 +1012,20 @@ export default function GameParticipant({
         </>
       ) : null}
 
-      {shouldShowLocalRules(loaderData.game.status) && !loaderData.participant ? (
+      {shouldShowLocalRules(loaderData.game.status) &&
+      !loaderData.participant ? (
         <>
           <LocalRulesSheet
+            bigBlindAnteChips={loaderData.game.bigBlindAnteChips}
+            bigBlindChips={loaderData.game.bigBlindChips}
             bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
             initialChips={loaderData.game.initialChips}
             initialStackBb={loaderData.game.initialStackBb}
+            smallBlindChips={loaderData.game.smallBlindChips}
             sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
           />
-          {loaderData.game.settlementPlanPublishedAt && loaderData.game.costShares ? (
+          {loaderData.game.settlementPlanPublishedAt &&
+          loaderData.game.costShares ? (
             <SettlementPlanSheet
               bbRate={loaderData.game.bbRate}
               costShares={loaderData.game.costShares}
@@ -1044,7 +1036,8 @@ export default function GameParticipant({
         </>
       ) : null}
 
-      {loaderData.game.status === "finalized" && loaderData.pastGameNavigation ? (
+      {loaderData.game.status === "finalized" &&
+      loaderData.pastGameNavigation ? (
         <PastGameNavigation
           groupCode={loaderData.group.publicCode}
           navigation={loaderData.pastGameNavigation}
@@ -1069,9 +1062,14 @@ export default function GameParticipant({
             lineText={loaderData.lineText}
             editUrl={
               loaderData.isOrganizer
-                ? "/g/" + loaderData.group.publicCode + "/games/" + loaderData.game.id + "/admin/edit"
+                ? "/g/" +
+                  loaderData.group.publicCode +
+                  "/games/" +
+                  loaderData.game.id +
+                  "/admin/edit"
                 : undefined
             }
+            bigBlindChips={loaderData.game.bigBlindChips}
             initialChips={loaderData.game.initialChips}
             initialStackBb={loaderData.game.initialStackBb}
             linkPlayerProfiles={loaderData.canBrowseGroup}
@@ -1093,6 +1091,7 @@ export default function GameParticipant({
             <GameStories
               canPost={Boolean(loaderData.participant)}
               initialChips={loaderData.game.initialChips}
+              bigBlindChips={loaderData.game.bigBlindChips}
               initialStackBb={loaderData.game.initialStackBb}
               isOrganizer={loaderData.isOrganizer}
               ownPhotoUrl={loaderData.ownStoryPhotoUrl}
@@ -1134,7 +1133,10 @@ export default function GameParticipant({
               <div>
                 <span className="participant-phase-label">プレイ中</span>
                 <h3>リバイ</h3>
-                <p>リバイと{loaderData.game.initialStackBb}BB返済を、その場で記録します。</p>
+                <p>
+                  リバイと{loaderData.game.initialStackBb}
+                  BB返済を、その場で記録します。
+                </p>
               </div>
             </div>
             <RebuyTracker
@@ -1155,12 +1157,16 @@ export default function GameParticipant({
             />
           ) : null}
           <LocalRulesSheet
+            bigBlindAnteChips={loaderData.game.bigBlindAnteChips}
+            bigBlindChips={loaderData.game.bigBlindChips}
             bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
             initialChips={loaderData.game.initialChips}
             initialStackBb={loaderData.game.initialStackBb}
+            smallBlindChips={loaderData.game.smallBlindChips}
             sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
           />
-          {loaderData.game.settlementPlanPublishedAt && loaderData.game.costShares ? (
+          {loaderData.game.settlementPlanPublishedAt &&
+          loaderData.game.costShares ? (
             <SettlementPlanSheet
               bbRate={loaderData.game.bbRate}
               costShares={loaderData.game.costShares}
@@ -1169,14 +1175,19 @@ export default function GameParticipant({
             />
           ) : null}
 
-          <section className="participant-phase participant-phase-after participant-result-section" aria-label="結果入力">
+          <section
+            className="participant-phase participant-phase-after participant-result-section"
+            aria-label="結果入力"
+          >
             <div className="participant-phase-heading">
               <div>
                 <span className="participant-phase-label">結果</span>
                 <h3>残りチップとリバイ証</h3>
-                <p>{loaderData.participant.status === "submitted"
-                  ? "保存済み・主催者の確定待ち。確定前は修正できます。"
-                  : "主催者の確定前に、いつでも保存・修正できます。"}</p>
+                <p>
+                  {loaderData.participant.status === "submitted"
+                    ? "保存済み・主催者の確定待ち。確定前は修正できます。"
+                    : "主催者の確定前に、いつでも保存・修正できます。"}
+                </p>
               </div>
             </div>
             {loaderData.participant.status === "submitted" && !isEditing ? (
@@ -1193,9 +1204,7 @@ export default function GameParticipant({
                   <div>
                     <span>累計リバイ</span>
                     <strong>
-                      {formatTotalRebuyCount(
-                        visibleRebuy.totalRebuyCount,
-                      )}
+                      {formatTotalRebuyCount(visibleRebuy.totalRebuyCount)}
                     </strong>
                   </div>
                   <div>
@@ -1206,14 +1215,13 @@ export default function GameParticipant({
                   </div>
                 </div>
                 <RebuyMatchStatus
-                  outstandingRebuyCount={
-                    visibleRebuy.outstandingRebuyCount
-                  }
+                  outstandingRebuyCount={visibleRebuy.outstandingRebuyCount}
                   settlementRebuyCount={
                     loaderData.participant.settlementRebuyCount ?? 0
                   }
                 />
-                {loaderData.participant.resultNeedsReview || localRebuy?.needsReview ? (
+                {loaderData.participant.resultNeedsReview ||
+                localRebuy?.needsReview ? (
                   <p className="result-review-notice" role="status">
                     保存後にリバイの記録が変わりました。残りチップとリバイ証を確認し、結果を再保存してください。
                   </p>
@@ -1239,7 +1247,9 @@ export default function GameParticipant({
                   isSubmitting={isSubmitting}
                   outstandingRebuyCount={visibleRebuy.outstandingRebuyCount}
                   remainingChips={loaderData.participant.remainingChips}
-                  settlementRebuyCount={loaderData.participant.settlementRebuyCount}
+                  settlementRebuyCount={
+                    loaderData.participant.settlementRebuyCount
+                  }
                   totalRebuyCount={visibleRebuy.totalRebuyCount}
                 />
               </ParticipantResultEntrySection>
@@ -1344,7 +1354,8 @@ function JoinNewPlayerForm() {
       }
     }
     window.addEventListener("pageshow", restoreOnBackNavigation);
-    return () => window.removeEventListener("pageshow", restoreOnBackNavigation);
+    return () =>
+      window.removeEventListener("pageshow", restoreOnBackNavigation);
   }, []);
 
   return (
@@ -1375,7 +1386,9 @@ function JoinNewPlayerForm() {
           placeholder="例：プレイヤー"
           required
         />
-        <span className="field-hint">最大{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字</span>
+        <span className="field-hint">
+          最大{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字
+        </span>
       </label>
       <button
         className="button button-secondary"
@@ -1389,11 +1402,7 @@ function JoinNewPlayerForm() {
   );
 }
 
-function ParticipantLeaveControl({
-  isSubmitting,
-}: {
-  isSubmitting: boolean;
-}) {
+function ParticipantLeaveControl({ isSubmitting }: { isSubmitting: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -1527,13 +1536,13 @@ export function ParticipantRosterSheet({
   >({});
   const currentItem = items.find((item) => item.isCurrentUser) ?? null;
   const selectedItem = selectedPlayerId
-    ? items.find((item) => item.groupPlayerId === selectedPlayerId) ?? null
+    ? (items.find((item) => item.groupPlayerId === selectedPlayerId) ?? null)
     : null;
   const selectedStats = selectedPlayerId
-    ? quickStatsCache[selectedPlayerId] ?? null
+    ? (quickStatsCache[selectedPlayerId] ?? null)
     : null;
   const selectedError = selectedPlayerId
-    ? quickStatsErrors[selectedPlayerId] ?? null
+    ? (quickStatsErrors[selectedPlayerId] ?? null)
     : null;
   const [statusDraft, setStatusDraft] = useState(currentItem?.statusText ?? "");
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -1715,9 +1724,7 @@ export function ParticipantRosterSheet({
             ) : (
               <div>
                 <p className="eyebrow">CURRENT PLAYERS</p>
-                <h2 id="participant-roster-title">
-                  参加者 {countLabel}
-                </h2>
+                <h2 id="participant-roster-title">参加者 {countLabel}</h2>
               </div>
             )}
             <button
@@ -1756,7 +1763,9 @@ export function ParticipantRosterSheet({
                 <ul className="participant-roster-list">
                   {items.map((item) => (
                     <li
-                      className={item.isCurrentUser ? "is-current-user" : undefined}
+                      className={
+                        item.isCurrentUser ? "is-current-user" : undefined
+                      }
                       key={item.groupPlayerId}
                     >
                       <div
@@ -1797,7 +1806,9 @@ export function ParticipantRosterSheet({
                           </button>
                         ) : null}
                       </div>
-                      {item.isCurrentUser && isEditingStatus && statusFetcher ? (
+                      {item.isCurrentUser &&
+                      isEditingStatus &&
+                      statusFetcher ? (
                         <statusFetcher.Form
                           className="participant-status-editor"
                           method="post"
@@ -1834,11 +1845,15 @@ export function ParticipantRosterSheet({
                               value={statusDraft}
                             />
                             <span className="participant-status-meta">
-                              {statusLength}/{PARTICIPANT_TABLE_STATUS_MAX_LENGTH}
+                              {statusLength}/
+                              {PARTICIPANT_TABLE_STATUS_MAX_LENGTH}
                             </span>
                           </label>
                           {statusFetcherData?.ok === false ? (
-                            <p className="participant-status-error" role="alert">
+                            <p
+                              className="participant-status-error"
+                              role="alert"
+                            >
                               {statusFetcherData.error}
                             </p>
                           ) : null}
@@ -1855,7 +1870,8 @@ export function ParticipantRosterSheet({
                               className="button button-primary"
                               disabled={
                                 statusPending ||
-                                statusLength > PARTICIPANT_TABLE_STATUS_MAX_LENGTH
+                                statusLength >
+                                  PARTICIPANT_TABLE_STATUS_MAX_LENGTH
                               }
                               type="submit"
                             >
@@ -1917,7 +1933,11 @@ export function ParticipantPlayerSnapshot({
       ) : error ? (
         <div className="participant-snapshot-error" role="alert">
           <p>{error}</p>
-          <button className="button button-secondary" onClick={onRetry} type="button">
+          <button
+            className="button button-secondary"
+            onClick={onRetry}
+            type="button"
+          >
             もう一度読み込む
           </button>
         </div>
@@ -2030,14 +2050,20 @@ function FinalResultRefreshControl() {
 }
 
 export function LocalRulesSheet({
+  bigBlindAnteChips,
+  bigBlindChips,
   bombPotRuleEnabled,
   initialChips,
   initialStackBb = 100,
+  smallBlindChips,
   sevenDeuceRuleEnabled,
 }: {
+  bigBlindAnteChips: number;
+  bigBlindChips: number;
   bombPotRuleEnabled: boolean;
   initialChips: number;
   initialStackBb?: number;
+  smallBlindChips: number;
   sevenDeuceRuleEnabled: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -2075,10 +2101,6 @@ export function LocalRulesSheet({
   const rules = buildLocalRules(
     sevenDeuceRuleEnabled,
     bombPotRuleEnabled,
-    initialStackBb,
-  );
-  const blindStructure = calculateBlindStructure(
-    initialChips,
     initialStackBb,
   );
 
@@ -2137,20 +2159,20 @@ export function LocalRulesSheet({
               <div className="local-rules-blind-values">
                 <span>
                   <small>SB</small>
-                  <strong>{formatChipValue(blindStructure.smallBlindChips)}</strong>
+                  <strong>{formatChipValue(smallBlindChips)}</strong>
                 </span>
                 <span>
                   <small>BB</small>
-                  <strong>{formatChipValue(blindStructure.bigBlindChips)}</strong>
+                  <strong>{formatChipValue(bigBlindChips)}</strong>
                 </span>
                 <span>
                   <small>BBA</small>
-                  <strong>{formatChipValue(blindStructure.bigBlindAnteChips)}</strong>
+                  <strong>{formatChipValue(bigBlindAnteChips)}</strong>
                 </span>
               </div>
               <p>
-                初期 {initialChips.toLocaleString("ja-JP")}チップ ・
-                1BB = {formatChipValue(blindStructure.bigBlindChips)}チップ
+                初期 {initialChips.toLocaleString("ja-JP")}チップ ・ 1BB ={" "}
+                {formatChipValue(bigBlindChips)}チップ
               </p>
             </section>
             {rules.map((rule) => (
@@ -2255,11 +2277,13 @@ export function SettlementPlanSheet({
           </header>
           <div className="participant-roster-scroll rebuy-rules-content">
             <p className="rebuy-rules-note">
-              会場費 {venueCost.toLocaleString("ja-JP")}円 ・ {participantCount}人想定
+              会場費 {venueCost.toLocaleString("ja-JP")}円 ・ {participantCount}
+              人想定
             </p>
             {bbRate > 0 ? (
               <p className="rebuy-rules-note">
-                ゲーム収支を 1BB = {bbRate.toLocaleString("ja-JP")}円で最終精算に含めます。
+                ゲーム収支を 1BB = {bbRate.toLocaleString("ja-JP")}
+                円で最終精算に含めます。
               </p>
             ) : null}
             <ol className="rebuy-rules-list settlement-plan-list">
@@ -2311,9 +2335,7 @@ function RebuyTracker({
   }, [fetcher.state]);
 
   useEffect(() => {
-    setUndoableAction((current) =>
-      resolveUndoableRebuyAction(current, result),
-    );
+    setUndoableAction((current) => resolveUndoableRebuyAction(current, result));
   }, [result]);
 
   function submit(intent: "record-rebuy" | "record-repayment") {
@@ -2321,10 +2343,7 @@ function RebuyTracker({
     submissionPendingRef.current = true;
     const commandId = createCommandId();
     onOptimistic(commandId, intent);
-    void fetcher.submit(
-      { commandId, intent },
-      { method: "post" },
-    );
+    void fetcher.submit({ commandId, intent }, { method: "post" });
   }
 
   function undo() {
@@ -2354,7 +2373,9 @@ function RebuyTracker({
     <section className="rebuy-tracker" aria-labelledby="rebuy-tracker-title">
       <div className="rebuy-tracker-heading">
         <h3 id="rebuy-tracker-title">現在の記録</h3>
-        {!canRecord ? <span className="rebuy-tracker-locked">編集不可</span> : null}
+        {!canRecord ? (
+          <span className="rebuy-tracker-locked">編集不可</span>
+        ) : null}
       </div>
       <div className="rebuy-state-grid">
         <div>
@@ -2370,7 +2391,10 @@ function RebuyTracker({
         </div>
       </div>
       {canRecord ? (
-        <div aria-label="リバイの操作" className="rebuy-actions participant-quick-actions">
+        <div
+          aria-label="リバイの操作"
+          className="rebuy-actions participant-quick-actions"
+        >
           <div className="participant-quick-action-buttons">
             <button
               className="button button-primary"
@@ -2389,7 +2413,7 @@ function RebuyTracker({
               type="button"
             >
               {isPending &&
-                fetcher.formData?.get("intent") === "record-repayment"
+              fetcher.formData?.get("intent") === "record-repayment"
                 ? "返済中…"
                 : `${initialStackBb}BB返済`}
             </button>
@@ -2575,7 +2599,7 @@ function getParticipantNotice(notice: string | null): string | null {
     finalized: "結果を確定しました。",
     corrected: "開催情報と結果を更新しました。",
   };
-  return notice ? messages[notice] ?? null : null;
+  return notice ? (messages[notice] ?? null) : null;
 }
 
 function RebuyMatchStatus({
@@ -2587,14 +2611,21 @@ function RebuyMatchStatus({
 }) {
   const matched = outstandingRebuyCount === settlementRebuyCount;
   return (
-    <p className={matched ? "rebuy-match-status is-matched" : "rebuy-match-status has-mismatch"}>
+    <p
+      className={
+        matched
+          ? "rebuy-match-status is-matched"
+          : "rebuy-match-status has-mismatch"
+      }
+    >
       <strong>
         {matched
           ? "✓ リバイ記録と一致しています"
           : "! リバイ記録とリバイ証が一致しません"}
       </strong>
       <small>
-        記録上の未返済 {outstandingRebuyCount}口 / リバイ証 {settlementRebuyCount}枚
+        記録上の未返済 {outstandingRebuyCount}口 / リバイ証{" "}
+        {settlementRebuyCount}枚
       </small>
     </p>
   );
@@ -2663,7 +2694,9 @@ function PastGameNavigationItem({
       to={`/g/${groupCode}/games/${game.id}`}
     >
       {isNewer ? arrow : null}
-      <time dateTime={game.playedAt}>{formatTokyoDateNumeric(game.playedAt)}</time>
+      <time dateTime={game.playedAt}>
+        {formatTokyoDateNumeric(game.playedAt)}
+      </time>
       {!isNewer ? arrow : null}
     </Link>
   );

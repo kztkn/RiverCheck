@@ -20,6 +20,9 @@ interface GameRow {
   played_at: Date;
   status: GameStatus;
   initial_chips: string;
+  small_blind_chips: string | null;
+  big_blind_chips: string | null;
+  big_blind_ante_chips: string | null;
   initial_stack_bb: number;
   rebuy_chips: string;
   preview_participant_count: number;
@@ -73,6 +76,7 @@ export async function lockGameForFinalization(
   const result = await transaction.query<GameRow>(
     `
       SELECT id, group_id, title, played_at, status, initial_chips,
+             small_blind_chips, big_blind_chips, big_blind_ante_chips,
              initial_stack_bb, rebuy_chips, preview_participant_count, venue_cost,
              first_place_cost, second_place_cost, third_place_cost,
              cost_shares, settlement_plan_published_at,
@@ -245,7 +249,9 @@ export async function deleteFinalResultsForReopen(
   transaction: DatabaseTransaction,
   gameId: string,
 ): Promise<void> {
-  await transaction.query("DELETE FROM game_results WHERE game_id = $1", [gameId]);
+  await transaction.query("DELETE FROM game_results WHERE game_id = $1", [
+    gameId,
+  ]);
 }
 
 export async function markGameOpenAfterFinalization(
@@ -321,13 +327,27 @@ export function toFinalizationParticipants(
 }
 
 function mapGame(row: GameRow): GameDetails {
+  const initialChips = Number(row.initial_chips);
+  const legacyBigBlindChips = initialChips / row.initial_stack_bb;
   return {
     id: row.id,
     groupId: row.group_id,
     title: row.title,
     playedAt: row.played_at.toISOString(),
     status: row.status,
-    initialChips: Number(row.initial_chips),
+    initialChips,
+    smallBlindChips:
+      row.small_blind_chips === null
+        ? legacyBigBlindChips / 2
+        : Number(row.small_blind_chips),
+    bigBlindChips:
+      row.big_blind_chips === null
+        ? legacyBigBlindChips
+        : Number(row.big_blind_chips),
+    bigBlindAnteChips:
+      row.big_blind_ante_chips === null
+        ? legacyBigBlindChips
+        : Number(row.big_blind_ante_chips),
     initialStackBb: row.initial_stack_bb,
     rebuyChips: Number(row.rebuy_chips),
     previewParticipantCount: row.preview_participant_count,
@@ -487,17 +507,14 @@ export async function listResultRevisions(
   }));
 }
 
-function normalizeRevisionResult(
-  result: GameResultSummary,
-): GameResultSummary {
+function normalizeRevisionResult(result: GameResultSummary): GameResultSummary {
   const legacy = result as GameResultSummary & { rebuyCount?: number };
   const settlementRebuyCount =
     result.settlementRebuyCount ?? legacy.rebuyCount ?? 0;
   return {
     ...result,
     totalRebuyCount: result.totalRebuyCount ?? null,
-    trackedOutstandingRebuyCount:
-      result.trackedOutstandingRebuyCount ?? null,
+    trackedOutstandingRebuyCount: result.trackedOutstandingRebuyCount ?? null,
     settlementRebuyCount,
     gameSettlementAmount: result.gameSettlementAmount ?? 0,
   };

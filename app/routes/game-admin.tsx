@@ -44,11 +44,7 @@ import {
   updateOpenGameIdentityForGroup,
   validateGameSettingsForm,
 } from "@server/services/game-service.server";
-import {
-  INITIAL_STACK_BB_OPTIONS,
-  calculateBlindStructure,
-  formatChipValue,
-} from "@domain/score/bb-score";
+import { formatChipValue } from "@domain/score/bb-score";
 import { GAME_TITLE_MAX_LENGTH } from "@domain/game/game-title";
 import {
   buildFinalizationState,
@@ -56,6 +52,10 @@ import {
 } from "@server/services/finalization-service.server";
 import { calculateCostShares } from "@domain/cost-sharing/calculate-cost-shares";
 import { GameSettingsFields } from "../components/game-settings-fields";
+import {
+  GameConfigurationFields,
+  type GameConfigurationValues,
+} from "../components/game-configuration-fields";
 import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-preview-draft";
 import { ParticipantLinkQr } from "../components/participant-link-qr";
 import type { GameParticipantSummary } from "@shared-types/player";
@@ -69,10 +69,7 @@ import { getAdminNextAction } from "~/utils/admin-next-action";
 import { openTableEventRecorder } from "~/components/table-event-recorder";
 
 type OrganizerRebuyIntent =
-  | "record-rebuy"
-  | "record-repayment"
-  | "undo-rebuy"
-  | "adjust-rebuy";
+  "record-rebuy" | "record-repayment" | "undo-rebuy" | "adjust-rebuy";
 type OrganizerRebuyActionData = RebuyServiceResult & {
   intent: OrganizerRebuyIntent;
   participantId: string;
@@ -124,18 +121,16 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     participantTokenHashPromise,
   ]);
   if (authorized.game.status === "finalized") {
-    throw redirect(
-      "/g/" + params.groupCode + "/games/" + params.gameId,
-    );
+    throw redirect("/g/" + params.groupCode + "/games/" + params.gameId);
   }
   const [participants, currentParticipant] = await Promise.all([
     listGameParticipants(authorized.group.id, params.gameId),
     participantTokenHash
       ? findParticipantByTokenHash(
-        authorized.group.id,
-        params.gameId,
-        participantTokenHash,
-      )
+          authorized.group.id,
+          params.gameId,
+          participantTokenHash,
+        )
       : Promise.resolve(null),
   ]);
   const url = new URL(request.url);
@@ -194,7 +189,8 @@ export async function action({ request, params }: Route.ActionArgs) {
       return {
         ok: false as const,
         intent: "publish-settlement-plan" as const,
-        error: "精算予定を公開できませんでした。画面を更新してもう一度お試しください。",
+        error:
+          "精算予定を公開できませんでした。画面を更新してもう一度お試しください。",
         errors: {},
         values,
       };
@@ -241,21 +237,20 @@ export async function action({ request, params }: Route.ActionArgs) {
     );
     if (!result.ok) return { ...result, values };
     return redirect(
-      "/g/" + params.groupCode + "/games/" + params.gameId + "?notice=finalized",
+      "/g/" +
+        params.groupCode +
+        "/games/" +
+        params.gameId +
+        "?notice=finalized",
     );
   }
 
   if (intent === "save-local-rules") {
-    const updated = await updateLocalRules(
-      authorized.group.id,
-      params.gameId,
-      {
-        sevenDeuceRuleEnabled:
-          readString(formData, "sevenDeuceRuleEnabled") === "yes",
-        bombPotRuleEnabled:
-          readString(formData, "bombPotRuleEnabled") === "yes",
-      },
-    );
+    const updated = await updateLocalRules(authorized.group.id, params.gameId, {
+      sevenDeuceRuleEnabled:
+        readString(formData, "sevenDeuceRuleEnabled") === "yes",
+      bombPotRuleEnabled: readString(formData, "bombPotRuleEnabled") === "yes",
+    });
     if (!updated) {
       return {
         ok: false as const,
@@ -272,7 +267,9 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "save-game-configuration") {
     const values = {
       initialChips: readString(formData, "initialChips"),
-      initialStackBb: readString(formData, "initialStackBb"),
+      smallBlindChips: readString(formData, "smallBlindChips"),
+      bigBlindChips: readString(formData, "bigBlindChips"),
+      bigBlindAnteChips: readString(formData, "bigBlindAnteChips"),
     };
     try {
       const result = await updateOpenGameConfigurationForGroup(
@@ -405,7 +402,8 @@ export async function action({ request, params }: Route.ActionArgs) {
           ok: false as const,
           intent,
           participantId,
-          error: "終了入力を保存できませんでした。画面を更新してお試しください。",
+          error:
+            "終了入力を保存できませんでした。画面を更新してお試しください。",
         };
   }
 
@@ -475,11 +473,11 @@ export async function action({ request, params }: Route.ActionArgs) {
     return removed
       ? { ok: true as const, intent: "remove" as const, participantId }
       : {
-        ok: false as const,
-        intent: "remove" as const,
-        participantId,
-        error: "参加取消に失敗しました。画面を更新してお試しください。",
-      };
+          ok: false as const,
+          intent: "remove" as const,
+          participantId,
+          error: "参加取消に失敗しました。画面を更新してお試しください。",
+        };
   }
 
   throw new Response("Unknown action", { status: 400 });
@@ -509,9 +507,7 @@ export default function GameAdmin({
   const settingsAction =
     failedAction && "errors" in failedAction ? failedAction : null;
   const localRulesError =
-    localRulesFetcher.data?.ok === false
-      ? localRulesFetcher.data.error
-      : null;
+    localRulesFetcher.data?.ok === false ? localRulesFetcher.data.error : null;
   const gameConfigurationError =
     gameConfigurationFetcher.data?.ok === false
       ? gameConfigurationFetcher.data
@@ -552,12 +548,17 @@ export default function GameAdmin({
     values.previewParticipantCount,
   );
   const [settlementBbRate, setSettlementBbRate] = useState(values.bbRate);
-  const [gameConfigurationInitialChips, setGameConfigurationInitialChips] =
-    useState(String(loaderData.game.initialChips));
-  const [gameConfigurationInitialStackBb, setGameConfigurationInitialStackBb] =
-    useState(String(loaderData.game.initialStackBb));
+  const [gameConfiguration, setGameConfiguration] =
+    useState<GameConfigurationValues>({
+      initialChips: String(loaderData.game.initialChips),
+      smallBlindChips: String(loaderData.game.smallBlindChips),
+      bigBlindChips: String(loaderData.game.bigBlindChips),
+      bigBlindAnteChips: String(loaderData.game.bigBlindAnteChips),
+    });
   const [publishFailureCount, setPublishFailureCount] = useState(0);
-  const [persistentPublishError, setPersistentPublishError] = useState<string | null>(null);
+  const [persistentPublishError, setPersistentPublishError] = useState<
+    string | null
+  >(null);
   const [optimisticallyRemoved, setOptimisticallyRemoved] = useState<{
     id: string;
     displayName: string;
@@ -572,9 +573,9 @@ export default function GameAdmin({
   } | null>(null);
   const [pendingParticipantInput, setPendingParticipantInput] =
     useState<GameParticipantSummary | null>(null);
-  const [pendingRebuyCorrection, setPendingRebuyCorrection] = useState<(
-    GameParticipantSummary & { commandId: string }
-  ) | null>(null);
+  const [pendingRebuyCorrection, setPendingRebuyCorrection] = useState<
+    (GameParticipantSummary & { commandId: string }) | null
+  >(null);
   const [toast, setToast] = useState<{
     id: number;
     message: string;
@@ -633,11 +634,25 @@ export default function GameAdmin({
     loaderData.game.sevenDeuceRuleEnabled,
   ]);
 
+  useEffect(() => {
+    setGameConfiguration({
+      initialChips: String(loaderData.game.initialChips),
+      smallBlindChips: String(loaderData.game.smallBlindChips),
+      bigBlindChips: String(loaderData.game.bigBlindChips),
+      bigBlindAnteChips: String(loaderData.game.bigBlindAnteChips),
+    });
+  }, [
+    loaderData.game.bigBlindAnteChips,
+    loaderData.game.bigBlindChips,
+    loaderData.game.initialChips,
+    loaderData.game.smallBlindChips,
+  ]);
+
   const notice = noticeText(loaderData.notice);
   const visibleParticipants = optimisticallyRemoved
     ? loaderData.participants.filter(
-      (participant) => participant.id !== optimisticallyRemoved.id,
-    )
+        (participant) => participant.id !== optimisticallyRemoved.id,
+      )
     : loaderData.participants;
   const submittedCount = visibleParticipants.filter(
     (participant) =>
@@ -645,16 +660,16 @@ export default function GameAdmin({
       participant.settlementRebuyCount !== null,
   ).length;
   const incompleteCount = visibleParticipants.length - submittedCount;
-  const participantStateSummary = summarizeAdminParticipantStates(
-    visibleParticipants,
-  );
+  const participantStateSummary =
+    summarizeAdminParticipantStates(visibleParticipants);
   const totalRebuyCount = visibleParticipants.reduce(
     (total, participant) => total + (participant.totalRebuyCount ?? 0),
     0,
   );
   const totalRepaymentCount = visibleParticipants.reduce(
     (total, participant) =>
-      total + Math.max(
+      total +
+      Math.max(
         0,
         (participant.totalRebuyCount ?? 0) - participant.outstandingRebuyCount,
       ),
@@ -677,17 +692,15 @@ export default function GameAdmin({
     settlementParticipantCount: settlementParticipantCountValue,
     chipDifference,
   });
-  const inputProgressPercent = visibleParticipants.length === 0
-    ? 0
-    : Math.round((submittedCount / visibleParticipants.length) * 100);
-  const savedBlindStructure = calculateBlindStructure(
-    loaderData.game.initialChips,
-    loaderData.game.initialStackBb,
-  );
-  const draftBlindStructure = getBlindStructurePreview(
-    gameConfigurationInitialChips,
-    gameConfigurationInitialStackBb,
-  );
+  const inputProgressPercent =
+    visibleParticipants.length === 0
+      ? 0
+      : Math.round((submittedCount / visibleParticipants.length) * 100);
+  const savedBlindStructure = {
+    smallBlindChips: loaderData.game.smallBlindChips,
+    bigBlindChips: loaderData.game.bigBlindChips,
+    bigBlindAnteChips: loaderData.game.bigBlindAnteChips,
+  };
 
   useEffect(() => {
     if (!notice) return;
@@ -708,7 +721,6 @@ export default function GameAdmin({
     setSettlementParticipantCount(values.previewParticipantCount);
   }, [values.previewParticipantCount]);
 
-
   useEffect(() => {
     if (
       removalFetcher.state !== "idle" ||
@@ -727,7 +739,6 @@ export default function GameAdmin({
       return null;
     });
   }, [removalFetcher.data, removalFetcher.state]);
-
 
   useEffect(() => {
     const data = consumeCompletedFetcherSubmission(
@@ -750,7 +761,6 @@ export default function GameAdmin({
     participantInputFetcher.state,
     revalidator,
   ]);
-
 
   useEffect(() => {
     const data = consumeCompletedFetcherSubmission(
@@ -780,13 +790,10 @@ export default function GameAdmin({
     if (!data) return;
     setToast({
       id: Date.now(),
-      message: data.ok
-        ? "ローカルルールを保存しました。"
-        : data.error,
+      message: data.ok ? "ローカルルールを保存しました。" : data.error,
       tone: data.ok ? "success" : "error",
     });
   }, [localRulesFetcher.data, localRulesFetcher.state]);
-
 
   useEffect(() => {
     const data = consumeCompletedFetcherSubmission(
@@ -815,13 +822,11 @@ export default function GameAdmin({
     }
   }, [rebuyFetcher.data, rebuyFetcher.state, revalidator]);
 
-
   useEffect(() => {
     if (!toast) return;
     const timeoutId = window.setTimeout(() => setToast(null), 3_000);
     return () => window.clearTimeout(timeoutId);
   }, [toast]);
-
 
   useEffect(() => {
     if (!linkCopied) return;
@@ -850,7 +855,6 @@ export default function GameAdmin({
     }
   }, [gameDeletionPending]);
 
-
   useEffect(() => {
     const dialog = participantActionDialogRef.current;
     if (!dialog) return;
@@ -860,7 +864,6 @@ export default function GameAdmin({
       dialog.close();
     }
   }, [participantActionMenu]);
-
 
   useEffect(() => {
     const dialog = participantInputDialogRef.current;
@@ -872,7 +875,6 @@ export default function GameAdmin({
     }
   }, [pendingParticipantInput]);
 
-
   useEffect(() => {
     const dialog = removalDialogRef.current;
     if (!dialog) return;
@@ -883,7 +885,6 @@ export default function GameAdmin({
     }
   }, [pendingRemoval]);
 
-
   useEffect(() => {
     const dialog = rebuyCorrectionDialogRef.current;
     if (!dialog) return;
@@ -893,7 +894,6 @@ export default function GameAdmin({
       dialog.close();
     }
   }, [pendingRebuyCorrection]);
-
 
   function submitRebuyAction(
     participantId: string,
@@ -936,7 +936,8 @@ export default function GameAdmin({
       participantLinkRef.current?.select();
       setToast({
         id: Date.now(),
-        message: "自動コピーできませんでした。リンクを長押ししてコピーしてください。",
+        message:
+          "自動コピーできませんでした。リンクを長押ししてコピーしてください。",
         tone: "error",
       });
     }
@@ -992,22 +993,30 @@ export default function GameAdmin({
             <label className="field">
               <span className="field-label">開催名</span>
               <input
-                aria-invalid={gameIdentityAction?.errors.title ? true : undefined}
+                aria-invalid={
+                  gameIdentityAction?.errors.title ? true : undefined
+                }
                 autoComplete="off"
-                defaultValue={gameIdentityAction?.title ?? loaderData.game.title}
+                defaultValue={
+                  gameIdentityAction?.title ?? loaderData.game.title
+                }
                 maxLength={GAME_TITLE_MAX_LENGTH}
                 name="title"
                 required
                 type="text"
               />
               {gameIdentityAction?.errors.title ? (
-                <span className="field-error">{gameIdentityAction.errors.title}</span>
+                <span className="field-error">
+                  {gameIdentityAction.errors.title}
+                </span>
               ) : null}
             </label>
             <label className="field">
               <span className="field-label">開催日</span>
               <input
-                aria-invalid={gameIdentityAction?.errors.playedAt ? true : undefined}
+                aria-invalid={
+                  gameIdentityAction?.errors.playedAt ? true : undefined
+                }
                 defaultValue={
                   gameIdentityAction?.playedAt ??
                   toDateInputValue(loaderData.game.playedAt)
@@ -1083,7 +1092,9 @@ export default function GameAdmin({
         ref={gameDeletionDialogRef}
       >
         <div className="dialog-card">
-          <span aria-hidden="true" className="dialog-danger-icon">×</span>
+          <span aria-hidden="true" className="dialog-danger-icon">
+            ×
+          </span>
           <div>
             <p className="eyebrow">DELETE GAME</p>
             <h2 id="game-deletion-dialog-title">開催を削除しますか？</h2>
@@ -1094,7 +1105,9 @@ export default function GameAdmin({
             </p>
           </div>
           {deleteAction ? (
-            <p className="error-notice" role="alert">{deleteAction.error}</p>
+            <p className="error-notice" role="alert">
+              {deleteAction.error}
+            </p>
           ) : null}
           <Form className="dialog-actions" method="post">
             <input name="intent" type="hidden" value="delete-game" />
@@ -1122,7 +1135,6 @@ export default function GameAdmin({
           </Form>
         </div>
       </dialog>
-
 
       <>
         <section
@@ -1154,7 +1166,9 @@ export default function GameAdmin({
             >
               <div className="admin-command-progress-copy">
                 <span>終了入力</span>
-                <strong>{submittedCount} / {visibleParticipants.length}人</strong>
+                <strong>
+                  {submittedCount} / {visibleParticipants.length}人
+                </strong>
               </div>
               <div aria-hidden="true" className="admin-command-progress-track">
                 <span style={{ width: `${inputProgressPercent}%` }} />
@@ -1169,15 +1183,21 @@ export default function GameAdmin({
           <div className="admin-command-stats">
             <div className={incompleteCount > 0 ? "is-warning" : "is-clear"}>
               <span>結果入力</span>
-              <strong>{submittedCount} / {visibleParticipants.length}人</strong>
+              <strong>
+                {submittedCount} / {visibleParticipants.length}人
+              </strong>
               <small>
-                {incompleteCount > 0 ? `未入力 ${incompleteCount}人` : "全員入力済み"}
+                {incompleteCount > 0
+                  ? `未入力 ${incompleteCount}人`
+                  : "全員入力済み"}
               </small>
             </div>
             <div className={chipDifference === 0 ? "is-clear" : "is-warning"}>
               <span>チップ差分</span>
               <strong>
-                {chipDifference === null ? "—" : formatSignedNumber(chipDifference)}
+                {chipDifference === null
+                  ? "—"
+                  : formatSignedNumber(chipDifference)}
               </strong>
               <small>
                 {loaderData.finalization.isProvisional
@@ -1187,7 +1207,9 @@ export default function GameAdmin({
                     : "要確認"}
               </small>
             </div>
-            <div className={outstandingRebuyCount > 0 ? "is-warning" : "is-clear"}>
+            <div
+              className={outstandingRebuyCount > 0 ? "is-warning" : "is-clear"}
+            >
               <span>未返済リバイ</span>
               <strong>{outstandingRebuyCount}口</strong>
               <small>
@@ -1227,7 +1249,8 @@ export default function GameAdmin({
             <p>このリンクを参加者に共有してください。</p>
             {loaderData.currentParticipant ? (
               <p>
-                この端末は「{loaderData.currentParticipant.displayName}」として参加中です。
+                この端末は「{loaderData.currentParticipant.displayName}
+                」として参加中です。
               </p>
             ) : null}
           </div>
@@ -1295,7 +1318,11 @@ export default function GameAdmin({
               <small>未入力</small>
               <strong>{participantStateSummary.pending}人</strong>
             </span>
-            <span className={participantStateSummary.warning > 0 ? "has-warning" : undefined}>
+            <span
+              className={
+                participantStateSummary.warning > 0 ? "has-warning" : undefined
+              }
+            >
               <small>要確認</small>
               <strong>{participantStateSummary.warning}人</strong>
             </span>
@@ -1323,15 +1350,17 @@ export default function GameAdmin({
                 );
                 const isParticipantActionPending =
                   rebuyFetcher.state !== "idle" &&
-                  rebuyFetcher.formData?.get("participantId") === participant.id;
+                  rebuyFetcher.formData?.get("participantId") ===
+                    participant.id;
                 const pendingIntent = isParticipantActionPending
                   ? rebuyFetcher.formData?.get("intent")
                   : null;
-                const stateLabel = inputState === "complete"
-                  ? "入力済み"
-                  : inputState === "warning"
-                    ? "要確認"
-                    : "未入力";
+                const stateLabel =
+                  inputState === "complete"
+                    ? "入力済み"
+                    : inputState === "warning"
+                      ? "要確認"
+                      : "未入力";
                 const operationsId = "participant-operations-" + participant.id;
 
                 return (
@@ -1347,7 +1376,8 @@ export default function GameAdmin({
                           "details.participant-admin-row[open]",
                         )
                         .forEach((card) => {
-                          if (card !== currentCard) card.removeAttribute("open");
+                          if (card !== currentCard)
+                            card.removeAttribute("open");
                         });
                     }}
                   >
@@ -1365,10 +1395,18 @@ export default function GameAdmin({
                           </div>
                           <div className="participant-admin-facts">
                             <span>
-                              リバイ {formatTotalRebuyCount(participant.totalRebuyCount)}
+                              リバイ{" "}
+                              {formatTotalRebuyCount(
+                                participant.totalRebuyCount,
+                              )}
                             </span>
-                            <span>{loaderData.game.initialStackBb}BB返済 {repaymentCount}回</span>
-                            <span>未返済 {participant.outstandingRebuyCount}口</span>
+                            <span>
+                              {loaderData.game.initialStackBb}BB返済{" "}
+                              {repaymentCount}回
+                            </span>
+                            <span>
+                              未返済 {participant.outstandingRebuyCount}口
+                            </span>
                           </div>
                         </div>
                         <div className="participant-admin-final">
@@ -1381,10 +1419,14 @@ export default function GameAdmin({
                           ) : (
                             <>
                               <strong>
-                                最終スタック {participant.remainingChips.toLocaleString("ja-JP")}
+                                最終スタック{" "}
+                                {participant.remainingChips.toLocaleString(
+                                  "ja-JP",
+                                )}
                               </strong>
                               <small>
-                                リバイ証 {participant.settlementRebuyCount ?? 0}枚
+                                リバイ証 {participant.settlementRebuyCount ?? 0}
+                                枚
                               </small>
                             </>
                           )}
@@ -1417,7 +1459,10 @@ export default function GameAdmin({
                               className="button button-primary button-small"
                               disabled={rebuyFetcher.state !== "idle"}
                               onClick={() =>
-                                submitRebuyAction(participant.id, "record-rebuy")
+                                submitRebuyAction(
+                                  participant.id,
+                                  "record-rebuy",
+                                )
                               }
                               type="button"
                             >
@@ -1459,7 +1504,9 @@ export default function GameAdmin({
                           記録を修正
                         </button>
                         <button
-                          aria-label={participant.displayName + "のその他の操作"}
+                          aria-label={
+                            participant.displayName + "のその他の操作"
+                          }
                           className="participant-more-button"
                           onClick={() =>
                             setParticipantActionMenu({
@@ -1501,11 +1548,7 @@ export default function GameAdmin({
             gameConfigurationSubmissionPendingRef.current = true;
           }}
         >
-          <input
-            name="intent"
-            type="hidden"
-            value="save-game-configuration"
-          />
+          <input name="intent" type="hidden" value="save-game-configuration" />
           <details
             className="local-rules-disclosure"
             open={gameConfigurationError ? true : undefined}
@@ -1519,100 +1562,23 @@ export default function GameAdmin({
                 {loaderData.game.initialChips.toLocaleString("ja-JP")}チップ ・{" "}
                 {loaderData.game.initialStackBb}BB開始 ・ SB{" "}
                 {formatChipValue(savedBlindStructure.smallBlindChips)} / BB{" "}
-                {formatChipValue(savedBlindStructure.bigBlindChips)}
+                {formatChipValue(savedBlindStructure.bigBlindChips)} / BBA{" "}
+                {formatChipValue(savedBlindStructure.bigBlindAnteChips)}
               </span>
-              <span aria-hidden="true" className="local-rules-summary-chevron">›</span>
+              <span aria-hidden="true" className="local-rules-summary-chevron">
+                ›
+              </span>
             </summary>
             <div className="local-rules-disclosure-body">
               <p className="local-rules-description">
-                初期チップと開始BBを設定します。リバイも同じチップ枚数・BBへ自動で揃います。
+                初期チップと実卓のSB / BB /
+                BBAを設定します。開始BBはBBのチップ量から自動計算します。
               </p>
-              <label className="field">
-                <span className="field-label">初期チップ</span>
-                <input
-                  aria-invalid={
-                    gameConfigurationError?.errors.initialChips
-                      ? true
-                      : undefined
-                  }
-                  inputMode="numeric"
-                  min={1}
-                  name="initialChips"
-                  onChange={(event) =>
-                    setGameConfigurationInitialChips(event.target.value)
-                  }
-                  required
-                  type="number"
-                  value={gameConfigurationInitialChips}
-                />
-                {gameConfigurationError?.errors.initialChips ? (
-                  <span className="field-error">
-                    {gameConfigurationError.errors.initialChips}
-                  </span>
-                ) : null}
-              </label>
-              <fieldset className="field">
-                <legend className="field-label">開始スタック</legend>
-                <div aria-label="開始スタック" className="initial-stack-options">
-                  {INITIAL_STACK_BB_OPTIONS.map((stackBb) => (
-                    <label className="initial-stack-option" key={stackBb}>
-                      <input
-                        checked={
-                          Number(gameConfigurationInitialStackBb) === stackBb
-                        }
-                        name="initialStackBb"
-                        onChange={() =>
-                          setGameConfigurationInitialStackBb(String(stackBb))
-                        }
-                        type="radio"
-                        value={stackBb}
-                      />
-                      <span>{stackBb}BB</span>
-                    </label>
-                  ))}
-                </div>
-                {gameConfigurationError?.errors.initialStackBb ? (
-                  <span className="field-error">
-                    {gameConfigurationError.errors.initialStackBb}
-                  </span>
-                ) : null}
-              </fieldset>
-              <div aria-live="polite" className="blind-structure-preview">
-                <div className="blind-structure-heading">
-                  <span>今回のブラインド</span>
-                  <small>SB / BB / BBA</small>
-                </div>
-                {draftBlindStructure ? (
-                  <>
-                    <div className="blind-structure-values">
-                      <span>
-                        <small>SB</small>
-                        <strong>
-                          {formatChipValue(draftBlindStructure.smallBlindChips)}
-                        </strong>
-                      </span>
-                      <span>
-                        <small>BB</small>
-                        <strong>
-                          {formatChipValue(draftBlindStructure.bigBlindChips)}
-                        </strong>
-                      </span>
-                      <span>
-                        <small>BBA</small>
-                        <strong>
-                          {formatChipValue(draftBlindStructure.bigBlindAnteChips)}
-                        </strong>
-                      </span>
-                    </div>
-                    <p>
-                      1BB = {formatChipValue(draftBlindStructure.bigBlindChips)}
-                      チップ。実卓のブラインドと一致しているか開始前に確認してください。
-                    </p>
-                  </>
-                ) : (
-                  <p>初期チップと開始スタックを設定するとブラインドを表示します。</p>
-                )}
-              </div>
+              <GameConfigurationFields
+                errors={gameConfigurationError?.errors}
+                onChange={setGameConfiguration}
+                values={gameConfiguration}
+              />
               {gameConfigurationError?.confirmationRequired ? (
                 <label className="confirmation-check">
                   <input
@@ -1667,9 +1633,12 @@ export default function GameAdmin({
                 <h2>ローカルルール</h2>
               </div>
               <span className="local-rules-summary-status">
-                72o {sevenDeuceRuleEnabled ? "ON" : "OFF"} ・ ボムポット {bombPotRuleEnabled ? "ON" : "OFF"}
+                72o {sevenDeuceRuleEnabled ? "ON" : "OFF"} ・ ボムポット{" "}
+                {bombPotRuleEnabled ? "ON" : "OFF"}
               </span>
-              <span aria-hidden="true" className="local-rules-summary-chevron">›</span>
+              <span aria-hidden="true" className="local-rules-summary-chevron">
+                ›
+              </span>
             </summary>
             <div className="local-rules-disclosure-body">
               <p className="local-rules-description">
@@ -1697,7 +1666,9 @@ export default function GameAdmin({
                 <input
                   checked={bombPotRuleEnabled}
                   name="bombPotRuleEnabled"
-                  onChange={(event) => setBombPotRuleEnabled(event.target.checked)}
+                  onChange={(event) =>
+                    setBombPotRuleEnabled(event.target.checked)
+                  }
                   type="checkbox"
                   value="yes"
                 />
@@ -1710,7 +1681,9 @@ export default function GameAdmin({
                 <span aria-hidden="true" className="local-rule-switch" />
               </label>
               {localRulesError ? (
-                <p className="error-notice" role="alert">{localRulesError}</p>
+                <p className="error-notice" role="alert">
+                  {localRulesError}
+                </p>
               ) : null}
               <button
                 className="button button-secondary"
@@ -2127,7 +2100,9 @@ function gameToFormValues(game: Route.ComponentProps["loaderData"]["game"]) {
     title: game.title,
     playedAt: localDate,
     initialChips: String(game.initialChips),
-    initialStackBb: String(game.initialStackBb),
+    smallBlindChips: String(game.smallBlindChips),
+    bigBlindChips: String(game.bigBlindChips),
+    bigBlindAnteChips: String(game.bigBlindAnteChips),
     venueCost: String(game.venueCost),
     firstPlaceCost: String(game.firstPlaceCost),
     secondPlaceCost: String(game.secondPlaceCost),
@@ -2159,33 +2134,12 @@ function readAdminCostSettingsForm(
     firstPlaceCost: readString(formData, "firstPlaceCost"),
     secondPlaceCost: readString(formData, "secondPlaceCost"),
     thirdPlaceCost: readString(formData, "thirdPlaceCost"),
-    previewParticipantCount: readString(
-      formData,
-      "previewParticipantCount",
-    ),
+    previewParticipantCount: readString(formData, "previewParticipantCount"),
     costShares: formData
       .getAll("costShare")
       .filter((value): value is string => typeof value === "string"),
     bbRate: readString(formData, "bbRate"),
   };
-}
-
-function getBlindStructurePreview(
-  initialChipsValue: string,
-  initialStackBbValue: string,
-) {
-  const initialChips = Number(initialChipsValue);
-  const initialStackBb = Number(initialStackBbValue);
-  if (
-    !Number.isSafeInteger(initialChips) ||
-    initialChips <= 0 ||
-    !INITIAL_STACK_BB_OPTIONS.includes(
-      initialStackBb as (typeof INITIAL_STACK_BB_OPTIONS)[number],
-    )
-  ) {
-    return null;
-  }
-  return calculateBlindStructure(initialChips, initialStackBb);
 }
 
 function parseNonNegativeInteger(value: string): number | null {
@@ -2228,7 +2182,8 @@ function toDateInputValue(playedAt: string): string {
 function noticeText(notice: string | null): string | null {
   if (notice === "finalized") return "結果を確定しました。";
   if (notice === "local-rules-saved") return "ローカルルールを保存しました。";
-  if (notice === "settlement-plan-published") return "今日の精算予定を参加者に公開しました。";
+  if (notice === "settlement-plan-published")
+    return "今日の精算予定を参加者に公開しました。";
   if (notice === "game-settings-updated") return "基本情報を保存しました。";
   if (notice === "finalization-reopened") return "結果確定を取り消しました。";
   if (notice === "corrected") return "確定結果を訂正しました。";
@@ -2255,7 +2210,6 @@ function FinalizationPanel({
   const [differenceConfirmed, setDifferenceConfirmed] = useState(false);
   const [rebuyMismatchConfirmed, setRebuyMismatchConfirmed] = useState(false);
   const currentDifference = finalization.chipValidation?.difference ?? null;
-
 
   useEffect(() => {
     setDifferenceConfirmed(false);
@@ -2313,14 +2267,15 @@ function FinalizationPanel({
       ) : null}
       {finalization.isProvisional ? (
         <p className="warning-notice">
-          未入力：{finalization.incompleteNames.join("、")}。未入力分は残チップ0・
-          リバイ証0枚として暫定計算しています。
+          未入力：{finalization.incompleteNames.join("、")}
+          。未入力分は残チップ0・ リバイ証0枚として暫定計算しています。
         </p>
       ) : null}
       {finalization.invalidRebuyNames.length > 0 ? (
         <p className="error-notice">
           累計リバイより終了時リバイ証が多い参加者：
-          {finalization.invalidRebuyNames.join("、")}。参加者一覧から記録を修正してください。
+          {finalization.invalidRebuyNames.join("、")}
+          。参加者一覧から記録を修正してください。
         </p>
       ) : null}
       {hasRebuyMismatch && !finalization.isProvisional ? (
@@ -2354,9 +2309,7 @@ function FinalizationPanel({
             <input
               checked={differenceConfirmed}
               name="confirmDifference"
-              onChange={(event) =>
-                setDifferenceConfirmed(event.target.checked)
-              }
+              onChange={(event) => setDifferenceConfirmed(event.target.checked)}
               required
               type="checkbox"
               value="yes"
@@ -2387,8 +2340,9 @@ function FinalizationPanel({
         ) : null}
         {!participantCountMatches ? (
           <p className="field-hint settlement-count-hint">
-            結果確定する場合は、会費精算の人数（{settlementParticipantCountLabel}）を
-            現在の参加者（{finalization.participantCount}人）に合わせてください。
+            結果確定する場合は、会費精算の人数（
+            {settlementParticipantCountLabel}）を 現在の参加者（
+            {finalization.participantCount}人）に合わせてください。
             精算予定の公開だけなら、このままでも問題ありません。
           </p>
         ) : null}
