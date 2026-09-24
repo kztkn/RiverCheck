@@ -36,7 +36,8 @@ describe("GameSettingsFields local rules", () => {
     expect(markup).toContain('aria-label="開始スタックのショートカット"');
     expect(markup).toContain('aria-pressed="true"');
     expect(markup).toContain("50BB");
-    expect(markup).toContain('aria-label="その他の開始スタックBB"');
+    expect(markup).toContain('aria-label="任意の開始スタックBB"');
+    expect(markup).toContain('placeholder="任意"');
     expect(markup).toContain("BBのチップ量から初期チップを自動計算します。");
     expect(markup).toContain('type="hidden" name="initialChips" value="10000"');
     expect(markup).toContain("リバイも開始時と同じチップ枚数・BBです。");

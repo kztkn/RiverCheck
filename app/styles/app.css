@@ -4991,6 +4991,7 @@ input[aria-invalid="true"] {
 .initial-stack-custom {
   position: relative;
   display: flex;
+  box-sizing: border-box;
   min-width: 0;
   min-height: 42px;
   align-items: center;
@@ -5006,6 +5007,7 @@ input[aria-invalid="true"] {
 }
 
 .initial-stack-custom input {
+  box-sizing: border-box;
   width: 100%;
   min-width: 0;
   min-height: 40px;
@@ -5013,7 +5015,7 @@ input[aria-invalid="true"] {
   border-radius: 0;
   background: transparent;
   color: var(--ink);
-  font-size: 0.78rem;
+  font-size: 16px;
   font-weight: 800;
   padding: 0 25px 0 9px;
   text-align: center;
@@ -5165,6 +5167,15 @@ input[aria-invalid="true"] {
   color: var(--muted);
   font-size: 0.7rem;
   line-height: 1.5;
+}
+
+.blind-structure-preview > .game-config-applied-notice {
+  border: 1px solid rgba(55, 214, 141, 0.26);
+  border-radius: 9px;
+  background: rgba(55, 214, 141, 0.09);
+  color: var(--green);
+  font-weight: 750;
+  padding: 9px 10px;
 }
 
 .chip-calculator-disclosure {
@@ -7977,4 +7988,13 @@ input[aria-invalid="true"] {
   font-size: 0.84rem;
   line-height: 1.55;
   color: var(--muted);
+}
+
+/* iOSのフォーカス拡大と、それに伴う入力欄の見かけ上の幅ずれを防ぐ。 */
+@media (max-width: 639px) {
+  html input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  html select,
+  html textarea {
+    font-size: 16px;
+  }
 }

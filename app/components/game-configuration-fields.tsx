@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   recommendChipDistribution,
   type ChipDistributionRecommendation,
@@ -45,16 +45,27 @@ export function GameConfigurationFields({
   const [stackDepthInput, setStackDepthInput] = useState(
     initialStackBb === null ? "" : String(initialStackBb),
   );
+  const [applicationNotice, setApplicationNotice] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (initialStackBb !== null) setStackDepthInput(String(initialStackBb));
   }, [initialStackBb]);
 
+  useEffect(() => {
+    if (!applicationNotice) return;
+    const timeoutId = window.setTimeout(() => setApplicationNotice(null), 6000);
+    return () => window.clearTimeout(timeoutId);
+  }, [applicationNotice]);
+
   function update(field: keyof GameConfigurationValues, value: string) {
+    setApplicationNotice(null);
     onChange({ ...values, [field]: value });
   }
 
   function updateBigBlind(value: string) {
+    setApplicationNotice(null);
     onChange(
       gameConfigurationWithBigBlind(values, value, Number(stackDepthInput)),
     );
@@ -62,6 +73,7 @@ export function GameConfigurationFields({
 
   function applyStackDepth(stackBb: number) {
     try {
+      setApplicationNotice(null);
       setStackDepthInput(String(stackBb));
       onChange(gameConfigurationWithStackDepth(values, stackBb));
     } catch {
@@ -134,7 +146,7 @@ export function GameConfigurationFields({
             className={`initial-stack-custom${customStackDepth ? " is-active" : ""}`}
           >
             <input
-              aria-label="その他の開始スタックBB"
+              aria-label="任意の開始スタックBB"
               inputMode="numeric"
               min={1}
               onChange={(event) => {
@@ -143,7 +155,7 @@ export function GameConfigurationFields({
                 if (!next.trim()) return;
                 applyStackDepth(Number(next));
               }}
-              placeholder="その他"
+              placeholder="任意"
               type="number"
               value={customStackDepth ? stackDepthInput : ""}
             />
@@ -185,12 +197,20 @@ export function GameConfigurationFields({
         {errors.initialChips ? (
           <span className="field-error">{errors.initialChips}</span>
         ) : null}
+        {applicationNotice ? (
+          <p className="game-config-applied-notice" role="status">
+            {applicationNotice}
+          </p>
+        ) : null}
       </div>
 
       <ChipDistributionCalculator
         onApply={(recommendation) => {
           setStackDepthInput(String(recommendation.initialStackBb));
           onChange(gameConfigurationFromRecommendation(recommendation));
+          setApplicationNotice(
+            "チップ構成を反映しました。開催の作成またはゲーム設定の保存で確定します。",
+          );
         }}
       />
     </>
@@ -253,6 +273,12 @@ export function gameConfigurationWithStackDepth(
   };
 }
 
+export function closeChipCalculator(
+  disclosure: { open: boolean } | null,
+): void {
+  if (disclosure) disclosure.open = false;
+}
+
 function ChipDistributionCalculator({
   onApply,
 }: {
@@ -266,6 +292,7 @@ function ChipDistributionCalculator({
   ]);
   const [nextId, setNextId] = useState(5);
   const [result, setResult] = useState<ChipDistributionResult | null>(null);
+  const disclosureRef = useRef<HTMLDetailsElement>(null);
 
   function calculate() {
     setResult(
@@ -274,7 +301,7 @@ function ChipDistributionCalculator({
   }
 
   return (
-    <details className="chip-calculator-disclosure">
+    <details className="chip-calculator-disclosure" ref={disclosureRef}>
       <summary>
         <span>
           <strong>チップ構成を計算</strong>
@@ -341,7 +368,11 @@ function ChipDistributionCalculator({
 
         {result?.ok ? (
           <ChipDistributionResultCard
-            onApply={() => onApply(result.recommendation)}
+            onApply={() => {
+              onApply(result.recommendation);
+              setResult(null);
+              closeChipCalculator(disclosureRef.current);
+            }}
             recommendation={result.recommendation}
           />
         ) : result ? (

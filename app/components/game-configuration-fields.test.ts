@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateChipDistributionFromInputs,
+  closeChipCalculator,
   gameConfigurationFromRecommendation,
   gameConfigurationWithBigBlind,
   gameConfigurationWithStackDepth,
@@ -51,6 +52,12 @@ describe("chip calculator form integration", () => {
       bigBlindChips: "20",
       bigBlindAnteChips: "20",
     });
+  });
+
+  it("ゲーム設定へ反映したらチップ構成計算を閉じる", () => {
+    const disclosure = { open: true };
+    closeChipCalculator(disclosure);
+    expect(disclosure.open).toBe(false);
   });
 
   it("BB変更時にBBAを同額へ追従させる", () => {
