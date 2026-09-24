@@ -7,6 +7,7 @@ import {
 import {
   calculateInitialChips,
   calculateInitialStackBb,
+  formatBigBlindAnte,
   formatChipValue,
   INITIAL_STACK_BB_OPTIONS,
   isSupportedInitialStackBb,
@@ -72,6 +73,11 @@ export function GameConfigurationFields({
     );
   }
 
+  function updateBigBlindAnte(enabled: boolean) {
+    setApplicationNotice(null);
+    onChange(gameConfigurationWithBigBlindAnte(values, enabled));
+  }
+
   function applyStackDepth(stackBb: number) {
     try {
       setApplicationNotice(null);
@@ -116,11 +122,37 @@ export function GameConfigurationFields({
             value={values.bigBlindChips}
           />
         </div>
-        <p className="field-hint">
-          {values.bigBlindAnteChips === "0"
-            ? "この既存開催はBBAなしです。BBを変更してもBBAなしを維持します。"
-            : `BBAはBBと同額（${formatInputChip(values.bigBlindChips)}）で自動設定します。`}
-        </p>
+        <div className="blind-ante-setting">
+          <div className="blind-ante-setting-copy">
+            <strong>BBA</strong>
+            <small>ビッグブラインドアンティ</small>
+          </div>
+          <div
+            aria-label="BBAの有無"
+            className="blind-ante-options"
+            role="group"
+          >
+            <button
+              aria-pressed={values.bigBlindAnteChips === "0"}
+              onClick={() => updateBigBlindAnte(false)}
+              type="button"
+            >
+              なし
+            </button>
+            <button
+              aria-pressed={values.bigBlindAnteChips !== "0"}
+              onClick={() => updateBigBlindAnte(true)}
+              type="button"
+            >
+              あり
+            </button>
+          </div>
+          <p>
+            {values.bigBlindAnteChips === "0"
+              ? "アンティなしで進行します。"
+              : `BBと同額（${formatInputChip(values.bigBlindChips)}）で自動設定します。`}
+          </p>
+        </div>
         {errors.bigBlindAnteChips ? (
           <span className="field-error">{errors.bigBlindAnteChips}</span>
         ) : null}
@@ -193,7 +225,9 @@ export function GameConfigurationFields({
               </span>
               <span>
                 <small>BBA</small>
-                <strong>{formatInputChip(values.bigBlindAnteChips)}</strong>
+                <strong>
+                  {formatInputBigBlindAnte(values.bigBlindAnteChips)}
+                </strong>
               </span>
             </div>
             <p>1BB = {formatInputChip(values.bigBlindChips)}チップ</p>
@@ -269,6 +303,16 @@ export function gameConfigurationWithBigBlind(
   } catch {
     return next;
   }
+}
+
+export function gameConfigurationWithBigBlindAnte(
+  values: GameConfigurationValues,
+  enabled: boolean,
+): GameConfigurationValues {
+  return {
+    ...values,
+    bigBlindAnteChips: enabled ? values.bigBlindChips : "0",
+  };
 }
 
 export function gameConfigurationWithStackDepth(
@@ -501,4 +545,11 @@ function formatInputChip(value: string): string {
   if (!value.trim()) return "—";
   const parsed = Number(value);
   return Number.isFinite(parsed) ? formatChipValue(parsed) : "—";
+}
+
+function formatInputBigBlindAnte(value: string): string {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0
+    ? formatBigBlindAnte(parsed)
+    : "—";
 }

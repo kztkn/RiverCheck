@@ -5123,6 +5123,74 @@ input[aria-invalid="true"] {
   min-width: 0;
 }
 
+.blind-ante-setting {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(223, 236, 227, 0.025);
+  padding: 11px 12px;
+}
+
+.blind-ante-setting-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.blind-ante-setting-copy > strong {
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+
+.blind-ante-setting-copy > small {
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.blind-ante-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(56px, 1fr));
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(5, 28, 18, 0.42);
+  padding: 3px;
+}
+
+.blind-ante-options > button {
+  min-height: 34px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.blind-ante-options > button[aria-pressed="true"] {
+  border-color: rgba(233, 186, 90, 0.48);
+  background: rgba(233, 186, 90, 0.13);
+  color: var(--gold);
+}
+
+.blind-ante-options > button:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.blind-ante-setting > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
 .initial-stack-shortcuts {
   display: grid;
   width: 100%;

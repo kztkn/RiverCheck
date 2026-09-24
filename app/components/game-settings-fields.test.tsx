@@ -57,7 +57,11 @@ describe("GameSettingsFields local rules", () => {
     expect(standardMarkup).toContain(
       'type="hidden" name="bigBlindAnteChips" value="200"',
     );
-    expect(standardMarkup).toContain("BBAはBBと同額（200）で自動設定します。");
+    expect(standardMarkup).toContain('aria-label="BBAの有無"');
+    expect(standardMarkup).toContain(
+      'aria-pressed="true" type="button">あり</button>',
+    );
+    expect(standardMarkup).toContain("BBと同額（200）で自動設定します。");
     expect(standardMarkup).toContain("20,000チップ / 100BB");
 
     const blindIndex = standardMarkup.indexOf("ブラインド");
@@ -82,6 +86,24 @@ describe("GameSettingsFields local rules", () => {
     expect(compactMarkup).toContain("<small>BBA</small><strong>200</strong>");
     expect(compactMarkup).toContain("10,000チップ / 50BB");
     expect(compactMarkup).toContain("1BB = 200チップ");
+  });
+
+  it("BBAなしを選べる状態と確認表示を出す", () => {
+    const markup = renderToStaticMarkup(
+      createElement(GameSettingsFields, {
+        errors: {},
+        values: { ...baseValues, bigBlindAnteChips: "0" },
+      }),
+    );
+
+    expect(markup).toContain(
+      'aria-pressed="true" type="button">なし</button>',
+    );
+    expect(markup).toContain("アンティなしで進行します。");
+    expect(markup).toContain("<small>BBA</small><strong>なし</strong>");
+    expect(markup).toContain(
+      'type="hidden" name="bigBlindAnteChips" value="0"',
+    );
   });
 
   it("チップ構成計算の初期額面を5,000・1,000・500・100にする", () => {

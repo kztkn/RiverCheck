@@ -88,6 +88,13 @@ export function formatChipValue(value: number): string {
   return formatChipNumber(value);
 }
 
+export function formatBigBlindAnte(value: number): string {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new RangeError("big blind ante must be a non-negative finite value");
+  }
+  return value === 0 ? "なし" : formatChipNumber(value);
+}
+
 export function formatSignedBbValue(value: number): string {
   if (!Number.isFinite(value)) {
     throw new RangeError("BB value must be finite");

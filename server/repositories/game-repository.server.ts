@@ -479,14 +479,15 @@ export async function updateOpenGameConfiguration(
               ON participant.id = event.game_participant_id
             WHERE participant.game_id = game.id
           ) AS has_activity,
+          -- BBA is a live-table rule and does not affect chip totals,
+          -- score BB conversion, rebuys, or settlement calculations.
           (
             game.initial_chips <> $3 OR
             game.rebuy_chips <> $3 OR
             game.small_blind_chips IS DISTINCT FROM $4 OR
             game.big_blind_chips IS DISTINCT FROM $5 OR
-            game.big_blind_ante_chips IS DISTINCT FROM $6 OR
             game.initial_stack_bb <> $7
-          ) AS has_change
+          ) AS has_result_affecting_change
         FROM games AS game
         WHERE game.id = $1
           AND game.group_id = $2
@@ -506,7 +507,7 @@ export async function updateOpenGameConfiguration(
           AND (
             $8::BOOLEAN OR
             NOT target.has_activity OR
-            NOT target.has_change
+            NOT target.has_result_affecting_change
           )
         RETURNING game.id
       )

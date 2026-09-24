@@ -96,6 +96,22 @@ describe("open game configuration", () => {
     ).toMatchObject({ ok: true, input: { bigBlindAnteChips: 0 } });
   });
 
+  it("BBAは0またはBBと同額だけを許可する", () => {
+    expect(
+      validateGameConfigurationForm({
+        initialChips: "20000",
+        smallBlindChips: "100",
+        bigBlindChips: "200",
+        bigBlindAnteChips: "100",
+      }),
+    ).toEqual({
+      ok: false,
+      errors: {
+        bigBlindAnteChips: "BBAはなし、またはBBと同額にしてください。",
+      },
+    });
+  });
+
   it("記録済みなら影響確認を要求する", async () => {
     mocked.updateOpenGameConfiguration.mockResolvedValue(
       "confirmation-required",

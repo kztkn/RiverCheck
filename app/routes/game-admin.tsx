@@ -44,7 +44,10 @@ import {
   updateOpenGameIdentityForGroup,
   validateGameSettingsForm,
 } from "@server/services/game-service.server";
-import { formatChipValue } from "@domain/score/bb-score";
+import {
+  formatBigBlindAnte,
+  formatChipValue,
+} from "@domain/score/bb-score";
 import { GAME_TITLE_MAX_LENGTH } from "@domain/game/game-title";
 import {
   buildFinalizationState,
@@ -1602,7 +1605,7 @@ export default function GameAdmin({
                 {loaderData.game.initialStackBb}BB開始 ・ SB{" "}
                 {formatChipValue(savedBlindStructure.smallBlindChips)} / BB{" "}
                 {formatChipValue(savedBlindStructure.bigBlindChips)} / BBA{" "}
-                {formatChipValue(savedBlindStructure.bigBlindAnteChips)}
+                {formatBigBlindAnte(savedBlindStructure.bigBlindAnteChips)}
               </span>
               <span aria-hidden="true" className="local-rules-summary-chevron">
                 ›
@@ -1610,7 +1613,7 @@ export default function GameAdmin({
             </summary>
             <div className="local-rules-disclosure-body">
               <p className="local-rules-description">
-                実卓のSB / BBと開始スタックを設定します。BBAはBBと同額、
+                実卓のSB / BB、BBAの有無と開始スタックを設定します。
                 初期チップはBBと開始スタックから自動計算します。
               </p>
               <GameConfigurationFields

@@ -525,6 +525,15 @@ function parseBlindConfiguration(
     errors.smallBlindChips = "SBはBBより小さいチップ数にしてください。";
   }
 
+  if (
+    bigBlindAnteChips !== null &&
+    bigBlindChips !== null &&
+    bigBlindAnteChips !== 0 &&
+    bigBlindAnteChips !== bigBlindChips
+  ) {
+    errors.bigBlindAnteChips = "BBAはなし、またはBBと同額にしてください。";
+  }
+
   let initialStackBb: number | null = null;
   if (initialChips !== null && bigBlindChips !== null) {
     try {

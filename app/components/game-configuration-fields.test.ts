@@ -4,6 +4,7 @@ import {
   closeChipCalculator,
   gameConfigurationFromRecommendation,
   gameConfigurationWithBigBlind,
+  gameConfigurationWithBigBlindAnte,
   gameConfigurationWithStackDepth,
   scrollToAppliedGameConfiguration,
   type GameConfigurationValues,
@@ -111,6 +112,19 @@ describe("chip calculator form integration", () => {
       bigBlindChips: "25",
       bigBlindAnteChips: "0",
     });
+  });
+
+  it("BBAのあり・なしをBBと同額または0へ変換する", () => {
+    expect(gameConfigurationWithBigBlindAnte(parentValues, false)).toEqual({
+      ...parentValues,
+      bigBlindAnteChips: "0",
+    });
+    expect(
+      gameConfigurationWithBigBlindAnte(
+        { ...parentValues, bigBlindAnteChips: "0" },
+        true,
+      ),
+    ).toEqual(parentValues);
   });
 
   it("選択した開始BBから初期チップだけを正方向へ計算する", () => {

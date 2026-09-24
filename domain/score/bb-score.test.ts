@@ -6,6 +6,7 @@ import {
   calculateChipsPerBb,
   calculateNetBb,
   formatChipsPerBb,
+  formatBigBlindAnte,
   formatNetBb,
   formatSignedBbValue,
 } from "./bb-score";
@@ -14,6 +15,12 @@ describe("BB score", () => {
   it("1BBあたりのチップ量を計算・表示する", () => {
     expect(calculateChipsPerBb(200)).toBe(200);
     expect(formatChipsPerBb(200)).toBe("200");
+  });
+
+  it("BBAなしは0ではなく『なし』と表示する", () => {
+    expect(formatBigBlindAnte(0)).toBe("なし");
+    expect(formatBigBlindAnte(200)).toBe("200");
+    expect(formatBigBlindAnte(2.5)).toBe("2.5");
   });
 
   it("初期100BBを引いた損益を計算する", () => {

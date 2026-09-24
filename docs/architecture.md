@@ -134,7 +134,7 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 - `games.rounding_unit` は既存スキーマとの互換用に残すが、DB制約とrepositoryで100固定にする
 - `games.cost_shares` は検証済みの全順位負担額を`BIGINT[]`で保存する。移行前のNULLだけは1〜3位設定から従来計算する
 - `games.bb_rate` は開催単位の`BIGINT NOT NULL DEFAULT 0`とし、0 / 5 / 10 / 20だけをCHECK制約で許可する。既存開催は0となり挙動を維持する
-- `games.small_blind_chips`、`games.big_blind_chips`、`games.big_blind_ante_chips`は開催時点のブラインドを明示保存する。ポーカー上の1BBは`big_blind_chips`を正本とし、`initial_stack_bb`は`initial_chips / big_blind_chips`を保存する互換用キャッシュとする
+- `games.small_blind_chips`、`games.big_blind_chips`、`games.big_blind_ante_chips`は開催時点のブラインドを明示保存する。BBAは既存列の0を「なし」、BBと同額を「あり」として使うため追加migrationは行わない。ポーカー上の1BBは`big_blind_chips`を正本とし、`initial_stack_bb`は`initial_chips / big_blind_chips`を保存する互換用キャッシュとする
 - migration 0033は、既存の`initial_chips / initial_stack_bb`が整数かつ算出BBが偶数の行だけ、BB、SB=BB/2、BBA=BBをbackfillする。通常の20,000 / 100BB開催は100 / 200 / 200となり、既存結果を変えない。安全に導出できない旧行はNULLのまま残し、repository読取り時だけ旧値へフォールバックする
 - `games.bb_rate`は1BBあたりの円建て精算レートであり、ブラインドのチップ量とは分離する。1チップの円換算は保存・導出しない
 - `game_results.game_settlement_amount` は確定時に計算した符号付きの100円単位`BIGINT NOT NULL DEFAULT 0`を保存する。最終精算額はこの列から`cost_share`を引いて導出し、重複保存しない
@@ -200,7 +200,7 @@ PIN・合言葉と32文字以上の署名鍵はCloudflare Secretで受け取る�
 
 ## 受付中開催の管理
 
-開催の基本情報変更、ゲーム設定変更、開催削除は、主催者認証済みの開催管理actionからserviceを経由して実行する。基本情報は開催名・開催日だけを扱い、SB / BB、開始スタック、初期チップを管理画面本文のゲーム設定として分離する。UIはSB / BBを先に入力し、50 / 100 / 任意BBからdomain関数で初期チップを計算してhidden値として送る。BB編集中も選択中の開始BBをコンポーネント状態へ保持し、入力途中の空値でスタック深度を誤算しない。開始BB自体はDBへ追加保存しない。新規・通常開催のBBAはBBと同額のhidden値として送信し、既存BBAが0の開催だけはBB変更時にも0を保持する。serviceが保存値から開始BBを再導出し、repositoryはSB / BB / BBAの明示値、派生キャッシュ、`rebuy_chips`を同じUPDATEで更新する。repositoryの`UPDATE`と`DELETE`には`group_id`と`status = 'open'`を含め、画面表示後に確定された場合や別グループIDが指定された場合は変更しない。リバイイベントまたは終了入力が存在する場合は確認なしの更新を拒否する。基本情報変更はgame IDを維持するため参加者用URLを変えず、作成時のWeb Pushは再送しない。
+開催の基本情報変更、ゲーム設定変更、開催削除は、主催者認証済みの開催管理actionからserviceを経由して実行する。基本情報は開催名・開催日だけを扱い、SB / BB、BBAの有無、開始スタック、初期チップを管理画面本文のゲーム設定として分離する。UIはSB / BBとBBAのあり・なしを先に入力し、50 / 100 / 任意BBからdomain関数で初期チップを計算してhidden値として送る。BB編集中も選択中の開始BBとBBAの選択状態をコンポーネント状態へ保持し、入力途中の空値でスタック深度を誤算しない。開始BB自体はDBへ追加保存しない。BBAは0またはBBと同額だけをserviceで許可する。repositoryはSB / BB / BBAの明示値、派生キャッシュ、`rebuy_chips`を同じUPDATEで更新するが、記録済み開催の確認判定ではBBAを結果影響項目から除外する。これによりBBAだけはopen中いつでも変更でき、それ以外の結果影響設定はリバイイベントまたは終了入力が存在する場合に確認なしの更新を拒否する。repositoryの`UPDATE`と`DELETE`には`group_id`と`status = 'open'`を含め、画面表示後に確定された場合や別グループIDが指定された場合は変更しない。基本情報変更はgame IDを維持するため参加者用URLを変えず、作成時のWeb Pushは再送しない。
 
 スマートフォン向けの文字・数値入力と選択欄は共有CSSで16px以上を保証し、iOSのフォーカス時自動拡大を防ぐ。フォーカス表現でborder幅や要素寸法は変えず、レイアウト外のoutlineと色・背景だけを使う。チップ構成の明示反映時は`details`をref経由で閉じ、計算結果を破棄したうえで、Reactの描画後に親の設定確認パネルを画面中央へスクロールして未保存の一時メッセージを表示する。スクロールは`prefers-reduced-motion`時にアニメーションしない。永続化は従来どおり開催作成またはゲーム設定保存だけが担う。
 

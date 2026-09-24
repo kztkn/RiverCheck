@@ -371,6 +371,14 @@ describe("game repository open game management", () => {
     expect(sql).toContain("initial_stack_bb = $7");
     expect(sql).toContain("game_rebuy_events");
     expect(sql).toContain("participant.submitted_at IS NOT NULL");
+    expect(sql).toContain("AS has_result_affecting_change");
+    const confirmationComparison = sql.slice(
+      sql.indexOf("-- BBA is a live-table rule"),
+      sql.indexOf("AS has_result_affecting_change"),
+    );
+    expect(confirmationComparison).not.toContain(
+      "game.big_blind_ante_chips IS DISTINCT FROM $6",
+    );
     expect(mocked.queryDatabase).toHaveBeenCalledWith(expect.any(String), [
       "game-1",
       "group-1",

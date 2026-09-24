@@ -1053,6 +1053,21 @@ describe("LocalRulesSheet", () => {
     expect(html).toContain("初期 10,000チップ ・ 1BB = 100チップ");
   });
 
+  it("BBAなしの開催は参加者へ『なし』と表示する", () => {
+    const html = renderToStaticMarkup(
+      createElement(LocalRulesSheet, {
+        bigBlindAnteChips: 0,
+        bigBlindChips: 200,
+        bombPotRuleEnabled: true,
+        initialChips: 20_000,
+        smallBlindChips: 100,
+        sevenDeuceRuleEnabled: true,
+      }),
+    );
+
+    expect(html).toContain("<small>BBA</small><strong>なし</strong>");
+  });
+
   it("開催設定が無効なら72oルールをOFFと表示する", () => {
     const html = renderToStaticMarkup(
       createElement(LocalRulesSheet, {
