@@ -129,4 +129,31 @@ describe("FinalResults settlement visibility", () => {
     expect(markup).toContain("会費合計");
     expect(markup).not.toContain(">トータル<");
   });
+
+  it("PayPay受取人を小さな星と送金先名で明示する", () => {
+    const markup = renderToStaticMarkup(
+      createElement(FinalResults, {
+        bigBlindChips: 200,
+        groupCode: "river-check",
+        initialChips: 20_000,
+        lineText: "",
+        linkPlayerProfiles: false,
+        payPay: {
+          link: "https://pay.paypay.ne.jp/example",
+          ownerDisplayName: "Alice",
+          ownerGroupPlayerId: "player-1",
+          paymentAmount: 1_500,
+          paymentAvailable: true,
+        },
+        playedAt: "2026-09-20T12:00:00.000Z",
+        results,
+        revisions: [],
+        shareUrl: "https://example.com/r/result",
+      }),
+    );
+
+    expect(markup).toContain("PayPay受取人");
+    expect(markup).toContain("Aliceに送金");
+    expect(markup).not.toContain("Bobに送金");
+  });
 });

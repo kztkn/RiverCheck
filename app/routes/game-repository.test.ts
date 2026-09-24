@@ -275,11 +275,12 @@ describe("game repository open game management", () => {
         bbRate: 10,
         sevenDeuceRuleEnabled: true,
         bombPotRuleEnabled: true,
-      }),
+      }, "creator-1"),
     ).resolves.toBe("game-1");
 
     const [sql, params] = mocked.queryDatabase.mock.calls[0]!;
-    expect(String(sql)).toContain("$9, $10, 100, $11");
+    expect(String(sql)).toContain("$8, $9, $10, 100");
+    expect(String(sql)).toContain("game_group.paypay_recipient_link");
     expect(params).toEqual([
       "group-1",
       "9月の会",
@@ -299,6 +300,7 @@ describe("game repository open game management", () => {
       10,
       true,
       true,
+      "creator-1",
     ]);
   });
 

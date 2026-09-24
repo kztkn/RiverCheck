@@ -6,7 +6,9 @@ import { ResultCorrectionPanel } from "~/components/result-correction-panel";
 import { findGameForGroup } from "@server/repositories/game-repository.server";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import { listFinalResults } from "@server/repositories/finalization-repository.server";
-import { requireOrganizer } from "@server/services/organizer-auth.server";
+import { requireGameManager } from "@server/services/game-authorization-service.server";
+import { saveGamePayPayRecipientLink } from "@server/services/group-paypay-service.server";
+import { PayPayLinkEditor } from "~/components/paypay-link-editor";
 import {
   readGameIdentityForm,
   validateGameIdentityForm,
@@ -19,8 +21,8 @@ import {
 import type { Route } from "./+types/game-edit";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireOrganizer(request, params.groupCode);
   const context = await requireGame(params.groupCode, params.gameId);
+  await requireGameManager(request, context.game);
   if (context.game.status !== "finalized") {
     return redirect(`/g/${params.groupCode}/games/${params.gameId}/admin`);
   }
@@ -34,8 +36,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  await requireOrganizer(request, params.groupCode);
   const context = await requireGame(params.groupCode, params.gameId);
+  const actor = await requireGameManager(request, context.game);
   if (context.game.status !== "finalized") {
     throw new Response("Only finalized games can be edited", { status: 409 });
   }
@@ -43,6 +45,18 @@ export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const intent = readString(formData, "intent");
   const resultUrl = `/g/${params.groupCode}/games/${params.gameId}`;
+
+  if (intent === "save-game-paypay-link") {
+    const result = await saveGamePayPayRecipientLink(
+      context.group.id,
+      params.gameId,
+      readString(formData, "payPayRecipientLink"),
+      actor.playerId,
+    );
+    return result.ok
+      ? redirect(`${resultUrl}?notice=paypay-saved`, { status: 303 })
+      : { ...result, intent: "save-game-paypay-link" as const };
+  }
 
   if (intent === "reopen-finalization") {
     const result = await reopenFinalizedGame(context.group.id, params.gameId);
@@ -182,12 +196,18 @@ export default function GameEdit({
     actionData?.ok === false && actionData.intent === "reopen-finalization"
       ? actionData
       : null;
+  const payPayAction =
+    actionData?.ok === false &&
+    actionData.intent === "save-game-paypay-link" &&
+    "value" in actionData
+      ? actionData
+      : null;
   const resultUrl = `/g/${loaderData.group.publicCode}/games/${loaderData.game.id}`;
   const editUrl = `${resultUrl}/admin/edit`;
 
   return (
     <main className="page-shell form-page edit-game-page">
-      <GroupSiteHeader groupCode={loaderData.group.publicCode} organizer />
+      <GroupSiteHeader groupCode={loaderData.group.publicCode} />
 
       <section className="form-intro edit-game-intro">
         <p className="form-brand-label">EDIT GAME</p>
@@ -216,6 +236,22 @@ export default function GameEdit({
         game={loaderData.game}
         isSubmitting={isSubmitting}
         results={loaderData.results}
+      />
+
+      <PayPayLinkEditor
+        actionUrl={editUrl}
+        cancelUrl={resultUrl}
+        error={payPayAction?.error ?? null}
+        intent="save-game-paypay-link"
+        intro="この開催の結果画面だけで使用します。更新した人が送金先として表示されます。"
+        isSubmitting={
+          isSubmitting &&
+          navigation.formData?.get("intent") === "save-game-paypay-link"
+        }
+        link={loaderData.game.payPayRecipientLink}
+        registeredAt={loaderData.game.payPayLinkRegisteredAt}
+        recipientName={loaderData.game.payPayOwnerDisplayName}
+        value={payPayAction?.value ?? null}
       />
 
       <ReopenFinalizationControl

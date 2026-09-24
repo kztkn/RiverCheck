@@ -6,15 +6,15 @@ import {
   readCreateGameForm,
 } from "@server/services/game-service.server";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
-import { requireOrganizer } from "@server/services/organizer-auth.server";
+import { requireGroupEventCreator } from "@server/services/game-authorization-service.server";
 import { calculateCostShares } from "@domain/cost-sharing/calculate-cost-shares";
 import { GameSettingsFields } from "../components/game-settings-fields";
 import type { Route } from "./+types/game-new";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireOrganizer(request, params.groupCode);
   const group = await findGroupByPublicCode(params.groupCode);
   if (!group) throw new Response("Group not found", { status: 404 });
+  await requireGroupEventCreator(request, group);
   return {
     group: { name: group.name, publicCode: group.publicCode },
     defaultPlayedAt: todayInTokyo(),
@@ -22,9 +22,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  await requireOrganizer(request, params.groupCode);
+  const group = await findGroupByPublicCode(params.groupCode);
+  if (!group) throw new Response("Group not found", { status: 404 });
+  const actor = await requireGroupEventCreator(request, group);
   const values = readCreateGameForm(await request.formData());
-  const result = await createGameForGroup(params.groupCode, values);
+  const result = await createGameForGroup(
+    params.groupCode,
+    values,
+    actor.playerId,
+  );
   if (!result.ok) return { errors: result.errors, values: result.values };
   return redirect(`/g/${params.groupCode}/games/${result.gameId}/admin`);
 }
@@ -70,7 +76,7 @@ export default function NewGame({
 
   return (
     <main className="page-shell form-page">
-      <GroupSiteHeader groupCode={loaderData.group.publicCode} organizer />
+      <GroupSiteHeader groupCode={loaderData.group.publicCode} />
 
       <section className="form-intro game-create-intro">
         <p className="form-brand-label">NEW GAME</p>

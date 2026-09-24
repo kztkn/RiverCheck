@@ -14,6 +14,8 @@ interface GroupRow {
   line_open_chat_url: string | null;
   paypay_recipient_link: string | null;
   paypay_link_registered_at: Date | null;
+  paypay_owner_player_id: string | null;
+  paypay_owner_display_name: string | null;
 }
 
 interface GroupDirectoryRow {
@@ -27,10 +29,16 @@ export async function findGroupByPublicCode(
 ): Promise<GroupSummary | null> {
   const result = await queryDatabase<GroupRow>(
     `
-      SELECT id, name, public_code, line_open_chat_url,
-             paypay_recipient_link, paypay_link_registered_at
-      FROM groups
-      WHERE public_code = $1
+      SELECT group_record.id, group_record.name, group_record.public_code,
+             group_record.line_open_chat_url,
+             group_record.paypay_recipient_link,
+             group_record.paypay_link_registered_at,
+             group_record.paypay_owner_player_id,
+             paypay_owner.display_name AS paypay_owner_display_name
+      FROM groups AS group_record
+      LEFT JOIN players AS paypay_owner
+        ON paypay_owner.id = group_record.paypay_owner_player_id
+      WHERE group_record.public_code = $1
     `,
     [publicCode],
   );
@@ -92,7 +100,9 @@ export async function insertGroup(
         INSERT INTO groups (name, public_code)
         VALUES ($1, $2)
         RETURNING id, name, public_code, line_open_chat_url,
-                  paypay_recipient_link, paypay_link_registered_at
+                  paypay_recipient_link, paypay_link_registered_at,
+                  paypay_owner_player_id,
+                  NULL::TEXT AS paypay_owner_display_name
       `,
       [name, publicCode],
     );
@@ -140,6 +150,8 @@ function mapGroup(row: GroupRow): GroupSummary {
     payPayRecipientLink: row.paypay_recipient_link,
     payPayLinkRegisteredAt:
       row.paypay_link_registered_at?.toISOString() ?? null,
+    payPayOwnerPlayerId: row.paypay_owner_player_id,
+    payPayOwnerDisplayName: row.paypay_owner_display_name,
   };
 }
 

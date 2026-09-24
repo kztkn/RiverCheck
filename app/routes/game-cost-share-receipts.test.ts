@@ -2,15 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocked = vi.hoisted(() => ({
   findGroupByPublicCode: vi.fn(),
-  requireOrganizer: vi.fn(),
+  findGameForGroup: vi.fn(),
+  requireGameManager: vi.fn(),
   updateGameCostShareReceipt: vi.fn(),
 }));
 
 vi.mock("@server/repositories/group-repository.server", () => ({
   findGroupByPublicCode: mocked.findGroupByPublicCode,
 }));
-vi.mock("@server/services/organizer-auth.server", () => ({
-  requireOrganizer: mocked.requireOrganizer,
+vi.mock("@server/repositories/game-repository.server", () => ({
+  findGameForGroup: mocked.findGameForGroup,
+}));
+vi.mock("@server/services/game-authorization-service.server", () => ({
+  requireGameManager: mocked.requireGameManager,
 }));
 vi.mock("@server/services/game-cost-share-receipt-service.server", () => ({
   updateGameCostShareReceipt: mocked.updateGameCostShareReceipt,
@@ -27,6 +31,8 @@ beforeEach(() => {
     id: "11111111-1111-4111-8111-111111111111",
     publicCode: "river-check",
   });
+  mocked.findGameForGroup.mockResolvedValue({ id: gameId, createdByPlayerId: null });
+  mocked.requireGameManager.mockResolvedValue({ kind: "admin", playerId: null });
   mocked.updateGameCostShareReceipt.mockResolvedValue({ ok: true });
 });
 
@@ -36,9 +42,9 @@ describe("game cost share receipts resource route", () => {
       actionArgs({ groupPlayerId, received: "yes" }),
     );
 
-    expect(mocked.requireOrganizer).toHaveBeenCalledWith(
+    expect(mocked.requireGameManager).toHaveBeenCalledWith(
       expect.any(Request),
-      "river-check",
+      expect.objectContaining({ id: gameId }),
     );
     expect(mocked.updateGameCostShareReceipt).toHaveBeenCalledWith(
       "11111111-1111-4111-8111-111111111111",

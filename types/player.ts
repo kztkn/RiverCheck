@@ -5,6 +5,7 @@ export interface GroupPlayerSummary {
   profileMessage: string | null;
   avatarUpdatedAt: string | null;
   hasProfileAccess: boolean;
+  canCreateGames: boolean;
 }
 
 export interface ReusablePlayerSummary {

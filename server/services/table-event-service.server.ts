@@ -14,7 +14,8 @@ import {
   listOpenGameTableEvents,
   type TableEventActorType,
 } from "@server/repositories/table-event-repository.server";
-import { isOrganizerAuthenticated } from "@server/services/organizer-auth.server";
+import { getGameManagementActor } from "@server/services/game-authorization-service.server";
+import type { GameDetails } from "@shared-types/game";
 import { readParticipantToken } from "@server/services/participant-session.server";
 import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
 import { hashToken } from "@server/services/token.server";
@@ -59,6 +60,7 @@ export async function getTableEventPanel(
     groupCode,
     context.group.id,
     gameId,
+    context.game,
   );
   if (!actor) {
     return {
@@ -113,6 +115,7 @@ export async function recordTableEvent(
     groupCode,
     context.group.id,
     gameId,
+    context.game,
   );
   if (!actor) return { ok: false, error: "この開催の記録権限がありません。" };
 
@@ -175,6 +178,7 @@ export async function cancelRecordedTableEvent(
     groupCode,
     context.group.id,
     gameId,
+    context.game,
   );
   if (!actor) return { ok: false, error: "この開催の記録権限がありません。" };
   const canceled = await cancelTableEvent({
@@ -193,13 +197,14 @@ async function resolveTableEventActor(
   groupCode: string,
   groupId: string,
   gameId: string,
+  game: GameDetails,
 ): Promise<TableEventActor | null> {
-  const [profileOverview, organizer] = await Promise.all([
+  const [profileOverview, manager] = await Promise.all([
     getAuthenticatedPlayerProfile(request, groupCode),
-    isOrganizerAuthenticated(request),
+    getGameManagementActor(request, game),
   ]);
 
-  if (organizer) {
+  if (manager) {
     return {
       groupPlayerId: profileOverview?.profile?.groupPlayerId ?? null,
       type: "organizer",

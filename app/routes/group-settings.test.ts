@@ -5,6 +5,7 @@ const mocked = vi.hoisted(() => ({
   requireOrganizer: vi.fn(),
   saveGroupLineOpenChatUrl: vi.fn(),
   saveGroupPayPayRecipientLink: vi.fn(),
+  getAuthenticatedPlayerProfile: vi.fn(),
 }));
 
 vi.mock("@server/services/group-service.server", () => ({
@@ -18,6 +19,9 @@ vi.mock("@server/services/group-paypay-service.server", () => ({
 }));
 vi.mock("@server/services/organizer-auth.server", () => ({
   requireOrganizer: mocked.requireOrganizer,
+}));
+vi.mock("@server/services/player-profile-service.server", () => ({
+  getAuthenticatedPlayerProfile: mocked.getAuthenticatedPlayerProfile,
 }));
 vi.mock("~/components/site-menu", () => ({
   GroupSiteHeader: vi.fn(() => null),
@@ -41,6 +45,7 @@ describe("group settings action", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocked.getGroupSettings.mockResolvedValue(group);
+    mocked.getAuthenticatedPlayerProfile.mockResolvedValue(null);
   });
 
   it("主催者認証後にOpenChat URLを保存して設定画面へ戻る", async () => {
@@ -82,6 +87,7 @@ describe("group settings action", () => {
     expect(mocked.saveGroupPayPayRecipientLink).toHaveBeenCalledWith(
       group.id,
       "https://pay.paypay.ne.jp/example",
+      null,
     );
     expect(result).toBeInstanceOf(Response);
     const response = result as Response;

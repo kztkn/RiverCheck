@@ -4,6 +4,7 @@ import { calculateSettlementBalance } from "@domain/settlement/calculate-game-se
 export async function saveGroupPayPayRecipientLinkRecord(
   groupId: string,
   link: string | null,
+  ownerPlayerId: string | null,
 ): Promise<boolean> {
   const result = await queryDatabase(
     `
@@ -14,10 +15,36 @@ export async function saveGroupPayPayRecipientLinkRecord(
             ELSE paypay_link_registered_at
           END,
           paypay_recipient_link = $2,
+          paypay_owner_player_id = CASE WHEN $2::TEXT IS NULL THEN NULL ELSE $3 END,
           updated_at = NOW()
       WHERE id = $1
     `,
-    [groupId, link],
+    [groupId, link, ownerPlayerId],
+  );
+  return result.rowCount === 1;
+}
+
+export async function saveGamePayPayRecipientLinkRecord(
+  groupId: string,
+  gameId: string,
+  link: string | null,
+  ownerPlayerId: string | null,
+): Promise<boolean> {
+  const result = await queryDatabase(
+    `
+      UPDATE games
+      SET paypay_link_registered_at = CASE
+            WHEN $3::TEXT IS NULL THEN NULL
+            WHEN paypay_recipient_link IS DISTINCT FROM $3::TEXT THEN NOW()
+            ELSE paypay_link_registered_at
+          END,
+          paypay_recipient_link = $3,
+          paypay_owner_player_id = CASE WHEN $3::TEXT IS NULL THEN NULL ELSE $4 END,
+          updated_at = NOW()
+      WHERE id = $1
+        AND group_id = $2
+    `,
+    [gameId, groupId, link, ownerPlayerId],
   );
   return result.rowCount === 1;
 }

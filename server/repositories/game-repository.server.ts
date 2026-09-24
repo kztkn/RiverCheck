@@ -14,6 +14,7 @@ interface GameSummaryRow {
   status: GameStatus;
   participant_count: number;
   winner_name: string | null;
+  created_by_player_id: string | null;
 }
 
 interface GameDetailsRow {
@@ -22,6 +23,7 @@ interface GameDetailsRow {
   played_at: Date;
   status: GameStatus;
   group_id: string;
+  created_by_player_id: string | null;
   initial_chips: string;
   small_blind_chips: string | null;
   big_blind_chips: string | null;
@@ -38,6 +40,11 @@ interface GameDetailsRow {
   settlement_plan_published_at: Date | null;
   seven_deuce_rule_enabled: boolean;
   bomb_pot_rule_enabled: boolean;
+  paypay_recipient_link: string | null;
+  paypay_link_registered_at: Date | null;
+  paypay_owner_player_id: string | null;
+  paypay_owner_display_name: string | null;
+  paypay_owner_group_player_id: string | null;
 }
 
 interface FinalizedGamePublicRouteRow {
@@ -51,6 +58,8 @@ interface GameWithGroupRow extends GameDetailsRow {
   group_line_open_chat_url: string | null;
   group_paypay_recipient_link: string | null;
   group_paypay_link_registered_at: Date | null;
+  group_paypay_owner_player_id: string | null;
+  group_paypay_owner_display_name: string | null;
 }
 
 export async function listGamesForGroup(
@@ -79,6 +88,7 @@ async function listGames(
         game.title,
         game.played_at,
         game.status,
+        game.created_by_player_id,
         COALESCE(participant_summary.participant_count, 0)::INTEGER
           AS participant_count,
         result_summary.winner_name
@@ -115,6 +125,7 @@ async function listGames(
     status: row.status,
     participantCount: row.participant_count,
     winnerName: row.winner_name,
+    createdByPlayerId: row.created_by_player_id,
   }));
 }
 
@@ -127,6 +138,7 @@ export async function findGameForGroup(
       SELECT
         id,
         group_id,
+        created_by_player_id,
         title,
         played_at,
         status,
@@ -146,6 +158,11 @@ export async function findGameForGroup(
         settlement_plan_published_at,
         seven_deuce_rule_enabled,
         bomb_pot_rule_enabled
+        ,paypay_recipient_link
+        ,paypay_link_registered_at
+        ,paypay_owner_player_id
+        ,(SELECT display_name FROM players WHERE id = games.paypay_owner_player_id) AS paypay_owner_display_name
+        ,(SELECT id FROM group_players WHERE group_id = games.group_id AND player_id = games.paypay_owner_player_id LIMIT 1) AS paypay_owner_group_player_id
       FROM games
       WHERE id = $1 AND group_id = $2
     `,
@@ -164,6 +181,7 @@ export async function findGameWithGroupByPublicCode(
       SELECT
         game.id,
         game.group_id,
+        game.created_by_player_id,
         game.title,
         game.played_at,
         game.status,
@@ -183,13 +201,26 @@ export async function findGameWithGroupByPublicCode(
         game.settlement_plan_published_at,
         game.seven_deuce_rule_enabled,
         game.bomb_pot_rule_enabled,
+        game.paypay_recipient_link,
+        game.paypay_link_registered_at,
+        game.paypay_owner_player_id,
+        paypay_owner.display_name AS paypay_owner_display_name,
+        paypay_owner_membership.id AS paypay_owner_group_player_id,
         game_group.name AS group_name,
         game_group.public_code AS group_public_code,
         game_group.line_open_chat_url AS group_line_open_chat_url,
         game_group.paypay_recipient_link AS group_paypay_recipient_link,
-        game_group.paypay_link_registered_at AS group_paypay_link_registered_at
+        game_group.paypay_link_registered_at AS group_paypay_link_registered_at,
+        game_group.paypay_owner_player_id AS group_paypay_owner_player_id,
+        group_paypay_owner.display_name AS group_paypay_owner_display_name
       FROM games AS game
       INNER JOIN groups AS game_group ON game_group.id = game.group_id
+      LEFT JOIN players AS paypay_owner ON paypay_owner.id = game.paypay_owner_player_id
+      LEFT JOIN group_players AS paypay_owner_membership
+        ON paypay_owner_membership.group_id = game.group_id
+       AND paypay_owner_membership.player_id = game.paypay_owner_player_id
+      LEFT JOIN players AS group_paypay_owner
+        ON group_paypay_owner.id = game_group.paypay_owner_player_id
       WHERE game.id = $1
         AND game_group.public_code = $2
     `,
@@ -207,6 +238,8 @@ export async function findGameWithGroupByPublicCode(
       payPayRecipientLink: row.group_paypay_recipient_link,
       payPayLinkRegisteredAt:
         row.group_paypay_link_registered_at?.toISOString() ?? null,
+      payPayOwnerPlayerId: row.group_paypay_owner_player_id,
+      payPayOwnerDisplayName: row.group_paypay_owner_display_name,
     },
     game: mapGameDetails(row),
   };
@@ -231,6 +264,7 @@ export async function findFinalizedGamePublicRoute(
 export async function insertGame(
   groupId: string,
   input: CreateGameInput,
+  createdByPlayerId: string | null = null,
 ): Promise<string> {
   const result = await queryDatabase<{ id: string }>(
     `
@@ -255,8 +289,18 @@ export async function insertGame(
         bb_rate,
         seven_deuce_rule_enabled,
         bomb_pot_rule_enabled
+        ,created_by_player_id
+        ,paypay_recipient_link
+        ,paypay_link_registered_at
+        ,paypay_owner_player_id
       )
-      VALUES ($1, $2, $3, 'open', $4, $5, $6, $7, $8, $9, $10, 100, $11, $12, $13, $14, $15::BIGINT[], $16, $17, $18)
+      SELECT $1, $2, $3, 'open', $4, $5, $6, $7, $8, $9, $10, 100,
+             $11, $12, $13, $14, $15::BIGINT[], $16, $17, $18, $19,
+             game_group.paypay_recipient_link,
+             game_group.paypay_link_registered_at,
+             game_group.paypay_owner_player_id
+      FROM groups AS game_group
+      WHERE game_group.id = $1
       RETURNING id
     `,
     [
@@ -278,6 +322,7 @@ export async function insertGame(
       input.bbRate,
       input.sevenDeuceRuleEnabled,
       input.bombPotRuleEnabled,
+      createdByPlayerId,
     ],
   );
 
@@ -510,6 +555,7 @@ function mapGameDetails(row: GameDetailsRow): GameDetails {
   return {
     id: row.id,
     groupId: row.group_id,
+    createdByPlayerId: row.created_by_player_id,
     title: row.title,
     playedAt: row.played_at.toISOString(),
     status: row.status,
@@ -536,6 +582,11 @@ function mapGameDetails(row: GameDetailsRow): GameDetails {
       row.settlement_plan_published_at?.toISOString() ?? null,
     sevenDeuceRuleEnabled: row.seven_deuce_rule_enabled,
     bombPotRuleEnabled: row.bomb_pot_rule_enabled,
+    payPayRecipientLink: row.paypay_recipient_link,
+    payPayLinkRegisteredAt: row.paypay_link_registered_at?.toISOString() ?? null,
+    payPayOwnerPlayerId: row.paypay_owner_player_id,
+    payPayOwnerDisplayName: row.paypay_owner_display_name,
+    payPayOwnerGroupPlayerId: row.paypay_owner_group_player_id,
   };
 }
 

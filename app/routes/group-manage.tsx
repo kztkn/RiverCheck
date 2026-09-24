@@ -9,7 +9,7 @@ import {
 import { useEffect } from "react";
 import { Link } from "react-router";
 import { getGroupOverview } from "@server/services/group-service.server";
-import { requireOrganizer } from "@server/services/organizer-auth.server";
+import { requireGroupEventCreator } from "@server/services/game-authorization-service.server";
 import type { Route } from "./+types/group-manage";
 import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-preview-draft";
 
@@ -20,14 +20,15 @@ const statusLabels = {
 } as const;
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireOrganizer(request, params.groupCode);
   const overview = await getGroupOverview(params.groupCode);
   if (!overview) throw new Response("Group not found", { status: 404 });
+  const actor = await requireGroupEventCreator(request, overview.group);
   const url = new URL(request.url);
   return {
     ...overview,
     notice: url.searchParams.get("notice"),
     deletedGameId: url.searchParams.get("deletedGameId"),
+    actor,
   };
 }
 
@@ -65,12 +66,13 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
 
   return (
     <main className="page-shell organizer-home-page">
-      <GroupSiteHeader groupCode={group.publicCode} organizer />
+      <GroupSiteHeader groupCode={group.publicCode} />
 
       <section className="organizer-home-intro">
         <p className="form-brand-label">ORGANIZER</p>
         <h1>開催管理</h1>
         <p>{group.name} のテーブルを準備し、進行を確認します。</p>
+        {loaderData.actor.kind === "admin" ? (
         <nav aria-label="グループ管理" className="organizer-home-tools">
           <Link
             className="organizer-home-tool"
@@ -87,6 +89,7 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
             グループ設定
           </Link>
         </nav>
+        ) : null}
       </section>
 
       <AppToast
@@ -128,6 +131,10 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
               <ManageGameRow
                 game={game}
                 groupCode={group.publicCode}
+                canManage={
+                  loaderData.actor.kind === "admin" ||
+                  game.createdByPlayerId === loaderData.actor.playerId
+                }
                 key={game.id}
               />
             ))}
@@ -151,6 +158,10 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
               <ManageGameRow
                 game={game}
                 groupCode={group.publicCode}
+                canManage={
+                  loaderData.actor.kind === "admin" ||
+                  game.createdByPlayerId === loaderData.actor.playerId
+                }
                 key={game.id}
               />
             ))}
@@ -164,18 +175,22 @@ export default function GroupManage({ loaderData }: Route.ComponentProps) {
 function ManageGameRow({
   game,
   groupCode,
+  canManage,
 }: {
   game: Route.ComponentProps["loaderData"]["games"][number];
   groupCode: string;
+  canManage: boolean;
 }) {
   const isPast = game.status === "finalized";
   return (
     <Link
       className="organizer-game-row"
       to={
-        isPast
+        canManage && isPast
           ? `/g/${groupCode}/games/${game.id}/admin/edit`
-          : `/g/${groupCode}/games/${game.id}/admin`
+          : canManage
+            ? `/g/${groupCode}/games/${game.id}/admin`
+            : `/g/${groupCode}/games/${game.id}`
       }
     >
       <time dateTime={game.playedAt}>{formatGameDate(game.playedAt)}</time>

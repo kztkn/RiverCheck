@@ -34,7 +34,8 @@ const mocked = vi.hoisted(() => ({
   selectPlayerProfile: vi.fn(),
   saveFinalizedGameStory: vi.fn(),
   deleteGameStoryPostAsOrganizer: vi.fn(),
-  requireOrganizer: vi.fn(),
+  getGameManagementActor: vi.fn(),
+  requireGameManager: vi.fn(),
   recordOwnRebuyAction: vi.fn(),
   undoOwnRebuyAction: vi.fn(),
   updateParticipantInput: vi.fn(),
@@ -112,7 +113,10 @@ vi.mock("@server/services/game-story-service.server", () => ({
 }));
 vi.mock("@server/services/organizer-auth.server", () => ({
   isOrganizerAuthenticated: mocked.isOrganizerAuthenticated,
-  requireOrganizer: mocked.requireOrganizer,
+}));
+vi.mock("@server/services/game-authorization-service.server", () => ({
+  getGameManagementActor: mocked.getGameManagementActor,
+  requireGameManager: mocked.requireGameManager,
 }));
 vi.mock("@server/services/achievement-service.server", () => ({
   scheduleAchievementRefresh: vi.fn(),
@@ -200,6 +204,8 @@ describe("game participant route", () => {
       },
     );
     mocked.isOrganizerAuthenticated.mockResolvedValue(false);
+    mocked.getGameManagementActor.mockResolvedValue(null);
+    mocked.requireGameManager.mockResolvedValue({ kind: "admin", playerId: null });
     mocked.getAuthenticatedPlayerIdentity.mockResolvedValue(null);
     mocked.getAuthenticatedPlayerProfile.mockResolvedValue({
       group,
@@ -422,6 +428,7 @@ describe("game participant route", () => {
       status: "finalized",
     });
     mocked.isOrganizerAuthenticated.mockResolvedValue(true);
+    mocked.getGameManagementActor.mockResolvedValue({ kind: "admin", playerId: null });
     mocked.listGameCostShareReceipts.mockResolvedValue([
       {
         costShare: 500,
@@ -439,6 +446,7 @@ describe("game participant route", () => {
     );
 
     mocked.isOrganizerAuthenticated.mockResolvedValue(false);
+    mocked.getGameManagementActor.mockResolvedValue(null);
     mocked.listGameCostShareReceipts.mockClear();
     const publicResult = await loader(loaderArgs());
     expect(publicResult.costShareReceipts).toEqual([]);
@@ -637,9 +645,9 @@ describe("game participant route", () => {
     );
 
     const response = expectRedirect(result);
-    expect(mocked.requireOrganizer).toHaveBeenCalledWith(
+    expect(mocked.requireGameManager).toHaveBeenCalledWith(
       expect.any(Request),
-      "river-check",
+      expect.objectContaining({ id: gameId, status: "finalized" }),
     );
     expect(mocked.deleteGameStoryPostAsOrganizer).toHaveBeenCalledWith(
       group.id,

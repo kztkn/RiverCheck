@@ -10,10 +10,12 @@ export interface GameSummary {
 export interface GameListItem extends GameSummary {
   participantCount: number;
   winnerName: string | null;
+  createdByPlayerId: string | null;
 }
 
 export interface GameDetails extends GameSummary {
   groupId: string;
+  createdByPlayerId: string | null;
   initialChips: number;
   smallBlindChips: number;
   bigBlindChips: number;
@@ -30,6 +32,11 @@ export interface GameDetails extends GameSummary {
   settlementPlanPublishedAt: string | null;
   sevenDeuceRuleEnabled: boolean;
   bombPotRuleEnabled: boolean;
+  payPayRecipientLink: string | null;
+  payPayLinkRegisteredAt: string | null;
+  payPayOwnerPlayerId: string | null;
+  payPayOwnerDisplayName: string | null;
+  payPayOwnerGroupPlayerId: string | null;
 }
 
 export interface CreateGameInput {

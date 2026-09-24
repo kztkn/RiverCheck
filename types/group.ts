@@ -5,6 +5,8 @@ export interface GroupSummary {
   lineOpenChatUrl: string | null;
   payPayRecipientLink: string | null;
   payPayLinkRegisteredAt: string | null;
+  payPayOwnerPlayerId: string | null;
+  payPayOwnerDisplayName: string | null;
 }
 
 export interface GroupDirectoryItem {

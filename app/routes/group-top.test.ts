@@ -46,6 +46,7 @@ describe("group top navigation", () => {
       status: "open",
       title: "開催中の会",
       winnerName: null,
+      createdByPlayerId: null,
     } satisfies GameListItem;
     mocked.getGroupOverview.mockResolvedValue({
       games: [openGame],

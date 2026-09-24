@@ -11,7 +11,8 @@ const mocked = vi.hoisted(() => ({
   updateOpenGameConfigurationForGroup: vi.fn(),
   updateOpenGameIdentityForGroup: vi.fn(),
   validateGameSettingsForm: vi.fn(),
-  requireOrganizer: vi.fn(),
+  requireGameManager: vi.fn(),
+  saveGamePayPayRecipientLink: vi.fn(),
 }));
 
 vi.mock("@server/repositories/game-repository.server", () => ({
@@ -36,8 +37,11 @@ vi.mock("@server/services/participant-session.server", () => ({
 vi.mock("@server/services/token.server", () => ({
   hashToken: vi.fn(),
 }));
-vi.mock("@server/services/organizer-auth.server", () => ({
-  requireOrganizer: mocked.requireOrganizer,
+vi.mock("@server/services/game-authorization-service.server", () => ({
+  requireGameManager: mocked.requireGameManager,
+}));
+vi.mock("@server/services/group-paypay-service.server", () => ({
+  saveGamePayPayRecipientLink: mocked.saveGamePayPayRecipientLink,
 }));
 vi.mock("@server/services/rebuy-service.server", () => ({
   adjustOrganizerRebuyState: vi.fn(),
@@ -102,6 +106,7 @@ describe("game admin management action", () => {
         return currentGame ? { group: currentGroup, game: currentGame } : null;
       },
     );
+    mocked.requireGameManager.mockResolvedValue({ kind: "admin", playerId: null });
   });
 
   it("検証済みの精算予定を公開して管理画面へ戻す", async () => {
@@ -150,9 +155,9 @@ describe("game admin management action", () => {
       }),
     );
 
-    expect(mocked.requireOrganizer).toHaveBeenCalledWith(
+    expect(mocked.requireGameManager).toHaveBeenCalledWith(
       expect.any(Request),
-      "river-check",
+      game,
     );
     expect(mocked.updateOpenGameIdentityForGroup).toHaveBeenCalledWith(
       group.id,
@@ -260,6 +265,37 @@ describe("game admin management action", () => {
       `/g/river-check/manage?notice=game-deleted&deletedGameId=${game.id}`,
     );
     expect(response.headers.get("Set-Cookie")).toContain("Max-Age=0");
+  });
+
+  it("開催作成者でも削除は403で拒否する", async () => {
+    mocked.requireGameManager.mockResolvedValue({
+      kind: "creator",
+      playerId: "33333333-3333-4333-8333-333333333333",
+    });
+
+    await expect(action(actionArgs({ intent: "delete-game" }))).rejects.toMatchObject({
+      status: 403,
+    });
+    expect(mocked.removeOpenGameForGroup).not.toHaveBeenCalled();
+  });
+
+  it("PayPayリンク更新時に操作ユーザーを受取人として渡す", async () => {
+    const playerId = "33333333-3333-4333-8333-333333333333";
+    mocked.requireGameManager.mockResolvedValue({ kind: "creator", playerId });
+    mocked.saveGamePayPayRecipientLink.mockResolvedValue({ ok: true });
+
+    const result = await action(actionArgs({
+      intent: "save-game-paypay-link",
+      payPayRecipientLink: "https://pay.paypay.ne.jp/example",
+    }));
+
+    expect(mocked.saveGamePayPayRecipientLink).toHaveBeenCalledWith(
+      group.id,
+      game.id,
+      "https://pay.paypay.ne.jp/example",
+      playerId,
+    );
+    expect(result).toBeInstanceOf(Response);
   });
 
   it("受付中でなくなった開催は削除結果を成功扱いしない", async () => {

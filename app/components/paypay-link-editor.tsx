@@ -10,17 +10,23 @@ export function PayPayLinkEditor({
   actionUrl,
   cancelUrl,
   error,
+  intent = "save-paypay-link",
+  intro,
   isSubmitting,
   link,
   registeredAt,
+  recipientName,
   value,
 }: {
   actionUrl: string;
   cancelUrl: string;
   error: string | null;
+  intent?: string;
+  intro?: string;
   isSubmitting: boolean;
   link: string | null;
   registeredAt: string | null;
+  recipientName?: string | null;
   value: string | null;
 }) {
   const active = isPayPayLinkActive({ link, registeredAt });
@@ -42,8 +48,14 @@ export function PayPayLinkEditor({
         ) : null}
       </div>
       <p className="paypay-link-intro">
-        グループ内すべての結果画面で使用します。登録から{PAYPAY_LINK_VALIDITY_DAYS}日間だけ表示されます。
+        {intro ?? "グループの新規開催へ初期値としてコピーします。"}
+        登録から{PAYPAY_LINK_VALIDITY_DAYS}日間だけ表示されます。
       </p>
+      {link ? (
+        <p className="paypay-link-recipient">
+          現在の送金先：<strong>{recipientName ?? "受取人未設定"}</strong>
+        </p>
+      ) : null}
 
       <Form
         action={actionUrl}
@@ -52,7 +64,7 @@ export function PayPayLinkEditor({
         noValidate
         reloadDocument
       >
-        <input name="intent" type="hidden" value="save-paypay-link" />
+        <input name="intent" type="hidden" value={intent} />
         <label className="field">
           <span className="field-label">PayPay受取リンク</span>
           <input

@@ -75,8 +75,11 @@ import { GroupSiteHeader } from "~/components/site-menu";
 import { GroupInviteJoinPanel } from "~/components/group-invite-join-panel";
 import {
   isOrganizerAuthenticated,
-  requireOrganizer,
 } from "@server/services/organizer-auth.server";
+import {
+  getGameManagementActor,
+  requireGameManager,
+} from "@server/services/game-authorization-service.server";
 import { isPayPayLinkActive } from "@domain/payment/paypay-link";
 import { findGamePaymentAmountForPlayer } from "@server/repositories/group-paypay-repository.server";
 import type { GameListItem, GameStatus } from "@shared-types/game";
@@ -225,6 +228,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         : Promise.resolve([]),
     ]);
 
+  const managementActor = await getGameManagementActor(request, context.game);
+  const canManageGame = managementActor !== null;
+
   const canBrowseGroup = Boolean(profileOverview?.profile) || isOrganizer;
   const isPublicResultViewer =
     context.game.status === "finalized" && !canBrowseGroup && !participant;
@@ -254,7 +260,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       ? await listFinalResults(context.group.id, params.gameId)
       : [];
   const costShareReceipts =
-    context.game.status === "finalized" && isOrganizer
+    context.game.status === "finalized" && canManageGame
       ? await listGameCostShareReceipts(context.group.id, params.gameId)
       : [];
   const revisions =
@@ -296,10 +302,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const payPayRecipientLink =
     canBrowseGroup &&
     isPayPayLinkActive({
-      link: context.group.payPayRecipientLink,
-      registeredAt: context.group.payPayLinkRegisteredAt,
+      link: context.game.payPayRecipientLink,
+      registeredAt: context.game.payPayLinkRegisteredAt,
     })
-      ? context.group.payPayRecipientLink
+      ? context.game.payPayRecipientLink
       : null;
   const payPayPaymentAmount =
     context.game.status === "finalized" &&
@@ -325,7 +331,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         }
       : context.game,
     canBrowseGroup,
-    isOrganizer,
+    isOrganizer: canManageGame,
     isPublicResultViewer,
     groupInvitePlayer: groupInvitePlayer
       ? { displayName: groupInvitePlayer.displayName }
@@ -441,9 +447,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     shareUrl: `${url.origin}/r/${encodeResultCode(params.gameId)}`,
     pastGameNavigation: buildPastGameNavigation(finalizedGames, params.gameId),
     payPay:
-      payPayRecipientLink &&
-      (context.game.bbRate === 0 || payPayPaymentAmount !== 0)
-        ? { link: payPayRecipientLink, paymentAmount: payPayPaymentAmount }
+      payPayRecipientLink
+        ? {
+            link: payPayRecipientLink,
+            paymentAmount: payPayPaymentAmount,
+            paymentAvailable:
+              context.game.bbRate === 0 || payPayPaymentAmount !== 0,
+            ownerDisplayName: context.game.payPayOwnerDisplayName,
+            ownerGroupPlayerId: context.game.payPayOwnerGroupPlayerId,
+          }
         : null,
     notice: url.searchParams.get("notice"),
   };
@@ -456,7 +468,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   const participantUrl = `/g/${params.groupCode}/games/${params.gameId}`;
 
   if (intent === "update-cost-share-receipt") {
-    await requireOrganizer(request, params.groupCode);
+    await requireGameManager(request, context.game);
     const groupPlayerId = readString(formData, "groupPlayerId");
     const receivedValue = readString(formData, "received");
     if (
@@ -481,7 +493,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   if (intent === "delete-story-post") {
-    await requireOrganizer(request, params.groupCode);
+    await requireGameManager(request, context.game);
     const postId = readString(formData, "postId");
     if (!isUuid(postId)) throw new Response("Bad Request", { status: 400 });
     const deleted = await deleteGameStoryPostAsOrganizer(

@@ -120,6 +120,7 @@ export function readGameSettingsForm(
 export async function createGameForGroup(
   publicCode: string,
   values: CreateGameFormValues,
+  createdByPlayerId: string | null = null,
 ): Promise<CreateGameResult> {
   const validation = validateGameSettingsForm(values);
   if (!validation.ok) {
@@ -139,7 +140,7 @@ export async function createGameForGroup(
     };
   }
 
-  const gameId = await insertGame(group.id, validation.input);
+  const gameId = await insertGame(group.id, validation.input, createdByPlayerId);
   try {
     await notifyNewGameCreated({
       gameId,

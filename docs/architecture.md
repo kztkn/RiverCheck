@@ -47,7 +47,7 @@ React Router が UI と HTTP 境界を担当する。MVP では別 REST API を�
 
 未所属groupのopen開催共有URLを、別groupで本人プロフィール認証済みのplayerが開いた場合は、groupに依存しない有効な`player_profile_sessions`からglobal playerを解決する。本人が明示的に参加ボタンを押したPOSTだけで、open開催行をlockしたtransaction内に`group_players`を追加し、そのまま`game_participants`へ登録する。既存のactive membershipは再利用し、inactive membershipは本人操作で再有効化しない。GET loaderでは所属追加を行わない。
 
-主催者認証は現時点ではgroup_idを持たないアプリ全体の署名済みセッションであり、同じ主催者PINで全groupを管理する。グループごとに別主催者を持たせる場合は、今後主催者membershipまたはgroup-scoped sessionへ拡張する。
+ADMIN認証はgroup_idを持たないアプリ全体の署名済みセッションであり、同じ主催者PINで全groupを管理する。一般ユーザーの開催運営はADMINセッションを共有せず、本人プロフィールセッションの`players.id`を主体にする。`group_event_creator_permissions(group_id, player_id)`は新規作成だけを許可し、作成後は`games.created_by_player_id`による所有者認可へ切り替える。
 
 `player_push_subscriptions`はplayer_id単位で端末のPush購読を保持し、`group_players.push_notifications_enabled`でグループ別の通知ON/OFFを保持する。開催通知・結果確定通知の送信対象はgroup membership / game_participantsに加えてこのフラグで絞り込む。グループごとにOFFへしてもPush購読自体は削除せず、全所属グループでOFFになった場合でも再ONを容易にするため購読は保持する。
 
@@ -180,9 +180,11 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 
 開催不要のグループ招待は `/g/:groupCode/join` で提供し、rootの未所属者向け公開入口にこのrouteだけを追加する。`group-entry-service`が既存の本人プロフィール選択・新規作成を組み立て、routeはHttpOnlyの本人Cookieを返してグループTOPへ303 redirectする。GETは副作用を持たず、game_participantsを作成しない。別グループで認証済みの場合は送信されたplayer IDを信用せず本人セッションから解決し、`joinPlayerToGroup`で所属だけを追加する。このrepository関数は主催者用の追加処理と異なり、無効化済み所属を再有効化しない。未認証の表示データは有効メンバーの名前・アバターに限定し、他グループの再利用候補は取得しない。POSTには既存の参加者用Rate Limitingを適用し、responseはno-storeとする。
 
-主催者ホームは `/g/:groupCode/manage` とする。ホーム上部はメンバー管理とグループ設定への導線に絞り、開催作成は開催管理セクション内の操作として配置する。`/g/:groupCode/settings` はグループ名、LINEオープンチャット招待URL、PayPay受取リンクなど開催をまたぐ共通設定を扱い、設定が増えても各開催管理へ混在させない。LINEオープンチャットURLは`groups.line_open_chat_url`へnullableで保持し、About routeは値がある場合だけコミュニティ導線を描画する。既存`river-check`は移行で現在のURLを引き継ぎ、新規groupはNULLで開始する。
+開催運営ホームは `/g/:groupCode/manage` とする。ADMINにはメンバー管理とグループ設定を表示し、一般の権限ユーザーには表示しない。他人が作成した開催は通常の開催詳細へ遷移させる。`/g/:groupCode/settings` のPayPay設定は新規開催用デフォルトであり、開催作成transaction相当のINSERTで`games`へリンク・登録時刻・受取人をコピーする。
 
-主催者ホーム、開催作成、メンバー管理、グループ設定、各開催管理のloader/actionは共通のサーバー認証を通し、未認証時は `/g/:groupCode/organizer-login` へ移動する。グループ設定の更新はserviceで入力検証・保存し、Workersの主催者変更用Rate Limiting対象となるPOST actionからだけ実行する。参加者向け画面からもこの認証入口を経由して主催者画面へ戻れる。
+開催作成は`requireGroupEventCreator`、各開催管理は`requireGameManager`を共通のサーバー認可境界とする。後者はADMINまたは`created_by_player_id`一致だけを許可し、管理画面の全更新action、確定結果訂正、精算確認に適用する。開催削除、メンバー管理、グループ設定、権限付与は引き続きADMIN専用とする。
+
+PayPayリンクは`games.paypay_recipient_link`を結果表示の正本とし、`games.paypay_owner_player_id`で受取人を示す。開催リンク更新時は操作した本人プロフィールのplayer IDへ更新する。ADMINが本人プロフィールへ未ログインの場合だけ受取人NULLを許容し、架空の所有者を割り当てない。既存開催はgroupリンクと登録時刻をbackfillし、所有者は推測せずNULLのままとする。
 
 PIN・合言葉と32文字以上の署名鍵はCloudflare Secretで受け取る。PIN照合はSHA-256ダイジェストを固定時間比較し、成功時は有効期限を含むpayloadへHMAC-SHA-256署名したセッションCookieを発行する。CookieはHttpOnly、SameSite=Lax、Path=/g/、有効期間180日とし、本番HTTPSではSecureも付与する。PINそのものはCookie、HTML、URL、DBへ保存しない。Secret未設定時はfail closedとし、管理画面を公開しない。
 

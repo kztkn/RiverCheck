@@ -9,6 +9,7 @@ import {
 import { saveGroupLineOpenChatUrl } from "@server/services/group-community-service.server";
 import { saveGroupPayPayRecipientLink } from "@server/services/group-paypay-service.server";
 import { requireOrganizer } from "@server/services/organizer-auth.server";
+import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
 import type { Route } from "./+types/group-settings";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -53,9 +54,11 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   if (intent === "save-paypay-link") {
+    const profile = await getAuthenticatedPlayerProfile(request, params.groupCode);
     const result = await saveGroupPayPayRecipientLink(
       group.id,
       readString(formData, "payPayRecipientLink"),
+      profile?.profile?.playerId ?? null,
     );
     return result.ok
       ? redirect(
@@ -208,6 +211,7 @@ export default function GroupSettings({
         isSubmitting={isPayPaySubmitting}
         link={loaderData.group.payPayRecipientLink}
         registeredAt={loaderData.group.payPayLinkRegisteredAt}
+        recipientName={loaderData.group.payPayOwnerDisplayName}
         value={payPayAction?.value ?? null}
       />
     </main>

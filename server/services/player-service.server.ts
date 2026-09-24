@@ -13,6 +13,7 @@ import type {
   GroupPlayerSummary,
   ReusablePlayerSummary,
 } from "@shared-types/player";
+import { setGroupEventCreatorPermission } from "@server/repositories/game-authorization-repository.server";
 
 export interface PlayerManagement {
   group: GroupSummary;
@@ -182,6 +183,23 @@ export async function removePlayerFromGroup(
         ok: false,
         error: "メンバーを確認できません。画面を更新してください。",
       };
+}
+
+export async function updateEventCreatorPermissionForGroup(
+  publicCode: string,
+  groupPlayerId: string,
+  allowed: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const group = await findGroupByPublicCode(publicCode);
+  if (!group) return { ok: false, error: "グループが見つかりません。" };
+  const updated = await setGroupEventCreatorPermission(
+    group.id,
+    groupPlayerId,
+    allowed,
+  );
+  return updated
+    ? { ok: true }
+    : { ok: false, error: "権限を更新できませんでした。画面を更新してください。" };
 }
 
 function readString(formData: FormData, name: string): string {

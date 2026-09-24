@@ -11,6 +11,7 @@ interface GroupPlayerRow {
   profile_message: string | null;
   avatar_uploaded_at: Date | null;
   has_profile_access: boolean;
+  can_create_games: boolean;
 }
 
 interface ReusablePlayerRow {
@@ -40,7 +41,13 @@ export async function listGroupPlayers(
           WHERE profile_session.player_id = player.id
             AND profile_session.revoked_at IS NULL
             AND profile_session.expires_at > NOW()
-        ) AS has_profile_access
+        ) AS has_profile_access,
+        EXISTS (
+          SELECT 1
+          FROM group_event_creator_permissions AS permission
+          WHERE permission.group_id = group_player.group_id
+            AND permission.player_id = group_player.player_id
+        ) AS can_create_games
       FROM group_players AS group_player
       INNER JOIN players AS player ON player.id = group_player.player_id
       WHERE group_player.group_id = $1
@@ -215,11 +222,24 @@ export async function deactivateGroupPlayer(
 ): Promise<boolean> {
   const result = await queryDatabase(
     `
-      UPDATE group_players
+      WITH target AS MATERIALIZED (
+        SELECT group_id, player_id
+        FROM group_players
+        WHERE group_id = $1
+          AND id = $2
+          AND is_active = TRUE
+      ),
+      revoked AS (
+        DELETE FROM group_event_creator_permissions AS permission
+        USING target
+        WHERE permission.group_id = target.group_id
+          AND permission.player_id = target.player_id
+      )
+      UPDATE group_players AS membership
       SET is_active = FALSE
-      WHERE group_id = $1
-        AND id = $2
-        AND is_active = TRUE
+      FROM target
+      WHERE membership.group_id = target.group_id
+        AND membership.player_id = target.player_id
     `,
     [groupId, groupPlayerId],
   );
@@ -234,5 +254,6 @@ function mapGroupPlayer(row: GroupPlayerRow): GroupPlayerSummary {
     profileMessage: row.profile_message,
     avatarUpdatedAt: row.avatar_uploaded_at?.toISOString() ?? null,
     hasProfileAccess: row.has_profile_access,
+    canCreateGames: row.can_create_games,
   };
 }

@@ -39,7 +39,13 @@ export function FinalResults({
   initialStackBb?: number;
   linkPlayerProfiles?: boolean;
   playedAt: string;
-  payPay: { link: string; paymentAmount: number | null } | null;
+  payPay: {
+    link: string;
+    paymentAmount: number | null;
+    paymentAvailable: boolean;
+    ownerDisplayName: string | null;
+    ownerGroupPlayerId: string | null;
+  } | null;
   results: Array<GameResultSummary & { avatarUrl?: string | null }>;
   revisions: GameResultRevision[];
   shareUrl: string;
@@ -174,7 +180,12 @@ export function FinalResults({
                 displayName={winner.displayName}
               />
               <div className="result-winner-person">
-                <strong>{winner.displayName}</strong>
+                <strong>
+                  {winner.displayName}
+                  {payPay?.ownerGroupPlayerId === winner.groupPlayerId ? (
+                    <span aria-label="PayPay受取人" className="paypay-owner-mark" title="PayPay受取人">☆</span>
+                  ) : null}
+                </strong>
                 <ResultParticipantMeta result={winner} />
               </div>
             </div>
@@ -218,7 +229,12 @@ export function FinalResults({
                 displayName={result.displayName}
               />
               <div className="result-player">
-                <strong>{result.displayName}</strong>
+                <strong>
+                  {result.displayName}
+                  {payPay?.ownerGroupPlayerId === result.groupPlayerId ? (
+                    <span aria-label="PayPay受取人" className="paypay-owner-mark" title="PayPay受取人">☆</span>
+                  ) : null}
+                </strong>
                 <ResultParticipantMeta result={result} />
               </div>
               <div className="result-values">
@@ -239,7 +255,7 @@ export function FinalResults({
           ))}
       </div>
       <div className="result-settlement-footer">
-        {payPay ? (
+        {payPay?.paymentAvailable ? (
           <button
             className="paypay-payment-button"
             onClick={() => {
@@ -249,7 +265,9 @@ export function FinalResults({
             type="button"
           >
             <span aria-hidden="true">P</span>
-            PayPayで支払う
+            {payPay.ownerDisplayName
+              ? `${payPay.ownerDisplayName}に送金`
+              : "PayPayで支払う"}
           </button>
         ) : (
           <span />
@@ -280,7 +298,7 @@ export function FinalResults({
         showCostShareChanges={showSettlementAmounts}
       />
 
-      {payPay && payPayModalOpen ? (
+      {payPay?.paymentAvailable && payPayModalOpen ? (
         <section
           aria-label="PayPayで支払う"
           aria-modal="true"
@@ -298,6 +316,11 @@ export function FinalResults({
               <p className="eyebrow">PAYPAY</p>
               <h2>PayPayで支払う</h2>
             </div>
+            <p className="paypay-payment-recipient">
+              {payPay.ownerDisplayName
+                ? `${payPay.ownerDisplayName}に送金します`
+                : "送金先の名前は未設定です。リンク先を確認してください。"}
+            </p>
             {payPay.paymentAmount !== null ? (
               <div className="paypay-payment-amount">
                 <span>あなたの支払額</span>

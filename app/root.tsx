@@ -26,6 +26,7 @@ import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar
 import { rememberLastVisitedGroup } from "~/utils/last-visited-group";
 import { getPendingPlayerAchievementNotifications } from "@server/services/achievement-service.server";
 import { shouldRevalidateRootData } from "@domain/routing/should-revalidate-root-data";
+import { hasGroupEventCreatorPermission } from "@server/repositories/game-authorization-repository.server";
 import "./styles/app.css";
 import "./styles/groups.css";
 import "./styles/highlight.css";
@@ -50,6 +51,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       authenticatedPlayerName: null,
       hasMultipleGroups: false,
       isOrganizer: false,
+      canCreateGames: false,
       pendingAchievementNotifications: [],
     };
   }
@@ -68,15 +70,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     throw new Response(INVITE_REQUIRED_RESPONSE_TEXT, { status: 403 });
   }
 
-  const [hasMultipleGroups, pendingAchievementNotifications] = profile && overview
+  const [hasMultipleGroups, pendingAchievementNotifications, canCreateGames] = profile && overview
     ? await Promise.all([
         hasMultipleActiveGroupsForPlayer(profile.playerId),
         getPendingPlayerAchievementNotifications(
           overview.group.id,
           profile.groupPlayerId,
         ),
+        hasGroupEventCreatorPermission(overview.group.id, profile.playerId),
       ])
-    : [false, []];
+    : [false, [], false];
   return {
     activeGroupCode: overview?.group.publicCode ?? null,
     activeGroupName: overview?.group.name ?? null,
@@ -91,6 +94,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     authenticatedPlayerName: profile?.displayName ?? null,
     hasMultipleGroups,
     isOrganizer,
+    canCreateGames,
     pendingAchievementNotifications,
   };
 }

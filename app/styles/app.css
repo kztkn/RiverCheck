@@ -3538,6 +3538,49 @@ input[aria-invalid="true"] {
   line-height: 1.7;
 }
 
+.paypay-link-recipient,
+.paypay-payment-recipient {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.paypay-link-recipient strong,
+.paypay-payment-recipient strong {
+  color: var(--text-primary);
+}
+
+.paypay-owner-mark {
+  color: #d5a72f;
+  display: inline-block;
+  font-size: 0.82em;
+  margin-left: 0.3em;
+  vertical-align: 0.08em;
+}
+
+.member-permission-toggle {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.7rem;
+  margin-bottom: 0.75rem;
+}
+
+.member-permission-toggle input {
+  flex: 0 0 auto;
+  margin-top: 0.2rem;
+  min-height: 1.15rem;
+  min-width: 1.15rem;
+}
+
+.member-permission-toggle span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.member-permission-toggle small {
+  color: var(--text-muted);
+}
+
 .paypay-link-form {
   display: grid;
   gap: 18px;

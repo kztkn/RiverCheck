@@ -1,6 +1,7 @@
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
 import { updateGameCostShareReceipt } from "@server/services/game-cost-share-receipt-service.server";
-import { requireOrganizer } from "@server/services/organizer-auth.server";
+import { findGameForGroup } from "@server/repositories/game-repository.server";
+import { requireGameManager } from "@server/services/game-authorization-service.server";
 import type { Route } from "./+types/game-cost-share-receipts";
 
 const UUID_PATTERN =
@@ -14,7 +15,6 @@ export async function loader() {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  await requireOrganizer(request, params.groupCode);
   const group = await findGroupByPublicCode(params.groupCode);
   if (!group) {
     return Response.json(
@@ -22,6 +22,11 @@ export async function action({ request, params }: Route.ActionArgs) {
       { status: 404, headers: { "Cache-Control": "no-store" } },
     );
   }
+  const game = await findGameForGroup(group.id, params.gameId);
+  if (!game) {
+    return Response.json({ ok: false, error: "開催が見つかりません。" }, { status: 404 });
+  }
+  await requireGameManager(request, game);
 
   const formData = await request.formData();
   const groupPlayerId = readString(formData, "groupPlayerId");

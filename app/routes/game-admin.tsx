@@ -28,7 +28,7 @@ import {
   readParticipantToken,
 } from "@server/services/participant-session.server";
 import { hashToken } from "@server/services/token.server";
-import { requireOrganizer } from "@server/services/organizer-auth.server";
+import { requireGameManager } from "@server/services/game-authorization-service.server";
 import {
   adjustOrganizerRebuyState,
   recordOrganizerRebuyAction,
@@ -67,6 +67,8 @@ import {
 } from "~/utils/admin-participant-state";
 import { getAdminNextAction } from "~/utils/admin-next-action";
 import { openTableEventRecorder } from "~/components/table-event-recorder";
+import { saveGamePayPayRecipientLink } from "@server/services/group-paypay-service.server";
+import { PayPayLinkEditor } from "~/components/paypay-link-editor";
 
 type OrganizerRebuyIntent =
   "record-rebuy" | "record-repayment" | "undo-rebuy" | "adjust-rebuy";
@@ -115,11 +117,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const participantTokenHashPromise = participantToken
     ? hashToken(participantToken)
     : Promise.resolve(null);
-  const [, authorized, participantTokenHash] = await Promise.all([
-    requireOrganizer(request, params.groupCode),
+  const [authorized, participantTokenHash] = await Promise.all([
     requireGame(params.groupCode, params.gameId),
     participantTokenHashPromise,
   ]);
+  const actor = await requireGameManager(request, authorized.game);
   if (authorized.game.status === "finalized") {
     throw redirect("/g/" + params.groupCode + "/games/" + params.gameId);
   }
@@ -147,16 +149,29 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     finalization: buildFinalizationState(authorized.game, participants),
     participantUrl: `${url.origin}/g/${params.groupCode}/games/${params.gameId}`,
     notice: url.searchParams.get("notice"),
+    canDeleteGame: actor.kind === "admin",
   };
 
   return payload;
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  await requireOrganizer(request, params.groupCode);
   const authorized = await requireGame(params.groupCode, params.gameId);
+  const actor = await requireGameManager(request, authorized.game);
   const formData = await request.formData();
   const intent = readString(formData, "intent");
+
+  if (intent === "save-game-paypay-link") {
+    const result = await saveGamePayPayRecipientLink(
+      authorized.group.id,
+      params.gameId,
+      readString(formData, "payPayRecipientLink"),
+      actor.playerId,
+    );
+    return result.ok
+      ? redirect(`/g/${params.groupCode}/games/${params.gameId}/admin?notice=paypay-saved`, { status: 303 })
+      : { ...result, intent: "save-game-paypay-link" as const };
+  }
 
   if (intent === "publish-settlement-plan") {
     const values = readAdminCostSettingsForm(formData, authorized.game);
@@ -332,6 +347,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   if (intent === "delete-game") {
+    if (actor.kind !== "admin") throw new Response("Forbidden", { status: 403 });
     try {
       const result = await removeOpenGameForGroup(
         authorized.group.id,
@@ -524,6 +540,13 @@ export default function GameAdmin({
     actionData?.ok === false &&
     "intent" in actionData &&
     actionData.intent === "delete-game"
+      ? actionData
+      : null;
+  const payPayAction =
+    actionData?.ok === false &&
+    "intent" in actionData &&
+    actionData.intent === "save-game-paypay-link" &&
+    "value" in actionData
       ? actionData
       : null;
   const finalizeError =
@@ -945,7 +968,7 @@ export default function GameAdmin({
 
   return (
     <main className="page-shell form-page admin-page">
-      <GroupSiteHeader groupCode={loaderData.group.publicCode} organizer />
+      <GroupSiteHeader groupCode={loaderData.group.publicCode} />
 
       <section className="form-intro setup-intro">
         <p className="eyebrow">ORGANIZER</p>
@@ -1059,7 +1082,7 @@ export default function GameAdmin({
               </button>
             </div>
           </Form>
-          <div className="game-danger-zone">
+          {loaderData.canDeleteGame ? <div className="game-danger-zone">
             <div>
               <strong>この開催を削除</strong>
               <p>参加者、チップ入力、リバイ履歴もすべて削除されます。</p>
@@ -1075,11 +1098,11 @@ export default function GameAdmin({
               <IconTrash aria-hidden="true" stroke={1.8} />
               削除する
             </button>
-          </div>
+          </div> : null}
         </div>
       </dialog>
 
-      <dialog
+      {loaderData.canDeleteGame ? <dialog
         aria-labelledby="game-deletion-dialog-title"
         className="app-dialog"
         onCancel={() => setGameDeletionPending(false)}
@@ -1134,7 +1157,7 @@ export default function GameAdmin({
             </button>
           </Form>
         </div>
-      </dialog>
+      </dialog> : null}
 
       <>
         <section
@@ -1283,6 +1306,22 @@ export default function GameAdmin({
           </div>
           <ParticipantLinkQr url={loaderData.participantUrl} />
         </section>
+
+        <PayPayLinkEditor
+          actionUrl={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/admin`}
+          cancelUrl={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}`}
+          error={payPayAction?.error ?? null}
+          intent="save-game-paypay-link"
+          intro="この開催の結果画面だけで使用します。更新した人が送金先として表示されます。"
+          isSubmitting={
+            navigation.state === "submitting" &&
+            navigation.formData?.get("intent") === "save-game-paypay-link"
+          }
+          link={loaderData.game.payPayRecipientLink}
+          registeredAt={loaderData.game.payPayLinkRegisteredAt}
+          recipientName={loaderData.game.payPayOwnerDisplayName}
+          value={payPayAction?.value ?? null}
+        />
 
         <section className="admin-participants" id="admin-participants">
           <div className="section-heading">

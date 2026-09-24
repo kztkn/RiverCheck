@@ -12,6 +12,7 @@ import {
   readAddPlayerForm,
   renamePlayerForGroup,
   removePlayerFromGroup,
+  updateEventCreatorPermissionForGroup,
 } from "@server/services/player-service.server";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
@@ -50,6 +51,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     linked: url.searchParams.has("linked"),
     renamed: url.searchParams.has("renamed"),
     removed: url.searchParams.has("removed"),
+    permissionSaved: url.searchParams.has("permissionSaved"),
   };
 }
 
@@ -107,6 +109,20 @@ export async function action({ request, params }: Route.ActionArgs) {
     return redirect(`/g/${params.groupCode}/players?renamed=1`);
   }
 
+  if (intent === "set-event-creator-permission") {
+    const groupPlayerId = readString(formData, "groupPlayerId");
+    if (!isUuid(groupPlayerId)) {
+      return { ok: false as const, intent, error: "メンバーを確認できません。", groupPlayerId };
+    }
+    const result = await updateEventCreatorPermissionForGroup(
+      params.groupCode,
+      groupPlayerId,
+      readString(formData, "allowed") === "yes",
+    );
+    if (!result.ok) return { ...result, intent, groupPlayerId };
+    return redirect(`/g/${params.groupCode}/players?permissionSaved=1`);
+  }
+
   const values = readAddPlayerForm(formData);
   const result = await addPlayerForGroup(params.groupCode, values);
   if (!result.ok) return { ...result, intent: "add-player" as const };
@@ -142,6 +158,12 @@ export default function Players({
     actionData?.ok === false &&
     "intent" in actionData &&
     actionData.intent === "remove-player"
+      ? actionData
+      : null;
+  const permissionFailure =
+    actionData?.ok === false &&
+    "intent" in actionData &&
+    actionData.intent === "set-event-creator-permission"
       ? actionData
       : null;
   const errors = addFailure?.errors ?? {};
@@ -180,6 +202,11 @@ export default function Players({
       <AppToast
         message={loaderData.removed ? "メンバーをグループから外しました。" : null}
         searchParam="removed"
+      />
+
+      <AppToast
+        message={loaderData.permissionSaved ? "開催作成権限を更新しました。" : null}
+        searchParam="permissionSaved"
       />
 
       <div className="member-management">
@@ -313,6 +340,23 @@ export default function Players({
                       </div>
                     </Form>
                     <div className="member-membership-note">
+                      <Form action={actionUrl} method="post" reloadDocument>
+                        <input name="intent" type="hidden" value="set-event-creator-permission" />
+                        <input name="groupPlayerId" type="hidden" value={player.id} />
+                        <label className="member-permission-toggle">
+                          <input defaultChecked={player.canCreateGames} name="allowed" type="checkbox" value="yes" />
+                          <span>
+                            <strong>このグループで開催を作成できる</strong>
+                            <small>自分が作成した開催だけを管理できます。</small>
+                          </span>
+                        </label>
+                        <button className="button button-secondary" disabled={isSubmitting} type="submit">
+                          権限を保存
+                        </button>
+                      </Form>
+                      {permissionFailure?.groupPlayerId === player.id ? (
+                        <p className="field-error" role="alert">{permissionFailure.error}</p>
+                      ) : null}
                       <strong>グループ所属</strong>
                       <p>外しても過去の開催・順位・戦績は残ります。必要になればあとで再追加できます。</p>
                       <Form action={actionUrl} method="post" reloadDocument>

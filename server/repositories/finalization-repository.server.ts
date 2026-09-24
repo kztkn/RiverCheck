@@ -332,6 +332,7 @@ function mapGame(row: GameRow): GameDetails {
   return {
     id: row.id,
     groupId: row.group_id,
+    createdByPlayerId: null,
     title: row.title,
     playedAt: row.played_at.toISOString(),
     status: row.status,
@@ -361,6 +362,11 @@ function mapGame(row: GameRow): GameDetails {
       row.settlement_plan_published_at?.toISOString() ?? null,
     sevenDeuceRuleEnabled: row.seven_deuce_rule_enabled,
     bombPotRuleEnabled: row.bomb_pot_rule_enabled,
+    payPayRecipientLink: null,
+    payPayLinkRegisteredAt: null,
+    payPayOwnerPlayerId: null,
+    payPayOwnerDisplayName: null,
+    payPayOwnerGroupPlayerId: null,
   };
 }
 

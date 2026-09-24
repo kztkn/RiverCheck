@@ -36,6 +36,7 @@ export function GroupSiteHeader({
       authenticatedPlayerGroupPlayerId: string | null;
       hasMultipleGroups: boolean;
       isOrganizer: boolean;
+      canCreateGames: boolean;
     }
     | undefined;
   const activeGroupName = rootData?.activeGroupName ?? null;
@@ -46,6 +47,7 @@ export function GroupSiteHeader({
     rootData?.authenticatedPlayerAvatarUrl ?? null;
   const hasMultipleGroups = rootData?.hasMultipleGroups ?? false;
   const isOrganizer = organizer || (rootData?.isOrganizer ?? false);
+  const canCreateGames = rootData?.canCreateGames ?? false;
   const playerLabel = authenticatedPlayerName ?? "ゲスト";
 
   return (
@@ -103,6 +105,7 @@ export function GroupSiteHeader({
             groupPlayerId={authenticatedPlayerGroupPlayerId}
             hasMultipleGroups={hasMultipleGroups}
             organizer={isOrganizer}
+            canManageGames={isOrganizer || canCreateGames}
           />
         )}
       </div>
@@ -116,12 +119,14 @@ export function GroupSiteMenu({
   groupPlayerId = null,
   hasMultipleGroups = false,
   organizer = false,
+  canManageGames = false,
 }: {
   groupCode: string;
   hasPlayer?: boolean;
   groupPlayerId?: string | null;
   hasMultipleGroups?: boolean;
   organizer?: boolean;
+  canManageGames?: boolean;
 }) {
   const basePath = `/g/${groupCode}`;
   const items: SiteMenuItem[] = [
@@ -144,15 +149,16 @@ export function GroupSiteMenu({
     });
   }
 
-  items.push(
-    { icon: "about", label: "このアプリについて", to: `${basePath}/about` },
-    {
+  items.push({ icon: "about", label: "このアプリについて", to: `${basePath}/about` });
+
+  if (canManageGames || organizer) {
+    items.push({
       icon: "organizer",
-      label: "主催者画面へ",
+      label: organizer ? "主催者画面へ" : "開催運営へ",
       reloadDocument: true,
       to: `${basePath}/manage`,
-    },
-  );
+    });
+  }
 
   return (
     <SiteMenu
