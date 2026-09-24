@@ -48,6 +48,7 @@ export function GameConfigurationFields({
   const [applicationNotice, setApplicationNotice] = useState<string | null>(
     null,
   );
+  const gameConfigurationPreviewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (initialStackBb !== null) setStackDepthInput(String(initialStackBb));
@@ -165,7 +166,11 @@ export function GameConfigurationFields({
         <small>BBのチップ量から初期チップを自動計算します。</small>
       </div>
 
-      <div aria-live="polite" className="blind-structure-preview">
+      <div
+        aria-live="polite"
+        className="blind-structure-preview"
+        ref={gameConfigurationPreviewRef}
+      >
         <div className="blind-structure-heading">
           <span>今回のゲーム設定</span>
           <small>自動計算</small>
@@ -211,6 +216,11 @@ export function GameConfigurationFields({
           setApplicationNotice(
             "チップ構成を反映しました。開催の作成またはゲーム設定の保存で確定します。",
           );
+          window.requestAnimationFrame(() => {
+            scrollToAppliedGameConfiguration(
+              gameConfigurationPreviewRef.current,
+            );
+          });
         }}
       />
     </>
@@ -277,6 +287,19 @@ export function closeChipCalculator(
   disclosure: { open: boolean } | null,
 ): void {
   if (disclosure) disclosure.open = false;
+}
+
+export function scrollToAppliedGameConfiguration(
+  target: Pick<HTMLElement, "scrollIntoView"> | null,
+): void {
+  if (!target) return;
+  const reduceMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  target.scrollIntoView({
+    behavior: reduceMotion ? "auto" : "smooth",
+    block: "center",
+  });
 }
 
 function ChipDistributionCalculator({

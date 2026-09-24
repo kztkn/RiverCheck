@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   calculateChipDistributionFromInputs,
   closeChipCalculator,
   gameConfigurationFromRecommendation,
   gameConfigurationWithBigBlind,
   gameConfigurationWithStackDepth,
+  scrollToAppliedGameConfiguration,
   type GameConfigurationValues,
 } from "./game-configuration-fields";
 
@@ -58,6 +59,15 @@ describe("chip calculator form integration", () => {
     const disclosure = { open: true };
     closeChipCalculator(disclosure);
     expect(disclosure.open).toBe(false);
+  });
+
+  it("反映後のゲーム設定が見える位置へ移動する", () => {
+    const scrollIntoView = vi.fn();
+    scrollToAppliedGameConfiguration({ scrollIntoView });
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "center",
+    });
   });
 
   it("BB変更時にBBAを同額へ追従させる", () => {

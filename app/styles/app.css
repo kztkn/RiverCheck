@@ -5102,6 +5102,7 @@ input[aria-invalid="true"] {
 .blind-structure-preview {
   display: grid;
   width: 100%;
+  scroll-margin-block: 24px;
   gap: 10px;
   max-width: 560px;
   border: 1px solid rgba(233, 186, 90, 0.24);
