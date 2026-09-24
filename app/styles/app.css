@@ -3558,27 +3558,153 @@ input[aria-invalid="true"] {
   vertical-align: 0.08em;
 }
 
+.member-management-controls {
+  display: grid;
+  min-width: 0;
+  margin: 0 0 12px;
+  border-left: 2px solid rgba(57, 222, 141, 0.28);
+  background: rgba(255, 255, 255, 0.018);
+  padding: 0 14px 14px;
+}
+
+.member-permission-section,
+.member-membership-section {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding: 16px 0 18px;
+}
+
+.member-membership-section {
+  padding-bottom: 2px;
+}
+
+.member-control-heading {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.member-control-heading > strong {
+  color: var(--ink);
+  font-size: 0.8rem;
+}
+
+.member-control-heading > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.6;
+}
+
+.member-permission-form {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.member-permission-form > .button {
+  width: min(100%, 220px);
+  justify-self: end;
+}
+
 .member-permission-toggle {
-  align-items: flex-start;
-  display: flex;
-  gap: 0.7rem;
-  margin-bottom: 0.75rem;
+  position: relative;
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) 46px;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(5, 23, 16, 0.58);
+  cursor: pointer;
+  padding: 13px 12px;
+}
+
+.member-permission-toggle:has(input:checked) {
+  border-color: rgba(57, 222, 141, 0.32);
+  background: rgba(57, 222, 141, 0.045);
+}
+
+.member-permission-toggle:has(input:focus-visible) {
+  outline: 2px solid rgba(57, 222, 141, 0.68);
+  outline-offset: 2px;
 }
 
 .member-permission-toggle input {
-  flex: 0 0 auto;
-  margin-top: 0.2rem;
-  min-height: 1.15rem;
-  min-width: 1.15rem;
+  position: absolute;
+  width: 1px;
+  min-width: 0;
+  height: 1px;
+  min-height: 0;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.member-permission-toggle span {
+.member-permission-copy {
   display: grid;
-  gap: 0.2rem;
+  min-width: 0;
+  gap: 3px;
 }
 
-.member-permission-toggle small {
-  color: var(--text-muted);
+.member-permission-copy strong,
+.member-permission-copy small {
+  overflow-wrap: anywhere;
+}
+
+.member-permission-copy strong {
+  color: var(--ink);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.member-permission-copy small {
+  color: var(--muted);
+  font-size: 0.66rem;
+  line-height: 1.5;
+}
+
+.member-permission-switch {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border: 1px solid rgba(223, 236, 227, 0.2);
+  border-radius: 999px;
+  background: rgba(223, 236, 227, 0.09);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.member-permission-switch::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #91a39a;
+  content: "";
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.member-permission-toggle input:checked ~ .member-permission-switch {
+  border-color: rgba(57, 222, 141, 0.58);
+  background: rgba(57, 222, 141, 0.2);
+}
+
+.member-permission-toggle input:checked ~ .member-permission-switch::after {
+  background: var(--green);
+  transform: translateX(20px);
+}
+
+.member-membership-section form {
+  justify-self: start;
 }
 
 .paypay-link-form {
@@ -3683,6 +3809,11 @@ input[aria-invalid="true"] {
 
   .member-management {
     gap: 34px;
+  }
+
+  .member-permission-form > .button {
+    width: 100%;
+    justify-self: stretch;
   }
 }
 

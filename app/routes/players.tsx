@@ -112,7 +112,12 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "set-event-creator-permission") {
     const groupPlayerId = readString(formData, "groupPlayerId");
     if (!isUuid(groupPlayerId)) {
-      return { ok: false as const, intent, error: "メンバーを確認できません。", groupPlayerId };
+      return {
+        ok: false as const,
+        intent,
+        error: "メンバーを確認できません。",
+        groupPlayerId,
+      };
     }
     const result = await updateEventCreatorPermissionForGroup(
       params.groupCode,
@@ -136,24 +141,27 @@ export default function Players({
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const submittingIntent = navigation.formData?.get("intent");
-  const addFailure = actionData?.ok === false &&
+  const addFailure =
+    actionData?.ok === false &&
     "intent" in actionData &&
     actionData.intent === "add-player" &&
     "errors" in actionData &&
     "values" in actionData
-    ? actionData
-    : null;
-  const existingFailure = actionData?.ok === false &&
+      ? actionData
+      : null;
+  const existingFailure =
+    actionData?.ok === false &&
     "intent" in actionData &&
     actionData.intent === "add-existing-player" &&
     "error" in actionData
-    ? actionData
-    : null;
-  const renameFailure = actionData?.ok === false &&
+      ? actionData
+      : null;
+  const renameFailure =
+    actionData?.ok === false &&
     "intent" in actionData &&
     actionData.intent === "rename-player"
-    ? actionData
-    : null;
+      ? actionData
+      : null;
   const removeFailure =
     actionData?.ok === false &&
     "intent" in actionData &&
@@ -190,7 +198,11 @@ export default function Players({
       />
 
       <AppToast
-        message={loaderData.linked ? "既存プロフィールをこのグループに追加しました。" : null}
+        message={
+          loaderData.linked
+            ? "既存プロフィールをこのグループに追加しました。"
+            : null
+        }
         searchParam="linked"
       />
 
@@ -200,12 +212,16 @@ export default function Players({
       />
 
       <AppToast
-        message={loaderData.removed ? "メンバーをグループから外しました。" : null}
+        message={
+          loaderData.removed ? "メンバーをグループから外しました。" : null
+        }
         searchParam="removed"
       />
 
       <AppToast
-        message={loaderData.permissionSaved ? "開催作成権限を更新しました。" : null}
+        message={
+          loaderData.permissionSaved ? "開催作成権限を更新しました。" : null
+        }
         searchParam="permissionSaved"
       />
 
@@ -216,7 +232,9 @@ export default function Players({
           players={loaderData.reusablePlayers}
         />
         {existingFailure ? (
-          <p className="error-notice" role="alert">{existingFailure.error}</p>
+          <p className="error-notice" role="alert">
+            {existingFailure.error}
+          </p>
         ) : null}
 
         <Form
@@ -228,10 +246,14 @@ export default function Players({
         >
           <input name="intent" type="hidden" value="add-player" />
           <div className="member-add-heading">
-            <span aria-hidden="true"><IconPlus /></span>
+            <span aria-hidden="true">
+              <IconPlus />
+            </span>
             <div>
               <h2>新しいメンバーを追加</h2>
-              <p>ほかのグループにいない人だけ、新しいプロフィールとして登録します。</p>
+              <p>
+                ほかのグループにいない人だけ、新しいプロフィールとして登録します。
+              </p>
             </div>
           </div>
 
@@ -239,7 +261,9 @@ export default function Players({
             <span className="field-label">表示名</span>
             <span className="input-wrap">
               <input
-                aria-describedby={errors.displayName ? "displayName-error" : undefined}
+                aria-describedby={
+                  errors.displayName ? "displayName-error" : undefined
+                }
                 aria-invalid={Boolean(errors.displayName)}
                 defaultValue={displayName}
                 id="displayName"
@@ -249,9 +273,13 @@ export default function Players({
                 required
               />
             </span>
-            <span className="field-hint">最大{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字</span>
+            <span className="field-hint">
+              最大{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字
+            </span>
             {errors.displayName ? (
-              <span className="field-error" id="displayName-error">{errors.displayName}</span>
+              <span className="field-error" id="displayName-error">
+                {errors.displayName}
+              </span>
             ) : null}
           </label>
 
@@ -260,31 +288,49 @@ export default function Players({
             disabled={isSubmitting}
             type="submit"
           >
-            {isSubmitting && submittingIntent === "add-player" ? "追加中…" : "新規プロフィールを追加"}
+            {isSubmitting && submittingIntent === "add-player"
+              ? "追加中…"
+              : "新規プロフィールを追加"}
           </button>
         </Form>
 
-        <section className="member-roster" aria-labelledby="member-list-heading">
+        <section
+          className="member-roster"
+          aria-labelledby="member-list-heading"
+        >
           <div className="member-roster-heading">
             <h2 id="member-list-heading">登録済みメンバー</h2>
             <span className="count-badge">{loaderData.players.length}人</span>
           </div>
 
           {loaderData.players.length === 0 ? (
-            <div className="mini-empty"><p>まだメンバーはいません。</p></div>
+            <div className="mini-empty">
+              <p>まだメンバーはいません。</p>
+            </div>
           ) : (
             <ul className="member-list profile-member-list">
               {loaderData.players.map((player) => (
                 <li key={player.id}>
                   <details
                     className="member-rename-disclosure"
-                    open={renameFailure?.groupPlayerId === player.id || undefined}
+                    open={
+                      renameFailure?.groupPlayerId === player.id || undefined
+                    }
                   >
-                    <summary aria-label={`${player.displayName}さんの表示名を編集`}>
-                      <PlayerAvatar avatarUrl={player.avatarUrl} displayName={player.displayName} />
+                    <summary
+                      aria-label={`${player.displayName}さんの表示名を編集`}
+                    >
+                      <PlayerAvatar
+                        avatarUrl={player.avatarUrl}
+                        displayName={player.displayName}
+                      />
                       <span className="profile-member-name">
                         <strong>{player.displayName}</strong>
-                        <small>{player.hasProfileAccess ? "本人端末 設定済み" : "本人端末 未設定"}</small>
+                        <small>
+                          {player.hasProfileAccess
+                            ? "本人端末 設定済み"
+                            : "本人端末 未設定"}
+                        </small>
                       </span>
                       <span
                         aria-hidden="true"
@@ -301,8 +347,16 @@ export default function Players({
                       noValidate
                       reloadDocument
                     >
-                      <input name="intent" type="hidden" value="rename-player" />
-                      <input name="groupPlayerId" type="hidden" value={player.id} />
+                      <input
+                        name="intent"
+                        type="hidden"
+                        value="rename-player"
+                      />
+                      <input
+                        name="groupPlayerId"
+                        type="hidden"
+                        value={player.id}
+                      />
                       <label className="field">
                         <span className="field-label">表示名</span>
                         <input
@@ -320,7 +374,9 @@ export default function Players({
                         </span>
                       </label>
                       {renameFailure?.groupPlayerId === player.id ? (
-                        <p className="field-error" role="alert">{renameFailure.error}</p>
+                        <p className="field-error" role="alert">
+                          {renameFailure.error}
+                        </p>
                       ) : null}
                       <div className="member-rename-actions">
                         <Link
@@ -330,54 +386,117 @@ export default function Players({
                         >
                           キャンセル
                         </Link>
-                        <button className="button button-primary" disabled={isSubmitting} type="submit">
+                        <button
+                          className="button button-primary"
+                          disabled={isSubmitting}
+                          type="submit"
+                        >
                           {isSubmitting &&
-                            submittingIntent === "rename-player" &&
-                            navigation.formData?.get("groupPlayerId") === player.id
+                          submittingIntent === "rename-player" &&
+                          navigation.formData?.get("groupPlayerId") ===
+                            player.id
                             ? "保存中…"
                             : "保存"}
                         </button>
                       </div>
                     </Form>
-                    <div className="member-membership-note">
-                      <Form action={actionUrl} method="post" reloadDocument>
-                        <input name="intent" type="hidden" value="set-event-creator-permission" />
-                        <input name="groupPlayerId" type="hidden" value={player.id} />
-                        <label className="member-permission-toggle">
-                          <input defaultChecked={player.canCreateGames} name="allowed" type="checkbox" value="yes" />
-                          <span>
-                            <strong>このグループで開催を作成できる</strong>
-                            <small>自分が作成した開催だけを管理できます。</small>
-                          </span>
-                        </label>
-                        <button className="button button-secondary" disabled={isSubmitting} type="submit">
-                          権限を保存
-                        </button>
-                      </Form>
-                      {permissionFailure?.groupPlayerId === player.id ? (
-                        <p className="field-error" role="alert">{permissionFailure.error}</p>
-                      ) : null}
-                      <strong>グループ所属</strong>
-                      <p>外しても過去の開催・順位・戦績は残ります。必要になればあとで再追加できます。</p>
-                      <Form action={actionUrl} method="post" reloadDocument>
-                        <input name="intent" type="hidden" value="remove-player" />
-                        <input name="groupPlayerId" type="hidden" value={player.id} />
-                        <button
-                          className="text-button member-remove-from-group"
-                          disabled={isSubmitting}
-                          onClick={(event) => {
-                            if (!window.confirm(`${player.displayName}さんをこのグループから外しますか？\n過去の戦績は残ります。`)) {
-                              event.preventDefault();
-                            }
-                          }}
-                          type="submit"
+                    <div className="member-management-controls">
+                      <section className="member-permission-section">
+                        <div className="member-control-heading">
+                          <strong>開催作成権限</strong>
+                          <p>
+                            このグループ内で新しい開催を作れるか設定します。
+                          </p>
+                        </div>
+                        <Form
+                          action={actionUrl}
+                          className="member-permission-form"
+                          method="post"
+                          reloadDocument
                         >
-                          このグループから外す
-                        </button>
-                      </Form>
-                      {removeFailure?.groupPlayerId === player.id ? (
-                        <p className="field-error" role="alert">{removeFailure.error}</p>
-                      ) : null}
+                          <input
+                            name="intent"
+                            type="hidden"
+                            value="set-event-creator-permission"
+                          />
+                          <input
+                            name="groupPlayerId"
+                            type="hidden"
+                            value={player.id}
+                          />
+                          <label className="member-permission-toggle">
+                            <input
+                              defaultChecked={player.canCreateGames}
+                              name="allowed"
+                              type="checkbox"
+                              value="yes"
+                            />
+                            <span className="member-permission-copy">
+                              <strong>このグループで開催を作成できる</strong>
+                              <small>
+                                自分が作成した開催だけを管理できます。
+                              </small>
+                            </span>
+                            <span
+                              aria-hidden="true"
+                              className="member-permission-switch"
+                            />
+                          </label>
+                          <button
+                            className="button button-secondary"
+                            disabled={isSubmitting}
+                            type="submit"
+                          >
+                            権限を保存
+                          </button>
+                        </Form>
+                        {permissionFailure?.groupPlayerId === player.id ? (
+                          <p className="field-error" role="alert">
+                            {permissionFailure.error}
+                          </p>
+                        ) : null}
+                      </section>
+                      <section className="member-membership-section">
+                        <div className="member-control-heading">
+                          <strong>グループ所属</strong>
+                          <p>
+                            外しても過去の開催・順位・戦績は残ります。必要になればあとで再追加できます。
+                          </p>
+                        </div>
+                        <Form action={actionUrl} method="post" reloadDocument>
+                          <input
+                            name="intent"
+                            type="hidden"
+                            value="remove-player"
+                          />
+                          <input
+                            name="groupPlayerId"
+                            type="hidden"
+                            value={player.id}
+                          />
+                          <button
+                            className="text-button member-remove-from-group"
+                            disabled={isSubmitting}
+                            onClick={(event) => {
+                              if (
+                                !window.confirm(
+                                  `${player.displayName}さんをこのグループから外しますか？\n過去の戦績は残ります。`,
+                                )
+                              ) {
+                                event.preventDefault();
+                              }
+                            }}
+                            type="submit"
+                          >
+                            このグループから外す
+                          </button>
+                        </Form>
+                        {removeFailure?.groupPlayerId === player.id ? (
+                          <p className="field-error" role="alert">
+                            {removeFailure.error}
+                          </p>
+                        ) : null}
+                      </section>
                     </div>
                   </details>
                 </li>
@@ -396,7 +515,9 @@ function readString(formData: FormData, name: string): string {
 }
 
 function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+    value,
+  );
 }
 
 export function headers() {
