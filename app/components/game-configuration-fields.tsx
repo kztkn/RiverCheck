@@ -45,6 +45,10 @@ export function GameConfigurationFields({
     onChange({ ...values, [field]: value });
   }
 
+  function updateBigBlind(value: string) {
+    onChange(gameConfigurationWithBigBlind(values, value));
+  }
+
   function applyStackDepth(stackBb: number) {
     const bigBlindChips = Number(values.bigBlindChips);
     const initialChips = bigBlindChips * stackBb;
@@ -71,30 +75,11 @@ export function GameConfigurationFields({
         ) : null}
       </label>
 
-      <div className="blind-input-grid">
-        <BlindInput
-          error={errors.smallBlindChips}
-          label="SB"
-          name="smallBlindChips"
-          onChange={(value) => update("smallBlindChips", value)}
-          value={values.smallBlindChips}
-        />
-        <BlindInput
-          error={errors.bigBlindChips}
-          label="BB"
-          name="bigBlindChips"
-          onChange={(value) => update("bigBlindChips", value)}
-          value={values.bigBlindChips}
-        />
-        <BlindInput
-          error={errors.bigBlindAnteChips}
-          label="BBA"
-          min={0}
-          name="bigBlindAnteChips"
-          onChange={(value) => update("bigBlindAnteChips", value)}
-          value={values.bigBlindAnteChips}
-        />
-      </div>
+      <input
+        name="bigBlindAnteChips"
+        type="hidden"
+        value={values.bigBlindAnteChips}
+      />
 
       <div aria-live="polite" className="blind-structure-preview">
         <div className="blind-structure-heading">
@@ -148,6 +133,54 @@ export function GameConfigurationFields({
         <small>BBは変えず、初期チップだけを調整します。</small>
       </div>
 
+      <details
+        className="blind-settings-disclosure"
+        open={
+          errors.smallBlindChips ||
+          errors.bigBlindChips ||
+          errors.bigBlindAnteChips
+            ? true
+            : undefined
+        }
+      >
+        <summary>
+          <span>
+            <strong>ブラインドを変更</strong>
+            <small>
+              SB {formatInputChip(values.smallBlindChips)} / BB{" "}
+              {formatInputChip(values.bigBlindChips)}
+            </small>
+          </span>
+          <span aria-hidden="true">›</span>
+        </summary>
+        <div className="blind-settings-body">
+          <div className="blind-input-grid">
+            <BlindInput
+              error={errors.smallBlindChips}
+              label="SB"
+              name="smallBlindChips"
+              onChange={(value) => update("smallBlindChips", value)}
+              value={values.smallBlindChips}
+            />
+            <BlindInput
+              error={errors.bigBlindChips}
+              label="BB"
+              name="bigBlindChips"
+              onChange={updateBigBlind}
+              value={values.bigBlindChips}
+            />
+          </div>
+          <p className="field-hint">
+            {values.bigBlindAnteChips === "0"
+              ? "この既存開催はBBAなしです。BBを変更してもBBAなしを維持します。"
+              : `BBAはBBと同額（${formatInputChip(values.bigBlindChips)}）で自動設定します。`}
+          </p>
+          {errors.bigBlindAnteChips ? (
+            <span className="field-error">{errors.bigBlindAnteChips}</span>
+          ) : null}
+        </div>
+      </details>
+
       <ChipDistributionCalculator
         onApply={(recommendation) =>
           onChange(gameConfigurationFromRecommendation(recommendation))
@@ -173,6 +206,18 @@ export function gameConfigurationFromRecommendation(
     smallBlindChips: String(recommendation.smallBlindChips),
     bigBlindChips: String(recommendation.bigBlindChips),
     bigBlindAnteChips: String(recommendation.bigBlindAnteChips),
+  };
+}
+
+export function gameConfigurationWithBigBlind(
+  values: GameConfigurationValues,
+  bigBlindChips: string,
+): GameConfigurationValues {
+  return {
+    ...values,
+    bigBlindChips,
+    bigBlindAnteChips:
+      values.bigBlindAnteChips.trim() === "0" ? "0" : bigBlindChips,
   };
 }
 
@@ -338,14 +383,12 @@ function ChipDistributionResultCard({
 function BlindInput({
   error,
   label,
-  min = 1,
   name,
   onChange,
   value,
 }: {
   error?: string;
   label: string;
-  min?: number;
   name: keyof GameConfigurationValues;
   onChange: (value: string) => void;
   value: string;
@@ -356,7 +399,7 @@ function BlindInput({
       <input
         aria-invalid={error ? true : undefined}
         inputMode="numeric"
-        min={min}
+        min={1}
         name={name}
         onChange={(event) => onChange(event.target.value)}
         required

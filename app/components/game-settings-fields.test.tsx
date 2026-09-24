@@ -40,7 +40,7 @@ describe("GameSettingsFields local rules", () => {
     expect(markup).toContain("リバイも開始時と同じチップ枚数・BBです。");
   });
 
-  it("SB・BB・BBAを明示値として見える化する", () => {
+  it("SB・BBの詳細入力とBB連動のBBAを明示する", () => {
     const standardMarkup = renderToStaticMarkup(
       createElement(GameSettingsFields, { errors: {}, values: baseValues }),
     );
@@ -48,6 +48,11 @@ describe("GameSettingsFields local rules", () => {
     expect(standardMarkup).toContain("<small>SB</small><strong>100</strong>");
     expect(standardMarkup).toContain("<small>BB</small><strong>200</strong>");
     expect(standardMarkup).toContain("<small>BBA</small><strong>200</strong>");
+    expect(standardMarkup).toContain("ブラインドを変更");
+    expect(standardMarkup).toContain(
+      'type="hidden" name="bigBlindAnteChips" value="200"',
+    );
+    expect(standardMarkup).toContain("BBAはBBと同額（200）で自動設定します。");
 
     const compactMarkup = renderToStaticMarkup(
       createElement(GameSettingsFields, {

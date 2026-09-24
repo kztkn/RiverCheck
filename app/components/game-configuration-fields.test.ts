@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   calculateChipDistributionFromInputs,
   gameConfigurationFromRecommendation,
+  gameConfigurationWithBigBlind,
   type GameConfigurationValues,
 } from "./game-configuration-fields";
 
@@ -48,6 +49,27 @@ describe("chip calculator form integration", () => {
       smallBlindChips: "10",
       bigBlindChips: "20",
       bigBlindAnteChips: "20",
+    });
+  });
+
+  it("BB変更時にBBAを同額へ追従させる", () => {
+    expect(gameConfigurationWithBigBlind(parentValues, "25")).toEqual({
+      ...parentValues,
+      bigBlindChips: "25",
+      bigBlindAnteChips: "25",
+    });
+  });
+
+  it("既存のBBAなし開催はBB変更時も0を維持する", () => {
+    expect(
+      gameConfigurationWithBigBlind(
+        { ...parentValues, bigBlindAnteChips: "0" },
+        "25",
+      ),
+    ).toEqual({
+      ...parentValues,
+      bigBlindChips: "25",
+      bigBlindAnteChips: "0",
     });
   });
 });

@@ -4990,9 +4990,9 @@ input[aria-invalid="true"] {
 
 .blind-input-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  max-width: 500px;
+  max-width: 340px;
 }
 
 .blind-input {
@@ -5083,6 +5083,66 @@ input[aria-invalid="true"] {
   color: var(--muted);
   font-size: 0.7rem;
   line-height: 1.5;
+}
+
+.blind-settings-disclosure {
+  max-width: 340px;
+  overflow: hidden;
+  border: 1px solid rgba(94, 163, 125, 0.24);
+  border-radius: 12px;
+  background: rgba(14, 51, 35, 0.25);
+}
+
+.blind-settings-disclosure > summary {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 13px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.blind-settings-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.blind-settings-disclosure > summary > span:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.blind-settings-disclosure > summary strong {
+  color: var(--ink);
+  font-size: 0.8rem;
+}
+
+.blind-settings-disclosure > summary small {
+  color: var(--muted);
+  font-size: 0.67rem;
+}
+
+.blind-settings-disclosure > summary > span:last-child {
+  color: var(--gold);
+  font-size: 1.35rem;
+  transform: rotate(90deg);
+  transition: transform 160ms ease;
+}
+
+.blind-settings-disclosure[open] > summary > span:last-child {
+  transform: rotate(-90deg);
+}
+
+.blind-settings-body {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid rgba(94, 163, 125, 0.18);
+  padding: 13px;
+}
+
+.blind-settings-body > .field-hint {
+  margin: 0;
 }
 
 .chip-calculator-disclosure {

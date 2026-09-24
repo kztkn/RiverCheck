@@ -1,6 +1,7 @@
 const STARTING_STACK_BB = 100;
 const MIN_TOTAL_CHIPS = 20;
-const MAX_TOTAL_CHIPS = 30;
+const PREFERRED_MAX_TOTAL_CHIPS = 35;
+const MAX_TOTAL_CHIPS = 40;
 const IDEAL_TOTAL_CHIPS = 25;
 const MIN_SMALL_CHIPS = 6;
 const MAX_SMALL_CHIPS = 16;
@@ -249,20 +250,38 @@ function calculateUsabilityScore(
   bigBlindChips: number,
 ): number {
   const totalCount = counts.reduce((total, count) => total + count, 0);
-  const idealCounts = denominations.length === 4 ? [10, 8, 5, 2] : [10, 8, 5];
+  const idealCounts = denominations.length === 4 ? [10, 9, 6, 3] : [10, 9, 4];
   let score = denominations.length === 4 ? 0 : 2_500;
-  score += Math.abs(totalCount - IDEAL_TOTAL_CHIPS) * 250;
+  // 25枚は扱いやすい目安に留める。小中額を削って25枚へ寄せるより、
+  // 両替回数を減らせるなら30枚台前半を許容する。
+  score += Math.abs(totalCount - IDEAL_TOTAL_CHIPS) * 45;
+  if (totalCount > PREFERRED_MAX_TOTAL_CHIPS) {
+    score += (totalCount - PREFERRED_MAX_TOTAL_CHIPS) * 500;
+  }
   score += Math.abs(counts[0]! - 10) * 350;
   if (counts[0]! < 8 || counts[0]! > 12) score += 1_000;
 
+  const secondCount = counts[1]!;
+  score += Math.abs(secondCount - 9) * 140;
+  if (secondCount < 8) score += (8 - secondCount) * 650;
+  if (secondCount > 14) score += (secondCount - 14) * 180;
+
   counts.forEach((count, index) => {
-    score += Math.abs(count - idealCounts[index]!) * 50;
+    score += Math.abs(count - idealCounts[index]!) * 35;
     const denominationBb = denominations[index]! / bigBlindChips;
     if (denominationBb > 25) score += (denominationBb - 25) * 80;
     if (denominationBb >= 10 && count === 1) score += 800;
     const share = (denominations[index]! * count) / initialChips;
-    if (share > 0.6) score += (share - 0.6) * 2_000;
+    if (share > 0.55) score += (share - 0.55) * 8_000;
   });
+
+  const highestCount = counts.at(-1)!;
+  const highestShare = (denominations.at(-1)! * highestCount) / initialChips;
+  if (highestCount === 1) score += 1_200;
+  if (highestCount > 4) score += (highestCount - 4) * 700;
+  if (highestCount > 4 && highestShare > 0.4) {
+    score += (highestShare - 0.4) * 12_000;
+  }
 
   for (let index = 1; index < denominations.length; index += 1) {
     const gap = denominations[index]! / denominations[index - 1]!;

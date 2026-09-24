@@ -39,6 +39,25 @@ describe("recommendChipDistribution", () => {
     );
   });
 
+  it("25枚へ固執せず小中額を厚くして最高額への集中を避ける", () => {
+    const result = recommendChipDistribution([500, 1_000, 5_000, 10_000]);
+    expect(result).toEqual({
+      ok: true,
+      recommendation: expect.objectContaining({
+        initialChips: 100_000,
+        smallBlindChips: 500,
+        bigBlindChips: 1_000,
+        allocations: [
+          { denomination: 500, count: 10 },
+          { denomination: 1_000, count: 10 },
+          { denomination: 5_000, count: 9 },
+          { denomination: 10_000, count: 4 },
+        ],
+        totalChipCount: 33,
+      }),
+    });
+  });
+
   it.each([
     [[100, 100, 500], "duplicate-denomination"],
     [[0, 100, 500], "invalid-denomination"],
@@ -52,7 +71,7 @@ describe("recommendChipDistribution", () => {
     });
   });
 
-  it("実用的な3〜4額面・20〜30枚のexact sumがなければ明示エラーにする", () => {
+  it("実用的な3〜4額面・現実的な枚数のexact sumがなければ明示エラーにする", () => {
     expect(recommendChipDistribution([100, 10_000, 50_000])).toMatchObject({
       ok: false,
       code: "no-practical-configuration",
