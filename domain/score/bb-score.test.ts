@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  calculateInitialChips,
   calculateInitialStackBb,
   calculateLegacyBlindStructure,
   calculateChipsPerBb,
@@ -61,6 +62,13 @@ describe("BB score", () => {
         bigBlindChips: 400,
       }),
     ).toBe("-50BB");
+  });
+
+  it("BBチップ量と選択した開始BBから保存用の初期チップを作る", () => {
+    expect(calculateInitialChips(200, 50)).toBe(10_000);
+    expect(calculateInitialChips(200, 100)).toBe(20_000);
+    expect(calculateInitialChips(20, 25)).toBe(500);
+    expect(calculateInitialChips(200, 150)).toBe(30_000);
   });
 
   it("500チップを10/20で始めた開催は25BBとして扱う", () => {

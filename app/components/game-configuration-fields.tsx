@@ -1,13 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   recommendChipDistribution,
   type ChipDistributionRecommendation,
   type ChipDistributionResult,
 } from "@domain/chip-distribution/recommend-chip-distribution";
 import {
+  calculateInitialChips,
   calculateInitialStackBb,
   formatChipValue,
   INITIAL_STACK_BB_OPTIONS,
+  isSupportedInitialStackBb,
 } from "@domain/score/bb-score";
 
 export interface GameConfigurationValues {
@@ -40,56 +42,129 @@ export function GameConfigurationFields({
       return null;
     }
   }, [values.bigBlindChips, values.initialChips]);
+  const [stackDepthInput, setStackDepthInput] = useState(
+    initialStackBb === null ? "" : String(initialStackBb),
+  );
+
+  useEffect(() => {
+    if (initialStackBb !== null) setStackDepthInput(String(initialStackBb));
+  }, [initialStackBb]);
 
   function update(field: keyof GameConfigurationValues, value: string) {
     onChange({ ...values, [field]: value });
   }
 
   function updateBigBlind(value: string) {
-    onChange(gameConfigurationWithBigBlind(values, value));
+    onChange(
+      gameConfigurationWithBigBlind(values, value, Number(stackDepthInput)),
+    );
   }
 
   function applyStackDepth(stackBb: number) {
-    const bigBlindChips = Number(values.bigBlindChips);
-    const initialChips = bigBlindChips * stackBb;
-    if (!Number.isSafeInteger(initialChips) || initialChips <= 0) return;
-    update("initialChips", String(initialChips));
+    try {
+      setStackDepthInput(String(stackBb));
+      onChange(gameConfigurationWithStackDepth(values, stackBb));
+    } catch {
+      // BB入力が一時的に空や不正な間は、直前の保存可能な値を維持する。
+    }
   }
+
+  const customStackDepth =
+    initialStackBb !== null &&
+    !INITIAL_STACK_BB_OPTIONS.some((option) => option === initialStackBb);
 
   return (
     <>
-      <label className="field">
-        <span className="field-label">初期チップ</span>
-        <input
-          aria-invalid={errors.initialChips ? true : undefined}
-          inputMode="numeric"
-          min={1}
-          name="initialChips"
-          onChange={(event) => update("initialChips", event.target.value)}
-          required
-          type="number"
-          value={values.initialChips}
-        />
-        {errors.initialChips ? (
-          <span className="field-error">{errors.initialChips}</span>
-        ) : null}
-      </label>
-
+      <input name="initialChips" type="hidden" value={values.initialChips} />
       <input
         name="bigBlindAnteChips"
         type="hidden"
         value={values.bigBlindAnteChips}
       />
 
+      <section aria-label="ブラインド" className="game-config-block">
+        <div className="game-config-block-heading">
+          <strong>ブラインド</strong>
+          <small>チップ量</small>
+        </div>
+        <div className="blind-input-grid">
+          <BlindInput
+            error={errors.smallBlindChips}
+            label="SB"
+            name="smallBlindChips"
+            onChange={(value) => update("smallBlindChips", value)}
+            value={values.smallBlindChips}
+          />
+          <BlindInput
+            error={errors.bigBlindChips}
+            label="BB"
+            name="bigBlindChips"
+            onChange={updateBigBlind}
+            value={values.bigBlindChips}
+          />
+        </div>
+        <p className="field-hint">
+          {values.bigBlindAnteChips === "0"
+            ? "この既存開催はBBAなしです。BBを変更してもBBAなしを維持します。"
+            : `BBAはBBと同額（${formatInputChip(values.bigBlindChips)}）で自動設定します。`}
+        </p>
+        {errors.bigBlindAnteChips ? (
+          <span className="field-error">{errors.bigBlindAnteChips}</span>
+        ) : null}
+      </section>
+
+      <div
+        className="initial-stack-shortcuts"
+        aria-label="開始スタックのショートカット"
+      >
+        <span>開始スタック</span>
+        <div className="initial-stack-options">
+          {INITIAL_STACK_BB_OPTIONS.map((stackBb) => (
+            <button
+              aria-pressed={initialStackBb === stackBb}
+              className="initial-stack-option"
+              key={stackBb}
+              onClick={() => applyStackDepth(stackBb)}
+              type="button"
+            >
+              {stackBb}BB
+            </button>
+          ))}
+          <label
+            className={`initial-stack-custom${customStackDepth ? " is-active" : ""}`}
+          >
+            <input
+              aria-label="その他の開始スタックBB"
+              inputMode="numeric"
+              min={1}
+              onChange={(event) => {
+                const next = event.target.value;
+                setStackDepthInput(next);
+                if (!next.trim()) return;
+                applyStackDepth(Number(next));
+              }}
+              placeholder="その他"
+              type="number"
+              value={customStackDepth ? stackDepthInput : ""}
+            />
+            <span>BB</span>
+          </label>
+        </div>
+        <small>BBのチップ量から初期チップを自動計算します。</small>
+      </div>
+
       <div aria-live="polite" className="blind-structure-preview">
         <div className="blind-structure-heading">
           <span>今回のゲーム設定</span>
-          <small>SB / BB / BBA</small>
+          <small>自動計算</small>
         </div>
         {initialStackBb === null ? (
-          <p>初期チップがBBの整数倍になるように設定してください。</p>
+          <p>BBと開始スタックを1以上の整数で設定してください。</p>
         ) : (
           <>
+            <strong className="blind-structure-stack">
+              {formatInputChip(values.initialChips)}チップ / {initialStackBb}BB
+            </strong>
             <div className="blind-structure-values">
               <span>
                 <small>SB</small>
@@ -104,87 +179,19 @@ export function GameConfigurationFields({
                 <strong>{formatInputChip(values.bigBlindAnteChips)}</strong>
               </span>
             </div>
-            <p>
-              開始スタック <strong>{initialStackBb}BB</strong> ・ 1BB ={" "}
-              {formatInputChip(values.bigBlindChips)}チップ
-            </p>
+            <p>1BB = {formatInputChip(values.bigBlindChips)}チップ</p>
           </>
         )}
+        {errors.initialChips ? (
+          <span className="field-error">{errors.initialChips}</span>
+        ) : null}
       </div>
-
-      <div
-        className="initial-stack-shortcuts"
-        aria-label="開始スタックのショートカット"
-      >
-        <span>スタック深度を変更</span>
-        <div className="initial-stack-options">
-          {INITIAL_STACK_BB_OPTIONS.map((stackBb) => (
-            <button
-              aria-pressed={initialStackBb === stackBb}
-              className="initial-stack-option"
-              key={stackBb}
-              onClick={() => applyStackDepth(stackBb)}
-              type="button"
-            >
-              {stackBb}BB
-            </button>
-          ))}
-        </div>
-        <small>BBは変えず、初期チップだけを調整します。</small>
-      </div>
-
-      <details
-        className="blind-settings-disclosure"
-        open={
-          errors.smallBlindChips ||
-          errors.bigBlindChips ||
-          errors.bigBlindAnteChips
-            ? true
-            : undefined
-        }
-      >
-        <summary>
-          <span>
-            <strong>ブラインドを変更</strong>
-            <small>
-              SB {formatInputChip(values.smallBlindChips)} / BB{" "}
-              {formatInputChip(values.bigBlindChips)}
-            </small>
-          </span>
-          <span aria-hidden="true">›</span>
-        </summary>
-        <div className="blind-settings-body">
-          <div className="blind-input-grid">
-            <BlindInput
-              error={errors.smallBlindChips}
-              label="SB"
-              name="smallBlindChips"
-              onChange={(value) => update("smallBlindChips", value)}
-              value={values.smallBlindChips}
-            />
-            <BlindInput
-              error={errors.bigBlindChips}
-              label="BB"
-              name="bigBlindChips"
-              onChange={updateBigBlind}
-              value={values.bigBlindChips}
-            />
-          </div>
-          <p className="field-hint">
-            {values.bigBlindAnteChips === "0"
-              ? "この既存開催はBBAなしです。BBを変更してもBBAなしを維持します。"
-              : `BBAはBBと同額（${formatInputChip(values.bigBlindChips)}）で自動設定します。`}
-          </p>
-          {errors.bigBlindAnteChips ? (
-            <span className="field-error">{errors.bigBlindAnteChips}</span>
-          ) : null}
-        </div>
-      </details>
 
       <ChipDistributionCalculator
-        onApply={(recommendation) =>
-          onChange(gameConfigurationFromRecommendation(recommendation))
-        }
+        onApply={(recommendation) => {
+          setStackDepthInput(String(recommendation.initialStackBb));
+          onChange(gameConfigurationFromRecommendation(recommendation));
+        }}
       />
     </>
   );
@@ -212,12 +219,37 @@ export function gameConfigurationFromRecommendation(
 export function gameConfigurationWithBigBlind(
   values: GameConfigurationValues,
   bigBlindChips: string,
+  stackDepthBb?: number,
 ): GameConfigurationValues {
-  return {
+  const next = {
     ...values,
     bigBlindChips,
     bigBlindAnteChips:
       values.bigBlindAnteChips.trim() === "0" ? "0" : bigBlindChips,
+  };
+  try {
+    const candidateStackDepth = stackDepthBb ?? 0;
+    const currentStackDepth = isSupportedInitialStackBb(candidateStackDepth)
+      ? candidateStackDepth
+      : calculateInitialStackBb(
+          Number(values.initialChips),
+          Number(values.bigBlindChips),
+        );
+    return gameConfigurationWithStackDepth(next, currentStackDepth);
+  } catch {
+    return next;
+  }
+}
+
+export function gameConfigurationWithStackDepth(
+  values: GameConfigurationValues,
+  stackDepthBb: number,
+): GameConfigurationValues {
+  return {
+    ...values,
+    initialChips: String(
+      calculateInitialChips(Number(values.bigBlindChips), stackDepthBb),
+    ),
   };
 }
 
@@ -227,10 +259,10 @@ function ChipDistributionCalculator({
   onApply: (recommendation: ChipDistributionRecommendation) => void;
 }) {
   const [rows, setRows] = useState(() => [
-    { id: 1, value: "10000" },
-    { id: 2, value: "5000" },
-    { id: 3, value: "1000" },
-    { id: 4, value: "500" },
+    { id: 1, value: "5000" },
+    { id: 2, value: "1000" },
+    { id: 3, value: "500" },
+    { id: 4, value: "100" },
   ]);
   const [nextId, setNextId] = useState(5);
   const [result, setResult] = useState<ChipDistributionResult | null>(null);

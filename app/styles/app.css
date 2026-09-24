@@ -2332,13 +2332,11 @@ input[aria-invalid="true"] {
 }
 
 @media (max-width: 639px) {
-  .venue-cost-field,
   .field-grid-three .field {
     grid-template-columns: 70px minmax(0, 1fr);
     align-items: center;
   }
 
-  .venue-cost-field .field-error,
   .field-grid-three .field-error {
     grid-column: 1 / -1;
   }
@@ -4957,12 +4955,13 @@ input[aria-invalid="true"] {
 }
 
 .game-form .form-section-stack > .field {
-  max-width: 340px;
+  width: 100%;
+  max-width: 560px;
 }
 
 .initial-stack-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -4983,16 +4982,91 @@ input[aria-invalid="true"] {
   color: #e9ba5a;
 }
 
-.initial-stack-option:focus-visible {
+.initial-stack-option:focus-visible,
+.initial-stack-custom:focus-within {
   outline: 2px solid var(--green);
   outline-offset: 2px;
 }
 
+.initial-stack-custom {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 42px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: transparent;
+}
+
+.initial-stack-custom.is-active {
+  border-color: rgba(233, 186, 90, 0.65);
+  background: rgba(233, 186, 90, 0.13);
+}
+
+.initial-stack-custom input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0 25px 0 9px;
+  text-align: center;
+}
+
+.initial-stack-custom input::placeholder {
+  color: var(--ink);
+  opacity: 1;
+}
+
+.initial-stack-custom > span {
+  position: absolute;
+  right: 7px;
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.game-config-block {
+  display: grid;
+  width: 100%;
+  max-width: 560px;
+  gap: 12px;
+}
+
+.game-config-block-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.game-config-block-heading > strong {
+  color: var(--ink);
+  font-size: 0.8rem;
+}
+
+.game-config-block-heading > small {
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.game-config-block > .field-hint {
+  margin: 0;
+}
+
 .blind-input-grid {
   display: grid;
+  width: 100%;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  max-width: 340px;
+  max-width: 560px;
 }
 
 .blind-input {
@@ -5006,8 +5080,9 @@ input[aria-invalid="true"] {
 
 .initial-stack-shortcuts {
   display: grid;
+  width: 100%;
   gap: 8px;
-  max-width: 340px;
+  max-width: 560px;
 }
 
 .initial-stack-shortcuts > span {
@@ -5024,8 +5099,9 @@ input[aria-invalid="true"] {
 
 .blind-structure-preview {
   display: grid;
+  width: 100%;
   gap: 10px;
-  max-width: 340px;
+  max-width: 560px;
   border: 1px solid rgba(233, 186, 90, 0.24);
   border-radius: 12px;
   background: rgba(233, 186, 90, 0.045);
@@ -5078,6 +5154,12 @@ input[aria-invalid="true"] {
   font-variant-numeric: tabular-nums;
 }
 
+.blind-structure-stack {
+  color: var(--ink);
+  font-size: 1.08rem;
+  letter-spacing: -0.02em;
+}
+
 .blind-structure-preview > p {
   margin: 0;
   color: var(--muted);
@@ -5085,67 +5167,8 @@ input[aria-invalid="true"] {
   line-height: 1.5;
 }
 
-.blind-settings-disclosure {
-  max-width: 340px;
-  overflow: hidden;
-  border: 1px solid rgba(94, 163, 125, 0.24);
-  border-radius: 12px;
-  background: rgba(14, 51, 35, 0.25);
-}
-
-.blind-settings-disclosure > summary {
-  display: flex;
-  min-height: 52px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 13px;
-  cursor: pointer;
-  list-style: none;
-}
-
-.blind-settings-disclosure > summary::-webkit-details-marker {
-  display: none;
-}
-
-.blind-settings-disclosure > summary > span:first-child {
-  display: grid;
-  gap: 2px;
-}
-
-.blind-settings-disclosure > summary strong {
-  color: var(--ink);
-  font-size: 0.8rem;
-}
-
-.blind-settings-disclosure > summary small {
-  color: var(--muted);
-  font-size: 0.67rem;
-}
-
-.blind-settings-disclosure > summary > span:last-child {
-  color: var(--gold);
-  font-size: 1.35rem;
-  transform: rotate(90deg);
-  transition: transform 160ms ease;
-}
-
-.blind-settings-disclosure[open] > summary > span:last-child {
-  transform: rotate(-90deg);
-}
-
-.blind-settings-body {
-  display: grid;
-  gap: 10px;
-  border-top: 1px solid rgba(94, 163, 125, 0.18);
-  padding: 13px;
-}
-
-.blind-settings-body > .field-hint {
-  margin: 0;
-}
-
 .chip-calculator-disclosure {
+  width: 100%;
   max-width: 560px;
   overflow: hidden;
   border: 1px solid rgba(94, 163, 125, 0.28);
@@ -5363,12 +5386,17 @@ input[aria-invalid="true"] {
 }
 
 .game-form .venue-cost-field {
-  max-width: 340px;
+  width: 100%;
+  max-width: 560px;
 }
 
 .game-form input {
   min-height: 54px;
   border-radius: 10px;
+}
+
+.game-form .initial-stack-custom input {
+  min-height: 40px;
 }
 
 .game-form .cost-preview {

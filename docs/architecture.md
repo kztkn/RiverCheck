@@ -198,7 +198,7 @@ PIN・合言葉と32文字以上の署名鍵はCloudflare Secretで受け取る�
 
 ## 受付中開催の管理
 
-開催の基本情報変更、ゲーム設定変更、開催削除は、主催者認証済みの開催管理actionからserviceを経由して実行する。基本情報は開催名・開催日だけを扱い、初期チップとSB / BBは管理画面本文のゲーム設定として分離する。SB / BB入力は折りたたみ、新規・通常開催のBBAはBBと同額のhidden値として送信する。既存BBAが0の開催だけは、BB変更時にも0を保持する。serviceが開始BBを再導出し、repositoryはSB / BB / BBAの明示値、派生キャッシュ、`rebuy_chips`を同じUPDATEで更新する。repositoryの`UPDATE`と`DELETE`には`group_id`と`status = 'open'`を含め、画面表示後に確定された場合や別グループIDが指定された場合は変更しない。リバイイベントまたは終了入力が存在する場合は確認なしの更新を拒否する。基本情報変更はgame IDを維持するため参加者用URLを変えず、作成時のWeb Pushは再送しない。
+開催の基本情報変更、ゲーム設定変更、開催削除は、主催者認証済みの開催管理actionからserviceを経由して実行する。基本情報は開催名・開催日だけを扱い、SB / BB、開始スタック、初期チップを管理画面本文のゲーム設定として分離する。UIはSB / BBを先に入力し、50 / 100 / その他の開始BBからdomain関数で初期チップを計算してhidden値として送る。BB編集中も選択中の開始BBをコンポーネント状態へ保持し、入力途中の空値でスタック深度を誤算しない。開始BB自体はDBへ追加保存しない。新規・通常開催のBBAはBBと同額のhidden値として送信し、既存BBAが0の開催だけはBB変更時にも0を保持する。serviceが保存値から開始BBを再導出し、repositoryはSB / BB / BBAの明示値、派生キャッシュ、`rebuy_chips`を同じUPDATEで更新する。repositoryの`UPDATE`と`DELETE`には`group_id`と`status = 'open'`を含め、画面表示後に確定された場合や別グループIDが指定された場合は変更しない。リバイイベントまたは終了入力が存在する場合は確認なしの更新を拒否する。基本情報変更はgame IDを維持するため参加者用URLを変えず、作成時のWeb Pushは再送しない。
 
 開催削除は確認ダイアログを通した物理削除とする。`game_participants`はgamesへの`ON DELETE CASCADE`、リバイイベントとTABLE STORIESはparticipantへの`ON DELETE CASCADE`で従属データを削除する。TABLE STORIESはfinalized後だけ投稿でき、finalized開催は削除対象外のため、R2投稿写真を伴う開催削除は発生しない。`game_results`と訂正履歴の`ON DELETE RESTRICT`も、確定履歴を誤って削除しないDB側の防御として維持する。
 

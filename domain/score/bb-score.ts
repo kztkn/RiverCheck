@@ -34,6 +34,17 @@ export function calculateInitialStackBb(
   return initialStackBb;
 }
 
+export function calculateInitialChips(
+  bigBlindChips: number,
+  initialStackBb: number,
+): number {
+  assertPositiveSafeInteger(bigBlindChips, "bigBlindChips");
+  assertSupportedInitialStackBb(initialStackBb);
+  const initialChips = bigBlindChips * initialStackBb;
+  assertPositiveSafeInteger(initialChips, "initialChips");
+  return initialChips;
+}
+
 export function calculateNetBb({
   score,
   initialChips,

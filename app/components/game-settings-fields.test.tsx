@@ -36,11 +36,13 @@ describe("GameSettingsFields local rules", () => {
     expect(markup).toContain('aria-label="開始スタックのショートカット"');
     expect(markup).toContain('aria-pressed="true"');
     expect(markup).toContain("50BB");
-    expect(markup).toContain("BBは変えず、初期チップだけを調整します。");
+    expect(markup).toContain('aria-label="その他の開始スタックBB"');
+    expect(markup).toContain("BBのチップ量から初期チップを自動計算します。");
+    expect(markup).toContain('type="hidden" name="initialChips" value="10000"');
     expect(markup).toContain("リバイも開始時と同じチップ枚数・BBです。");
   });
 
-  it("SB・BBの詳細入力とBB連動のBBAを明示する", () => {
+  it("SB・BB入力、開始BB、計算結果、チップ計算機の順に表示する", () => {
     const standardMarkup = renderToStaticMarkup(
       createElement(GameSettingsFields, { errors: {}, values: baseValues }),
     );
@@ -48,11 +50,22 @@ describe("GameSettingsFields local rules", () => {
     expect(standardMarkup).toContain("<small>SB</small><strong>100</strong>");
     expect(standardMarkup).toContain("<small>BB</small><strong>200</strong>");
     expect(standardMarkup).toContain("<small>BBA</small><strong>200</strong>");
-    expect(standardMarkup).toContain("ブラインドを変更");
+    expect(standardMarkup).toContain("ブラインド");
+    expect(standardMarkup).toContain('name="smallBlindChips" value="100"');
+    expect(standardMarkup).toContain('name="bigBlindChips" value="200"');
     expect(standardMarkup).toContain(
       'type="hidden" name="bigBlindAnteChips" value="200"',
     );
     expect(standardMarkup).toContain("BBAはBBと同額（200）で自動設定します。");
+    expect(standardMarkup).toContain("20,000チップ / 100BB");
+
+    const blindIndex = standardMarkup.indexOf("ブラインド");
+    const stackIndex = standardMarkup.indexOf("開始スタック");
+    const previewIndex = standardMarkup.indexOf("今回のゲーム設定");
+    const calculatorIndex = standardMarkup.indexOf("チップ構成を計算");
+    expect(blindIndex).toBeLessThan(stackIndex);
+    expect(stackIndex).toBeLessThan(previewIndex);
+    expect(previewIndex).toBeLessThan(calculatorIndex);
 
     const compactMarkup = renderToStaticMarkup(
       createElement(GameSettingsFields, {
@@ -66,8 +79,38 @@ describe("GameSettingsFields local rules", () => {
     expect(compactMarkup).toContain("<small>SB</small><strong>100</strong>");
     expect(compactMarkup).toContain("<small>BB</small><strong>200</strong>");
     expect(compactMarkup).toContain("<small>BBA</small><strong>200</strong>");
-    expect(compactMarkup).toContain("開始スタック <strong>50BB</strong>");
+    expect(compactMarkup).toContain("10,000チップ / 50BB");
     expect(compactMarkup).toContain("1BB = 200チップ");
+  });
+
+  it("チップ構成計算の初期額面を5,000・1,000・500・100にする", () => {
+    const markup = renderToStaticMarkup(
+      createElement(GameSettingsFields, { errors: {}, values: baseValues }),
+    );
+
+    expect(markup).toContain('aria-label="チップ額面1"');
+    expect(markup).toContain(
+      'aria-label="チップ額面1" inputMode="numeric" min="1" type="number" value="5000"',
+    );
+    expect(markup).toContain(
+      'aria-label="チップ額面2" inputMode="numeric" min="1" type="number" value="1000"',
+    );
+    expect(markup).toContain(
+      'aria-label="チップ額面3" inputMode="numeric" min="1" type="number" value="500"',
+    );
+    expect(markup).toContain(
+      'aria-label="チップ額面4" inputMode="numeric" min="1" type="number" value="100"',
+    );
+  });
+
+  it("会費はスマホでも見出しを入力欄の上へ置く構造にする", () => {
+    const markup = renderToStaticMarkup(
+      createElement(GameSettingsFields, { errors: {}, values: baseValues }),
+    );
+
+    expect(markup).toContain(
+      '<label class="field venue-cost-field" for="venueCost"><span class="field-label">会費</span><span class="input-wrap">',
+    );
   });
 
   it("ローカルルールを初期状態では閉じ、現在のON/OFFを要約表示する", () => {

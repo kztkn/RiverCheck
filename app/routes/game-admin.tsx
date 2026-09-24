@@ -1571,8 +1571,8 @@ export default function GameAdmin({
             </summary>
             <div className="local-rules-disclosure-body">
               <p className="local-rules-description">
-                初期チップと実卓のSB / BBを設定します。BBAはBBと同額で、
-                開始BBはBBのチップ量から自動計算します。
+                実卓のSB / BBと開始スタックを設定します。BBAはBBと同額、
+                初期チップはBBと開始スタックから自動計算します。
               </p>
               <GameConfigurationFields
                 errors={gameConfigurationError?.errors}

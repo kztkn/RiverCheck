@@ -3,6 +3,7 @@ import {
   calculateChipDistributionFromInputs,
   gameConfigurationFromRecommendation,
   gameConfigurationWithBigBlind,
+  gameConfigurationWithStackDepth,
   type GameConfigurationValues,
 } from "./game-configuration-fields";
 
@@ -55,8 +56,29 @@ describe("chip calculator form integration", () => {
   it("BB変更時にBBAを同額へ追従させる", () => {
     expect(gameConfigurationWithBigBlind(parentValues, "25")).toEqual({
       ...parentValues,
+      initialChips: "625",
       bigBlindChips: "25",
       bigBlindAnteChips: "25",
+    });
+  });
+
+  it("BB変更時も選択中の100BBを維持して初期チップを再計算する", () => {
+    expect(
+      gameConfigurationWithBigBlind(
+        {
+          ...parentValues,
+          initialChips: "20000",
+          bigBlindChips: "200",
+          bigBlindAnteChips: "200",
+        },
+        "400",
+        100,
+      ),
+    ).toEqual({
+      ...parentValues,
+      initialChips: "40000",
+      bigBlindChips: "400",
+      bigBlindAnteChips: "400",
     });
   });
 
@@ -68,8 +90,20 @@ describe("chip calculator form integration", () => {
       ),
     ).toEqual({
       ...parentValues,
+      initialChips: "625",
       bigBlindChips: "25",
       bigBlindAnteChips: "0",
+    });
+  });
+
+  it("選択した開始BBから初期チップだけを正方向へ計算する", () => {
+    expect(gameConfigurationWithStackDepth(parentValues, 25)).toEqual({
+      ...parentValues,
+      initialChips: "500",
+    });
+    expect(gameConfigurationWithStackDepth(parentValues, 150)).toEqual({
+      ...parentValues,
+      initialChips: "3000",
     });
   });
 });
