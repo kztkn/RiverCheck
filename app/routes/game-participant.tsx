@@ -2610,6 +2610,7 @@ function getParticipantNotice(notice: string | null): string | null {
     left: "参加を取り消しました。",
     finalized: "結果を確定しました。",
     corrected: "開催情報と結果を更新しました。",
+    "paypay-saved": "PayPay受取リンクを更新しました。",
   };
   return notice ? (messages[notice] ?? null) : null;
 }

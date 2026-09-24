@@ -2235,6 +2235,7 @@ function noticeText(notice: string | null): string | null {
   if (notice === "settlement-plan-published")
     return "今日の精算予定を参加者に公開しました。";
   if (notice === "game-settings-updated") return "基本情報を保存しました。";
+  if (notice === "paypay-saved") return "PayPay受取リンクを更新しました。";
   if (notice === "finalization-reopened") return "結果確定を取り消しました。";
   if (notice === "corrected") return "確定結果を訂正しました。";
   return null;

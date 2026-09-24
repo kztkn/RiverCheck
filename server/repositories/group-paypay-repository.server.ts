@@ -15,7 +15,10 @@ export async function saveGroupPayPayRecipientLinkRecord(
             ELSE paypay_link_registered_at
           END,
           paypay_recipient_link = $2,
-          paypay_owner_player_id = CASE WHEN $2::TEXT IS NULL THEN NULL ELSE $3 END,
+          paypay_owner_player_id = CASE
+            WHEN $2::TEXT IS NULL THEN NULL
+            ELSE $3::UUID
+          END,
           updated_at = NOW()
       WHERE id = $1
     `,
@@ -39,7 +42,10 @@ export async function saveGamePayPayRecipientLinkRecord(
             ELSE paypay_link_registered_at
           END,
           paypay_recipient_link = $3,
-          paypay_owner_player_id = CASE WHEN $3::TEXT IS NULL THEN NULL ELSE $4 END,
+          paypay_owner_player_id = CASE
+            WHEN $3::TEXT IS NULL THEN NULL
+            ELSE $4::UUID
+          END,
           updated_at = NOW()
       WHERE id = $1
         AND group_id = $2

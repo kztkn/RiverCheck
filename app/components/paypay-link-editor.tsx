@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { IconX } from "@tabler/icons-react";
 import { Form, Link } from "react-router";
 import {
   getPayPayLinkExpiresAt,
@@ -29,10 +31,16 @@ export function PayPayLinkEditor({
   recipientName?: string | null;
   value: string | null;
 }) {
+  const submittedValue = value ?? link ?? "";
+  const [linkValue, setLinkValue] = useState(submittedValue);
   const active = isPayPayLinkActive({ link, registeredAt });
   const expiresAt = registeredAt
     ? getPayPayLinkExpiresAt(registeredAt)
     : null;
+
+  useEffect(() => {
+    setLinkValue(submittedValue);
+  }, [submittedValue]);
 
   return (
     <section className="paypay-link-editor">
@@ -67,20 +75,34 @@ export function PayPayLinkEditor({
         <input name="intent" type="hidden" value={intent} />
         <label className="field">
           <span className="field-label">PayPay受取リンク</span>
-          <input
-            aria-invalid={error ? true : undefined}
-            autoCapitalize="none"
-            autoCorrect="off"
-            defaultValue={value ?? link ?? ""}
-            inputMode="url"
-            maxLength={PAYPAY_LINK_MAX_LENGTH}
-            name="payPayRecipientLink"
-            placeholder="https://..."
-            spellCheck={false}
-            type="url"
-          />
+          <span className="paypay-link-input-wrap">
+            <input
+              aria-invalid={error ? true : undefined}
+              autoCapitalize="none"
+              autoCorrect="off"
+              inputMode="url"
+              maxLength={PAYPAY_LINK_MAX_LENGTH}
+              name="payPayRecipientLink"
+              onChange={(event) => setLinkValue(event.currentTarget.value)}
+              placeholder="https://..."
+              spellCheck={false}
+              type="url"
+              value={linkValue}
+            />
+            {linkValue ? (
+              <button
+                aria-label="PayPay受取リンクをクリア"
+                className="paypay-link-clear"
+                onClick={() => setLinkValue("")}
+                type="button"
+              >
+                <IconX aria-hidden="true" />
+              </button>
+            ) : null}
+          </span>
           <span className="field-hint">
-            空欄で保存するとリンクを削除します。同じリンクの再保存では期限を延長しません。
+            ×は入力欄を空にするだけです。空欄のまま保存するとリンクを削除します。
+            同じリンクの再保存では期限を延長しません。
           </span>
         </label>
 
