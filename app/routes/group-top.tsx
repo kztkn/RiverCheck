@@ -120,6 +120,28 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
                   </Suspense>
                 ) : null}
               </div>
+              {!isPrimaryGameLive ? (
+                <NavLink
+                  className={({ isPending }) =>
+                    `button button-primary home-game-primary-action${isPending ? " is-pending" : ""}`
+                  }
+                  prefetch="intent"
+                  to={buildGameUrl(primaryGame, isOrganizer, false)}
+                >
+                  {({ isPending }) => (
+                    <>
+                      <span>
+                        {isPending
+                          ? "開いています"
+                          : isOrganizer
+                            ? "開催管理へ"
+                            : "参加ページへ"}
+                      </span>
+                      <RoutePendingMark pending={isPending} />
+                    </>
+                  )}
+                </NavLink>
+              ) : null}
             </article>
             {otherActiveGames.length > 0 ? (
               <div
@@ -160,7 +182,7 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
             <span>
               <small>PLAYER RECORD</small>
               <strong>プロフィールと戦績</strong>
-              <span>損益・順位・MY HANDを振り返る</span>
+              <span>BB・順位・MY HANDを振り返る</span>
             </span>
             <RoutePendingMark pending={isPending} />
           </>

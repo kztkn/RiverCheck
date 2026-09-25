@@ -328,6 +328,33 @@
   color: var(--green);
 }
 
+.stats-sort-shell {
+  display: grid;
+  width: 100%;
+  gap: 7px;
+}
+
+.stats-sort.stats-sort-primary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: visible;
+}
+
+.stats-sort.stats-sort-primary button {
+  min-width: 0;
+  padding-inline: 8px;
+}
+
+.stats-sort-primary button > span {
+  margin-left: 3px;
+  color: currentColor;
+}
+
+.stats-sort.stats-sort-secondary {
+  border-color: rgba(223, 236, 227, 0.08);
+  background: rgba(9, 23, 17, 0.48);
+}
+
 .stats-ranking-list {
   display: grid;
   gap: 10px;

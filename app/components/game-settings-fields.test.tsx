@@ -163,7 +163,7 @@ describe("GameSettingsFields local rules", () => {
       /<details class="settlement-cost-disclosure"><summary/u,
     );
     expect(adminMarkup).toContain("当日の負担");
-    expect(adminMarkup).toContain("12,000P ・ 8人想定 ・ 順位別配分");
+    expect(adminMarkup).toContain("実費 12,000円 ・ 8人想定 ・ 順位別配分");
   });
 
   it("BBレート0ではゲーム結果を閉じ、無効状態の説明を出さない", () => {

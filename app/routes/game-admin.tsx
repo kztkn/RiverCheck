@@ -680,7 +680,6 @@ export default function GameAdmin({
       participant.remainingChips !== null &&
       participant.settlementRebuyCount !== null,
   ).length;
-  const incompleteCount = visibleParticipants.length - submittedCount;
   const participantStateSummary =
     summarizeAdminParticipantStates(visibleParticipants);
   const totalRebuyCount = visibleParticipants.reduce(
@@ -1206,17 +1205,6 @@ export default function GameAdmin({
           </div>
 
           <div className="admin-command-stats">
-            <div className={incompleteCount > 0 ? "is-warning" : "is-clear"}>
-              <span>結果入力</span>
-              <strong>
-                {submittedCount} / {visibleParticipants.length}人
-              </strong>
-              <small>
-                {incompleteCount > 0
-                  ? `未入力 ${incompleteCount}人`
-                  : "全員入力済み"}
-              </small>
-            </div>
             <div className={chipDifference === 0 ? "is-clear" : "is-warning"}>
               <span>チップ差分</span>
               <strong>

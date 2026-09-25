@@ -593,7 +593,7 @@ export function GameSettingsFields({
             <span>
               <strong>当日の負担</strong>
               <small>
-                {formatOptionalPoints(analysis.settlementTotal)} ・{" "}
+                {formatVenueCostSummary(venueCost)} ・{" "}
                 {participantCountInput || "—"}人想定 ・ 順位別配分
               </small>
             </span>
@@ -1141,6 +1141,14 @@ function formatPoints(value: number): string {
 
 function formatOptionalPoints(value: number | null): string {
   return value === null ? "—" : formatPoints(value);
+}
+
+function formatVenueCostSummary(value: string): string {
+  try {
+    return `実費 ${formatNumber(parsePreviewInteger(value))}円`;
+  } catch {
+    return "実費 —";
+  }
 }
 
 function formatShareValue(value: string): string {

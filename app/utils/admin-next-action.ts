@@ -72,13 +72,13 @@ export function getAdminNextAction({
   if (settlementParticipantCount !== participantCount) {
     return {
       tone: "attention",
-      title: "精算人数を確認",
+      title: "負担人数を確認",
       description:
         settlementParticipantCount === null
-          ? `精算人数を確認してください。現在の参加者は${participantCount}人です。`
-          : `精算予定は${settlementParticipantCount}人、現在の参加者は${participantCount}人です。人数を揃えてください。`,
+          ? `当日の負担人数を確認してください。現在の参加者は${participantCount}人です。`
+          : `負担配分は${settlementParticipantCount}人想定、現在の参加者は${participantCount}人です。人数を揃えてください。`,
       href: "#admin-settlement",
-      actionLabel: "精算を確認",
+      actionLabel: "当日のまとめを確認",
     };
   }
 
@@ -89,9 +89,9 @@ export function getAdminNextAction({
       description:
         chipDifference === null
           ? "チップ検算の状態を確認してから結果を確定してください。"
-          : "全員の入力は揃っています。チップ差分を確認してから精算・確定へ進めます。",
+          : "全員の入力は揃っています。チップ差分を確認してから結果確定へ進めます。",
       href: "#admin-settlement",
-      actionLabel: "精算を確認",
+      actionLabel: "当日のまとめを確認",
     };
   }
 
@@ -100,6 +100,6 @@ export function getAdminNextAction({
     title: "結果を確定できます",
     description: `${participantCount} / ${participantCount}人の入力が揃い、リバイ記録とチップ合計も一致しています。`,
     href: "#admin-settlement",
-    actionLabel: "精算・確定へ",
+    actionLabel: "結果確定へ",
   };
 }

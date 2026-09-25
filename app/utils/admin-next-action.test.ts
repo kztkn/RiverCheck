@@ -64,7 +64,7 @@ describe("admin next action", () => {
       ...readyBase,
       settlementParticipantCount: 7,
     })).toMatchObject({
-      title: "精算人数を確認",
+      title: "負担人数を確認",
       href: "#admin-settlement",
     });
   });
@@ -85,7 +85,7 @@ describe("admin next action", () => {
       title: "結果を確定できます",
       description: "8 / 8人の入力が揃い、リバイ記録とチップ合計も一致しています。",
       href: "#admin-settlement",
-      actionLabel: "精算・確定へ",
+      actionLabel: "結果確定へ",
     });
   });
 });
