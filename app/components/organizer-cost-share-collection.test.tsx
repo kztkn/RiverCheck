@@ -29,7 +29,7 @@ describe("OrganizerCostShareCollection", () => {
     );
 
     expect(markup).toContain("受け渡し状況");
-    expect(markup).toContain("未回収 1人");
+    expect(markup).toContain("未完了 1人");
     expect(markup).toContain("1 / 2人");
     expect(markup).toContain("対象外");
     expect(markup).toContain("主催者だけに表示されます");
@@ -53,7 +53,7 @@ describe("OrganizerCostShareCollection", () => {
       createElement(RouterProvider, { router }),
     );
 
-    expect(markup).toContain("回収完了");
+    expect(markup).toContain("完了");
     expect(markup).toContain("2 / 2人");
   });
 

@@ -192,7 +192,7 @@ describe("game finalization notification", () => {
       finalizeGame(group, gameId, { ...settings, bbRate: 5 }, true, false),
     ).resolves.toEqual({
       ok: false,
-      error: "ゲーム収支を精算する場合は、チップ差分を0にしてください。",
+      error: "ゲーム結果を反映する場合は、チップ差分を0にしてください。",
     });
     expect(mocked.insertFinalResults).not.toHaveBeenCalled();
   });
