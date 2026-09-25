@@ -415,15 +415,17 @@ function ResultParticipantMeta({ result }: { result: GameResultSummary }) {
   return (
     <div className="result-participant-meta">
       <span className="result-final-stack">
-        最終スタック <strong>{formatNumber(result.remainingChips)}</strong>
+        結果チップ <strong>{formatNumber(result.score)}</strong>
       </span>
       <span className="result-rebuy-meta">
+        終了時 {formatNumber(result.remainingChips)}
+        <span aria-hidden="true">・</span>
         リバイ{" "}
         {result.totalRebuyCount === null
           ? "記録なし"
           : `${result.totalRebuyCount}回`}
         <span aria-hidden="true">・</span>
-        終了時未返済 {result.settlementRebuyCount}口
+        未返済 {result.settlementRebuyCount}口
       </span>
     </div>
   );

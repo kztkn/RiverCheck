@@ -130,6 +130,46 @@ describe("FinalResults settlement visibility", () => {
     expect(markup).not.toContain(">トータル<");
   });
 
+  it("未返済リバイを差し引いた結果チップを表示する", () => {
+    const markup = renderToStaticMarkup(
+      createElement(FinalResults, {
+        bigBlindChips: 2,
+        groupCode: "river-check",
+        initialChips: 200,
+        lineText: "",
+        linkPlayerProfiles: false,
+        payPay: null,
+        playedAt: "2026-09-25T00:00:00.000Z",
+        results: [
+          {
+            costShare: 0,
+            gameSettlementAmount: 0,
+            displayName: "Bob",
+            groupPlayerId: "player-bob",
+            rank: 1,
+            remainingChips: 100,
+            score: -300,
+            settlementRebuyCount: 2,
+            totalRebuyCount: 2,
+            trackedOutstandingRebuyCount: 2,
+          },
+        ],
+        revisions: [],
+        shareUrl: "https://example.com/r/result",
+        showSettlementAmounts: false,
+        showSharePanel: false,
+      }),
+    );
+
+    expect(markup).toContain("-250BB");
+    expect(markup).toContain("結果チップ");
+    expect(markup).toContain("-300");
+    expect(markup).toContain("終了時 100");
+    expect(markup).toContain("リバイ 2回");
+    expect(markup).toContain("未返済 2口");
+    expect(markup).not.toContain("最終スタック");
+  });
+
   it("PayPay受取人を小さな星と送金先名で明示する", () => {
     const markup = renderToStaticMarkup(
       createElement(FinalResults, {
