@@ -63,7 +63,7 @@ export function PlayerStatsOverview({
             summary.positiveFinishes,
             summary.gamesPlayed,
           )}
-          label="プラス収支率"
+          label="プラス率"
           value={formatRate(summary.positiveRate, summary.gamesPlayed)}
         />
       </dl>

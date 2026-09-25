@@ -68,11 +68,11 @@ describe("FinalResults settlement visibility", () => {
     expect(markup).toContain("-50BB");
     expect(markup).toContain("-150BB");
     expect(markup).toContain("1BB = 200チップ");
-    expect(markup).not.toContain("1,500円");
-    expect(markup).not.toContain("2,500円");
-    expect(markup).not.toContain("4,000円");
+    expect(markup).not.toContain("1,500P");
+    expect(markup).not.toContain("2,500P");
+    expect(markup).not.toContain("4,000P");
     expect(markup).not.toContain("トータル");
-    expect(markup).not.toContain("会費");
+    expect(markup).not.toContain("負担合計");
     expect(markup).not.toContain("訂正履歴");
   });
 
@@ -94,13 +94,13 @@ describe("FinalResults settlement visibility", () => {
       }),
     );
 
-    expect(markup).toContain("1,500円");
-    expect(markup).toContain("2,500円");
-    expect(markup).toContain("4,000円");
+    expect(markup).toContain("1,500P");
+    expect(markup).toContain("2,500P");
+    expect(markup).toContain("4,000P");
     expect(markup).toContain("トータル");
   });
 
-  it("BB精算が有効なら最終額とゲーム・会費の内訳を表示する", () => {
+  it("BB結果の反映が有効なら最終結果とゲーム・負担の内訳を表示する", () => {
     const markup = renderToStaticMarkup(
       createElement(FinalResults, {
         bbRate: 5,
@@ -122,11 +122,11 @@ describe("FinalResults settlement visibility", () => {
       }),
     );
 
-    expect(markup).toContain("精算レート 1BB = 5円");
-    expect(markup).toContain("精算なし");
-    expect(markup).toContain("支払 4,000円");
-    expect(markup).toContain("ゲーム +1,500円 / 会費 -1,500円");
-    expect(markup).toContain("会費合計");
+    expect(markup).toContain("ゲーム結果 1BB = 5P");
+    expect(markup).toContain("0P");
+    expect(markup).toContain("-4,000P");
+    expect(markup).toContain("ゲーム +1,500P / 負担 -1,500P");
+    expect(markup).toContain("負担合計");
     expect(markup).not.toContain(">トータル<");
   });
 

@@ -47,7 +47,7 @@ describe("PlayerStatsOverview", () => {
     expect(markup).toContain("TOP3率");
     expect(markup).toContain("58.3%");
     expect(markup).toContain("（7/12戦）");
-    expect(markup).toContain("プラス収支率");
+    expect(markup).toContain("プラス率");
     expect(markup).toContain("50%");
     expect(markup).toContain("（6/12戦）");
     expect(markup).not.toContain("優勝率");
@@ -76,7 +76,7 @@ describe("PlayerStatsOverview", () => {
     );
 
     expect(markup).toContain("TOP3率");
-    expect(markup).toContain("プラス収支率");
+    expect(markup).toContain("プラス率");
     expect(markup.match(/—/gu)).toHaveLength(2);
     expect(markup).not.toContain("0/0戦");
   });

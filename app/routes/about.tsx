@@ -6,7 +6,7 @@ import { findGroupByPublicCode } from "@server/repositories/group-repository.ser
 import type { Route } from "./+types/about";
 
 export const ABOUT_DESCRIPTION =
-  "開催結果、会費の精算、個人戦績をひとつにまとめるポーカー会向けWebアプリです。";
+  "開催結果、当日の負担、個人戦績をひとつにまとめるポーカー会向けWebアプリです。";
 
 export async function loader({ params }: Route.LoaderArgs) {
   const group = await findGroupByPublicCode(params.groupCode);
@@ -63,8 +63,8 @@ export function AboutGuide() {
       <AboutItem number="01" title="参加する">
         OPEN GAMESまたは主催者から届いたリンクを開き、自分の名前で参加します。プレイ中はリバイと開催設定に応じたBB返済を記録し、終了後に残りチップと手元のリバイ証を入力します。
       </AboutItem>
-      <AboutItem number="02" title="結果と精算を確認する">
-        主催者が確定すると、順位、損益BB、会費の負担額を同じリンクから確認できます。精算は結果画面からPayPayへ進めます。
+      <AboutItem number="02" title="結果を確認する">
+        主催者が確定すると、順位、BB結果、当日の負担を同じリンクから確認できます。必要なやりとりは結果画面からPayPayへ進めます。
       </AboutItem>
       <AboutItem number="03" title="戦績を振り返る">
         ランキングでは累計・平均損益、最大勝ち、直近3戦、TOP3回数などを比較できます。個人ページでは開催ごとの成績と損益BBの推移を確認できます。

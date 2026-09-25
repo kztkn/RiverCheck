@@ -569,7 +569,7 @@ describe("game participant route", () => {
     expect(markup).toContain("参加者はいません");
   });
 
-  it("公開済みの精算予定を全順位分表示する", () => {
+  it("公開済みの今日のまとめを全順位分表示する", () => {
     const markup = renderToStaticMarkup(
       createElement(SettlementPlanSheet, {
         bbRate: 0,
@@ -579,15 +579,16 @@ describe("game participant route", () => {
       }),
     );
 
-    expect(markup).toContain("今日の精算予定");
+    expect(markup).toContain("今日のまとめ");
     expect(markup).toContain("1位");
     expect(markup).toContain("2位");
-    expect(markup).toContain("1,000円");
-    expect(markup).toContain("2,000円");
-    expect(markup).toContain("ゲーム収支：なし（会費のみで精算します）");
+    expect(markup).toContain("1,000P");
+    expect(markup).toContain("2,000P");
+    expect(markup).not.toContain("ゲーム結果");
+    expect(markup).not.toContain("1BB =");
   });
 
-  it("公開済みの精算予定に有効なゲーム収支レートを表示する", () => {
+  it("公開済みの今日のまとめに有効なゲーム結果レートを表示する", () => {
     const markup = renderToStaticMarkup(
       createElement(SettlementPlanSheet, {
         bbRate: 10,
@@ -597,7 +598,7 @@ describe("game participant route", () => {
       }),
     );
 
-    expect(markup).toContain("ゲーム収支を 1BB = 10円で最終精算に含めます。");
+    expect(markup).toContain("ゲーム結果 1BB = 10P");
   });
 
   it("未入力の結果フォームは閉じておき、結果入力から開く", () => {

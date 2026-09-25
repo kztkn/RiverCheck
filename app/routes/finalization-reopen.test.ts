@@ -85,7 +85,7 @@ describe("reopenFinalizedGame", () => {
 
   it.each([
     ["hasResultRevisions", "結果訂正履歴"],
-    ["hasCostShareReceipts", "会費受取記録"],
+    ["hasCostShareReceipts", "受け渡し確認"],
     ["hasStoryPosts", "TABLE STORIES"],
   ] as const)("blocks reopen when %s exists", async (key, label) => {
     mocked.getFinalizationReopenBlockers.mockResolvedValue({

@@ -124,13 +124,13 @@ describe("GameSettingsFields local rules", () => {
     );
   });
 
-  it("会費はスマホでも見出しを入力欄の上へ置く構造にする", () => {
+  it("実費はスマホでも見出しを入力欄の上へ置く構造にする", () => {
     const markup = renderToStaticMarkup(
       createElement(GameSettingsFields, { errors: {}, values: baseValues }),
     );
 
     expect(markup).toContain(
-      '<label class="field venue-cost-field" for="venueCost"><span class="field-label">会費</span><span class="input-wrap">',
+      '<label class="field venue-cost-field" for="venueCost"><span class="field-label">実費</span><span class="input-wrap">',
     );
   });
 
@@ -144,7 +144,7 @@ describe("GameSettingsFields local rules", () => {
     expect(markup).toMatch(/<details class="local-rules-disclosure"><summary/u);
   });
 
-  it("新規作成では会費設定を開き、開催管理では要約付きで閉じる", () => {
+  it("新規作成では当日の負担を開き、開催管理では要約付きで閉じる", () => {
     const creationMarkup = renderToStaticMarkup(
       createElement(GameSettingsFields, { errors: {}, values: baseValues }),
     );
@@ -162,23 +162,24 @@ describe("GameSettingsFields local rules", () => {
     expect(adminMarkup).toMatch(
       /<details class="settlement-cost-disclosure"><summary/u,
     );
-    expect(adminMarkup).toContain("会費設定");
-    expect(adminMarkup).toContain("12,000円 ・ 8人想定 ・ 順位別配分");
+    expect(adminMarkup).toContain("当日の負担");
+    expect(adminMarkup).toContain("12,000P ・ 8人想定 ・ 順位別配分");
   });
 
-  it("BBレート0ではゲーム収支を閉じ、現在のレートを要約する", () => {
+  it("BBレート0ではゲーム結果を閉じ、無効状態の説明を出さない", () => {
     const markup = renderToStaticMarkup(
       createElement(GameSettingsFields, { errors: {}, values: baseValues }),
     );
 
-    expect(markup).toContain("<strong>ゲーム収支</strong>");
-    expect(markup).toContain("なし（会費のみ）");
+    expect(markup).toContain("<strong>ゲーム結果を反映</strong>");
+    expect(markup).not.toContain("なし（会費のみ）");
     expect(markup).toContain('aria-label="BBレート"');
-    expect(markup).toContain(">0円</button>");
+    expect(markup).toContain(">0P</button>");
+    expect(markup).not.toContain("1BB = 0P");
     expect(markup).toMatch(/<details class="game-settlement-option"><summary/u);
   });
 
-  it("BBレート有効時は現在値と100円単位調整を表示する", () => {
+  it("BBレート有効時は現在値と100P単位調整を表示する", () => {
     const markup = renderToStaticMarkup(
       createElement(GameSettingsFields, {
         errors: {},
@@ -186,13 +187,13 @@ describe("GameSettingsFields local rules", () => {
       }),
     );
 
-    expect(markup).toContain("1BB = 5円");
-    expect(markup).toContain("100円単位で調整します");
+    expect(markup).toContain("1BB = 5P");
+    expect(markup).toContain("100P単位で調整します");
     expect(markup).toContain('aria-pressed="true"');
     expect(markup).toMatch(/<details[^>]*\sopen(?:=|\s|>)/u);
   });
 
-  it("終了入力が揃えばゲーム・会費・最終精算をプレビューする", () => {
+  it("終了入力が揃えばゲーム・負担・最終結果をプレビューする", () => {
     const markup = renderToStaticMarkup(
       createElement(GameSettingsFields, {
         errors: {},
@@ -235,10 +236,10 @@ describe("GameSettingsFields local rules", () => {
       }),
     );
 
-    expect(markup).toContain("最終精算プレビュー");
-    expect(markup).toContain("ゲーム +500円 / 会費 -1,000円");
-    expect(markup).toContain("支払 500円");
-    expect(markup).toContain("支払 2,500円");
+    expect(markup).toContain("最終結果プレビュー");
+    expect(markup).toContain("ゲーム +500P / 負担 -1,000P");
+    expect(markup).toContain("-500P");
+    expect(markup).toContain("-2,500P");
   });
 
   it("OFF設定も閉じた状態の要約へ反映する", () => {

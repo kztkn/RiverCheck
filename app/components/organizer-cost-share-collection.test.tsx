@@ -9,7 +9,7 @@ import {
 } from "./organizer-cost-share-collection";
 
 describe("OrganizerCostShareCollection", () => {
-  it("回収数、未回収数、0円の対象外を表示する", () => {
+  it("受け渡し状況と対象外を表示する", () => {
     const router = createMemoryRouter([
       {
         path: "/",
@@ -28,7 +28,7 @@ describe("OrganizerCostShareCollection", () => {
       createElement(RouterProvider, { router }),
     );
 
-    expect(markup).toContain("会費の回収");
+    expect(markup).toContain("受け渡し状況");
     expect(markup).toContain("未回収 1人");
     expect(markup).toContain("1 / 2人");
     expect(markup).toContain("対象外");
@@ -57,7 +57,7 @@ describe("OrganizerCostShareCollection", () => {
     expect(markup).toContain("2 / 2人");
   });
 
-  it("BB精算では最終額に応じて入金・送金方向を表示する", () => {
+  it("ゲーム結果反映時は最終値に応じて入金・送金方向を表示する", () => {
     const router = createMemoryRouter([
       {
         path: "/",
@@ -76,16 +76,16 @@ describe("OrganizerCostShareCollection", () => {
       createElement(RouterProvider, { router }),
     );
 
-    expect(markup).toContain("精算状況");
-    expect(markup).toContain("受取 1,000円");
-    expect(markup).toContain("支払 4,000円");
+    expect(markup).toContain("受け渡し状況");
+    expect(markup).toContain("受取 1,000P");
+    expect(markup).toContain("支払 4,000P");
     expect(markup).toContain("送金待ち");
     expect(markup).toContain("入金待ち");
     expect(markup).toContain("対象外");
     expect(markup).toContain("0 / 2人");
   });
 
-  it("開催詳細から会費保存先を組み立て、対象者だけを即時更新する", () => {
+  it("開催詳細から確認状況の保存先を組み立て、対象者だけを即時更新する", () => {
     expect(
       buildGameCostShareReceiptPath("/g/river-check/games/game-1"),
     ).toBe("/g/river-check/games/game-1/cost-share-receipts");

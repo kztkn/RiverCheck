@@ -355,7 +355,7 @@ export function validateGameSettingsForm(
     errors,
   );
   if (bbRate !== null && !isSupportedBbRate(bbRate)) {
-    errors.bbRate = "BBレートは0円、5円、10円、20円から選んでください。";
+    errors.bbRate = "BBレートは0P、5P、10P、20Pから選んでください。";
   }
   if (
     previewParticipantCount !== null &&
@@ -363,7 +363,7 @@ export function validateGameSettingsForm(
   ) {
     errors.previewParticipantCount =
       minimumParticipantCount === MINIMUM_PARTICIPANT_COUNT
-        ? "精算は2人以上で試算してください。"
+        ? "人数は2人以上で試算してください."
         : `現在の参加人数（${minimumParticipantCount}人）以上で試算してください。`;
   }
 
@@ -453,7 +453,7 @@ export function validateGameSettingsForm(
         }).shares;
       } catch {
         errors.venueCost =
-          "この人数では精算総額が不足します。会費か上位の負担額を調整してください。";
+          "この人数では負担総額が不足します。実費か上位の負担額を調整してください。";
       }
     }
   }
@@ -655,7 +655,7 @@ function getCostSharePlanError(
     (share) => share % COST_ROUNDING_UNIT !== 0,
   );
   if (unroundedIndex >= 0) {
-    return `${unroundedIndex + 1}位の負担額を100円単位で入力してください。`;
+    return `${unroundedIndex + 1}位の負担額を100P単位で入力してください。`;
   }
   const reversedIndex = shares.findIndex(
     (share, index) => index > 0 && share < shares[index - 1]!,
@@ -670,14 +670,14 @@ function getCostSharePlanError(
     !Number.isSafeInteger(settlementTotal) ||
     !Number.isSafeInteger(allocatedTotal)
   ) {
-    return "会費または負担額が大きすぎます。";
+    return "実費または負担額が大きすぎます。";
   }
   const difference = settlementTotal - allocatedTotal;
   if (difference > 0) {
-    return `負担額合計が精算総額より${difference.toLocaleString("ja-JP")}円不足しています。`;
+    return `配分合計が負担総額より${difference.toLocaleString("ja-JP")}P不足しています。`;
   }
   if (difference < 0) {
-    return `負担額合計が精算総額より${Math.abs(difference).toLocaleString("ja-JP")}円多いです。`;
+    return `配分合計が負担総額より${Math.abs(difference).toLocaleString("ja-JP")}P多いです。`;
   }
   try {
     validateCostSharePlan({ venueCost, participantCount, shares });

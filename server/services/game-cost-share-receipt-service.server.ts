@@ -22,7 +22,7 @@ export async function updateGameCostShareReceipt(
       if (settlement === null) {
         return {
           ok: false,
-          error: "会費の回収対象を確認できませんでした。画面を更新してください。",
+          error: "対象を確認できませんでした。画面を更新してください。",
         };
       }
       const balance = calculateSettlementBalance({
@@ -34,8 +34,8 @@ export async function updateGameCostShareReceipt(
           ok: false,
           error:
             (settlement.gameSettlementAmount ?? 0) === 0
-              ? "0円の参加者は回収対象外です。"
-              : "0円の参加者は精算対象外です。",
+              ? "0Pの参加者は対象外です。"
+              : "0Pの参加者は対象外です。",
         };
       }
 
@@ -54,7 +54,7 @@ export async function updateGameCostShareReceipt(
     });
     return {
       ok: false,
-      error: "会費の回収状況を保存できませんでした。時間をおいて再度お試しください。",
+      error: "確認状況を保存できませんでした。時間をおいて再度お試しください。",
     };
   }
 }

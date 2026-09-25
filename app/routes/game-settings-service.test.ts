@@ -271,7 +271,7 @@ describe("game settings cost shares", () => {
       expect.objectContaining({
         ok: false,
         errors: expect.objectContaining({
-          bbRate: expect.stringContaining("5円"),
+          bbRate: expect.stringContaining("5P"),
         }),
       }),
     );
@@ -306,7 +306,7 @@ describe("game settings cost shares", () => {
       expect.objectContaining({
         ok: false,
         errors: expect.objectContaining({
-          costShares: expect.stringContaining("300円不足"),
+          costShares: expect.stringContaining("300P不足"),
         }),
       }),
     );
@@ -322,13 +322,13 @@ describe("game settings cost shares", () => {
       expect.objectContaining({
         ok: false,
         errors: expect.objectContaining({
-          costShares: expect.stringContaining("200円多い"),
+          costShares: expect.stringContaining("200P多い"),
         }),
       }),
     );
   });
 
-  it("100円単位でない配分を拒否する", () => {
+  it("100P単位でない配分を拒否する", () => {
     const result = validateGameSettingsForm({
       ...validValues,
       costShares: ["1850", "1950", "2300", "2500", "2800"],
@@ -338,7 +338,7 @@ describe("game settings cost shares", () => {
       expect.objectContaining({
         ok: false,
         errors: expect.objectContaining({
-          costShares: expect.stringContaining("100円単位"),
+          costShares: expect.stringContaining("100P単位"),
         }),
       }),
     );

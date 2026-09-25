@@ -87,11 +87,7 @@ export function OrganizerCostShareCollection({
         const data = await response.json() as ReceiptActionData;
         if (!response.ok || !data.ok) {
           throw new Error(
-            data.ok
-              ? gameSettlementEnabled
-                ? "精算状況を保存できませんでした。"
-                : "会費の回収状況を保存できませんでした。"
-              : data.error,
+            data.ok ? "確認状況を保存できませんでした。" : data.error,
           );
         }
       })
@@ -107,9 +103,7 @@ export function OrganizerCostShareCollection({
         setError(
           saveError instanceof Error && saveError.message
             ? saveError.message
-            : gameSettlementEnabled
-              ? "精算状況を保存できませんでした。時間をおいて再度お試しください。"
-              : "会費の回収状況を保存できませんでした。時間をおいて再度お試しください。",
+            : "確認状況を保存できませんでした。時間をおいて再度お試しください。",
         );
       })
       .finally(() => {
@@ -128,15 +122,13 @@ export function OrganizerCostShareCollection({
       <summary>
         <span className="cost-share-collection-summary-copy">
           <small>ORGANIZER ONLY</small>
-          <strong>{gameSettlementEnabled ? "精算状況" : "会費の回収"}</strong>
+          <strong>受け渡し状況</strong>
           <span>
             {activeReceipts.length === 0
-              ? gameSettlementEnabled ? "精算対象はありません" : "回収対象はありません"
+              ? "対象はありません"
               : allReceived
-                ? gameSettlementEnabled ? "精算完了" : "回収完了"
-                : gameSettlementEnabled
-                  ? `未完了 ${unpaidCount}人`
-                  : `未回収 ${unpaidCount}人`}
+                ? "完了"
+                : `未完了 ${unpaidCount}人`}
           </span>
         </span>
         <span className="cost-share-collection-count">
@@ -146,9 +138,7 @@ export function OrganizerCostShareCollection({
 
       <div className="cost-share-collection-body">
         <p>
-          {gameSettlementEnabled
-            ? "主催者だけに表示されます。参加者との入出金が完了したらチェックしてください。"
-            : "主催者だけに表示されます。受け取った会費をチェックしてください。"}
+          主催者だけに表示されます。参加者との受け渡しが完了したらチェックしてください。
         </p>
         <div className="cost-share-collection-list">
           {visibleReceipts.map((receipt) => {
@@ -165,8 +155,8 @@ export function OrganizerCostShareCollection({
                   <strong>{receipt.displayName}</strong>
                   <small>
                     {gameSettlementEnabled
-                      ? `${balance > 0 ? "受取" : "支払"} ${Math.abs(balance).toLocaleString("ja-JP")}円`
-                      : `${receipt.costShare.toLocaleString("ja-JP")}円`}
+                      ? `${balance > 0 ? "受取" : "支払"} ${Math.abs(balance).toLocaleString("ja-JP")}P`
+                      : `${receipt.costShare.toLocaleString("ja-JP")}P`}
                   </small>
                 </span>
                 {balance === 0 ? (
@@ -202,7 +192,7 @@ export function OrganizerCostShareCollection({
                       <span aria-hidden="true">{received ? "✓" : ""}</span>
                       {gameSettlementEnabled
                         ? received ? `${actionLabel}済み` : `${actionLabel}待ち`
-                        : received ? "受取済み" : "未回収"}
+                        : received ? "受取済み" : "受取待ち"}
                     </button>
                   </form>
                 )}

@@ -115,7 +115,7 @@ export function ResultRevisionHistory({
                             initialChips,
                             bigBlindChips,
                           })}
-                          label="損益BB"
+                          label="BB結果"
                         />
                       ) : null}
                       {change.before.rank !== change.after.rank ? (
@@ -128,9 +128,9 @@ export function ResultRevisionHistory({
                       {showCostShareChanges &&
                       change.before.costShare !== change.after.costShare ? (
                         <ChangeValue
-                          after={formatYen(change.after.costShare)}
-                          before={formatYen(change.before.costShare)}
-                          label="会費"
+                          after={formatPoints(change.after.costShare)}
+                          before={formatPoints(change.before.costShare)}
+                          label="負担"
                         />
                       ) : null}
                       {showCostShareChanges &&
@@ -138,10 +138,10 @@ export function ResultRevisionHistory({
                       (change.before.gameSettlementAmount ?? 0) !==
                         (change.after.gameSettlementAmount ?? 0) ? (
                         <ChangeValue
-                          after={formatSignedYen(
+                          after={formatSignedPoints(
                             change.after.gameSettlementAmount ?? 0,
                           )}
-                          before={formatSignedYen(
+                          before={formatSignedPoints(
                             change.before.gameSettlementAmount ?? 0,
                           )}
                           label="ゲーム"
@@ -152,13 +152,13 @@ export function ResultRevisionHistory({
                       settlementBalance(change.before) !==
                         settlementBalance(change.after) ? (
                         <ChangeValue
-                          after={formatSignedYen(
+                          after={formatSignedPoints(
                             settlementBalance(change.after),
                           )}
-                          before={formatSignedYen(
+                          before={formatSignedPoints(
                             settlementBalance(change.before),
                           )}
-                          label="最終精算"
+                          label="最終結果"
                         />
                       ) : null}
                     </div>
@@ -208,12 +208,12 @@ function formatChips(value: number): string {
   return `${value.toLocaleString("ja-JP")}チップ`;
 }
 
-function formatYen(value: number): string {
-  return `${value.toLocaleString("ja-JP")}円`;
+function formatPoints(value: number): string {
+  return `${value.toLocaleString("ja-JP")}P`;
 }
 
-function formatSignedYen(value: number): string {
-  return `${value > 0 ? "+" : ""}${value.toLocaleString("ja-JP")}円`;
+function formatSignedPoints(value: number): string {
+  return `${value > 0 ? "+" : ""}${value.toLocaleString("ja-JP")}P`;
 }
 
 function settlementBalance(result: {

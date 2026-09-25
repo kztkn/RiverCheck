@@ -65,7 +65,7 @@ export function ResultCorrectionPanel({
           calculated: null,
           chipDifference: chipValidation.difference,
           error:
-            "ゲーム収支を精算している開催は、チップ差分を0にしてください。",
+            "ゲーム結果を反映する開催は、チップ差分を0にしてください。",
         };
       }
       return {
@@ -253,10 +253,10 @@ export function ResultCorrectionPanel({
                   </span>
                   <strong>
                     {game.bbRate > 0
-                      ? formatSettlementBalance(
+                      ? formatResultPoints(
                           result.gameSettlementAmount - result.costShare,
                         )
-                      : formatYen(result.costShare)}
+                      : formatPoints(result.costShare)}
                   </strong>
                 </div>
               ))}
@@ -352,13 +352,12 @@ function scoreClassName(
       : "result-score-neutral";
 }
 
-function formatYen(value: number): string {
-  return `${value.toLocaleString("ja-JP")}円`;
+function formatPoints(value: number): string {
+  return `${value.toLocaleString("ja-JP")}P`;
 }
 
-function formatSettlementBalance(value: number): string {
-  if (value === 0) return "精算なし";
-  return `${value > 0 ? "受取" : "支払"} ${Math.abs(value).toLocaleString("ja-JP")}円`;
+function formatResultPoints(value: number): string {
+  return `${value > 0 ? "+" : ""}${value.toLocaleString("ja-JP")}P`;
 }
 
 function formatSignedNumber(value: number): string {

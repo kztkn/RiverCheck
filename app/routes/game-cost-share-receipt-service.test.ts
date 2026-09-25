@@ -26,7 +26,7 @@ describe("game cost share receipt service", () => {
     );
   });
 
-  it("確定結果の会費をロックして受取済みを保存する", async () => {
+  it("確定結果の負担をロックして受取済みを保存する", async () => {
     mocked.lockCostShareForReceipt.mockResolvedValue({
       costShare: 1_500,
       gameSettlementAmount: 0,
@@ -50,7 +50,7 @@ describe("game cost share receipt service", () => {
     );
   });
 
-  it("0円の参加者を受取済みにはしない", async () => {
+  it("0Pの参加者を受取済みにはしない", async () => {
     mocked.lockCostShareForReceipt.mockResolvedValue({
       costShare: 0,
       gameSettlementAmount: 0,
@@ -60,12 +60,12 @@ describe("game cost share receipt service", () => {
       updateGameCostShareReceipt("group-1", "game-1", "player-1", true),
     ).resolves.toEqual({
       ok: false,
-      error: "0円の参加者は回収対象外です。",
+      error: "0Pの参加者は対象外です。",
     });
     expect(mocked.setGameCostShareReceived).not.toHaveBeenCalled();
   });
 
-  it("ゲーム収支と会費が相殺された参加者を精算済みにはしない", async () => {
+  it("ゲーム結果と負担が相殺された参加者を完了扱いにはしない", async () => {
     mocked.lockCostShareForReceipt.mockResolvedValue({
       costShare: 1_500,
       gameSettlementAmount: 1_500,
@@ -75,7 +75,7 @@ describe("game cost share receipt service", () => {
       updateGameCostShareReceipt("group-1", "game-1", "player-1", true),
     ).resolves.toEqual({
       ok: false,
-      error: "0円の参加者は精算対象外です。",
+      error: "0Pの参加者は対象外です。",
     });
   });
 
@@ -86,7 +86,7 @@ describe("game cost share receipt service", () => {
       updateGameCostShareReceipt("group-1", "game-1", "player-1", false),
     ).resolves.toEqual({
       ok: false,
-      error: "会費の回収対象を確認できませんでした。画面を更新してください。",
+      error: "対象を確認できませんでした。画面を更新してください。",
     });
     expect(mocked.setGameCostShareReceived).not.toHaveBeenCalled();
   });
@@ -99,7 +99,7 @@ describe("game cost share receipt service", () => {
       updateGameCostShareReceipt("group-1", "game-1", "player-1", true),
     ).resolves.toEqual({
       ok: false,
-      error: "会費の回収状況を保存できませんでした。時間をおいて再度お試しください。",
+      error: "確認状況を保存できませんでした。時間をおいて再度お試しください。",
     });
     expect(consoleError).toHaveBeenCalledWith(
       "Failed to update game cost share receipt",

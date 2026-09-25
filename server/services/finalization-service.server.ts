@@ -125,7 +125,7 @@ export async function finalizeGame(
     if (settings.previewParticipantCount !== rows.length) {
       return {
         ok: false,
-        error: `会費精算の人数（${settings.previewParticipantCount}人）と参加者（${rows.length}人）を一致させてください。`,
+        error: `負担配分の人数（${settings.previewParticipantCount}人）と参加者（${rows.length}人）を一致させてください。`,
       };
     }
     const participants = toFinalizationParticipants(rows);
@@ -168,7 +168,7 @@ export async function finalizeGame(
     if (settings.bbRate > 0 && !chipValidation.isValid) {
       return {
         ok: false,
-        error: "ゲーム収支を精算する場合は、チップ差分を0にしてください。",
+        error: "ゲーム結果を反映する場合は、チップ差分を0にしてください。",
       };
     }
 
@@ -189,7 +189,7 @@ export async function finalizeGame(
     } catch {
       return {
         ok: false,
-        error: "現在の参加人数と開催条件では精算を確定できません。",
+        error: "現在の参加人数と開催条件では結果を確定できません。",
       };
     }
 
@@ -281,7 +281,7 @@ export async function reopenFinalizedGame(
     const blockers = await getFinalizationReopenBlockers(transaction, gameId);
     const blockerLabels = [
       blockers.hasResultRevisions ? "結果訂正履歴" : null,
-      blockers.hasCostShareReceipts ? "会費受取記録" : null,
+      blockers.hasCostShareReceipts ? "受け渡し確認" : null,
       blockers.hasStoryPosts ? "TABLE STORIES" : null,
     ].filter((label): label is string => label !== null);
     if (blockerLabels.length > 0) {
@@ -443,7 +443,7 @@ export async function updateFinalizedGame(
     if (game.bbRate > 0 && !chipValidation.isValid) {
       return {
         ok: false,
-        error: "ゲーム収支を精算している開催は、チップ差分を0にしてください。",
+        error: "ゲーム結果を反映する開催は、チップ差分を0にしてください。",
       };
     }
 

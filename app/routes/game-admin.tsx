@@ -190,7 +190,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       return {
         ok: false as const,
         intent: "publish-settlement-plan" as const,
-        error: `精算設定を確認してください。${messages.join(" ")}`,
+        error: `設定を確認してください。${messages.join(" ")}`,
         errors: validation.errors,
         values,
       };
@@ -208,7 +208,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         ok: false as const,
         intent: "publish-settlement-plan" as const,
         error:
-          "精算予定を公開できませんでした。画面を更新してもう一度お試しください。",
+          "今日のまとめを公開できませんでした。画面を更新してもう一度お試しください。",
         errors: {},
         values,
       };
@@ -217,7 +217,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       return {
         ok: false as const,
         intent: "publish-settlement-plan" as const,
-        error: "精算予定を公開できませんでした。画面を更新してください。",
+        error: "今日のまとめを公開できませんでした。画面を更新してください。",
         errors: {},
         values,
       };
@@ -241,7 +241,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       ];
       return {
         ok: false as const,
-        error: `精算設定を確認してください。${messages.join(" ")}`,
+        error: `設定を確認してください。${messages.join(" ")}`,
         errors: validation.errors,
         values,
       };
@@ -2233,7 +2233,7 @@ function noticeText(notice: string | null): string | null {
   if (notice === "finalized") return "結果を確定しました。";
   if (notice === "local-rules-saved") return "ローカルルールを保存しました。";
   if (notice === "settlement-plan-published")
-    return "今日の精算予定を参加者に公開しました。";
+    return "今日のまとめを参加者に公開しました。";
   if (notice === "game-settings-updated") return "基本情報を保存しました。";
   if (notice === "paypay-saved") return "PayPay受取リンクを更新しました。";
   if (notice === "finalization-reopened") return "結果確定を取り消しました。";
@@ -2258,7 +2258,7 @@ function SettlementPublishControls({
         <p className="form-brand-label">SHARE WITH PLAYERS</p>
         <h2>参加者への公開</h2>
         <p>
-          会費配分とゲーム収支を、参加者画面の「今日の精算予定」へ反映します。
+          負担配分とゲーム結果を、参加者画面の「今日のまとめ」へ反映します。
         </p>
       </div>
       {error ? (
@@ -2284,7 +2284,7 @@ function SettlementPublishControls({
       </button>
       <p className="field-hint settlement-publish-status">
         {publishedAt
-          ? "現在の精算予定は参加者に公開中です。変更はこのボタンを押すまで公開されません。"
+          ? "現在のまとめ内容は参加者に公開中です。変更はこのボタンを押すまで公開されません。"
           : "入力中の下書きは、公開するまで参加者には見えません。"}
       </p>
     </section>
@@ -2397,7 +2397,7 @@ function FinalizationPanel({
             ? `${formatNumber(validation!.difference)}チップ不足しています。`
             : `${formatNumber(Math.abs(validation!.difference))}チップ多く報告されています。`}
           {bbRate > 0
-            ? "ゲーム収支を精算するため、入力を見直して差分を0にしてください。"
+            ? "ゲーム結果を反映するため、入力を見直して差分を0にしてください。"
             : "入力を見直すか、差分を確認して確定してください。"}
         </p>
       ) : null}
@@ -2433,16 +2433,16 @@ function FinalizationPanel({
             />
             <span className="confirmation-copy">
               <strong>リバイ記録との差を確認しました</strong>
-              <small>終了時リバイ証を精算値として結果を確定します。</small>
+              <small>終了時リバイ証を結果値として確定します。</small>
             </span>
           </label>
         ) : null}
         {!participantCountMatches ? (
           <p className="field-hint settlement-count-hint">
-            結果確定する場合は、会費精算の人数（
+            結果確定する場合は、負担配分の人数（
             {settlementParticipantCountLabel}）を 現在の参加者（
             {finalization.participantCount}人）に合わせてください。
-            精算予定の公開だけなら、このままでも問題ありません。
+            今日のまとめの公開だけなら、このままでも問題ありません。
           </p>
         ) : null}
         {error ? (
@@ -2468,10 +2468,10 @@ function FinalizationPanel({
         >
           {submittingIntent === "finalize"
             ? "処理中…"
-            : "この精算設定で結果を確定"}
+            : "この設定で結果を確定"}
         </button>
         <p className="finalize-hint">
-          確定時に上の精算設定も保存します。確定後は変更できません。
+          確定時に上の設定も保存します。確定後は変更できません。
         </p>
       </div>
     </section>

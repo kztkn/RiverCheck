@@ -2254,7 +2254,7 @@ export function SettlementPlanSheet({
         ref={triggerRef}
         type="button"
       >
-        <span>今日の精算予定</span>
+        <span>今日のまとめ</span>
         <span aria-hidden="true">›</span>
       </button>
       <dialog
@@ -2274,11 +2274,11 @@ export function SettlementPlanSheet({
         <div className="participant-roster-sheet rebuy-rules-sheet">
           <header className="participant-roster-header">
             <div>
-              <p className="eyebrow">SETTLEMENT PLAN</p>
-              <h2 id="settlement-plan-title">今日の精算予定</h2>
+              <p className="eyebrow">TODAY'S SUMMARY</p>
+              <h2 id="settlement-plan-title">今日のまとめ</h2>
             </div>
             <button
-              aria-label="精算予定を閉じる"
+              aria-label="今日のまとめを閉じる"
               className="participant-roster-close"
               onClick={closeSheet}
               type="button"
@@ -2290,19 +2290,19 @@ export function SettlementPlanSheet({
           </header>
           <div className="participant-roster-scroll rebuy-rules-content">
             <p className="rebuy-rules-note">
-              会場費 {venueCost.toLocaleString("ja-JP")}円 ・ {participantCount}
+              実費 {venueCost.toLocaleString("ja-JP")}円 ・ {participantCount}
               人想定
             </p>
-            <p className="rebuy-rules-note">
-              {bbRate > 0
-                ? `ゲーム収支を 1BB = ${bbRate.toLocaleString("ja-JP")}円で最終精算に含めます。`
-                : "ゲーム収支：なし（会費のみで精算します）"}
-            </p>
+            {bbRate > 0 ? (
+              <p className="rebuy-rules-note">
+                ゲーム結果 1BB = {bbRate.toLocaleString("ja-JP")}P
+              </p>
+            ) : null}
             <ol className="rebuy-rules-list settlement-plan-list">
               {costShares.map((share, index) => (
                 <li key={index}>
                   <strong>{index + 1}位</strong>
-                  <span>{share.toLocaleString("ja-JP")}円</span>
+                  <span>{share.toLocaleString("ja-JP")}P</span>
                 </li>
               ))}
             </ol>
