@@ -134,17 +134,39 @@ describe("GameSettingsFields local rules", () => {
     );
   });
 
-  it("ローカルルールを初期状態では閉じ、現在のON/OFFを要約表示する", () => {
+  it("ゲーム設定とローカルルールを詳細設定へまとめて初期状態では閉じる", () => {
     const markup = renderToStaticMarkup(
       createElement(GameSettingsFields, { errors: {}, values: baseValues }),
     );
 
-    expect(markup).toContain("<details");
-    expect(markup).toContain("72o ON ・ ボムポット ON");
-    expect(markup).toMatch(/<details class="local-rules-disclosure"><summary/u);
+    expect(markup).toContain("<span>02</span>詳細設定");
+    expect(markup).toContain("いつもの設定から変えるときだけ開いてください。");
+    expect(markup).toContain(
+      "<strong>ゲーム設定</strong><small>100BB開始 ・ SB 100 / BB 200 / BBA 200</small>",
+    );
+    expect(markup).toContain(
+      "<strong>ローカルルール</strong><small>72o ON ・ ボムポット ON</small>",
+    );
+    expect(markup.match(/class="advanced-setting-disclosure"/gu) ?? []).toHaveLength(2);
+    expect(markup).not.toMatch(
+      /<details class="advanced-setting-disclosure" open=""/u,
+    );
   });
 
-  it("新規作成では当日の負担を開き、開催管理では要約付きで閉じる", () => {
+  it("ゲーム設定の入力エラーがある場合は詳細設定を自動で開く", () => {
+    const markup = renderToStaticMarkup(
+      createElement(GameSettingsFields, {
+        errors: { bigBlindChips: "BBを確認してください。" },
+        values: baseValues,
+      }),
+    );
+
+    expect(markup).toMatch(
+      /<details class="advanced-setting-disclosure" open="">/u,
+    );
+  });
+
+  it("新規作成では03の当日の負担を開き、開催管理では要約付きで閉じる", () => {
     const creationMarkup = renderToStaticMarkup(
       createElement(GameSettingsFields, { errors: {}, values: baseValues }),
     );
@@ -156,6 +178,7 @@ describe("GameSettingsFields local rules", () => {
       }),
     );
 
+    expect(creationMarkup).toContain("<span>03</span>当日のまとめ");
     expect(creationMarkup).toMatch(
       /<details class="settlement-cost-disclosure" open=""><summary/u,
     );

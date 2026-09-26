@@ -1590,11 +1590,11 @@ input[aria-invalid="true"] {
 
 .copy-icon-button {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 4px;
+  right: 4px;
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border: 1px solid rgba(223, 236, 227, 0.14);
   border-radius: 9px;
@@ -5173,6 +5173,76 @@ input[aria-invalid="true"] {
   max-width: 560px;
 }
 
+.advanced-settings-intro {
+  margin-top: -4px;
+}
+
+.advanced-setting-disclosure {
+  width: 100%;
+  max-width: 680px;
+  border-top: 1px solid rgba(223, 236, 227, 0.11);
+}
+
+.advanced-setting-disclosure:last-child {
+  border-bottom: 1px solid rgba(223, 236, 227, 0.11);
+}
+
+.advanced-setting-disclosure > summary {
+  display: flex;
+  min-height: 66px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 2px;
+}
+
+.advanced-setting-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.advanced-setting-disclosure > summary::after {
+  flex: 0 0 auto;
+  color: var(--muted);
+  content: "+";
+  font-size: 1.2rem;
+}
+
+.advanced-setting-disclosure[open] > summary::after {
+  content: "−";
+}
+
+.advanced-setting-disclosure > summary > span {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.advanced-setting-disclosure > summary strong {
+  color: var(--ink);
+  font-size: 0.86rem;
+}
+
+.advanced-setting-disclosure > summary small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.advanced-setting-disclosure-body {
+  display: grid;
+  gap: 16px;
+  padding: 4px 0 24px;
+}
+
+.advanced-setting-disclosure-body > .field-hint {
+  margin: 0;
+}
+
 .initial-stack-options {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -5180,7 +5250,7 @@ input[aria-invalid="true"] {
 }
 
 .initial-stack-option {
-  min-height: 42px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: transparent;
@@ -5207,7 +5277,7 @@ input[aria-invalid="true"] {
   display: flex;
   box-sizing: border-box;
   min-width: 0;
-  min-height: 42px;
+  min-height: 44px;
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -5224,7 +5294,7 @@ input[aria-invalid="true"] {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  min-height: 40px;
+  min-height: 44px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -5332,7 +5402,7 @@ input[aria-invalid="true"] {
 }
 
 .blind-ante-options > button {
-  min-height: 34px;
+  min-height: 44px;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
@@ -5690,7 +5760,7 @@ input[aria-invalid="true"] {
 }
 
 .game-form .initial-stack-custom input {
-  min-height: 40px;
+  min-height: 44px;
 }
 
 .game-form .cost-preview {
@@ -5853,7 +5923,7 @@ input[aria-invalid="true"] {
 }
 
 .bb-rate-picker button {
-  min-height: 42px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 9px;
   background: transparent;
@@ -6434,6 +6504,83 @@ input[aria-invalid="true"] {
   margin-bottom: 38px;
 }
 
+.admin-share-disclosure {
+  display: block;
+  padding-block: 0;
+}
+
+.admin-share-disclosure > summary {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+  padding: 6px 2px;
+}
+
+.admin-share-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-share-disclosure > summary::after {
+  color: var(--muted);
+  content: "+";
+  font-size: 1.2rem;
+}
+
+.admin-share-disclosure[open] > summary::after {
+  content: "−";
+}
+
+.admin-share-summary > span {
+  display: grid;
+  gap: 3px;
+}
+
+.admin-share-summary strong {
+  color: var(--ink);
+  font-size: 1.02rem;
+}
+
+.admin-share-summary small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.admin-share-disclosure-body {
+  display: grid;
+  gap: 16px;
+  border-top: 1px solid rgba(223, 236, 227, 0.09);
+  padding: 18px 0 22px;
+}
+
+.admin-settings-section {
+  display: grid;
+  gap: 0;
+  margin: 34px 0 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+
+.admin-settings-heading {
+  margin-bottom: 8px;
+}
+
+.admin-settings-heading h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.admin-settings-section .admin-local-rules {
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  padding: 8px 0;
+}
+
 .admin-utility-panel h2,
 .admin-page .admin-participants h2 {
   margin: 0;
@@ -6450,7 +6597,8 @@ input[aria-invalid="true"] {
 
 .participant-state-summary {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   margin: -2px 0 14px;
   border-block: 1px solid rgba(223, 236, 227, 0.09);
   padding: 8px 0;

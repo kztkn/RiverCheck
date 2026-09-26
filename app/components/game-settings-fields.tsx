@@ -500,43 +500,54 @@ export function GameSettingsFields({
             />
           </fieldset>
 
-          <fieldset className="form-section form-section-stack">
+          <fieldset className="form-section form-section-advanced">
             <legend>
               <span>02</span>
-              ゲーム設定
+              詳細設定
             </legend>
-            <GameConfigurationFields
-              errors={errors}
-              onChange={setGameConfiguration}
-              values={gameConfiguration}
-            />
-            <p className="field-hint">
-              リバイも開始時と同じチップ枚数・BBです。
+            <p className="field-hint advanced-settings-intro">
+              いつもの設定から変えるときだけ開いてください。
             </p>
-          </fieldset>
-
-          <fieldset className="form-section local-rule-create-section">
-            <legend>
-              <span>03</span>
-              ローカルルール
-            </legend>
-            <details className="local-rules-disclosure">
-              <summary className="local-rules-disclosure-summary">
-                <span className="local-rules-summary-title">
-                  設定を確認・変更
-                </span>
-                <span className="local-rules-summary-status">
-                  72o {sevenDeuceRuleEnabled ? "ON" : "OFF"} ・ ボムポット{" "}
-                  {bombPotRuleEnabled ? "ON" : "OFF"}
-                </span>
-                <span
-                  aria-hidden="true"
-                  className="local-rules-summary-chevron"
-                >
-                  ›
+            <details
+              className="advanced-setting-disclosure"
+              open={
+                errors.initialChips ||
+                errors.smallBlindChips ||
+                errors.bigBlindChips ||
+                errors.bigBlindAnteChips
+                  ? true
+                  : undefined
+              }
+            >
+              <summary>
+                <span>
+                  <strong>ゲーム設定</strong>
+                  <small>{formatGameConfigurationSummary(gameConfiguration)}</small>
                 </span>
               </summary>
-              <div className="local-rules-disclosure-body">
+              <div className="advanced-setting-disclosure-body">
+                <GameConfigurationFields
+                  errors={errors}
+                  onChange={setGameConfiguration}
+                  values={gameConfiguration}
+                />
+                <p className="field-hint">
+                  リバイも開始時と同じチップ枚数・BBです。
+                </p>
+              </div>
+            </details>
+
+            <details className="advanced-setting-disclosure">
+              <summary>
+                <span>
+                  <strong>ローカルルール</strong>
+                  <small>
+                    72o {sevenDeuceRuleEnabled ? "ON" : "OFF"} ・ ボムポット{" "}
+                    {bombPotRuleEnabled ? "ON" : "OFF"}
+                  </small>
+                </span>
+              </summary>
+              <div className="advanced-setting-disclosure-body">
                 <label className="local-rule-toggle-card">
                   <input
                     checked={sevenDeuceRuleEnabled}
@@ -581,7 +592,7 @@ export function GameSettingsFields({
 
       <fieldset className="form-section form-section-settlement">
         <legend>
-          <span>{showCoreSettings ? "04" : "03"}</span>
+          <span>03</span>
           当日のまとめ
         </legend>
         <details
@@ -967,6 +978,37 @@ export function Field({
       ) : null}
     </label>
   );
+}
+
+function formatGameConfigurationSummary(
+  values: GameConfigurationValues,
+): string {
+  let stackLabel = "開始BBを確認";
+  try {
+    const initialChips = parsePreviewInteger(values.initialChips);
+    const bigBlind = parsePreviewInteger(values.bigBlindChips);
+    if (bigBlind > 0 && initialChips % bigBlind === 0) {
+      stackLabel = `${initialChips / bigBlind}BB開始`;
+    }
+  } catch {
+    // 入力途中は要約だけ簡潔なフォールバックにする。
+  }
+
+  const smallBlind = formatConfigurationChip(values.smallBlindChips);
+  const bigBlind = formatConfigurationChip(values.bigBlindChips);
+  const bigBlindAnte =
+    values.bigBlindAnteChips.trim() === "0"
+      ? "なし"
+      : formatConfigurationChip(values.bigBlindAnteChips);
+  return `${stackLabel} ・ SB ${smallBlind} / BB ${bigBlind} / BBA ${bigBlindAnte}`;
+}
+
+function formatConfigurationChip(value: string): string {
+  try {
+    return parsePreviewInteger(value).toLocaleString("ja-JP");
+  } catch {
+    return "—";
+  }
 }
 
 function parsePreviewInteger(value: string): number {

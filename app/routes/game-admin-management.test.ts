@@ -63,7 +63,7 @@ vi.mock("~/components/site-menu", () => ({
   GroupSiteHeader: vi.fn(() => null),
 }));
 
-import { action } from "./game-admin";
+import { action, shouldOpenParticipantSharePanel } from "./game-admin";
 
 const group = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -89,6 +89,14 @@ const game = {
   title: "8月の会",
   venueCost: 3_000,
 };
+
+describe("game admin share panel", () => {
+  it("参加者がいない間だけ共有パネルを最初から開く", () => {
+    expect(shouldOpenParticipantSharePanel(0)).toBe(true);
+    expect(shouldOpenParticipantSharePanel(1)).toBe(false);
+    expect(shouldOpenParticipantSharePanel(8)).toBe(false);
+  });
+});
 
 describe("game admin management action", () => {
   beforeEach(() => {

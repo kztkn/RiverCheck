@@ -81,7 +81,7 @@ export default function NewGame({
       <section className="form-intro game-create-intro">
         <p className="form-brand-label">NEW GAME</p>
         <h1>新しい会を作成</h1>
-        <p>{loaderData.group.name} のゲームと当日の負担を決めます。</p>
+        <p>{loaderData.group.name} の開催情報を決め、必要な設定だけ調整します。</p>
       </section>
 
       <Form className="game-form" method="post" noValidate>

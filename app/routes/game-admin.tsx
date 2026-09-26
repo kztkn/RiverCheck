@@ -1244,7 +1244,7 @@ export default function GameAdmin({
                 ? "プレイ画面を開いています"
                 : loaderData.currentParticipant
                   ? "自分のプレイ画面へ"
-                  : "自分も参加する（参加者画面へ）"}
+                  : "自分も参加する"}
               {isPending ? (
                 <span aria-hidden="true" className="route-link-spinner" />
               ) : null}
@@ -1252,49 +1252,61 @@ export default function GameAdmin({
           )}
         </NavLink>
 
-        <section
-          className="admin-share-panel admin-utility-panel"
+        <details
+          className="admin-share-panel admin-utility-panel admin-share-disclosure"
           id="admin-share"
+          open={shouldOpenParticipantSharePanel(visibleParticipants.length) ? true : undefined}
         >
-          <div>
-            <h2>参加者リンク</h2>
-            <p>このリンクを参加者に共有してください。</p>
-            {loaderData.currentParticipant ? (
-              <p>
-                この端末は「{loaderData.currentParticipant.displayName}
-                」として参加中です。
-              </p>
-            ) : null}
+          <summary className="admin-share-summary">
+            <span>
+              <strong>参加者リンク</strong>
+              <small>
+                {visibleParticipants.length === 0
+                  ? "共有して参加者を集める"
+                  : `${visibleParticipants.length}人参加中`}
+              </small>
+            </span>
+          </summary>
+          <div className="admin-share-disclosure-body">
+            <div>
+              <p>このリンクを参加者に共有してください。</p>
+              {loaderData.currentParticipant ? (
+                <p>
+                  この端末は「{loaderData.currentParticipant.displayName}
+                  」として参加中です。
+                </p>
+              ) : null}
+            </div>
+            <div className="share-link-control">
+              <input
+                aria-label="参加者用URL"
+                onFocus={(event) => event.currentTarget.select()}
+                readOnly
+                ref={participantLinkRef}
+                value={loaderData.participantUrl}
+              />
+              <button
+                aria-label="共有リンクをコピー"
+                className="copy-icon-button"
+                onClick={copyParticipantLink}
+                title={linkCopied ? "コピーしました" : "リンクをコピー"}
+                type="button"
+              >
+                {linkCopied ? (
+                  <span aria-hidden="true" className="copy-check">
+                    ✓
+                  </span>
+                ) : (
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <rect height="13" rx="2" width="13" x="8" y="8" />
+                    <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0 2 2h3" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            <ParticipantLinkQr url={loaderData.participantUrl} />
           </div>
-          <div className="share-link-control">
-            <input
-              aria-label="参加者用URL"
-              onFocus={(event) => event.currentTarget.select()}
-              readOnly
-              ref={participantLinkRef}
-              value={loaderData.participantUrl}
-            />
-            <button
-              aria-label="共有リンクをコピー"
-              className="copy-icon-button"
-              onClick={copyParticipantLink}
-              title={linkCopied ? "コピーしました" : "リンクをコピー"}
-              type="button"
-            >
-              {linkCopied ? (
-                <span aria-hidden="true" className="copy-check">
-                  ✓
-                </span>
-              ) : (
-                <svg aria-hidden="true" viewBox="0 0 24 24">
-                  <rect height="13" rx="2" width="13" x="8" y="8" />
-                  <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
-                </svg>
-              )}
-            </button>
-          </div>
-          <ParticipantLinkQr url={loaderData.participantUrl} />
-        </section>
+        </details>
 
         <section className="admin-participants" id="admin-participants">
           <div className="section-heading">
@@ -1319,25 +1331,15 @@ export default function GameAdmin({
           </div>
           <GameRefreshButton>入力状況を更新</GameRefreshButton>
           <div
-            aria-label="参加者の入力状況内訳"
+            aria-label="参加者の運用状況"
             className="participant-state-summary"
           >
-            <span className="is-complete">
-              <small>入力済み</small>
-              <strong>{participantStateSummary.complete}人</strong>
-            </span>
-            <span>
-              <small>未入力</small>
-              <strong>{participantStateSummary.pending}人</strong>
-            </span>
-            <span
-              className={
-                participantStateSummary.warning > 0 ? "has-warning" : undefined
-              }
-            >
-              <small>要確認</small>
-              <strong>{participantStateSummary.warning}人</strong>
-            </span>
+            {participantStateSummary.warning > 0 ? (
+              <span className="has-warning">
+                <small>要確認</small>
+                <strong>{participantStateSummary.warning}人</strong>
+              </span>
+            ) : null}
             <span>
               <small>リバイ累計</small>
               <strong>{totalRebuyCount}回</strong>
@@ -1553,6 +1555,17 @@ export default function GameAdmin({
           )}
         </section>
 
+        <section
+          aria-labelledby="admin-settings-heading"
+          className="admin-settings-section"
+        >
+          <div className="section-heading admin-settings-heading">
+            <div>
+              <p className="form-brand-label">SETTINGS</p>
+              <h2 id="admin-settings-heading">開催設定</h2>
+            </div>
+          </div>
+
         <gameConfigurationFetcher.Form
           className="admin-local-rules admin-game-configuration"
           method="post"
@@ -1566,10 +1579,7 @@ export default function GameAdmin({
             open={gameConfigurationError ? true : undefined}
           >
             <summary className="local-rules-disclosure-summary">
-              <div>
-                <p className="form-brand-label">GAME SETTINGS</p>
-                <h2>ゲーム設定</h2>
-              </div>
+              <span className="local-rules-summary-title">ゲーム設定</span>
               <span className="local-rules-summary-status">
                 {loaderData.game.initialChips.toLocaleString("ja-JP")}チップ ・{" "}
                 {loaderData.game.initialStackBb}BB開始 ・ SB{" "}
@@ -1640,10 +1650,7 @@ export default function GameAdmin({
             open={localRulesError ? true : undefined}
           >
             <summary className="local-rules-disclosure-summary">
-              <div>
-                <p className="form-brand-label">LOCAL RULES</p>
-                <h2>ローカルルール</h2>
-              </div>
+              <span className="local-rules-summary-title">ローカルルール</span>
               <span className="local-rules-summary-status">
                 72o {sevenDeuceRuleEnabled ? "ON" : "OFF"} ・ ボムポット{" "}
                 {bombPotRuleEnabled ? "ON" : "OFF"}
@@ -1709,6 +1716,7 @@ export default function GameAdmin({
             </div>
           </details>
         </localRulesFetcher.Form>
+        </section>
 
         <Form
           className="game-form admin-finalization-form"
@@ -2119,6 +2127,12 @@ export default function GameAdmin({
       </>
     </main>
   );
+}
+
+export function shouldOpenParticipantSharePanel(
+  participantCount: number,
+): boolean {
+  return participantCount === 0;
 }
 
 async function requireGame(groupCode: string, gameId: string) {
