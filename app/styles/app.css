@@ -185,6 +185,18 @@ a {
   opacity: 0.65;
 }
 
+.disclosure-chevron {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 1.15rem;
+  line-height: 1;
+  transition: transform 150ms ease;
+}
+
+details[open] > summary .disclosure-chevron {
+  transform: rotate(90deg);
+}
+
 button,
 input,
 select,
@@ -3524,6 +3536,53 @@ input[aria-invalid="true"] {
   padding-top: 26px;
 }
 
+.paypay-link-disclosure {
+  display: block;
+  gap: 0;
+  padding-top: 0;
+}
+
+.paypay-link-disclosure > summary {
+  display: flex;
+  min-height: 68px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 2px;
+}
+
+.paypay-link-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.paypay-link-disclosure-summary > span:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.paypay-link-disclosure-summary strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.paypay-link-disclosure-summary small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paypay-link-disclosure-body {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid rgba(223, 236, 227, 0.09);
+  padding: 18px 0 26px;
+}
+
 .paypay-link-heading {
   display: flex;
   align-items: center;
@@ -3731,10 +3790,10 @@ input[aria-invalid="true"] {
 .paypay-link-clear {
   position: absolute;
   top: 50%;
-  right: 8px;
+  right: 5px;
   display: grid;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   place-items: center;
   border: 0;
@@ -4931,7 +4990,7 @@ input[aria-invalid="true"] {
   outline: 2px solid var(--green);
   outline-offset: 3px;
 }
-.participant-result-entry-trigger > span:last-child {
+.participant-result-entry-trigger .disclosure-chevron {
   color: var(--green);
 }
 .admin-own-play-link {
@@ -5107,12 +5166,24 @@ input[aria-invalid="true"] {
 }
 
 @media (max-width: 420px) {
-  .rebuy-submitted-values {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .participant-session .rebuy-submitted-values {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .rebuy-submitted-values > div:last-child {
-    grid-column: 1 / -1;
+  .participant-session .rebuy-submitted-values > div:last-child {
+    grid-column: auto;
+  }
+
+  .participant-session .rebuy-submitted-values > div {
+    padding-inline: 6px;
+  }
+
+  .participant-session .rebuy-submitted-values span {
+    font-size: 0.56rem;
+  }
+
+  .participant-session .rebuy-submitted-values strong {
+    font-size: clamp(0.78rem, 3.7vw, 1rem);
   }
 }
 
@@ -5205,12 +5276,13 @@ input[aria-invalid="true"] {
 .advanced-setting-disclosure > summary::after {
   flex: 0 0 auto;
   color: var(--muted);
-  content: "+";
+  content: "›";
   font-size: 1.2rem;
+  transition: transform 150ms ease;
 }
 
 .advanced-setting-disclosure[open] > summary::after {
-  content: "−";
+  transform: rotate(90deg);
 }
 
 .advanced-setting-disclosure > summary > span {
@@ -5842,12 +5914,13 @@ input[aria-invalid="true"] {
 
 .settlement-cost-disclosure > summary::after {
   color: var(--muted);
-  content: "+";
+  content: "›";
   font-size: 1.2rem;
+  transition: transform 150ms ease;
 }
 
 .settlement-cost-disclosure[open] > summary::after {
-  content: "−";
+  transform: rotate(90deg);
 }
 
 .settlement-cost-disclosure > summary > span {
@@ -5881,13 +5954,14 @@ input[aria-invalid="true"] {
 }
 
 .game-settlement-option > summary::after {
-  content: "+";
+  content: "›";
   color: var(--muted);
   font-size: 1.2rem;
+  transition: transform 150ms ease;
 }
 
 .game-settlement-option[open] > summary::after {
-  content: "−";
+  transform: rotate(90deg);
 }
 
 .game-settlement-option > summary > span {
@@ -6525,12 +6599,13 @@ input[aria-invalid="true"] {
 
 .admin-share-disclosure > summary::after {
   color: var(--muted);
-  content: "+";
+  content: "›";
   font-size: 1.2rem;
+  transition: transform 150ms ease;
 }
 
 .admin-share-disclosure[open] > summary::after {
-  content: "−";
+  transform: rotate(90deg);
 }
 
 .admin-share-summary > span {
@@ -6570,6 +6645,16 @@ input[aria-invalid="true"] {
 .admin-settings-heading h2 {
   margin: 0;
   font-size: 1.15rem;
+}
+
+.admin-page .admin-participants h2,
+.admin-settings-heading h2,
+.admin-finalization-form > .form-section legend,
+.admin-finalize-panel .finalization-title {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.3;
+  letter-spacing: -0.025em;
 }
 
 .admin-settings-section .admin-local-rules {
@@ -7386,14 +7471,15 @@ input[aria-invalid="true"] {
 }
 
 .cost-share-collection > summary::after {
-  content: "＋";
+  content: "›";
   flex: 0 0 auto;
   color: var(--muted);
   font-size: 1.1rem;
+  transition: transform 150ms ease;
 }
 
 .cost-share-collection[open] > summary::after {
-  content: "−";
+  transform: rotate(90deg);
 }
 
 .cost-share-collection-summary-copy {

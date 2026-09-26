@@ -66,7 +66,6 @@ import {
   summarizeAdminParticipantStates,
 } from "~/utils/admin-participant-state";
 import { getAdminNextAction } from "~/utils/admin-next-action";
-import { openTableEventRecorder } from "~/components/table-event-recorder";
 import { saveGamePayPayRecipientLink } from "@server/services/group-paypay-service.server";
 import { PayPayLinkEditor } from "~/components/paypay-link-editor";
 
@@ -1318,15 +1317,6 @@ export default function GameAdmin({
               <span className="count-badge">
                 {visibleParticipants.length}人
               </span>
-              <button
-                aria-label="テーブルイベントを記録"
-                className="button button-secondary admin-table-event-button"
-                onClick={openTableEventRecorder}
-                type="button"
-              >
-                <span aria-hidden="true">＋</span>
-                TABLE EVENT
-              </button>
             </div>
           </div>
           <GameRefreshButton>入力状況を更新</GameRefreshButton>
@@ -1582,9 +1572,9 @@ export default function GameAdmin({
               <span className="local-rules-summary-title">ゲーム設定</span>
               <span className="local-rules-summary-status">
                 {loaderData.game.initialChips.toLocaleString("ja-JP")}チップ ・{" "}
-                {loaderData.game.initialStackBb}BB開始 ・ SB{" "}
-                {formatChipValue(savedBlindStructure.smallBlindChips)} / BB{" "}
-                {formatChipValue(savedBlindStructure.bigBlindChips)} / BBA{" "}
+                {loaderData.game.initialStackBb}BB開始 ・{" "}
+                {formatChipValue(savedBlindStructure.smallBlindChips)} /{" "}
+                {formatChipValue(savedBlindStructure.bigBlindChips)} /{" "}
                 {formatBigBlindAnte(savedBlindStructure.bigBlindAnteChips)}
               </span>
               <span aria-hidden="true" className="local-rules-summary-chevron">
@@ -1768,6 +1758,7 @@ export default function GameAdmin({
         </Form>
 
         <PayPayLinkEditor
+          collapsible
           actionUrl={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/admin`}
           cancelUrl={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}`}
           error={payPayAction?.error ?? null}

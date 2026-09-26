@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useRevalidator } from "react-router";
 
 interface TableEventParticipant {
@@ -224,18 +225,24 @@ export function TableEventRecorder() {
     await postEvent(formData, "テーブルイベントを取り消しました");
   }
 
+  const floatingTrigger =
+    typeof document === "undefined"
+      ? null
+      : createPortal(
+          <button
+            aria-label="テーブルイベントを記録"
+            className="table-event-floating-button"
+            onClick={openTableEventRecorder}
+            type="button"
+          >
+            <span aria-hidden="true">♠</span> TABLE EVENT
+          </button>,
+          document.body,
+        );
+
   return (
     <>
-      {isParticipantTableEventsPath(location.pathname) ? (
-        <button
-          aria-label="テーブルイベントを記録"
-          className="participant-table-event-button"
-          onClick={openTableEventRecorder}
-          type="button"
-        >
-          <span aria-hidden="true">♠</span> EVENT
-        </button>
-      ) : null}
+      {floatingTrigger}
       <dialog
         aria-labelledby="table-event-title"
         className="app-dialog table-event-dialog"

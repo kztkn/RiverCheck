@@ -841,7 +841,6 @@ export default function GameParticipant({
   const quickStatsFetcher = useFetcher<ParticipantQuickStatsData>();
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
-  const [isEditing, setIsEditing] = useState(false);
   const [rosterOpenSignal, setRosterOpenSignal] = useState(0);
   const [rebuyLocal, setRebuyLocal] = useState<{
     participant: NonNullable<typeof loaderData.participant>;
@@ -1203,57 +1202,68 @@ export default function GameParticipant({
                 </p>
               </div>
             </div>
-            {loaderData.participant.status === "submitted" && !isEditing ? (
-              <div className="submitted-input">
-                <div className="submitted-input-values rebuy-submitted-values">
-                  <div>
-                    <span>残りチップ</span>
-                    <strong>
-                      {loaderData.participant.remainingChips?.toLocaleString(
-                        "ja-JP",
-                      ) ?? 0}
-                    </strong>
+            {loaderData.participant.status === "submitted" ? (
+              <>
+                <div className="submitted-input">
+                  <div className="submitted-input-values rebuy-submitted-values">
+                    <div>
+                      <span>残りチップ</span>
+                      <strong>
+                        {loaderData.participant.remainingChips?.toLocaleString(
+                          "ja-JP",
+                        ) ?? 0}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>累計リバイ</span>
+                      <strong>
+                        {formatTotalRebuyCount(visibleRebuy.totalRebuyCount)}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>終了時リバイ証</span>
+                      <strong>
+                        {loaderData.participant.settlementRebuyCount ?? 0}枚
+                      </strong>
+                    </div>
                   </div>
-                  <div>
-                    <span>累計リバイ</span>
-                    <strong>
-                      {formatTotalRebuyCount(visibleRebuy.totalRebuyCount)}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>終了時リバイ証</span>
-                    <strong>
-                      {loaderData.participant.settlementRebuyCount ?? 0}枚
-                    </strong>
+                  <RebuyMatchStatus
+                    outstandingRebuyCount={visibleRebuy.outstandingRebuyCount}
+                    settlementRebuyCount={
+                      loaderData.participant.settlementRebuyCount ?? 0
+                    }
+                  />
+                  {loaderData.participant.resultNeedsReview ||
+                  localRebuy?.needsReview ? (
+                    <p className="result-review-notice" role="status">
+                      保存後にリバイの記録が変わりました。残りチップとリバイ証を確認し、結果を再保存してください。
+                    </p>
+                  ) : null}
+                  <div className="submitted-input-actions">
+                    <FinalResultRefreshControl />
                   </div>
                 </div>
-                <RebuyMatchStatus
-                  outstandingRebuyCount={visibleRebuy.outstandingRebuyCount}
-                  settlementRebuyCount={
-                    loaderData.participant.settlementRebuyCount ?? 0
-                  }
-                />
-                {loaderData.participant.resultNeedsReview ||
-                localRebuy?.needsReview ? (
-                  <p className="result-review-notice" role="status">
-                    保存後にリバイの記録が変わりました。残りチップとリバイ証を確認し、結果を再保存してください。
-                  </p>
-                ) : null}
-                <div className="submitted-input-actions">
-                  <button
-                    className="button button-secondary"
-                    onClick={() => setIsEditing(true)}
-                    type="button"
-                  >
-                    修正する
-                  </button>
-                  <FinalResultRefreshControl />
-                </div>
-              </div>
+                <ParticipantResultEntrySection
+                  initiallyOpen={Boolean(actionData?.error)}
+                  key={loaderData.game.id}
+                  summaryLabel="入力内容を修正"
+                >
+                  <ResultEntryForm
+                    initialChips={loaderData.game.initialChips}
+                    isSubmitting={isSubmitting}
+                    outstandingRebuyCount={visibleRebuy.outstandingRebuyCount}
+                    remainingChips={loaderData.participant.remainingChips}
+                    settlementRebuyCount={
+                      loaderData.participant.settlementRebuyCount
+                    }
+                    totalRebuyCount={visibleRebuy.totalRebuyCount}
+                  />
+                </ParticipantResultEntrySection>
+              </>
             ) : (
               <ParticipantResultEntrySection
                 key={loaderData.game.id}
-                initiallyOpen={isEditing || Boolean(actionData?.error)}
+                initiallyOpen={Boolean(actionData?.error)}
               >
                 <ResultEntryForm
                   initialChips={loaderData.game.initialChips}
@@ -2567,9 +2577,11 @@ function ResultEntryForm({
 export function ParticipantResultEntrySection({
   children,
   initiallyOpen = false,
+  summaryLabel = "結果を入力する",
 }: {
   children: ReactNode;
   initiallyOpen?: boolean;
+  summaryLabel?: string;
 }) {
   const [open, setOpen] = useState(initiallyOpen);
   useEffect(() => {
@@ -2584,8 +2596,8 @@ export function ParticipantResultEntrySection({
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
       <summary className="participant-result-entry-trigger">
-        <span>{open ? "結果を入力中" : "結果を入力する"}</span>
-        <span aria-hidden="true">{open ? "−" : "＋"}</span>
+        <span>{summaryLabel}</span>
+        <span aria-hidden="true" className="disclosure-chevron">›</span>
       </summary>
       <div className="participant-after-entry-body">
         <p className="muted-copy">

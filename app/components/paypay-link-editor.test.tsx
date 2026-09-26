@@ -4,13 +4,14 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
 import { PayPayLinkEditor } from "./paypay-link-editor";
 
-function renderEditor(link: string | null) {
+function renderEditor(link: string | null, collapsible = false) {
   const router = createMemoryRouter([
     {
       path: "/",
       element: createElement(PayPayLinkEditor, {
         actionUrl: "/save",
         cancelUrl: "/back",
+        collapsible,
         error: null,
         isSubmitting: false,
         link,
@@ -36,5 +37,14 @@ describe("PayPayLinkEditor", () => {
     const markup = renderEditor(null);
 
     expect(markup).not.toContain('aria-label="PayPay受取リンクをクリア"');
+  });
+
+  it("開催管理では状態要約付きの折りたたみとして表示できる", () => {
+    const markup = renderEditor("https://pay.paypay.ne.jp/example", true);
+
+    expect(markup).toContain("<details");
+    expect(markup).toContain("PayPay受取リンク");
+    expect(markup).toContain("有効");
+    expect(markup).toContain('class="disclosure-chevron"');
   });
 });

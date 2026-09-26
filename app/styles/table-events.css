@@ -1,48 +1,33 @@
-.participant-table-event-button,
-.admin-table-event-button {
-  border-color: rgba(233, 186, 90, 0.42);
-  background: rgba(233, 186, 90, 0.07);
-  color: #f0d392;
-}
-
-.participant-table-event-button {
+.table-event-floating-button {
   position: fixed;
-  z-index: 34;
+  z-index: 70;
   right: max(16px, env(safe-area-inset-right));
   bottom: calc(16px + env(safe-area-inset-bottom));
   display: inline-flex;
   min-height: 48px;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   border: 1px solid rgba(233, 186, 90, 0.42);
   border-radius: 999px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.32);
-  padding: 0 15px;
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
+  background: #102119;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.38);
+  color: #f0d392;
   cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.055em;
+  padding: 0 15px;
   touch-action: manipulation;
 }
 
-.participant-table-event-button > span {
+.table-event-floating-button > span {
   font-size: 0.82rem;
 }
 
-.admin-table-event-button {
-  min-height: 38px;
-  gap: 6px;
-  border-radius: 999px;
-  font-size: 0.65rem;
-  padding: 7px 11px;
-  white-space: nowrap;
-}
-
-.admin-table-event-button:hover,
-.admin-table-event-button:focus-visible,
-.participant-table-event-button:hover,
-.participant-table-event-button:focus-visible {
+.table-event-floating-button:hover,
+.table-event-floating-button:focus-visible {
   border-color: rgba(233, 186, 90, 0.68);
-  background: rgba(233, 186, 90, 0.12);
+  background: #17251d;
   color: #ffe4a7;
 }
 

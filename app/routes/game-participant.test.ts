@@ -620,7 +620,7 @@ describe("game participant route", () => {
     expect(markup).not.toContain('open=""');
   });
 
-  it("修正中・保存失敗時のフォームは開いた状態で再表示する", () => {
+  it("保存失敗時のフォームは開いた状態で再表示する", () => {
     const markup = renderToStaticMarkup(
       createElement(ParticipantResultEntrySection, {
         initiallyOpen: true,
@@ -628,7 +628,8 @@ describe("game participant route", () => {
       }),
     );
     expect(markup).toContain('open=""');
-    expect(markup).toContain("結果を入力中");
+    expect(markup).toContain("結果を入力する");
+    expect(markup).toContain('class="disclosure-chevron"');
   });
 
   it("最終結果だけを保存し、TABLE STORYは更新しない", async () => {

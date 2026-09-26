@@ -11,6 +11,7 @@ import {
 export function PayPayLinkEditor({
   actionUrl,
   cancelUrl,
+  collapsible = false,
   error,
   intent = "save-paypay-link",
   intro,
@@ -22,6 +23,7 @@ export function PayPayLinkEditor({
 }: {
   actionUrl: string;
   cancelUrl: string;
+  collapsible?: boolean;
   error: string | null;
   intent?: string;
   intro?: string;
@@ -42,19 +44,28 @@ export function PayPayLinkEditor({
     setLinkValue(submittedValue);
   }, [submittedValue]);
 
-  return (
-    <section className="paypay-link-editor">
-      <div className="paypay-link-heading">
-        <div>
-          <p className="eyebrow">PAYPAY</p>
-          <h2>受取リンク</h2>
+  const summary =
+    registeredAt && !active
+      ? "期限切れ"
+      : link
+        ? `有効${recipientName ? `・${recipientName}` : ""}`
+        : "未設定";
+
+  const editorBody = (
+    <>
+      {!collapsible ? (
+        <div className="paypay-link-heading">
+          <div>
+            <p className="eyebrow">PAYPAY</p>
+            <h2>受取リンク</h2>
+          </div>
+          {registeredAt ? (
+            <span className={`paypay-link-status ${active ? "is-active" : "is-expired"}`}>
+              {active ? "有効" : "期限切れ"}
+            </span>
+          ) : null}
         </div>
-        {registeredAt ? (
-          <span className={`paypay-link-status ${active ? "is-active" : "is-expired"}`}>
-            {active ? "有効" : "期限切れ"}
-          </span>
-        ) : null}
-      </div>
+      ) : null}
       <p className="paypay-link-intro">
         {intro ?? "グループの新規開催へ初期値としてコピーします。"}
         登録から{PAYPAY_LINK_VALIDITY_DAYS}日間だけ表示されます。
@@ -130,7 +141,27 @@ export function PayPayLinkEditor({
           </button>
         </div>
       </Form>
-    </section>
+    </>
+  );
+
+  if (!collapsible) {
+    return <section className="paypay-link-editor">{editorBody}</section>;
+  }
+
+  return (
+    <details
+      className="paypay-link-editor paypay-link-disclosure"
+      open={error ? true : undefined}
+    >
+      <summary className="paypay-link-disclosure-summary">
+        <span>
+          <strong>PayPay受取リンク</strong>
+          <small>{summary}</small>
+        </span>
+        <span aria-hidden="true" className="disclosure-chevron">›</span>
+      </summary>
+      <div className="paypay-link-disclosure-body">{editorBody}</div>
+    </details>
   );
 }
 
