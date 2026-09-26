@@ -67,6 +67,7 @@ import {
 } from "~/utils/admin-participant-state";
 import { getAdminNextAction } from "~/utils/admin-next-action";
 import { saveGamePayPayRecipientLink } from "@server/services/group-paypay-service.server";
+import { serializeGameChipDistribution } from "@domain/chip-distribution/game-chip-distribution";
 import { PayPayLinkEditor } from "~/components/paypay-link-editor";
 
 type OrganizerRebuyIntent =
@@ -287,6 +288,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       smallBlindChips: readString(formData, "smallBlindChips"),
       bigBlindChips: readString(formData, "bigBlindChips"),
       bigBlindAnteChips: readString(formData, "bigBlindAnteChips"),
+      chipDistribution: readString(formData, "chipDistribution"),
     };
     try {
       const result = await updateOpenGameConfigurationForGroup(
@@ -574,6 +576,9 @@ export default function GameAdmin({
       smallBlindChips: String(loaderData.game.smallBlindChips),
       bigBlindChips: String(loaderData.game.bigBlindChips),
       bigBlindAnteChips: String(loaderData.game.bigBlindAnteChips),
+      chipDistribution: serializeGameChipDistribution(
+        loaderData.game.chipDistribution,
+      ),
     });
   const [publishFailureCount, setPublishFailureCount] = useState(0);
   const [persistentPublishError, setPersistentPublishError] = useState<
@@ -660,12 +665,16 @@ export default function GameAdmin({
       smallBlindChips: String(loaderData.game.smallBlindChips),
       bigBlindChips: String(loaderData.game.bigBlindChips),
       bigBlindAnteChips: String(loaderData.game.bigBlindAnteChips),
+      chipDistribution: serializeGameChipDistribution(
+        loaderData.game.chipDistribution,
+      ),
     });
   }, [
     loaderData.game.bigBlindAnteChips,
     loaderData.game.bigBlindChips,
     loaderData.game.initialChips,
     loaderData.game.smallBlindChips,
+    loaderData.game.chipDistribution,
   ]);
 
   const notice = noticeText(loaderData.notice);
@@ -2145,6 +2154,7 @@ function gameToFormValues(game: Route.ComponentProps["loaderData"]["game"]) {
     smallBlindChips: String(game.smallBlindChips),
     bigBlindChips: String(game.bigBlindChips),
     bigBlindAnteChips: String(game.bigBlindAnteChips),
+    chipDistribution: serializeGameChipDistribution(game.chipDistribution),
     venueCost: String(game.venueCost),
     firstPlaceCost: String(game.firstPlaceCost),
     secondPlaceCost: String(game.secondPlaceCost),

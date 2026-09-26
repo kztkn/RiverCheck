@@ -598,7 +598,9 @@ describe("game participant route", () => {
       }),
     );
 
-    expect(markup).toContain("ゲーム結果 1BB = 10P");
+    expect(markup).toContain("ゲーム結果");
+    expect(markup).toContain("1BB = 10P");
+    expect(markup).toContain('class="settlement-plan-grid"');
   });
 
   it("未入力の結果フォームは閉じておき、結果入力から開く", () => {
@@ -1037,13 +1039,14 @@ describe("LocalRulesSheet", () => {
         bigBlindAnteChips: 200,
         bigBlindChips: 200,
         bombPotRuleEnabled: true,
+        chipDistribution: null,
         initialChips: 20_000,
         smallBlindChips: 100,
         sevenDeuceRuleEnabled: true,
       }),
     );
 
-    expect(html).toContain("ローカルルールを確認");
+    expect(html).toContain("ゲーム情報");
     expect(html).toContain("100BB返済ルール");
     expect(html).toContain("72oボーナス");
     expect(html).toContain("ほかの参加者全員から2.5BBずつ受け取ります");
@@ -1056,12 +1059,41 @@ describe("LocalRulesSheet", () => {
     expect(html).toContain("<small>BBA</small><strong>200</strong>");
   });
 
+  it("保存済みのリバイ1口分チップ構成をゲーム情報へ表示する", () => {
+    const html = renderToStaticMarkup(
+      createElement(LocalRulesSheet, {
+        bigBlindAnteChips: 200,
+        bigBlindChips: 200,
+        bombPotRuleEnabled: true,
+        chipDistribution: [
+          { denomination: 100, count: 10 },
+          { denomination: 500, count: 8 },
+          { denomination: 1_000, count: 5 },
+          { denomination: 5_000, count: 2 },
+        ],
+        initialChips: 20_000,
+        smallBlindChips: 100,
+        sevenDeuceRuleEnabled: true,
+      }),
+    );
+
+    expect(html).toContain("リバイ1口のチップ構成");
+    expect(html).toContain("5,000チップ");
+    expect(html).toContain("× 2");
+    expect(html).toContain("100チップ");
+    expect(html).toContain("× 10");
+    expect(html).toContain("合計");
+    expect(html).toContain("25");
+    expect(html).toContain("20,000チップ");
+  });
+
   it("初期チップが変わっても開始前にブラインドを確認できる", () => {
     const html = renderToStaticMarkup(
       createElement(LocalRulesSheet, {
         bigBlindAnteChips: 100,
         bigBlindChips: 100,
         bombPotRuleEnabled: true,
+        chipDistribution: null,
         initialChips: 10_000,
         initialStackBb: 100,
         smallBlindChips: 50,
@@ -1081,6 +1113,7 @@ describe("LocalRulesSheet", () => {
         bigBlindAnteChips: 0,
         bigBlindChips: 200,
         bombPotRuleEnabled: true,
+        chipDistribution: null,
         initialChips: 20_000,
         smallBlindChips: 100,
         sevenDeuceRuleEnabled: true,
@@ -1096,6 +1129,7 @@ describe("LocalRulesSheet", () => {
         bigBlindAnteChips: 200,
         bigBlindChips: 200,
         bombPotRuleEnabled: false,
+        chipDistribution: null,
         initialChips: 20_000,
         smallBlindChips: 100,
         sevenDeuceRuleEnabled: false,

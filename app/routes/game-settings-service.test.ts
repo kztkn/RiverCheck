@@ -32,6 +32,7 @@ const validValues: GameSettingsFormValues = {
   smallBlindChips: "100",
   bigBlindChips: "200",
   bigBlindAnteChips: "200",
+  chipDistribution: "",
   venueCost: "11330",
   firstPlaceCost: "1800",
   secondPlaceCost: "2000",
@@ -55,6 +56,7 @@ describe("open game configuration", () => {
         smallBlindChips: "10",
         bigBlindChips: "20",
         bigBlindAnteChips: "20",
+        chipDistribution: "",
       }),
     ).toEqual({
       ok: true,
@@ -64,6 +66,7 @@ describe("open game configuration", () => {
         bigBlindChips: 20,
         bigBlindAnteChips: 20,
         initialStackBb: 25,
+        chipDistribution: null,
       },
     });
   });
@@ -75,6 +78,7 @@ describe("open game configuration", () => {
         smallBlindChips: "20",
         bigBlindChips: "20",
         bigBlindAnteChips: "20",
+        chipDistribution: "",
       }),
     ).toEqual({
       ok: false,
@@ -92,6 +96,7 @@ describe("open game configuration", () => {
         smallBlindChips: "100",
         bigBlindChips: "200",
         bigBlindAnteChips: "0",
+        chipDistribution: "",
       }),
     ).toMatchObject({ ok: true, input: { bigBlindAnteChips: 0 } });
   });
@@ -103,11 +108,55 @@ describe("open game configuration", () => {
         smallBlindChips: "100",
         bigBlindChips: "200",
         bigBlindAnteChips: "100",
+        chipDistribution: "",
       }),
     ).toEqual({
       ok: false,
       errors: {
         bigBlindAnteChips: "BBAはなし、またはBBと同額にしてください。",
+      },
+    });
+  });
+
+  it("初期チップと一致するチップ構成を保存用入力へ変換する", () => {
+    const chipDistribution =
+      '[{"denomination":5000,"count":2},{"denomination":1000,"count":5},{"denomination":500,"count":8},{"denomination":100,"count":10}]';
+
+    expect(
+      validateGameConfigurationForm({
+        initialChips: "20000",
+        smallBlindChips: "100",
+        bigBlindChips: "200",
+        bigBlindAnteChips: "200",
+        chipDistribution,
+      }),
+    ).toMatchObject({
+      ok: true,
+      input: {
+        chipDistribution: [
+          { denomination: 100, count: 10 },
+          { denomination: 500, count: 8 },
+          { denomination: 1000, count: 5 },
+          { denomination: 5000, count: 2 },
+        ],
+      },
+    });
+  });
+
+  it("初期チップと一致しないチップ構成を拒否する", () => {
+    expect(
+      validateGameConfigurationForm({
+        initialChips: "10000",
+        smallBlindChips: "100",
+        bigBlindChips: "200",
+        bigBlindAnteChips: "200",
+        chipDistribution:
+          '[{"denomination":5000,"count":2},{"denomination":1000,"count":5}]',
+      }),
+    ).toMatchObject({
+      ok: false,
+      errors: {
+        chipDistribution: expect.stringContaining("初期チップ"),
       },
     });
   });
@@ -126,6 +175,7 @@ describe("open game configuration", () => {
           smallBlindChips: "100",
           bigBlindChips: "200",
           bigBlindAnteChips: "200",
+          chipDistribution: "",
         },
         false,
       ),
@@ -148,6 +198,7 @@ describe("open game configuration", () => {
           smallBlindChips: "100",
           bigBlindChips: "200",
           bigBlindAnteChips: "200",
+          chipDistribution: "",
         },
         true,
       ),
@@ -161,6 +212,7 @@ describe("open game configuration", () => {
         bigBlindChips: 200,
         bigBlindAnteChips: 200,
         initialStackBb: 50,
+        chipDistribution: null,
       },
       true,
     );

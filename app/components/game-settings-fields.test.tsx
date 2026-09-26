@@ -13,6 +13,7 @@ const baseValues: GameSettingsValues = {
   smallBlindChips: "100",
   bigBlindChips: "200",
   bigBlindAnteChips: "200",
+  chipDistribution: "",
   venueCost: "12000",
   firstPlaceCost: "0",
   secondPlaceCost: "500",
@@ -56,6 +57,9 @@ describe("GameSettingsFields local rules", () => {
     expect(standardMarkup).toContain('name="bigBlindChips" value="200"');
     expect(standardMarkup).toContain(
       'type="hidden" name="bigBlindAnteChips" value="200"',
+    );
+    expect(standardMarkup).toContain(
+      'type="hidden" name="chipDistribution" value=""',
     );
     expect(standardMarkup).toContain('aria-label="BBAの有無"');
     expect(standardMarkup).toContain(

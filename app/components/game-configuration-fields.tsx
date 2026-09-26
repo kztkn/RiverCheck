@@ -4,6 +4,7 @@ import {
   type ChipDistributionRecommendation,
   type ChipDistributionResult,
 } from "@domain/chip-distribution/recommend-chip-distribution";
+import { serializeGameChipDistribution } from "@domain/chip-distribution/game-chip-distribution";
 import {
   calculateInitialChips,
   calculateInitialStackBb,
@@ -18,6 +19,7 @@ export interface GameConfigurationValues {
   smallBlindChips: string;
   bigBlindChips: string;
   bigBlindAnteChips: string;
+  chipDistribution: string;
 }
 
 export type GameConfigurationErrors = Partial<
@@ -61,9 +63,12 @@ export function GameConfigurationFields({
     return () => window.clearTimeout(timeoutId);
   }, [applicationNotice]);
 
-  function update(field: keyof GameConfigurationValues, value: string) {
+  function update(
+    field: "smallBlindChips",
+    value: string,
+  ) {
     setApplicationNotice(null);
-    onChange({ ...values, [field]: value });
+    onChange({ ...values, [field]: value, chipDistribution: "" });
   }
 
   function updateBigBlind(value: string) {
@@ -95,6 +100,11 @@ export function GameConfigurationFields({
   return (
     <>
       <input name="initialChips" type="hidden" value={values.initialChips} />
+      <input
+        name="chipDistribution"
+        type="hidden"
+        value={values.chipDistribution}
+      />
       <input
         name="bigBlindAnteChips"
         type="hidden"
@@ -236,6 +246,9 @@ export function GameConfigurationFields({
         {errors.initialChips ? (
           <span className="field-error">{errors.initialChips}</span>
         ) : null}
+        {errors.chipDistribution ? (
+          <span className="field-error">{errors.chipDistribution}</span>
+        ) : null}
         {applicationNotice ? (
           <p className="game-config-applied-notice" role="status">
             {applicationNotice}
@@ -277,6 +290,9 @@ export function gameConfigurationFromRecommendation(
     smallBlindChips: String(recommendation.smallBlindChips),
     bigBlindChips: String(recommendation.bigBlindChips),
     bigBlindAnteChips: String(recommendation.bigBlindAnteChips),
+    chipDistribution: serializeGameChipDistribution(
+      recommendation.allocations,
+    ),
   };
 }
 
@@ -288,6 +304,7 @@ export function gameConfigurationWithBigBlind(
   const next = {
     ...values,
     bigBlindChips,
+    chipDistribution: "",
     bigBlindAnteChips:
       values.bigBlindAnteChips.trim() === "0" ? "0" : bigBlindChips,
   };
@@ -324,6 +341,7 @@ export function gameConfigurationWithStackDepth(
     initialChips: String(
       calculateInitialChips(Number(values.bigBlindChips), stackDepthBb),
     ),
+    chipDistribution: "",
   };
 }
 

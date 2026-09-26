@@ -84,7 +84,11 @@ import {
 } from "@server/services/game-authorization-service.server";
 import { isPayPayLinkActive } from "@domain/payment/paypay-link";
 import { findGamePaymentAmountForPlayer } from "@server/repositories/group-paypay-repository.server";
-import type { GameListItem, GameStatus } from "@shared-types/game";
+import type {
+  GameChipAllocation,
+  GameListItem,
+  GameStatus,
+} from "@shared-types/game";
 import type { Route } from "./+types/game-participant";
 import { formatTokyoDateNumeric } from "@domain/date/format-tokyo-date";
 import { createCommandId } from "~/utils/create-command-id";
@@ -1031,6 +1035,7 @@ export default function GameParticipant({
             bigBlindAnteChips={loaderData.game.bigBlindAnteChips}
             bigBlindChips={loaderData.game.bigBlindChips}
             bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
+            chipDistribution={loaderData.game.chipDistribution}
             initialChips={loaderData.game.initialChips}
             initialStackBb={loaderData.game.initialStackBb}
             smallBlindChips={loaderData.game.smallBlindChips}
@@ -1172,6 +1177,7 @@ export default function GameParticipant({
             bigBlindAnteChips={loaderData.game.bigBlindAnteChips}
             bigBlindChips={loaderData.game.bigBlindChips}
             bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
+            chipDistribution={loaderData.game.chipDistribution}
             initialChips={loaderData.game.initialChips}
             initialStackBb={loaderData.game.initialStackBb}
             smallBlindChips={loaderData.game.smallBlindChips}
@@ -2075,6 +2081,7 @@ export function LocalRulesSheet({
   bigBlindAnteChips,
   bigBlindChips,
   bombPotRuleEnabled,
+  chipDistribution,
   initialChips,
   initialStackBb = 100,
   smallBlindChips,
@@ -2083,6 +2090,7 @@ export function LocalRulesSheet({
   bigBlindAnteChips: number;
   bigBlindChips: number;
   bombPotRuleEnabled: boolean;
+  chipDistribution: GameChipAllocation[] | null;
   initialChips: number;
   initialStackBb?: number;
   smallBlindChips: number;
@@ -2137,7 +2145,7 @@ export function LocalRulesSheet({
         ref={triggerRef}
         type="button"
       >
-        <span>ローカルルールを確認</span>
+        <span>ゲーム情報</span>
       </button>
       <dialog
         aria-describedby="local-rules-description"
@@ -2154,11 +2162,11 @@ export function LocalRulesSheet({
         <div className="participant-roster-sheet rebuy-rules-sheet">
           <header className="participant-roster-header">
             <div>
-              <p className="eyebrow">LOCAL RULES</p>
-              <h2 id="local-rules-title">ローカルルール</h2>
+              <p className="eyebrow">GAME INFO</p>
+              <h2 id="local-rules-title">ゲーム情報</h2>
             </div>
             <button
-              aria-label="ローカルルールを閉じる"
+              aria-label="ゲーム情報を閉じる"
               className="participant-roster-close"
               onClick={closeSheet}
               type="button"
@@ -2196,6 +2204,50 @@ export function LocalRulesSheet({
                 {formatChipValue(bigBlindChips)}チップ
               </p>
             </section>
+            {chipDistribution ? (
+              <section
+                aria-label="リバイ1口のチップ構成"
+                className="game-chip-distribution"
+              >
+                <header>
+                  <div>
+                    <span>REBUY STACK</span>
+                    <h3>リバイ1口のチップ構成</h3>
+                  </div>
+                  <strong>
+                    {chipDistribution.reduce(
+                      (total, allocation) => total + allocation.count,
+                      0,
+                    )}
+                    枚
+                  </strong>
+                </header>
+                <div className="game-chip-allocation-grid">
+                  {[...chipDistribution]
+                    .sort(
+                      (left, right) =>
+                        right.denomination - left.denomination,
+                    )
+                    .map((allocation) => (
+                      <span key={allocation.denomination}>
+                        <small>
+                          {allocation.denomination.toLocaleString("ja-JP")}
+                          チップ
+                        </small>
+                        <strong>× {allocation.count}</strong>
+                      </span>
+                    ))}
+                </div>
+                <p>
+                  合計{" "}
+                  {chipDistribution.reduce(
+                    (total, allocation) => total + allocation.count,
+                    0,
+                  )}
+                  枚 / {initialChips.toLocaleString("ja-JP")}チップ
+                </p>
+              </section>
+            ) : null}
             {rules.map((rule) => (
               <section
                 className={`local-rule-card${rule.enabled ? "" : " is-disabled"}`}
@@ -2296,23 +2348,33 @@ export function SettlementPlanSheet({
             </button>
           </header>
           <div className="participant-roster-scroll rebuy-rules-content">
-            <p className="rebuy-rules-note">
-              実費 {venueCost.toLocaleString("ja-JP")}円 ・ {participantCount}
-              人想定
-            </p>
-            {bbRate > 0 ? (
-              <p className="rebuy-rules-note">
-                ゲーム結果 1BB = {bbRate.toLocaleString("ja-JP")}P
-              </p>
-            ) : null}
-            <ol className="rebuy-rules-list settlement-plan-list">
+            <div className="settlement-summary-meta">
+              <span>
+                <small>実費</small>
+                <strong>{venueCost.toLocaleString("ja-JP")}円</strong>
+              </span>
+              <span>
+                <small>想定</small>
+                <strong>{participantCount}人</strong>
+              </span>
+              {bbRate > 0 ? (
+                <span className="is-wide">
+                  <small>ゲーム結果</small>
+                  <strong>1BB = {bbRate.toLocaleString("ja-JP")}P</strong>
+                </span>
+              ) : null}
+            </div>
+            <div
+              aria-label="順位別の負担"
+              className="settlement-plan-grid"
+            >
               {costShares.map((share, index) => (
-                <li key={index}>
-                  <strong>{index + 1}位</strong>
-                  <span>{share.toLocaleString("ja-JP")}P</span>
-                </li>
+                <span key={index}>
+                  <small>{index + 1}位</small>
+                  <strong>{share.toLocaleString("ja-JP")}P</strong>
+                </span>
               ))}
-            </ol>
+            </div>
           </div>
         </div>
       </dialog>

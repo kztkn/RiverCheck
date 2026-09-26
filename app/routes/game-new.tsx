@@ -49,6 +49,7 @@ const defaults = {
   smallBlindChips: "100",
   bigBlindChips: "200",
   bigBlindAnteChips: "200",
+  chipDistribution: "",
   venueCost: "11330",
   firstPlaceCost: "0",
   secondPlaceCost: "500",

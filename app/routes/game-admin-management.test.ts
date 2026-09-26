@@ -190,6 +190,7 @@ describe("game admin management action", () => {
         smallBlindChips: "100",
         bigBlindChips: "200",
         bigBlindAnteChips: "200",
+        chipDistribution: "",
       }),
     );
 
@@ -201,6 +202,7 @@ describe("game admin management action", () => {
         smallBlindChips: "100",
         bigBlindChips: "200",
         bigBlindAnteChips: "200",
+        chipDistribution: "",
       },
       false,
     );
@@ -232,6 +234,7 @@ describe("game admin management action", () => {
         smallBlindChips: "100",
         bigBlindChips: "200",
         bigBlindAnteChips: "200",
+        chipDistribution: "",
       },
       true,
     );

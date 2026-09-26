@@ -1,10 +1,12 @@
 import { queryDatabase } from "@server/db/client.server";
 import type {
   CreateGameInput,
+  GameChipAllocation,
   GameDetails,
   GameListItem,
   GameStatus,
 } from "@shared-types/game";
+import { validateGameChipDistribution } from "@domain/chip-distribution/game-chip-distribution";
 import type { GroupSummary } from "@shared-types/group";
 
 interface GameSummaryRow {
@@ -30,6 +32,7 @@ interface GameDetailsRow {
   big_blind_ante_chips: string | null;
   initial_stack_bb: number;
   rebuy_chips: string;
+  chip_distribution: unknown;
   preview_participant_count: number;
   venue_cost: string;
   first_place_cost: string;
@@ -148,6 +151,7 @@ export async function findGameForGroup(
         big_blind_ante_chips,
         initial_stack_bb,
         rebuy_chips,
+        chip_distribution,
         preview_participant_count,
         venue_cost,
         first_place_cost,
@@ -191,6 +195,7 @@ export async function findGameWithGroupByPublicCode(
         game.big_blind_ante_chips,
         game.initial_stack_bb,
         game.rebuy_chips,
+        game.chip_distribution,
         game.preview_participant_count,
         game.venue_cost,
         game.first_place_cost,
@@ -279,6 +284,7 @@ export async function insertGame(
         big_blind_ante_chips,
         initial_stack_bb,
         rebuy_chips,
+        chip_distribution,
         venue_cost,
         rounding_unit,
         first_place_cost,
@@ -294,8 +300,8 @@ export async function insertGame(
         ,paypay_link_registered_at
         ,paypay_owner_player_id
       )
-      SELECT $1, $2, $3, 'open', $4, $5, $6, $7, $8, $9, $10, 100,
-             $11, $12, $13, $14, $15::BIGINT[], $16, $17, $18, $19,
+      SELECT $1, $2, $3, 'open', $4, $5, $6, $7, $8, $9, $10::JSONB, $11, 100,
+             $12, $13, $14, $15, $16::BIGINT[], $17, $18, $19, $20,
              game_group.paypay_recipient_link,
              game_group.paypay_link_registered_at,
              game_group.paypay_owner_player_id
@@ -313,6 +319,7 @@ export async function insertGame(
       input.bigBlindAnteChips,
       input.initialStackBb,
       input.rebuyChips,
+      input.chipDistribution ? JSON.stringify(input.chipDistribution) : null,
       input.venueCost,
       input.firstPlaceCost,
       input.secondPlaceCost,
@@ -451,6 +458,7 @@ export async function updateOpenGameConfiguration(
     bigBlindChips: number;
     bigBlindAnteChips: number;
     initialStackBb: number;
+    chipDistribution: GameChipAllocation[] | null;
   },
   confirmExistingActivity: boolean,
 ): Promise<OpenGameConfigurationUpdateResult> {
@@ -501,11 +509,12 @@ export async function updateOpenGameConfiguration(
             big_blind_chips = $5,
             big_blind_ante_chips = $6,
             initial_stack_bb = $7,
+            chip_distribution = $8::JSONB,
             updated_at = NOW()
         FROM target
         WHERE game.id = target.id
           AND (
-            $8::BOOLEAN OR
+            $9::BOOLEAN OR
             NOT target.has_activity OR
             NOT target.has_result_affecting_change
           )
@@ -528,6 +537,7 @@ export async function updateOpenGameConfiguration(
       values.bigBlindChips,
       values.bigBlindAnteChips,
       values.initialStackBb,
+      values.chipDistribution ? JSON.stringify(values.chipDistribution) : null,
       confirmExistingActivity,
     ],
   );
@@ -572,6 +582,7 @@ function mapGameDetails(row: GameDetailsRow): GameDetails {
     ),
     initialStackBb: row.initial_stack_bb,
     rebuyChips: Number(row.rebuy_chips),
+    chipDistribution: mapChipDistribution(row.chip_distribution, initialChips),
     previewParticipantCount: row.preview_participant_count,
     venueCost: Number(row.venue_cost),
     firstPlaceCost: Number(row.first_place_cost),
@@ -589,6 +600,15 @@ function mapGameDetails(row: GameDetailsRow): GameDetails {
     payPayOwnerDisplayName: row.paypay_owner_display_name,
     payPayOwnerGroupPlayerId: row.paypay_owner_group_player_id,
   };
+}
+
+function mapChipDistribution(
+  value: unknown,
+  initialChips: number,
+): GameChipAllocation[] | null {
+  if (value == null) return null;
+  const validation = validateGameChipDistribution(value, initialChips);
+  return validation.ok ? validation.value : null;
 }
 
 function mapCostShares(values: string[] | null): number[] | null {

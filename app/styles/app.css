@@ -4408,6 +4408,153 @@ input[aria-invalid="true"] {
   margin-top: 8px;
 }
 
+.game-chip-distribution {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(57, 222, 141, 0.18);
+  border-radius: 14px;
+  background: rgba(5, 15, 10, 0.48);
+  padding: 14px;
+}
+
+.game-chip-distribution > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.game-chip-distribution > header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.game-chip-distribution > header span,
+.game-chip-allocation-grid small {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 760;
+}
+
+.game-chip-distribution h3,
+.game-chip-distribution p {
+  margin: 0;
+}
+
+.game-chip-distribution h3 {
+  font-size: 0.9rem;
+}
+
+.game-chip-distribution > header > strong {
+  color: var(--green);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-chip-allocation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.game-chip-allocation-grid > span {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid rgba(223, 236, 227, 0.09);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 9px 10px;
+}
+
+.game-chip-allocation-grid strong {
+  flex: 0 0 auto;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-chip-distribution > p {
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.55;
+}
+
+.game-chip-distribution-empty {
+  padding: 4px 0 2px;
+}
+
+.settlement-summary-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.settlement-summary-meta > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  border: 1px solid rgba(223, 236, 227, 0.09);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 10px 11px;
+}
+
+.settlement-summary-meta > span.is-wide {
+  grid-column: 1 / -1;
+}
+
+.settlement-summary-meta small,
+.settlement-plan-grid small {
+  color: var(--muted);
+  font-size: 0.6rem;
+}
+
+.settlement-summary-meta strong,
+.settlement-plan-grid strong {
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.settlement-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.settlement-plan-grid > span {
+  display: flex;
+  min-width: 0;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid rgba(223, 236, 227, 0.09);
+  padding: 7px 8px;
+}
+
+@media (max-width: 360px) {
+  .game-chip-allocation-grid {
+    gap: 5px;
+  }
+
+  .game-chip-allocation-grid > span {
+    padding-inline: 7px;
+  }
+
+  .game-chip-allocation-grid small {
+    font-size: 0.56rem;
+  }
+
+  .game-chip-allocation-grid strong {
+    font-size: 0.72rem;
+  }
+}
+
 .local-rule-toggle-card {
   position: relative;
   display: grid;

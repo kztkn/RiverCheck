@@ -73,6 +73,7 @@ export function GameSettingsFields({
       smallBlindChips: values.smallBlindChips,
       bigBlindChips: values.bigBlindChips,
       bigBlindAnteChips: values.bigBlindAnteChips,
+      chipDistribution: values.chipDistribution,
     });
   const [venueCost, setVenueCost] = useState(values.venueCost);
   const [participantCountInput, setParticipantCountInput] = useState(
@@ -124,12 +125,14 @@ export function GameSettingsFields({
       smallBlindChips: values.smallBlindChips,
       bigBlindChips: values.bigBlindChips,
       bigBlindAnteChips: values.bigBlindAnteChips,
+      chipDistribution: values.chipDistribution,
     });
   }, [
     values.bigBlindAnteChips,
     values.bigBlindChips,
     values.initialChips,
     values.smallBlindChips,
+    values.chipDistribution,
   ]);
 
   const analysis = useMemo(
@@ -514,7 +517,8 @@ export function GameSettingsFields({
                 errors.initialChips ||
                 errors.smallBlindChips ||
                 errors.bigBlindChips ||
-                errors.bigBlindAnteChips
+                errors.bigBlindAnteChips ||
+                errors.chipDistribution
                   ? true
                   : undefined
               }

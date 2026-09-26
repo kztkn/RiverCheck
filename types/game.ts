@@ -1,5 +1,10 @@
 export type GameStatus = "draft" | "open" | "finalized";
 
+export interface GameChipAllocation {
+  denomination: number;
+  count: number;
+}
+
 export interface GameSummary {
   id: string;
   title: string;
@@ -22,6 +27,7 @@ export interface GameDetails extends GameSummary {
   bigBlindAnteChips: number;
   initialStackBb: number;
   rebuyChips: number;
+  chipDistribution: GameChipAllocation[] | null;
   previewParticipantCount: number;
   venueCost: number;
   firstPlaceCost: number;
@@ -48,6 +54,7 @@ export interface CreateGameInput {
   bigBlindAnteChips: number;
   initialStackBb: number;
   rebuyChips: number;
+  chipDistribution: GameChipAllocation[] | null;
   previewParticipantCount: number;
   venueCost: number;
   firstPlaceCost: number;

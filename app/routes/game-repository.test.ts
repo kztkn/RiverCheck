@@ -45,6 +45,12 @@ describe("game repository navigation lookups", () => {
           big_blind_chips: "400",
           big_blind_ante_chips: "400",
           initial_stack_bb: 50,
+          chip_distribution: [
+            { denomination: 100, count: 10 },
+            { denomination: 500, count: 8 },
+            { denomination: 1000, count: 5 },
+            { denomination: 5000, count: 2 },
+          ],
           played_at: new Date("2026-09-21T03:00:00.000Z"),
           preview_participant_count: 8,
           rebuy_chips: "20000",
@@ -80,6 +86,12 @@ describe("game repository navigation lookups", () => {
         bigBlindChips: 400,
         bigBlindAnteChips: 400,
         initialStackBb: 50,
+        chipDistribution: [
+          { denomination: 100, count: 10 },
+          { denomination: 500, count: 8 },
+          { denomination: 1000, count: 5 },
+          { denomination: 5000, count: 2 },
+        ],
         playedAt: "2026-09-21T03:00:00.000Z",
         status: "open",
         title: "9月の会",
@@ -266,6 +278,7 @@ describe("game repository open game management", () => {
         bigBlindAnteChips: 200,
         initialStackBb: 100,
         rebuyChips: 20_000,
+        chipDistribution: null,
         venueCost: 11_300,
         firstPlaceCost: 0,
         secondPlaceCost: 500,
@@ -279,7 +292,7 @@ describe("game repository open game management", () => {
     ).resolves.toBe("game-1");
 
     const [sql, params] = mocked.queryDatabase.mock.calls[0]!;
-    expect(String(sql)).toContain("$8, $9, $10, 100");
+    expect(String(sql)).toContain("$8, $9, $10::JSONB, $11, 100");
     expect(String(sql)).toContain("game_group.paypay_recipient_link");
     expect(params).toEqual([
       "group-1",
@@ -291,6 +304,7 @@ describe("game repository open game management", () => {
       200,
       100,
       20_000,
+      null,
       11_300,
       0,
       500,
@@ -357,6 +371,7 @@ describe("game repository open game management", () => {
           bigBlindChips: 200,
           bigBlindAnteChips: 200,
           initialStackBb: 50,
+          chipDistribution: null,
         },
         false,
       ),
@@ -387,6 +402,7 @@ describe("game repository open game management", () => {
       200,
       200,
       50,
+      null,
       false,
     ]);
   });
@@ -406,6 +422,7 @@ describe("game repository open game management", () => {
           bigBlindChips: 200,
           bigBlindAnteChips: 200,
           initialStackBb: 50,
+          chipDistribution: null,
         },
         false,
       ),

@@ -16,6 +16,7 @@ describe("chip calculator form integration", () => {
     smallBlindChips: "10",
     bigBlindChips: "20",
     bigBlindAnteChips: "20",
+    chipDistribution: "",
   };
 
   it("計算しただけでは親ゲーム設定を変更しない", () => {
@@ -32,7 +33,7 @@ describe("chip calculator form integration", () => {
     expect(parentValues).toEqual(before);
   });
 
-  it("明示反映したときだけ4つの正本値へ変換する", () => {
+  it("明示反映したときだけゲーム設定とチップ構成へ変換する", () => {
     const result = calculateChipDistributionFromInputs([
       "10000",
       "5000",
@@ -47,12 +48,15 @@ describe("chip calculator form integration", () => {
       smallBlindChips: "100",
       bigBlindChips: "200",
       bigBlindAnteChips: "200",
+      chipDistribution:
+        '[{"denomination":100,"count":10},{"denomination":500,"count":8},{"denomination":1000,"count":5},{"denomination":5000,"count":2}]',
     });
     expect(parentValues).toEqual({
       initialChips: "500",
       smallBlindChips: "10",
       bigBlindChips: "20",
       bigBlindAnteChips: "20",
+      chipDistribution: "",
     });
   });
 
@@ -71,12 +75,17 @@ describe("chip calculator form integration", () => {
     });
   });
 
-  it("BB変更時にBBAを同額へ追従させる", () => {
-    expect(gameConfigurationWithBigBlind(parentValues, "25")).toEqual({
+  it("BB変更時にBBAを同額へ追従させ、保存済みチップ構成をクリアする", () => {
+    const values = {
       ...parentValues,
+      chipDistribution: '[{"denomination":500,"count":1}]',
+    };
+    expect(gameConfigurationWithBigBlind(values, "25")).toEqual({
+      ...values,
       initialChips: "625",
       bigBlindChips: "25",
       bigBlindAnteChips: "25",
+      chipDistribution: "",
     });
   });
 
@@ -114,7 +123,7 @@ describe("chip calculator form integration", () => {
     });
   });
 
-  it("BBAのあり・なしをBBと同額または0へ変換する", () => {
+  it("BBAのあり・なしはチップ構成を維持したままBBと同額または0へ変換する", () => {
     expect(gameConfigurationWithBigBlindAnte(parentValues, false)).toEqual({
       ...parentValues,
       bigBlindAnteChips: "0",
@@ -127,14 +136,20 @@ describe("chip calculator form integration", () => {
     ).toEqual(parentValues);
   });
 
-  it("選択した開始BBから初期チップだけを正方向へ計算する", () => {
-    expect(gameConfigurationWithStackDepth(parentValues, 25)).toEqual({
+  it("選択した開始BBから初期チップを計算し、保存済みチップ構成をクリアする", () => {
+    const values = {
       ...parentValues,
+      chipDistribution: '[{"denomination":500,"count":1}]',
+    };
+    expect(gameConfigurationWithStackDepth(values, 25)).toEqual({
+      ...values,
       initialChips: "500",
+      chipDistribution: "",
     });
-    expect(gameConfigurationWithStackDepth(parentValues, 150)).toEqual({
-      ...parentValues,
+    expect(gameConfigurationWithStackDepth(values, 150)).toEqual({
+      ...values,
       initialChips: "3000",
+      chipDistribution: "",
     });
   });
 });

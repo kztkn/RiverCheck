@@ -21,6 +21,8 @@ import { notifyNewGameCreated } from "@server/services/push-notification-service
 import { validateCostSharePlan } from "@domain/cost-sharing/validate-cost-share-plan";
 import { isSupportedBbRate } from "@domain/settlement/calculate-game-settlements";
 import { calculateInitialStackBb } from "@domain/score/bb-score";
+import { validateGameChipDistribution } from "@domain/chip-distribution/game-chip-distribution";
+import type { GameChipAllocation } from "@shared-types/game";
 
 const JST_OFFSET_MILLISECONDS = 9 * 60 * 60 * 1_000;
 const LOCAL_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -32,6 +34,7 @@ export interface GameSettingsFormValues {
   smallBlindChips: string;
   bigBlindChips: string;
   bigBlindAnteChips: string;
+  chipDistribution: string;
   venueCost: string;
   firstPlaceCost: string;
   secondPlaceCost: string;
@@ -57,6 +60,7 @@ export interface GameConfigurationFormValues {
   smallBlindChips: string;
   bigBlindChips: string;
   bigBlindAnteChips: string;
+  chipDistribution: string;
 }
 
 export type GameConfigurationFormErrors = Partial<
@@ -104,6 +108,7 @@ export function readGameSettingsForm(
     smallBlindChips: readString(formData, "smallBlindChips"),
     bigBlindChips: readString(formData, "bigBlindChips"),
     bigBlindAnteChips: readString(formData, "bigBlindAnteChips"),
+    chipDistribution: readString(formData, "chipDistribution"),
     venueCost: readString(formData, "venueCost"),
     firstPlaceCost: readString(formData, "firstPlaceCost"),
     secondPlaceCost: readString(formData, "secondPlaceCost"),
@@ -218,6 +223,7 @@ export async function updateOpenGameConfigurationForGroup(
         validation.errors.smallBlindChips ??
         validation.errors.bigBlindChips ??
         validation.errors.bigBlindAnteChips ??
+        validation.errors.chipDistribution ??
         "ゲーム設定を確認してください。",
     };
   }
@@ -309,15 +315,25 @@ export function validateGameConfigurationForm(
         bigBlindChips: number;
         bigBlindAnteChips: number;
         initialStackBb: number;
+        chipDistribution: GameChipAllocation[] | null;
       };
     }
   | { ok: false; errors: GameConfigurationFormErrors } {
   const errors: GameConfigurationFormErrors = {};
   const configuration = parseBlindConfiguration(values, errors);
-  if (!configuration || Object.keys(errors).length > 0) {
+  if (!configuration) return { ok: false, errors };
+  const chipDistribution = parseGameChipDistribution(
+    values.chipDistribution,
+    configuration.initialChips,
+    errors,
+  );
+  if (Object.keys(errors).length > 0) {
     return { ok: false, errors };
   }
-  return { ok: true, input: configuration };
+  return {
+    ok: true,
+    input: { ...configuration, chipDistribution },
+  };
 }
 
 export function validateGameSettingsForm(
@@ -339,6 +355,10 @@ export function validateGameSettingsForm(
 
   const blindConfiguration = parseBlindConfiguration(values, errors);
   const initialChips = blindConfiguration?.initialChips ?? null;
+  const chipDistribution =
+    initialChips === null
+      ? null
+      : parseGameChipDistribution(values.chipDistribution, initialChips, errors);
   const venueCost = parseNonNegativeInteger(
     values.venueCost,
     "venueCost",
@@ -473,6 +493,7 @@ export function validateGameSettingsForm(
       bigBlindAnteChips: blindConfiguration!.bigBlindAnteChips,
       initialStackBb: blindConfiguration!.initialStackBb,
       rebuyChips: initialChips!,
+      chipDistribution,
       previewParticipantCount: previewParticipantCount!,
       venueCost: venueCost!,
       firstPlaceCost: firstPlaceCost!,
@@ -484,6 +505,30 @@ export function validateGameSettingsForm(
       bombPotRuleEnabled: values.bombPotRuleEnabled,
     },
   };
+}
+
+function parseGameChipDistribution(
+  value: string,
+  initialChips: number,
+  errors: GameConfigurationFormErrors | GameSettingsFormErrors,
+): GameChipAllocation[] | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    errors.chipDistribution = "チップ構成を読み取れません。もう一度計算してください。";
+    return null;
+  }
+
+  const validation = validateGameChipDistribution(parsed, initialChips);
+  if (!validation.ok) {
+    errors.chipDistribution = validation.error;
+    return null;
+  }
+  return validation.value;
 }
 
 function parseBlindConfiguration(
