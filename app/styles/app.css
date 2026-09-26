@@ -7339,27 +7339,8 @@ input[aria-invalid="true"] {
   padding: 24px 0 0;
 }
 
-.admin-settlement-section-legend {
-  display: grid;
-  width: 100%;
-  gap: 0;
-  margin: 0 0 8px;
-  padding: 0;
-}
-
-.admin-settlement-section-legend .form-brand-label {
-  display: block;
-  margin: 0 0 7px;
-  color: #c8a85d;
-  font-size: 0.64rem;
-  font-weight: 850;
-  letter-spacing: 0.16em;
-}
-
-.admin-settlement-section-legend strong {
-  font-size: 1.15rem;
-  line-height: 1.3;
-  letter-spacing: -0.025em;
+.admin-summary-heading {
+  margin-bottom: 8px;
 }
 
 .admin-finalization-form .settlement-cost-disclosure,

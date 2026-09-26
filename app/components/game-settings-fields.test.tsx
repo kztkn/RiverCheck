@@ -187,7 +187,13 @@ describe("GameSettingsFields local rules", () => {
       /<details class="settlement-cost-disclosure" open=""><summary/u,
     );
     expect(adminMarkup).toContain("SUMMARY");
-    expect(adminMarkup).toContain("当日のまとめ");
+    expect(adminMarkup).toContain(
+      '<div class="section-heading admin-settings-heading admin-summary-heading">',
+    );
+    expect(adminMarkup).toContain(
+      '<h2 id="admin-summary-heading">当日のまとめ</h2>',
+    );
+    expect(adminMarkup).not.toContain("admin-settlement-section-legend");
     expect(adminMarkup).toMatch(
       /<details class="settlement-cost-disclosure"><summary/u,
     );

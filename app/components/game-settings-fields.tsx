@@ -595,6 +595,7 @@ export function GameSettingsFields({
       ) : null}
 
       <fieldset
+        aria-labelledby={showCoreSettings ? undefined : "admin-summary-heading"}
         className={`form-section form-section-settlement${showCoreSettings ? "" : " is-admin-section"}`}
       >
         {showCoreSettings ? (
@@ -603,10 +604,12 @@ export function GameSettingsFields({
             当日のまとめ
           </legend>
         ) : (
-          <legend className="admin-settlement-section-legend">
-            <span className="form-brand-label">SUMMARY</span>
-            <strong>当日のまとめ</strong>
-          </legend>
+          <div className="section-heading admin-settings-heading admin-summary-heading">
+            <div>
+              <p className="form-brand-label">SUMMARY</p>
+              <h2 id="admin-summary-heading">当日のまとめ</h2>
+            </div>
+          </div>
         )}
         <details
           className="settlement-cost-disclosure"
