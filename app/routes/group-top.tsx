@@ -3,6 +3,7 @@ import { Await, Link, NavLink, useRouteLoaderData } from "react-router";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { LiveTableMini } from "~/components/table-now";
 import { orderActiveGamesBySchedule } from "@domain/game/order-active-games";
+import { formatTokyoDateNumeric } from "@domain/date/format-tokyo-date";
 import { getGroupOverview } from "@server/services/group-service.server";
 import type { GameListItem } from "@shared-types/game";
 import type { Route } from "./+types/group-top";
@@ -17,8 +18,10 @@ export async function loader({ params }: Route.LoaderArgs) {
   const overview = await getGroupOverview(params.groupCode);
   if (!overview) throw new Response("Group not found", { status: 404 });
   const primaryGame = orderActiveGamesBySchedule(overview.games)[0];
-  const liveTable = primaryGame?.status === "open"
-    ? import("@server/repositories/participant-repository.server")
+  const liveTable =
+    primaryGame?.status === "open" &&
+    getPrimaryGameTiming(primaryGame.playedAt) === "today"
+      ? import("@server/repositories/participant-repository.server")
         .then(async ({ getOpenGameTableEventCounts }) => ({
           gameId: primaryGame.id,
           playerCount: primaryGame.participantCount,
@@ -52,7 +55,23 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
   const pastGames = games.filter((game) => game.status === "finalized");
   const primaryGame = activeGames[0];
   const otherActiveGames = activeGames.slice(1);
-  const isPrimaryGameLive = primaryGame?.status === "open";
+  const primaryGameTiming = primaryGame
+    ? getPrimaryGameTiming(primaryGame.playedAt)
+    : null;
+  const isPrimaryGameLive =
+    primaryGame?.status === "open" && primaryGameTiming === "today";
+  const primaryGameKicker =
+    primaryGameTiming === "today"
+      ? "TODAY'S TABLE"
+      : primaryGameTiming === "past"
+        ? "RESULT PENDING"
+        : "NEXT TABLE";
+  const primaryGameHeading =
+    primaryGameTiming === "today"
+      ? "本日の開催"
+      : primaryGameTiming === "past"
+        ? "結果待ち"
+        : "開催予定";
 
   return (
     <main className="page-shell group-home-page">
@@ -73,18 +92,9 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
             <p
               className={`home-section-kicker${isPrimaryGameLive ? " is-live" : ""}`}
             >
-              {isPrimaryGameLive ? (
-                <>
-                  <span aria-hidden="true" className="home-live-dot" />
-                  LIVE TABLE
-                </>
-              ) : (
-                "NEXT TABLE"
-              )}
+              {primaryGameKicker}
             </p>
-            <h2 id="current-game-heading">
-              {isPrimaryGameLive ? "開催中" : "開催予定"}
-            </h2>
+            <h2 id="current-game-heading">{primaryGameHeading}</h2>
           </div>
           <span className="home-section-count">{activeGames.length}件</span>
         </div>
@@ -287,6 +297,18 @@ function formatGameDateShort(playedAt: string): string {
     day: "numeric",
     timeZone: "Asia/Tokyo",
   }).format(new Date(playedAt));
+}
+
+export type PrimaryGameTiming = "past" | "today" | "future";
+
+export function getPrimaryGameTiming(
+  playedAt: string,
+  now: Date = new Date(),
+): PrimaryGameTiming {
+  const gameDate = formatTokyoDateNumeric(playedAt);
+  const today = formatTokyoDateNumeric(now);
+  if (gameDate === today) return "today";
+  return gameDate < today ? "past" : "future";
 }
 
 export function getCreateGameUrl(

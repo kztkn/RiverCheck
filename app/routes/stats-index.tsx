@@ -16,11 +16,7 @@ import type {
   PlayerStatsRankingRow,
   PlayerStatsSort,
 } from "@shared-types/player-stats";
-import {
-  PRIMARY_RANKING_OPTIONS,
-  SECONDARY_RANKING_OPTIONS,
-  isSecondaryRankingSort,
-} from "~/utils/ranking-options";
+import { RANKING_OPTIONS } from "~/utils/ranking-options";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const sort = parsePlayerStatsSort(new URL(request.url).searchParams.get("sort"));
@@ -32,9 +28,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 export default function StatsIndex({ loaderData }: Route.ComponentProps) {
   const { group, ranking, sort } = loaderData;
   const [activeSort, setActiveSort] = useState<PlayerStatsSort>(sort);
-  const [moreOptionsOpen, setMoreOptionsOpen] = useState(
-    isSecondaryRankingSort(sort),
-  );
   const visibleRanking = useMemo(
     () => rankPlayers(ranking, activeSort),
     [ranking, activeSort],
@@ -42,7 +35,6 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
 
   function handleSortChange(nextSort: PlayerStatsSort) {
     setActiveSort(nextSort);
-    setMoreOptionsOpen(isSecondaryRankingSort(nextSort));
 
     const url = new URL(window.location.href);
     url.searchParams.set("sort", nextSort);
@@ -63,51 +55,18 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
       </section>
       <section className="stats-ranking-section" aria-label="ランキング">
         <div className="section-heading stats-heading">
-          <div className="stats-sort-shell">
-            <div
-              className="stats-sort stats-sort-primary"
-              aria-label="ランキングの主な並び順"
-            >
-              {PRIMARY_RANKING_OPTIONS.map((option) => (
-                <button
-                  aria-current={activeSort === option.value ? "page" : undefined}
-                  className={activeSort === option.value ? "is-active" : undefined}
-                  key={option.value}
-                  onClick={() => handleSortChange(option.value)}
-                  type="button"
-                >
-                  {option.label}
-                </button>
-              ))}
+          <div className="stats-sort" aria-label="ランキングの並び順">
+            {RANKING_OPTIONS.map((option) => (
               <button
-                aria-controls="ranking-more-options"
-                aria-expanded={moreOptionsOpen}
-                className={isSecondaryRankingSort(activeSort) ? "is-active" : undefined}
-                onClick={() => setMoreOptionsOpen((open) => !open)}
+                aria-current={activeSort === option.value ? "page" : undefined}
+                className={activeSort === option.value ? "is-active" : undefined}
+                key={option.value}
+                onClick={() => handleSortChange(option.value)}
                 type="button"
               >
-                その他 <span aria-hidden="true">{moreOptionsOpen ? "−" : "＋"}</span>
+                {option.label}
               </button>
-            </div>
-            {moreOptionsOpen ? (
-              <div
-                className="stats-sort stats-sort-secondary"
-                id="ranking-more-options"
-                aria-label="その他のランキング指標"
-              >
-                {SECONDARY_RANKING_OPTIONS.map((option) => (
-                  <button
-                    aria-current={activeSort === option.value ? "page" : undefined}
-                    className={activeSort === option.value ? "is-active" : undefined}
-                    key={option.value}
-                    onClick={() => handleSortChange(option.value)}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
+            ))}
           </div>
         </div>
 

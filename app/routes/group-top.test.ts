@@ -16,7 +16,12 @@ vi.mock("~/components/site-menu", () => ({
   GroupSiteHeader: vi.fn(() => null),
 }));
 
-import { buildGameUrl, getCreateGameUrl, loader } from "./group-top";
+import {
+  buildGameUrl,
+  getCreateGameUrl,
+  getPrimaryGameTiming,
+  loader,
+} from "./group-top";
 
 const game = {
   id: "22222222-2222-4222-8222-222222222222",
@@ -28,6 +33,20 @@ describe("group top navigation", () => {
     expect(getCreateGameUrl(1, true, false)).toBeNull();
     expect(getCreateGameUrl(0, false, false)).toBeNull();
     expect(getCreateGameUrl(0, true, true)).toBeNull();
+  });
+
+  it("東京日付で主開催を予定・本日・結果待ちに分ける", () => {
+    const now = new Date("2026-09-25T23:30:00.000Z");
+
+    expect(
+      getPrimaryGameTiming("2026-09-25T15:00:00.000Z", now),
+    ).toBe("today");
+    expect(
+      getPrimaryGameTiming("2026-10-01T15:00:00.000Z", now),
+    ).toBe("future");
+    expect(
+      getPrimaryGameTiming("2026-09-24T15:00:00.000Z", now),
+    ).toBe("past");
   });
 
   it("管理者の受付中カードだけ管理画面へ進める", () => {
@@ -42,7 +61,7 @@ describe("group top navigation", () => {
     const openGame = {
       id: game.id,
       participantCount: 4,
-      playedAt: "2099-09-22T03:00:00.000Z",
+      playedAt: new Date().toISOString(),
       status: "open",
       title: "開催中の会",
       winnerName: null,

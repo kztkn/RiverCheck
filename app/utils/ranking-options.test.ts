@@ -1,27 +1,16 @@
 import { describe, expect, it } from "vitest";
-import {
-  PRIMARY_RANKING_OPTIONS,
-  SECONDARY_RANKING_OPTIONS,
-  isSecondaryRankingSort,
-} from "./ranking-options";
+import { RANKING_OPTIONS } from "./ranking-options";
 
 describe("ranking options", () => {
-  it("keeps the three everyday metrics in the primary row", () => {
-    expect(PRIMARY_RANKING_OPTIONS).toEqual([
+  it("keeps all seven metrics in one horizontal selector", () => {
+    expect(RANKING_OPTIONS).toEqual([
       { value: "total", label: "累計BB" },
+      { value: "average", label: "平均BB" },
       { value: "recent", label: "直近3戦" },
-      { value: "top-three", label: "TOP3" },
+      { value: "top-three", label: "TOP3回数" },
+      { value: "rank-rate", label: "順位率" },
+      { value: "max-win", label: "最大勝ち" },
+      { value: "max-loss", label: "最大負け" },
     ]);
-  });
-
-  it("moves detailed metrics behind the secondary controls", () => {
-    expect(SECONDARY_RANKING_OPTIONS.map((option) => option.value)).toEqual([
-      "average",
-      "rank-rate",
-      "max-win",
-      "max-loss",
-    ]);
-    expect(isSecondaryRankingSort("average")).toBe(true);
-    expect(isSecondaryRankingSort("total")).toBe(false);
   });
 });
