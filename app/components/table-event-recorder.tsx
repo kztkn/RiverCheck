@@ -394,10 +394,6 @@ export function buildTableEventsPath(pathname: string): string | null {
   return match ? `${match[1]}/table-events` : null;
 }
 
-export function isParticipantTableEventsPath(pathname: string): boolean {
-  return /^\/g\/[^/]+\/games\/[^/]+\/?$/u.test(pathname);
-}
-
 function baseCommand(intent: string): FormData {
   const formData = new FormData();
   formData.set("intent", intent);

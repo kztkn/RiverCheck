@@ -27,7 +27,7 @@ export interface GameDetails extends GameSummary {
   bigBlindAnteChips: number;
   initialStackBb: number;
   rebuyChips: number;
-  chipDistribution?: GameChipAllocation[] | null;
+  chipDistribution: GameChipAllocation[] | null;
   previewParticipantCount: number;
   venueCost: number;
   firstPlaceCost: number;

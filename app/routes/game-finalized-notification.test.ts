@@ -60,6 +60,7 @@ const settings = {
   bigBlindAnteChips: 200,
   initialStackBb: 100,
   rebuyChips: 10_000,
+  chipDistribution: null,
   previewParticipantCount: 4,
   venueCost: 10_000,
   firstPlaceCost: 0,

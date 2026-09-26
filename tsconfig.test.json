@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["domain/**/*.ts"],
+  "include": ["domain/**/*.ts", "types/game.ts"],
   "compilerOptions": {
     "composite": true,
     "types": ["node", "vitest/globals"],
