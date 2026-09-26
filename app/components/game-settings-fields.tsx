@@ -594,11 +594,20 @@ export function GameSettingsFields({
         </>
       ) : null}
 
-      <fieldset className="form-section form-section-settlement">
-        <legend>
-          <span>03</span>
-          当日のまとめ
-        </legend>
+      <fieldset
+        className={`form-section form-section-settlement${showCoreSettings ? "" : " is-admin-section"}`}
+      >
+        {showCoreSettings ? (
+          <legend>
+            <span>03</span>
+            当日のまとめ
+          </legend>
+        ) : (
+          <legend className="admin-settlement-section-legend">
+            <span className="form-brand-label">SUMMARY</span>
+            <strong>当日のまとめ</strong>
+          </legend>
+        )}
         <details
           className="settlement-cost-disclosure"
           onToggle={(event) => setCostSettingsOpen(event.currentTarget.open)}

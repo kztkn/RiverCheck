@@ -2256,11 +2256,10 @@ function SettlementPublishControls({
 }) {
   return (
     <section className="settlement-publish-panel">
-      <div>
-        <p className="form-brand-label">SHARE WITH PLAYERS</p>
-        <h2>参加者への公開</h2>
+      <div className="settlement-publish-copy">
+        <strong>参加者への公開</strong>
         <p>
-          負担配分とゲーム結果を、参加者画面の「今日のまとめ」へ反映します。
+          上の「当日の負担」と「ゲーム結果」を、参加者画面の「今日のまとめ」へ公開します。
         </p>
       </div>
       {error ? (

@@ -186,6 +186,8 @@ describe("GameSettingsFields local rules", () => {
     expect(creationMarkup).toMatch(
       /<details class="settlement-cost-disclosure" open=""><summary/u,
     );
+    expect(adminMarkup).toContain("SUMMARY");
+    expect(adminMarkup).toContain("当日のまとめ");
     expect(adminMarkup).toMatch(
       /<details class="settlement-cost-disclosure"><summary/u,
     );

@@ -41,15 +41,9 @@ export async function loader({ params }: Route.LoaderArgs) {
 export default function GroupTop({ loaderData }: Route.ComponentProps) {
   const { group, games, liveTable } = loaderData;
   const rootData = useRouteLoaderData("root") as
-    | {
-        authenticatedPlayerGroupPlayerId: string | null;
-        isOrganizer: boolean;
-      }
+    | { isOrganizer: boolean }
     | undefined;
   const isOrganizer = rootData?.isOrganizer ?? false;
-  const playerStatsUrl = rootData?.authenticatedPlayerGroupPlayerId
-    ? `stats/${rootData.authenticatedPlayerGroupPlayerId}`
-    : "profile";
 
   const activeGames = orderActiveGamesBySchedule(games);
   const pastGames = games.filter((game) => game.status === "finalized");
@@ -179,25 +173,6 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
           </div>
         )}
       </section>
-
-      <NavLink
-        className={({ isPending }) =>
-          `home-profile-link${isPending ? " is-pending" : ""}`
-        }
-        prefetch="intent"
-        to={playerStatsUrl}
-      >
-        {({ isPending }) => (
-          <>
-            <span>
-              <small>PLAYER RECORD</small>
-              <strong>プロフィールと戦績</strong>
-              <span>BB・順位・MY HANDを振り返る</span>
-            </span>
-            <RoutePendingMark pending={isPending} />
-          </>
-        )}
-      </NavLink>
 
       <PastGames games={pastGames} />
 
