@@ -136,7 +136,6 @@ export function PlayerGameHistory({
                 <strong className={getBbToneClass(game.netBb)}>
                   {formatSignedBbValue(game.netBb)}
                 </strong>
-                <span aria-hidden="true" className="stats-game-arrow">→</span>
               </Link>
             </li>
           ))}

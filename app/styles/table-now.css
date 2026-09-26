@@ -104,18 +104,13 @@
 .home-live-table-mini-cta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 8px;
   border-top: 1px solid rgba(223,236,227,.09);
   color: #d8e6de;
   font-size: .7rem;
   font-weight: 820;
   padding-top: 11px;
-}
-.home-live-table-mini-cta b {
-  color: var(--green);
-  font-size: .95rem;
-  font-weight: 650;
 }
 @keyframes home-live-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }

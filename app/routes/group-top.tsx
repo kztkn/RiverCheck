@@ -203,10 +203,10 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
 
       <nav aria-label="その他のグループ情報" className="home-secondary-links">
         <Link prefetch="intent" to="stats">
-          ランキングを見る <span aria-hidden="true">→</span>
+          ランキングを見る
         </Link>
         <Link to="about">
-          RiverCheckについて <span aria-hidden="true">→</span>
+          RiverCheckについて
         </Link>
       </nav>
     </main>
@@ -338,17 +338,10 @@ function RoutePendingMark({
   className?: string;
   pending: boolean;
 }) {
+  if (!pending) return null;
   return (
-    <span
-      aria-label={pending ? "読み込み中" : undefined}
-      className={className}
-      role={pending ? "status" : undefined}
-    >
-      {pending ? (
-        <span aria-hidden="true" className="route-link-spinner" />
-      ) : (
-        <span aria-hidden="true">→</span>
-      )}
+    <span aria-label="読み込み中" className={className} role="status">
+      <span aria-hidden="true" className="route-link-spinner" />
     </span>
   );
 }

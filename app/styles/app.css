@@ -168,7 +168,7 @@ a {
 }
 
 .pwa-update-notice button {
-  min-height: 40px;
+  min-height: 44px;
   flex: 0 0 auto;
   border: 0;
   border-radius: 10px;
@@ -248,6 +248,23 @@ fieldset {
   min-width: 0;
   align-items: center;
   gap: 7px;
+}
+
+.header-player-profile-link {
+  min-height: 44px;
+  border-radius: 10px;
+  padding: 7px 4px;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.header-player-profile-link:hover,
+.header-player-profile-link:focus-visible {
+  background: rgba(57, 222, 141, 0.07);
+  outline: none;
+}
+
+.header-player-profile-link:active {
+  background: rgba(57, 222, 141, 0.12);
 }
 
 .player-avatar.header-player-avatar {
@@ -675,12 +692,6 @@ fieldset {
   font-size: 0.73rem;
 }
 
-.home-profile-link > span:last-child {
-  flex: 0 0 auto;
-  color: var(--gold);
-  font-size: 1.45rem;
-}
-
 .home-history {
   margin-bottom: clamp(46px, 8vw, 68px);
 }
@@ -698,7 +709,7 @@ fieldset {
   display: grid;
   min-width: 0;
   min-height: 72px;
-  grid-template-columns: 52px minmax(0, 1fr) 22px;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
   align-items: center;
   gap: 15px;
   border-bottom: 1px solid var(--line);
@@ -784,7 +795,7 @@ fieldset {
   display: flex;
   min-height: 54px;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
   color: var(--muted);
   font-size: 0.76rem;
@@ -1050,11 +1061,6 @@ textarea:focus-visible,
 .status-finalized {
   background: rgba(157, 176, 166, 0.12);
   color: var(--muted);
-}
-
-.card-arrow {
-  color: var(--green);
-  font-size: 1.5rem;
 }
 
 .card-action {
@@ -2074,7 +2080,7 @@ input[aria-invalid="true"] {
 .paypay-payment-button {
   display: inline-flex;
   width: fit-content;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -2406,7 +2412,7 @@ input[aria-invalid="true"] {
 }
 
 .button-small {
-  min-height: 38px;
+  min-height: 44px;
   border-radius: 9px;
   font-size: 0.7rem;
   padding: 0 11px;
@@ -4270,11 +4276,6 @@ input[aria-invalid="true"] {
   outline-offset: 3px;
 }
 
-.rebuy-rules-trigger > span:last-child {
-  color: #8da097;
-  font-size: 1.15rem;
-}
-
 .local-rules-entry {
   margin: 12px 0 6px;
 }
@@ -4496,7 +4497,7 @@ input[aria-invalid="true"] {
 }
 
 .rebuy-toast-undo {
-  min-height: 40px;
+  min-height: 44px;
   flex: 0 0 auto;
   border: 0;
   background: transparent;
@@ -5557,14 +5558,14 @@ input[aria-invalid="true"] {
 }
 
 .chip-denomination-remove {
-  width: 38px;
-  min-height: 38px;
+  width: 44px;
+  min-height: 44px;
   font-size: 1.15rem;
 }
 
 .chip-denomination-add {
   justify-self: start;
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 12px;
   color: var(--ink);
   font-size: 0.76rem;
@@ -6041,7 +6042,7 @@ input[aria-invalid="true"] {
   display: grid;
   min-width: 0;
   min-height: 74px;
-  grid-template-columns: 52px minmax(0, 1fr) 20px;
+  grid-template-columns: 52px minmax(0, 1fr);
   align-items: center;
   gap: 14px;
   border-top: 1px solid var(--line);
@@ -6080,10 +6081,6 @@ input[aria-invalid="true"] {
 .organizer-game-row-main small {
   color: var(--muted);
   font-size: 0.68rem;
-}
-
-.organizer-game-row > span:last-child {
-  color: #687b71;
 }
 
 .organizer-game-empty {
@@ -6782,7 +6779,7 @@ input[aria-invalid="true"] {
 
 .participant-admin-undo {
   justify-self: start;
-  min-height: 38px;
+  min-height: 44px;
   color: #9eb0a6;
   font-size: 0.67rem;
 }
@@ -7338,7 +7335,7 @@ input[aria-invalid="true"] {
 .cost-share-collection-row button {
   display: inline-flex;
   min-width: 96px;
-  min-height: 38px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -7793,7 +7790,7 @@ input[aria-invalid="true"] {
 }
 
 .settlement-adjustment-control button {
-  min-height: 40px;
+  min-height: 44px;
   appearance: none;
   border: 0;
   background: transparent;
@@ -8006,7 +8003,7 @@ input[aria-invalid="true"] {
 
 .rebuy-inline-undo {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   flex: 0 0 auto;
   align-items: center;
   gap: 5px;
@@ -8222,7 +8219,7 @@ input[aria-invalid="true"] {
   display: flex;
   min-height: 72px;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
   border-top: 1px solid var(--line);
   padding: 14px 4px;
@@ -8244,11 +8241,6 @@ input[aria-invalid="true"] {
 .entry-resolver-group small {
   color: var(--muted);
   font-size: 0.7rem;
-}
-
-.entry-resolver-group > span:last-child {
-  color: var(--green);
-  font-size: 1.15rem;
 }
 
 .entry-gate-panel {

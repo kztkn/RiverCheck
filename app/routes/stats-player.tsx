@@ -244,7 +244,7 @@ export default function StatsPlayer({
               className="stats-profile-edit-button"
               to={`${profilePath}?editProfile=1`}
             >
-              編集 <span aria-hidden="true">›</span>
+              編集
             </Link>
           ) : null}
         </div>

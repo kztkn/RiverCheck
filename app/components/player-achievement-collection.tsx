@@ -37,6 +37,15 @@ export function PlayerAchievementCollectionView({
     }
   }, [collectionOpen]);
 
+  useEffect(() => {
+    if (!collectionOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [collectionOpen]);
+
   function openCollection() {
     setActiveTab(unlockedItems.length > 0 ? "unlocked" : "locked");
     setCollectionOpen(true);
@@ -77,7 +86,6 @@ export function PlayerAchievementCollectionView({
           type="button"
         >
           <span>コレクションを見る</span>
-          <span aria-hidden="true">›</span>
         </button>
       ) : null}
 

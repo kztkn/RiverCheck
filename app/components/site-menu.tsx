@@ -49,6 +49,31 @@ export function GroupSiteHeader({
   const isOrganizer = organizer || (rootData?.isOrganizer ?? false);
   const canCreateGames = rootData?.canCreateGames ?? false;
   const playerLabel = authenticatedPlayerName ?? "ゲスト";
+  const playerProfileUrl = buildHeaderProfileUrl(
+    groupCode,
+    authenticatedPlayerGroupPlayerId,
+    hideNavigation,
+  );
+  const playerIdentityLabel = isOrganizer
+    ? `主催者ログイン中：${playerLabel}`
+    : authenticatedPlayerName
+      ? `ログイン中：${authenticatedPlayerName}`
+      : "未認証：ゲスト";
+  const playerIdentity = (
+    <>
+      <PlayerAvatar
+        avatarUrl={authenticatedPlayerAvatarUrl}
+        className="header-player-avatar"
+        displayName={authenticatedPlayerName ?? ""}
+      />
+      <span
+        className={`header-player-name${authenticatedPlayerName ? "" : " is-guest"
+          }${isOrganizer ? " is-organizer" : ""}`}
+      >
+        {playerLabel}
+      </span>
+    </>
+  );
 
   return (
     <header className="site-header">
@@ -75,29 +100,25 @@ export function GroupSiteHeader({
       )}
       <div className="header-actions">
         {status}
-        <span
-          aria-label={
-            isOrganizer
-              ? `主催者ログイン中：${playerLabel}`
-              : authenticatedPlayerName
-                ? `ログイン中：${authenticatedPlayerName}`
-                : "未認証：ゲスト"
-          }
-          className="header-player-identity"
-          title={isOrganizer ? "主催者ログイン中" : undefined}
-        >
-          <PlayerAvatar
-            avatarUrl={authenticatedPlayerAvatarUrl}
-            className="header-player-avatar"
-            displayName={authenticatedPlayerName ?? ""}
-          />
-          <span
-            className={`header-player-name${authenticatedPlayerName ? "" : " is-guest"
-              }${isOrganizer ? " is-organizer" : ""}`}
+        {playerProfileUrl ? (
+          <Link
+            aria-label={`${playerIdentityLabel}・プロフィールを開く`}
+            className="header-player-identity header-player-profile-link"
+            prefetch="intent"
+            title={isOrganizer ? "主催者ログイン中・プロフィールを開く" : "プロフィールを開く"}
+            to={playerProfileUrl}
           >
-            {playerLabel}
+            {playerIdentity}
+          </Link>
+        ) : (
+          <span
+            aria-label={playerIdentityLabel}
+            className="header-player-identity"
+            title={isOrganizer ? "主催者ログイン中" : undefined}
+          >
+            {playerIdentity}
           </span>
-        </span>
+        )}
         {hideNavigation ? null : (
           <GroupSiteMenu
             groupCode={groupCode}
@@ -288,4 +309,14 @@ function SiteMenuItemIcon({ name }: { name: SiteMenuIcon }) {
       {paths[name]}
     </svg>
   );
+}
+
+
+export function buildHeaderProfileUrl(
+  groupCode: string,
+  groupPlayerId: string | null,
+  hideNavigation: boolean,
+): string | null {
+  if (!groupPlayerId || hideNavigation) return null;
+  return `/g/${groupCode}/stats/${groupPlayerId}`;
 }

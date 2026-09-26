@@ -62,7 +62,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 <strong>{group.name}</strong>
                 <small>/g/{group.publicCode}</small>
               </span>
-              <span aria-hidden="true">→</span>
             </Link>
           ))}
         </div>

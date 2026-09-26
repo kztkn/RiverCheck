@@ -247,9 +247,7 @@ export function LiveTableMini({
             {isPending ? "開いています" : "テーブルに戻る"}
             {isPending ? (
               <span aria-hidden="true" className="route-link-spinner" />
-            ) : (
-              <b aria-hidden="true">→</b>
-            )}
+            ) : null}
           </span>
         </>
       )}

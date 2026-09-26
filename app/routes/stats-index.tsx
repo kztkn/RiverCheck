@@ -133,7 +133,6 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
                       {metric.value}
                     </strong>
                   </span>
-                  <span className="card-arrow" aria-hidden="true">→</span>
                 </NavLink>
               );
             })}

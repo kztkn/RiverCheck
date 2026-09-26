@@ -107,9 +107,7 @@ export default function GroupDirectory({
                 </span>
                 {current ? (
                   <span className="group-directory-current">現在</span>
-                ) : (
-                  <span aria-hidden="true" className="group-directory-arrow">→</span>
-                )}
+                ) : null}
               </Link>
             );
           })}

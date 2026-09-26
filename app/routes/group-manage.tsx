@@ -201,7 +201,6 @@ function ManageGameRow({
           {isPast ? ` ・ 優勝 ${game.winnerName ?? "—"}` : ""}
         </small>
       </span>
-      <span aria-hidden="true">→</span>
     </Link>
   );
 }

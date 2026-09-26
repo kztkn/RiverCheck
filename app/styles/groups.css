@@ -110,11 +110,6 @@
   padding: 5px 9px;
 }
 
-.group-directory-arrow {
-  color: #81968a;
-  font-size: 1.05rem;
-}
-
 .group-create-disclosure {
   margin-top: 26px;
   border-top: 1px solid var(--line);

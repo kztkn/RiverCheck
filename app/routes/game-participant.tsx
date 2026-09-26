@@ -1194,7 +1194,7 @@ export default function GameParticipant({
           >
             <div className="participant-phase-heading">
               <div>
-                <span className="participant-phase-label">結果</span>
+                <span className="participant-phase-label">プレイ終了後</span>
                 <h3>残りチップとリバイ証</h3>
                 <p>
                   {loaderData.participant.status === "submitted"
@@ -2003,7 +2003,6 @@ export function ParticipantPlayerSnapshot({
           to={profileHref}
         >
           プロフィールを詳しく見る
-          <span aria-hidden="true">›</span>
         </Link>
       ) : null}
     </div>
@@ -2129,7 +2128,6 @@ export function LocalRulesSheet({
         type="button"
       >
         <span>ローカルルールを確認</span>
-        <span aria-hidden="true">›</span>
       </button>
       <dialog
         aria-describedby="local-rules-description"
@@ -2255,7 +2253,6 @@ export function SettlementPlanSheet({
         type="button"
       >
         <span>今日のまとめ</span>
-        <span aria-hidden="true">›</span>
       </button>
       <dialog
         aria-labelledby="settlement-plan-title"

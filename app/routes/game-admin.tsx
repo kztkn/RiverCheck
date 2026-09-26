@@ -1200,7 +1200,6 @@ export default function GameAdmin({
             </div>
             <a className="admin-command-action" href={nextAction.href}>
               {nextAction.actionLabel}
-              <span aria-hidden="true">→</span>
             </a>
           </div>
 

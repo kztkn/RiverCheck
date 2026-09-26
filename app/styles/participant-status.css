@@ -378,9 +378,9 @@
 
 .participant-snapshot-profile-link {
   display: flex;
-  min-height: 42px;
+  min-height: 44px;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   margin-top: auto;
   border-top: 1px solid rgba(223, 236, 227, 0.09);
   color: #aebdb4;

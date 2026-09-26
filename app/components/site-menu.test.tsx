@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
-import { GroupSiteMenu } from "./site-menu";
+import { buildHeaderProfileUrl, GroupSiteMenu } from "./site-menu";
 
 function renderMenu(
   props: Partial<Parameters<typeof GroupSiteMenu>[0]> = {},
@@ -77,5 +77,31 @@ describe("GroupSiteMenu", () => {
 
     expect(html).toContain("グループを管理");
     expect(html).not.toContain("グループを切り替える");
+  });
+});
+
+
+describe("buildHeaderProfileUrl", () => {
+  it("本人認証済みの通常ヘッダーは自分のプロフィールへ進める", () => {
+    expect(
+      buildHeaderProfileUrl(
+        "river-check",
+        "33333333-3333-4333-8333-333333333333",
+        false,
+      ),
+    ).toBe(
+      "/g/river-check/stats/33333333-3333-4333-8333-333333333333",
+    );
+  });
+
+  it("ゲストまたはナビゲーション非表示ではリンクにしない", () => {
+    expect(buildHeaderProfileUrl("river-check", null, false)).toBeNull();
+    expect(
+      buildHeaderProfileUrl(
+        "river-check",
+        "33333333-3333-4333-8333-333333333333",
+        true,
+      ),
+    ).toBeNull();
   });
 });
