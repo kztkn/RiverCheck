@@ -351,6 +351,7 @@ function mapGame(row: GameRow): GameDetails {
         : Number(row.big_blind_ante_chips),
     initialStackBb: row.initial_stack_bb,
     rebuyChips: Number(row.rebuy_chips),
+    chipDistribution: null,
     previewParticipantCount: row.preview_participant_count,
     venueCost: Number(row.venue_cost),
     firstPlaceCost: Number(row.first_place_cost),

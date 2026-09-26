@@ -1,4 +1,4 @@
-import type { GameChipAllocation } from "@shared-types/game";
+import type { GameChipAllocation } from "../../types/game";
 
 export type GameChipDistributionValidationResult =
   | { ok: true; value: GameChipAllocation[] }

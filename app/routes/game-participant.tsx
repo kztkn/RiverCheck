@@ -904,10 +904,6 @@ export default function GameParticipant({
   );
 
   useEffect(() => {
-    if (loaderData.notice === "saved") setIsEditing(false);
-  }, [loaderData.notice, location.key]);
-
-  useEffect(() => {
     if (loaderData.notice !== "finalized") return;
     try {
       window.localStorage.removeItem(
