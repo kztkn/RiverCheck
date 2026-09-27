@@ -98,6 +98,7 @@ describe("FinalResults settlement visibility", () => {
     expect(markup).toContain("2,500P");
     expect(markup).toContain("4,000P");
     expect(markup).toContain("負担合計");
+    expect(markup).toContain('class="result-ranking"');
   });
 
   it("BB結果の反映が有効なら最終結果とゲーム・負担の内訳を表示する", () => {

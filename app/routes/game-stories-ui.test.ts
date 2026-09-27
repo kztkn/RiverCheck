@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import { GameStories } from "../components/game-stories";
 
 describe("GameStories", () => {
@@ -141,5 +142,45 @@ describe("GameStories", () => {
 
     expect(markup.match(/aria-label="自分の投稿を編集"/gu)).toHaveLength(1);
     expect(markup).not.toContain('aria-label="今日の記録を投稿"');
+  });
+
+  it("主催者の削除導線は画面内に操作が収まる共通確認カードを用意する", () => {
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: createElement(GameStories, {
+          bigBlindChips: 200,
+          canPost: false,
+          initialChips: 20_000,
+          isOrganizer: true,
+          ownPhotoUrl: null,
+          ownPost: null,
+          posts: [
+            {
+              avatarUpdatedAt: null,
+              avatarUrl: null,
+              body: "忘れられないリバー",
+              createdAt: "2026-08-23T00:00:00.000Z",
+              displayName: "Alice",
+              groupPlayerId: "33333333-3333-4333-8333-333333333333",
+              id: "55555555-5555-4555-8555-555555555555",
+              photo: null,
+              photoUrl: null,
+              updatedAt: "2026-08-23T00:00:00.000Z",
+            },
+          ],
+          results: [],
+        }),
+      },
+    ]);
+    const markup = renderToStaticMarkup(
+      createElement(RouterProvider, { router }),
+    );
+
+    expect(markup).toContain("game-story-delete-dialog-card");
+    expect(markup).toContain("投稿を削除しますか？");
+    expect(markup).toContain("キャンセル");
+    expect(markup).toContain('name="intent" value="delete-story-post"');
+    expect(markup).toContain('name="postId"');
   });
 });

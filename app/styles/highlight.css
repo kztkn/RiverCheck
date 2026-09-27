@@ -253,25 +253,13 @@
   gap: 16px;
 }
 
-.game-story-delete-confirm {
-  display: grid;
-  gap: 12px;
-  border: 1px solid rgba(255, 116, 108, 0.28);
-  border-radius: 14px;
-  background: rgba(255, 116, 108, 0.08);
-  padding: 14px;
+.game-story-delete-dialog-card {
+  min-height: min(360px, calc(100dvh - 48px));
+  align-content: center;
 }
 
-.game-story-delete-confirm p {
-  margin: 0;
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
-.game-story-delete-confirm > div {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+.game-story-editor-card.is-delete-confirmation {
+  padding: 0;
 }
 
 .story-photo-field {

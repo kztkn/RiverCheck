@@ -227,6 +227,7 @@ function StoryEditorDialog({
   const isSaving =
     navigation.state === "submitting" &&
     navigation.formData?.get("intent") === "save-story-post";
+  const isDeleting = isConfirmingDelete && isSaving;
 
   useEffect(() => {
     if (isSaving) {
@@ -313,7 +314,9 @@ function StoryEditorDialog({
 
   return (
     <dialog
-      aria-labelledby="story-editor-title"
+      aria-labelledby={
+        isConfirmingDelete ? "own-story-delete-title" : "story-editor-title"
+      }
       className="app-dialog game-story-editor-dialog"
       onCancel={closeDialog}
       onClick={(event) => {
@@ -325,146 +328,144 @@ function StoryEditorDialog({
       }}
       ref={dialogRef}
     >
-      <div className="game-story-editor-card">
-        <header>
-          <div>
-            <p className="form-brand-label">TABLE STORIES</p>
-            <h2 id="story-editor-title">
-              {post ? "自分の投稿を編集" : "今日の記録を投稿"}
-            </h2>
-          </div>
-          <button
-            aria-label="投稿画面を閉じる"
-            className="dialog-close-button"
-            onClick={closeDialog}
-            type="button"
-          >
-            ×
-          </button>
-        </header>
-        <Form
-          encType="multipart/form-data"
-          method="post"
-          noValidate
-          onSubmit={handleStorySubmit}
-        >
-          <input name="intent" type="hidden" value="save-story-post" />
-          <input
-            name="removeStoryPhoto"
-            type="hidden"
-            value={removePhoto ? "yes" : "no"}
-          />
-          <label className="field" htmlFor="storyEditorBody">
-            <span className="field-label">ひとこと（任意）</span>
-            <textarea
-              autoFocus
-              defaultValue={post?.body ?? ""}
-              id="storyEditorBody"
-              maxLength={GAME_STORY_BODY_MAX_LENGTH}
-              name="storyBody"
-              placeholder="印象に残ったハンドや、今日のひとこと"
-              rows={4}
-            />
-            <span className="field-hint">
-              最大{GAME_STORY_BODY_MAX_LENGTH}文字・保存後すぐに公開
-            </span>
-          </label>
-          <div className="story-photo-field">
-            <span className="field-label">写真（任意・1枚）</span>
-            {visiblePhotoUrl ? (
-              <div className="story-photo-preview">
-                <img alt="投稿写真のプレビュー" src={visiblePhotoUrl} />
-              </div>
-            ) : (
-              <div className="story-photo-empty">写真は未選択です</div>
-            )}
-            <label className="story-photo-picker">
-              <span>{isProcessingPhoto ? "写真を圧縮中…" : "写真を選択"}</span>
-              <input
-                accept="image/jpeg,image/png,image/webp"
-                disabled={isProcessingPhoto || isSaving}
-                name="storyPhoto"
-                onChange={(event) =>
-                  void handleStoryPhoto(event.target.files?.[0])
-                }
-                ref={fileInputRef}
-                type="file"
-              />
-            </label>
-            {selectedPhoto ? (
-              <button
-                className="text-button"
-                onClick={() => {
-                  setSelectedPhoto(null);
-                  if (fileInputRef.current) fileInputRef.current.value = "";
-                }}
-                type="button"
-              >
-                選択を取り消す
-              </button>
-            ) : photoUrl ? (
-              <button
-                className="text-button danger-text"
-                onClick={() => setRemovePhoto((current) => !current)}
-                type="button"
-              >
-                {removePhoto ? "写真削除を取り消す" : "写真を削除"}
-              </button>
-            ) : null}
-            <span className="field-hint">
-              JPEG・PNG・WebP。自動圧縮後{formatBytes(GAME_PHOTO_MAX_BYTES)}以内
-            </span>
-            {photoError ? (
-              <span className="field-error">{photoError}</span>
-            ) : null}
-          </div>
-          <div className="game-story-editor-actions">
-            {post ? (
-              <button
-                className="text-button danger-text"
-                onClick={() => setIsConfirmingDelete(true)}
-                type="button"
-              >
-                投稿を削除
-              </button>
-            ) : (
-              <span />
-            )}
-            <button
-              className="button button-primary"
-              disabled={isSaving || isProcessingPhoto || Boolean(photoError)}
-              type="submit"
-            >
-              {isProcessingPhoto
-                ? "写真を処理中…"
-                : isSaving
-                  ? "保存中…"
-                  : "投稿を保存"}
-            </button>
-          </div>
-        </Form>
+      <div
+        className={`game-story-editor-card${
+          isConfirmingDelete ? " is-delete-confirmation" : ""
+        }`}
+      >
         {isConfirmingDelete ? (
-          <div className="game-story-delete-confirm" role="alertdialog">
-            <p>文章と写真を削除しますか？</p>
-            <div>
+          <StoryDeleteConfirmation
+            description="文章と写真がTABLE STORIESから削除されます。"
+            hiddenFields={[
+              ["intent", "save-story-post"],
+              ["storyBody", ""],
+              ["removeStoryPhoto", "yes"],
+            ]}
+            isDeleting={isDeleting}
+            onCancel={() => setIsConfirmingDelete(false)}
+            titleId="own-story-delete-title"
+          />
+        ) : (
+          <>
+            <header>
+              <div>
+                <p className="form-brand-label">TABLE STORIES</p>
+                <h2 id="story-editor-title">
+                  {post ? "自分の投稿を編集" : "今日の記録を投稿"}
+                </h2>
+              </div>
               <button
-                className="button button-secondary"
-                onClick={() => setIsConfirmingDelete(false)}
+                aria-label="投稿画面を閉じる"
+                className="dialog-close-button"
+                onClick={closeDialog}
                 type="button"
               >
-                キャンセル
+                ×
               </button>
-              <Form method="post" reloadDocument>
-                <input name="intent" type="hidden" value="save-story-post" />
-                <input name="storyBody" type="hidden" value="" />
-                <input name="removeStoryPhoto" type="hidden" value="yes" />
-                <button className="button button-danger" type="submit">
-                  削除する
+            </header>
+            <Form
+              encType="multipart/form-data"
+              method="post"
+              noValidate
+              onSubmit={handleStorySubmit}
+            >
+              <input name="intent" type="hidden" value="save-story-post" />
+              <input
+                name="removeStoryPhoto"
+                type="hidden"
+                value={removePhoto ? "yes" : "no"}
+              />
+              <label className="field" htmlFor="storyEditorBody">
+                <span className="field-label">ひとこと（任意）</span>
+                <textarea
+                  autoFocus
+                  defaultValue={post?.body ?? ""}
+                  id="storyEditorBody"
+                  maxLength={GAME_STORY_BODY_MAX_LENGTH}
+                  name="storyBody"
+                  placeholder="印象に残ったハンドや、今日のひとこと"
+                  rows={4}
+                />
+                <span className="field-hint">
+                  最大{GAME_STORY_BODY_MAX_LENGTH}文字・保存後すぐに公開
+                </span>
+              </label>
+              <div className="story-photo-field">
+                <span className="field-label">写真（任意・1枚）</span>
+                {visiblePhotoUrl ? (
+                  <div className="story-photo-preview">
+                    <img alt="投稿写真のプレビュー" src={visiblePhotoUrl} />
+                  </div>
+                ) : (
+                  <div className="story-photo-empty">写真は未選択です</div>
+                )}
+                <label className="story-photo-picker">
+                  <span>{isProcessingPhoto ? "写真を圧縮中…" : "写真を選択"}</span>
+                  <input
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={isProcessingPhoto || isSaving}
+                    name="storyPhoto"
+                    onChange={(event) =>
+                      void handleStoryPhoto(event.target.files?.[0])
+                    }
+                    ref={fileInputRef}
+                    type="file"
+                  />
+                </label>
+                {selectedPhoto ? (
+                  <button
+                    className="text-button"
+                    onClick={() => {
+                      setSelectedPhoto(null);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                    type="button"
+                  >
+                    選択を取り消す
+                  </button>
+                ) : photoUrl ? (
+                  <button
+                    className="text-button danger-text"
+                    onClick={() => setRemovePhoto((current) => !current)}
+                    type="button"
+                  >
+                    {removePhoto ? "写真削除を取り消す" : "写真を削除"}
+                  </button>
+                ) : null}
+                <span className="field-hint">
+                  JPEG・PNG・WebP。自動圧縮後{formatBytes(GAME_PHOTO_MAX_BYTES)}以内
+                </span>
+                {photoError ? (
+                  <span className="field-error">{photoError}</span>
+                ) : null}
+              </div>
+              <div className="game-story-editor-actions">
+                {post ? (
+                  <button
+                    className="text-button danger-text"
+                    onClick={() => setIsConfirmingDelete(true)}
+                    type="button"
+                  >
+                    投稿を削除
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <button
+                  className="button button-primary"
+                  disabled={isSaving || isProcessingPhoto || Boolean(photoError)}
+                  type="submit"
+                >
+                  {isProcessingPhoto
+                    ? "写真を処理中…"
+                    : isSaving
+                      ? "保存中…"
+                      : "投稿を保存"}
                 </button>
-              </Form>
-            </div>
-          </div>
-        ) : null}
+              </div>
+            </Form>
+          </>
+        )}
       </div>
     </dialog>
   );
@@ -525,40 +526,66 @@ function StoryDeleteControl({
         }}
         ref={dialogRef}
       >
-        <div className="dialog-card">
-          <span aria-hidden="true" className="dialog-danger-icon">
-            !
-          </span>
-          <div>
-            <p className="eyebrow">DELETE STORY</p>
-            <h2 id={`story-delete-title-${postId}`}>投稿を削除しますか？</h2>
-            <p>
-              {displayName}さんの文章と写真がTABLE STORIESから削除されます。
-            </p>
-          </div>
-          <div className="dialog-actions">
-            <button
-              autoFocus
-              className="button button-secondary"
-              onClick={() => setIsOpen(false)}
-              type="button"
-            >
-              キャンセル
-            </button>
-            <Form method="post" reloadDocument>
-              <input name="intent" type="hidden" value="delete-story-post" />
-              <input name="postId" type="hidden" value={postId} />
-              <button
-                className="button button-danger"
-                disabled={isDeleting}
-                type="submit"
-              >
-                {isDeleting ? "削除中…" : "投稿を削除"}
-              </button>
-            </Form>
-          </div>
-        </div>
+        <StoryDeleteConfirmation
+          description={`${displayName}さんの文章と写真がTABLE STORIESから削除されます。`}
+          hiddenFields={[
+            ["intent", "delete-story-post"],
+            ["postId", postId],
+          ]}
+          isDeleting={isDeleting}
+          onCancel={() => setIsOpen(false)}
+          titleId={`story-delete-title-${postId}`}
+        />
       </dialog>
     </>
+  );
+}
+
+function StoryDeleteConfirmation({
+  description,
+  hiddenFields,
+  isDeleting,
+  onCancel,
+  titleId,
+}: {
+  description: string;
+  hiddenFields: Array<readonly [string, string]>;
+  isDeleting: boolean;
+  onCancel: () => void;
+  titleId: string;
+}) {
+  return (
+    <div className="dialog-card game-story-delete-dialog-card">
+      <span aria-hidden="true" className="dialog-danger-icon">
+        !
+      </span>
+      <div>
+        <p className="eyebrow">DELETE STORY</p>
+        <h2 id={titleId}>投稿を削除しますか？</h2>
+        <p>{description}</p>
+      </div>
+      <div className="dialog-actions">
+        <button
+          autoFocus
+          className="button button-secondary"
+          onClick={onCancel}
+          type="button"
+        >
+          キャンセル
+        </button>
+        <Form method="post" reloadDocument>
+          {hiddenFields.map(([name, value]) => (
+            <input key={name} name={name} type="hidden" value={value} />
+          ))}
+          <button
+            className="button button-danger"
+            disabled={isDeleting}
+            type="submit"
+          >
+            {isDeleting ? "削除中…" : "投稿を削除"}
+          </button>
+        </Form>
+      </div>
+    </div>
   );
 }

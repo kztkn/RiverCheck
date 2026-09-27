@@ -4850,6 +4850,10 @@ input[aria-invalid="true"] {
   padding: clamp(30px, 6vw, 48px) 0 22px;
 }
 
+.participant-hero-finalized {
+  border-bottom: 0;
+}
+
 .participant-hero-status {
   margin: 0 0 7px;
   color: #c8a85d;
@@ -7465,6 +7469,10 @@ input[aria-invalid="true"] {
   font-size: clamp(1.5rem, 5vw, 2rem);
 }
 
+.result-ranking {
+  display: grid;
+}
+
 .result-winner {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -7519,6 +7527,10 @@ input[aria-invalid="true"] {
 .result-panel .result-list {
   gap: 0;
   border-bottom: 1px solid var(--line);
+}
+
+.result-ranking .result-list .result-row:first-child {
+  border-top: 0;
 }
 
 .result-panel .result-row {

@@ -163,96 +163,98 @@ export function FinalResults({
               : "このブラウザでは共有またはコピーを利用できません。"}
         </p>
       ) : null}
-      {winner ? (
-        <ResultPlayerContainer
-          ariaLabel={`${winner.displayName}の戦績を見る`}
-          className="result-winner"
-          groupCode={groupCode}
-          groupPlayerId={winner.groupPlayerId}
-          link={linkPlayerProfiles}
-        >
-          <div className="result-winner-copy">
-            <span>WINNER</span>
-            <div className="result-winner-identity">
-              <PlayerAvatar
-                avatarUrl={winner.avatarUrl ?? null}
-                className="result-avatar result-winner-avatar"
-                displayName={winner.displayName}
-              />
-              <div className="result-winner-person">
-                <strong>
-                  {winner.displayName}
-                  {payPay?.ownerGroupPlayerId === winner.groupPlayerId ? (
-                    <span aria-label="PayPay受取人" className="paypay-owner-mark" title="PayPay受取人">☆</span>
-                  ) : null}
-                </strong>
-                <ResultParticipantMeta result={winner} />
+      <div className="result-ranking">
+        {winner ? (
+          <ResultPlayerContainer
+            ariaLabel={`${winner.displayName}の戦績を見る`}
+            className="result-winner"
+            groupCode={groupCode}
+            groupPlayerId={winner.groupPlayerId}
+            link={linkPlayerProfiles}
+          >
+            <div className="result-winner-copy">
+              <span>WINNER</span>
+              <div className="result-winner-identity">
+                <PlayerAvatar
+                  avatarUrl={winner.avatarUrl ?? null}
+                  className="result-avatar result-winner-avatar"
+                  displayName={winner.displayName}
+                />
+                <div className="result-winner-person">
+                  <strong>
+                    {winner.displayName}
+                    {payPay?.ownerGroupPlayerId === winner.groupPlayerId ? (
+                      <span aria-label="PayPay受取人" className="paypay-owner-mark" title="PayPay受取人">☆</span>
+                    ) : null}
+                  </strong>
+                  <ResultParticipantMeta result={winner} />
+                </div>
               </div>
             </div>
-          </div>
-          <div className="result-values result-winner-values">
-            <b
-              className={`result-score result-score-${scoreTone(winner.score, initialChips, bigBlindChips)}`}
-            >
-              {formatNetBb({
-                score: winner.score,
-                initialChips,
-                bigBlindChips,
-              })}
-            </b>
-            {showSettlementAmounts ? (
-              <ResultSettlementAmount bbRate={bbRate} result={winner} />
-            ) : null}
-          </div>
-        </ResultPlayerContainer>
-      ) : null}
-      <div className="result-list">
-        {results
-          .filter((result) => result.rank !== 1)
-          .map((result) => (
-            <ResultPlayerContainer
-              ariaLabel={`${result.displayName}の戦績を見る`}
-              className={`result-row result-row-rank-${result.rank}${
-                result.rank <= 3 ? " is-top-three" : ""
-              }`}
-              groupCode={groupCode}
-              groupPlayerId={result.groupPlayerId}
-              key={result.groupPlayerId}
-              link={linkPlayerProfiles}
-            >
-              <span className={`rank-badge rank-${result.rank}`}>
-                {formatOrdinal(result.rank)}
-              </span>
-              <PlayerAvatar
-                avatarUrl={result.avatarUrl ?? null}
-                className="result-avatar"
-                displayName={result.displayName}
-              />
-              <div className="result-player">
-                <strong>
-                  {result.displayName}
-                  {payPay?.ownerGroupPlayerId === result.groupPlayerId ? (
-                    <span aria-label="PayPay受取人" className="paypay-owner-mark" title="PayPay受取人">☆</span>
+            <div className="result-values result-winner-values">
+              <b
+                className={`result-score result-score-${scoreTone(winner.score, initialChips, bigBlindChips)}`}
+              >
+                {formatNetBb({
+                  score: winner.score,
+                  initialChips,
+                  bigBlindChips,
+                })}
+              </b>
+              {showSettlementAmounts ? (
+                <ResultSettlementAmount bbRate={bbRate} result={winner} />
+              ) : null}
+            </div>
+          </ResultPlayerContainer>
+        ) : null}
+        <div className="result-list">
+          {results
+            .filter((result) => result.rank !== 1)
+            .map((result) => (
+              <ResultPlayerContainer
+                ariaLabel={`${result.displayName}の戦績を見る`}
+                className={`result-row result-row-rank-${result.rank}${
+                  result.rank <= 3 ? " is-top-three" : ""
+                }`}
+                groupCode={groupCode}
+                groupPlayerId={result.groupPlayerId}
+                key={result.groupPlayerId}
+                link={linkPlayerProfiles}
+              >
+                <span className={`rank-badge rank-${result.rank}`}>
+                  {formatOrdinal(result.rank)}
+                </span>
+                <PlayerAvatar
+                  avatarUrl={result.avatarUrl ?? null}
+                  className="result-avatar"
+                  displayName={result.displayName}
+                />
+                <div className="result-player">
+                  <strong>
+                    {result.displayName}
+                    {payPay?.ownerGroupPlayerId === result.groupPlayerId ? (
+                      <span aria-label="PayPay受取人" className="paypay-owner-mark" title="PayPay受取人">☆</span>
+                    ) : null}
+                  </strong>
+                  <ResultParticipantMeta result={result} />
+                </div>
+                <div className="result-values">
+                  <strong
+                    className={`result-score result-score-${scoreTone(result.score, initialChips, bigBlindChips)}`}
+                  >
+                    {formatNetBb({
+                      score: result.score,
+                      initialChips,
+                      bigBlindChips,
+                    })}
+                  </strong>
+                  {showSettlementAmounts ? (
+                    <ResultSettlementAmount bbRate={bbRate} result={result} />
                   ) : null}
-                </strong>
-                <ResultParticipantMeta result={result} />
-              </div>
-              <div className="result-values">
-                <strong
-                  className={`result-score result-score-${scoreTone(result.score, initialChips, bigBlindChips)}`}
-                >
-                  {formatNetBb({
-                    score: result.score,
-                    initialChips,
-                    bigBlindChips,
-                  })}
-                </strong>
-                {showSettlementAmounts ? (
-                  <ResultSettlementAmount bbRate={bbRate} result={result} />
-                ) : null}
-              </div>
-            </ResultPlayerContainer>
-          ))}
+                </div>
+              </ResultPlayerContainer>
+            ))}
+        </div>
       </div>
       <div className="result-settlement-footer">
         {payPay?.paymentAvailable ? (

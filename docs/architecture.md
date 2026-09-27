@@ -94,6 +94,8 @@ TABLE STORIESは主催者を含む全投稿を`game_story_posts`へ保存し、`
 
 参加者の終了時入力actionは`game_participants`の残りチップ・リバイ証・提出状態だけを更新し、投稿を扱わない。TABLE STORIESの投稿専用actionは`finalized`の参加者だけを対象に、本人のprofile sessionまたはparticipant tokenを再確認して`game_story_posts`だけを更新し、確定結果には触れない。写真object keyの楽観ロックで別画面からの同時更新を検出する。公開一覧は全参加者投稿を作成時刻の古い順に並べる。
 
+TABLE STORIESの本人削除と主催者削除は共通の確認カードを使う。本人編集モーダルでは削除確認をフォーム末尾へ追加せず、モーダル本文を確認カードへ切り替えることで、スクロール位置にかかわらずキャンセルと削除の両操作を同時に表示する。
+
 画像は専用resource routeからWorker経由で配信し、R2 bucket自体は公開しない。参加者投稿写真は`open`中は本人・主催者だけ、`finalized`後は開催詳細の閲覧者へ配信する。soft delete済みまたはDB参照が外れたobjectは配信しない。
 
 ブラウザはアップロード前にCanvasで長辺1,800px以内へ縮小し、WebPを優先して圧縮する。WebP canvas変換が利用できないブラウザはJPEGへ自動フォールバックする。Worker側もcontent type、ファイルシグネチャ、3MB上限を検証する。object keyはgame単位のprefixとランダムUUIDで衝突を避ける。

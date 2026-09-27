@@ -953,6 +953,10 @@ export default function GameParticipant({
           loaderData.participant && loaderData.game.status === "open"
             ? " participant-hero-playing"
             : ""
+        }${
+          loaderData.game.status === "finalized"
+            ? " participant-hero-finalized"
+            : ""
         }`}
       >
         <p className="participant-hero-status">
