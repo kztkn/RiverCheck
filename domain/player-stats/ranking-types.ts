@@ -12,6 +12,7 @@ export interface PlayerRankingMetrics {
   displayName: string;
   gamesPlayed: number;
   wins: number;
+  secondPlaceFinishes: number;
   topThreeFinishes: number;
   totalNetBb: number;
   averageNetBb: number;

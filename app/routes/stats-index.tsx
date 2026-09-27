@@ -132,6 +132,11 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
                     <strong className={metric.tone}>
                       {metric.value}
                     </strong>
+                    {metric.detail ? (
+                      <small className="stats-primary-detail">
+                        {metric.detail}
+                      </small>
+                    ) : null}
                   </span>
                 </NavLink>
               );
@@ -143,15 +148,16 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
   );
 }
 
-function getRankingMetric(
+export function getRankingMetric(
   player: PlayerStatsRankingRow,
   sort: PlayerStatsSort,
-): { label: string; value: string; tone: string } {
+): { label: string; value: string; tone: string; detail?: string } {
   if (sort === "top-three") {
     return {
       label: "TOP3入り",
       value: `${player.topThreeFinishes}回`,
       tone: "",
+      detail: `優勝${player.wins}回・2位${player.secondPlaceFinishes}回`,
     };
   }
   if (sort === "rank-rate") {

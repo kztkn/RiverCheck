@@ -11,6 +11,7 @@ interface RankingRow {
   display_name: string;
   games_played: number;
   wins: number;
+  second_place_finishes: number;
   top_three_finishes: number;
   total_net_bb: string;
   average_net_bb: string;
@@ -132,6 +133,9 @@ export async function listPlayerStatsRankingSnapshots(
           COUNT(finalized_result.game_id)
             FILTER (WHERE finalized_result.rank = 1)::INTEGER AS wins,
           COUNT(finalized_result.game_id)
+            FILTER (WHERE finalized_result.rank = 2)::INTEGER
+            AS second_place_finishes,
+          COUNT(finalized_result.game_id)
             FILTER (WHERE finalized_result.rank <= 3)::INTEGER
             AS top_three_finishes,
           COALESCE(SUM(finalized_result.net_bb), 0) AS total_net_bb,
@@ -183,6 +187,7 @@ export async function listPlayerStatsRankingSnapshots(
         display_name,
         games_played,
         wins,
+        second_place_finishes,
         top_three_finishes,
         total_net_bb,
         average_net_bb,
@@ -224,6 +229,7 @@ function mapRankingAggregate(row: RankingRow): PlayerStatsAggregate {
     displayName: row.display_name,
     gamesPlayed: row.games_played,
     wins: row.wins,
+    secondPlaceFinishes: row.second_place_finishes,
     topThreeFinishes: row.top_three_finishes,
     totalNetBb: Number(row.total_net_bb),
     averageNetBb: Number(row.average_net_bb),

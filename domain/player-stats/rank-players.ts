@@ -84,6 +84,7 @@ function compareRankingMetrics(
   if (sort === "top-three") {
     return compareDesc(left.topThreeFinishes, right.topThreeFinishes) ||
       compareDesc(left.wins, right.wins) ||
+      compareDesc(left.secondPlaceFinishes, right.secondPlaceFinishes) ||
       compareDesc(left.totalNetBb, right.totalNetBb);
   }
   if (sort === "rank-rate") {

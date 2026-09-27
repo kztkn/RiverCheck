@@ -22,6 +22,7 @@ describe("player stats ranking repository", () => {
           display_name: "Alice",
           games_played: 1,
           wins: 1,
+          second_place_finishes: 0,
           top_three_finishes: 1,
           total_net_bb: "25",
           average_net_bb: "25",
@@ -45,7 +46,11 @@ describe("player stats ranking repository", () => {
     await expect(
       listPlayerStatsRankingSnapshots("group-1"),
     ).resolves.toMatchObject({
-      current: [{ groupPlayerId: "player-1", gamesPlayed: 1 }],
+      current: [{
+        groupPlayerId: "player-1",
+        gamesPlayed: 1,
+        secondPlaceFinishes: 0,
+      }],
       previous: [],
     });
 
@@ -85,6 +90,7 @@ describe("player stats ranking repository", () => {
     );
     expect(sql).toContain("PARTITION BY comparison.scope, game_result.game_id");
     expect(sql).toContain("WHERE finalized_result.recent_number <= 3");
+    expect(sql).toContain("WHERE finalized_result.rank = 2");
     expect(sql).toContain("GROUP BY finalized_result.comparison_scope");
   });
 

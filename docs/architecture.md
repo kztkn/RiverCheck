@@ -170,7 +170,7 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 
 ランキング一覧の行高はCSS Gridの`grid-auto-rows: 1fr`で内容に必要な最大行高へ統一する。最低行高は全順位共通でデスクトップ88px・639px以下84pxとし、固定heightやJSによる高さ計測は使わない。プレイヤー名直下には最小25pxの称号スロットを常設し、装備中は共通のAchievementBadgeを表示、未設定時は`aria-hidden`な薄い破線枠の「—」プレースホルダーを表示して統計行の縦位置も揃える。上位3人専用の最低行高は持たせず、配色だけで強調する。
 
-ランキング指標はPlayerStatsRepositoryの確定結果CTEで集約する。1回のSQLで現在（全確定開催）と前回（最新確定開催を除いた集合）の2スコープを取得する。最新開催は`played_at DESC, finalized_at DESC, id DESC`で決定し、対象開催の除外をwindow計算より前に行う。開催人数のwindow countはスコープと`game_id`、直近3参加のrow numberはスコープと`group_player_id`で分割し、人数の二重計上や前回の4戦目の欠落を防ぐ。確定結果へのINNER JOINで、各時点の参加0回メンバーを除外する。
+ランキング指標はPlayerStatsRepositoryの確定結果CTEで集約する。1回のSQLで現在（全確定開催）と前回（最新確定開催を除いた集合）の2スコープを取得し、TOP3回数の補助比較に使う優勝回数・2位回数も同じ集約へ含める。最新開催は`played_at DESC, finalized_at DESC, id DESC`で決定し、対象開催の除外をwindow計算より前に行う。開催人数のwindow countはスコープと`game_id`、直近3参加のrow numberはスコープと`group_player_id`で分割し、人数の二重計上や前回の4戦目の欠落を防ぐ。確定結果へのINNER JOINで、各時点の参加0回メンバーを除外する。
 
 個人詳細の「直近3戦」は既存の`PlayerStatsDetail.games`だけから最新3件を取り出して合計損益BBを算出し、`PlayerStatsOverview`の累計損益に隣接する補助指標として表示する。追加SQL、順位計算、ランキングsnapshotは要求しない。開催ごとの表示とリンクは既存のページ下部`PlayerGameHistory`だけに集約し、直近3戦専用の開催リストは持たない。
 

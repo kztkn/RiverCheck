@@ -5,6 +5,7 @@ import type { PlayerRankingMetrics, PlayerStatsSort } from "./ranking-types";
 function player(id: string, values: Partial<PlayerRankingMetrics> = {}): PlayerRankingMetrics {
   return {
     groupPlayerId: id, displayName: id, gamesPlayed: 4, wins: 0,
+    secondPlaceFinishes: 0,
     topThreeFinishes: 2, totalNetBb: 0, averageNetBb: 0,
     maxWinBb: 10, maxLossBb: -10, recentAverageNetBb: 0,
     recentGameCount: 3, averageRankRate: 50,
@@ -60,12 +61,13 @@ describe("rankPlayers", () => {
     },
   );
 
-  it("uses wins then total profit to break TOP3 ties", () => {
+  it("uses wins, second places, then total profit to break TOP3 ties", () => {
     expect(rankPlayers([
-      player("A", { wins: 1, totalNetBb: 200 }),
-      player("B", { wins: 2, totalNetBb: 100 }),
-      player("C", { wins: 2, totalNetBb: 300 }),
-    ], "top-three").map((row) => row.groupPlayerId)).toEqual(["C", "B", "A"]);
+      player("A", { wins: 1, secondPlaceFinishes: 0, totalNetBb: 400 }),
+      player("B", { wins: 1, secondPlaceFinishes: 1, totalNetBb: 100 }),
+      player("C", { wins: 2, secondPlaceFinishes: 0, totalNetBb: 100 }),
+      player("D", { wins: 1, secondPlaceFinishes: 1, totalNetBb: 300 }),
+    ], "top-three").map((row) => row.groupPlayerId)).toEqual(["C", "D", "B", "A"]);
   });
 
   it("puts unknown rank rates last and ignores names when assigning ties", () => {

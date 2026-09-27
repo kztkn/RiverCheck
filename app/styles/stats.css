@@ -1466,6 +1466,13 @@
   white-space: nowrap;
 }
 
+.stats-ranking-section .stats-primary-value > .stats-primary-detail {
+  color: rgba(157, 176, 166, 0.82);
+  font-size: 0.58rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 @media (max-width: 639px) {
   .stats-ranking-intro {
     padding-top: 38px;
