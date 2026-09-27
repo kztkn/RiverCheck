@@ -1,6 +1,11 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["domain/**/*.ts", "types/game.ts"],
+  "include": [
+    "domain/**/*.ts",
+    "types/achievement.ts",
+    "types/game.ts",
+    "types/year-recap.ts"
+  ],
   "compilerOptions": {
     "composite": true,
     "types": ["node", "vitest/globals"],

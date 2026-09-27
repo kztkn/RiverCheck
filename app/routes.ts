@@ -10,6 +10,7 @@ export default [
   route("g/:groupCode/about", "routes/about.tsx"),
   route("g/:groupCode/stats", "routes/stats-index.tsx"),
   route("g/:groupCode/stats/:groupPlayerId", "routes/stats-player.tsx"),
+  route("g/:groupCode/recap/2026", "routes/year-recap.tsx"),
   route("g/:groupCode/organizer-login", "routes/organizer-login.tsx"),
   route("g/:groupCode/organizer-logout", "routes/organizer-logout.ts"),
   route("g/:groupCode/manage", "routes/group-manage.tsx"),
