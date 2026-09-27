@@ -131,6 +131,7 @@
 }
 
 .year-recap-stage {
+  position: relative;
   display: grid;
   min-height: 0;
   place-items: center;
@@ -138,6 +139,8 @@
 }
 
 .year-recap-frame {
+  position: relative;
+  z-index: 1;
   display: grid;
   width: min(100%, 560px);
   gap: clamp(22px, 5vh, 42px);
@@ -171,18 +174,12 @@
   font-size: clamp(2.15rem, 10vw, 4.4rem);
 }
 
-.year-recap-cover-avatar,
-.year-recap-mate-avatar {
+.year-recap-cover-avatar {
   width: 76px;
   height: 76px;
   border: 2px solid color-mix(in srgb, var(--recap-accent) 70%, white);
   box-shadow: 0 0 44px var(--recap-accent-soft);
   font-size: 1.7rem;
-}
-
-.year-recap-mate-avatar {
-  width: 92px;
-  height: 92px;
 }
 
 .year-recap-year,
@@ -293,8 +290,7 @@
   border-left: 1px solid rgba(255, 255, 255, 0.13);
 }
 
-.year-recap-metric small,
-.year-recap-leaders small {
+.year-recap-metric small {
   color: rgba(244, 248, 245, 0.56);
   font-size: 0.62rem;
   font-weight: 800;
@@ -342,31 +338,51 @@
   white-space: nowrap;
 }
 
-.year-recap-leaders {
+.year-recap-people {
   display: grid;
   width: 100%;
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  gap: 12px 8px;
 }
 
-.year-recap-leaders > div {
+.year-recap-person {
   display: grid;
-  gap: 4px;
-  border-left: 2px solid var(--recap-accent);
-  background: rgba(255, 255, 255, 0.035);
-  padding: 14px 16px;
+  min-width: 0;
+  justify-items: center;
+  gap: 5px;
+  text-align: center;
 }
 
-.year-recap-leaders strong {
+.year-recap-person-avatar {
+  width: 62px;
+  height: 62px;
+  border: 2px solid color-mix(in srgb, var(--recap-accent) 65%, white);
+  box-shadow: 0 0 28px var(--recap-accent-soft);
+  font-size: 1.25rem;
+}
+
+.year-recap-person strong {
+  max-width: 100%;
   overflow: hidden;
-  font-size: clamp(1.35rem, 6vw, 2rem);
-  letter-spacing: -0.04em;
+  font-size: 0.78rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.year-recap-leaders span {
+.year-recap-person small {
   color: rgba(244, 248, 245, 0.62);
-  font-size: 0.76rem;
+  font-size: 0.64rem;
+  font-weight: 750;
+}
+
+.year-recap-people.is-crowd {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.year-recap-people.is-crowd .year-recap-person-avatar {
+  width: clamp(42px, 12vw, 54px);
+  height: clamp(42px, 12vw, 54px);
+  font-size: 1rem;
 }
 
 .year-recap-suit {
@@ -403,31 +419,45 @@
   width: 20px;
 }
 
-.year-recap-step-controls {
-  display: grid;
-  width: min(100%, 280px);
-  grid-template-columns: 52px 1fr 52px;
-  align-items: center;
-  gap: 12px;
-}
-
-.year-recap-step-controls button {
-  display: grid;
-  width: 52px;
-  height: 52px;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 50%;
-  background: rgba(2, 9, 6, 0.34);
-  color: #fff;
-  backdrop-filter: blur(12px);
-}
-
-.year-recap-step-controls span {
+.year-recap-step-count {
   color: rgba(244, 248, 245, 0.62);
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
   text-align: center;
+}
+
+.year-recap-tap-zone {
+  position: absolute;
+  z-index: 3;
+  inset-block: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.year-recap-tap-zone.is-previous {
+  left: 0;
+  width: 35%;
+}
+
+.year-recap-tap-zone.is-next {
+  right: 0;
+  width: 65%;
+}
+
+.year-recap-tap-zone:disabled {
+  pointer-events: none;
+}
+
+.year-recap-tap-zone:focus-visible {
+  outline: 2px solid var(--recap-accent);
+  outline-offset: -5px;
+}
+
+.year-recap-tap-zone:not(:disabled):active {
+  background: color-mix(in srgb, var(--recap-accent) 5%, transparent);
 }
 
 @keyframes year-recap-enter {
@@ -480,10 +510,18 @@
     font-size: clamp(4rem, 18vh, 6.5rem);
   }
 
-  .year-recap-cover-avatar,
-  .year-recap-mate-avatar {
+  .year-recap-cover-avatar {
     width: 62px;
     height: 62px;
+  }
+
+  .year-recap-person-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .year-recap-people {
+    gap-block: 8px;
   }
 }
 

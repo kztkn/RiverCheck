@@ -174,7 +174,7 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 
 個人詳細の「直近3戦」は既存の`PlayerStatsDetail.games`だけから最新3件を取り出して合計損益BBを算出し、`PlayerStatsOverview`の累計損益に隣接する補助指標として表示する。追加SQL、順位計算、ランキングsnapshotは要求しない。開催ごとの表示とリンクは既存のページ下部`PlayerGameHistory`だけに集約し、直近3戦専用の開催リストは持たない。
 
-2026 YEAR RECAPは`/g/:groupCode/recap/2026`の独立routeとし、本人プロフィールCookieを認可境界にする。repositoryはJSTの年初・翌年年初をUTCへ変換した半開区間で、確定結果、TABLE STORIES、年内獲得称号を取得する。serviceはDB行をdomainの純粋関数へ渡し、グループ集計、本人集計、最大プラス開催、最多同卓者、最多参加者、最多優勝者を決定的に組み立てる。年間スナップショット用テーブルやmigrationは追加しない。画面は取得済みpayloadだけでスライドを構築し、約7秒の自動送りと手動の前後移動・一時停止をクライアントstateで制御する。既存ナビゲーションからの導線は2026年12月の公開変更まで追加しない。
+2026 YEAR RECAPは`/g/:groupCode/recap/2026`の独立routeとし、本人プロフィールCookieを認可境界にする。repositoryはJSTの年初・翌年年初をUTCへ変換した半開区間で、確定結果、TABLE STORIES、年内獲得称号を取得する。serviceはDB行をdomainの純粋関数へ渡し、グループ集計、本人集計、最大プラス開催、年内同卓者、表彰台メイト、ロングストリーク、同率を含む年間最多優勝者を決定的に組み立てる。年間スナップショット用テーブルやmigrationは追加しない。画面は取得済みpayloadだけでスライドを構築し、約7秒の自動送り、画面左右のタップ領域による前後移動、右上の一時停止・再開・終了をクライアントstateで制御する。既存ナビゲーションからの導線は2026年12月の公開変更まで追加しない。
 
 順位計算は`domain/player-stats/rank-players.ts`の純粋関数へ集約し、serviceとブラウザで共用する。SQLでは数値集約までを担い、serviceが現在順位と7指標の`previousRanks`を組み立て、既存loaderから返す。sort値はserviceの許可リストで検証し、SQLへ埋め込まない。画面は同じ関数で選択指標の現在順位を算出し、対応する前回順位との差を表示する。DBへの順位保存、新しいAPI、指標切替時の通信は追加しない。
 

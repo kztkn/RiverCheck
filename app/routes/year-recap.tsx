@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  IconChevronLeft,
   IconChevronRight,
   IconPlayerPause,
   IconPlayerPlay,
@@ -14,7 +13,11 @@ import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar
 import { formatSignedBbValue } from "@domain/score/bb-score";
 import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
 import { getYearRecap } from "@server/services/year-recap-service.server";
-import type { YearRecapSummary } from "@shared-types/year-recap";
+import type {
+  YearRecapPlayerHighlight,
+  YearRecapStreakKind,
+  YearRecapSummary,
+} from "@shared-types/year-recap";
 import type { Route } from "./+types/year-recap";
 
 const RECAP_YEAR = 2026;
@@ -98,6 +101,15 @@ export default function YearRecap({ loaderData }: Route.ComponentProps) {
     setIsPlaying(false);
   }
 
+  function showPreviousSlide() {
+    setActiveIndex((current) => Math.max(current - 1, 0));
+  }
+
+  function showNextSlide() {
+    if (activeIndex === 0) setIsPlaying(true);
+    setActiveIndex((current) => Math.min(current + 1, slides.length - 1));
+  }
+
   return (
     <main className={`year-recap theme-${activeSlide.theme}`}>
       <div className="year-recap-ambient" aria-hidden="true" />
@@ -142,6 +154,20 @@ export default function YearRecap({ loaderData }: Route.ComponentProps) {
         key={activeSlide.key}
       >
         {activeSlide.content}
+        <button
+          aria-label="前へ"
+          className="year-recap-tap-zone is-previous"
+          disabled={activeIndex === 0}
+          onClick={showPreviousSlide}
+          type="button"
+        />
+        <button
+          aria-label="次へ"
+          className="year-recap-tap-zone is-next"
+          disabled={isLastSlide}
+          onClick={showNextSlide}
+          type="button"
+        />
       </section>
 
       <footer className="year-recap-controls">
@@ -156,24 +182,9 @@ export default function YearRecap({ loaderData }: Route.ComponentProps) {
             <IconRefresh aria-hidden="true" />
           </button>
         ) : (
-          <div className="year-recap-step-controls">
-            <button
-              aria-label="前へ"
-              disabled={activeIndex === 0}
-              onClick={() => setActiveIndex((current) => Math.max(current - 1, 0))}
-              type="button"
-            >
-              <IconChevronLeft aria-hidden="true" />
-            </button>
-            <span>{activeIndex + 1} / {slides.length}</span>
-            <button
-              aria-label="次へ"
-              onClick={() => setActiveIndex((current) => Math.min(current + 1, slides.length - 1))}
-              type="button"
-            >
-              <IconChevronRight aria-hidden="true" />
-            </button>
-          </div>
+          <span className="year-recap-step-count">
+            {activeIndex + 1} / {slides.length}
+          </span>
         )}
       </footer>
     </main>
@@ -259,20 +270,57 @@ export function buildSlides(
           </RecapFrame>
         ),
       },
-      {
-        key: "score",
-        theme: player.totalNetBb >= 0 ? "mint" : "violet",
+    );
+
+    if (player.metPlayers.length > 0) {
+      slides.push({
+        key: "met-players",
+        theme: "violet",
         content: (
-          <RecapFrame eyebrow="TOTAL PROFIT">
-            <p className="year-recap-kicker">一年をBBで振り返ると</p>
-            <p className={`year-recap-profit ${player.totalNetBb >= 0 ? "is-positive" : "is-negative"}`}>
-              {formatSignedBbValue(player.totalNetBb)}
-            </p>
-            <p className="year-recap-lead">数字の上下も、すべて今年のテーブルの記録です。</p>
+          <RecapFrame eyebrow="PLAYERS WE MET">
+            <p className="year-recap-kicker">今年出会ったプレイヤー</p>
+            <BigNumber value={player.metPlayers.length} suffix="人" />
+            <RecapPeople
+              groupCode={groupCode}
+              people={player.metPlayers}
+              valueLabel={(value) => `${value}回同卓`}
+            />
           </RecapFrame>
         ),
-      },
-    );
+      });
+    }
+
+    slides.push({
+      key: "score",
+      theme: player.totalNetBb >= 0 ? "mint" : "violet",
+      content: (
+        <RecapFrame eyebrow="TOTAL PROFIT">
+          <p className="year-recap-kicker">一年をBBで振り返ると</p>
+          <p className={`year-recap-profit ${player.totalNetBb >= 0 ? "is-positive" : "is-negative"}`}>
+            {formatSignedBbValue(player.totalNetBb)}
+          </p>
+          <p className="year-recap-lead">数字の上下も、すべて今年のテーブルの記録です。</p>
+        </RecapFrame>
+      ),
+    });
+  }
+
+  if (player.longestStreak) {
+    const copy = getStreakCopy(player.longestStreak.kind);
+    slides.push({
+      key: "longest-streak",
+      theme: "gold",
+      content: (
+        <RecapFrame eyebrow="LONG STREAK">
+          <p className="year-recap-kicker">今年のロングストリーク</p>
+          <BigNumber value={player.longestStreak.count} suffix="開催" />
+          <p className="year-recap-callout">
+            {player.longestStreak.count}開催{copy.label}
+          </p>
+          <p className="year-recap-lead">{copy.description}</p>
+        </RecapFrame>
+      ),
+    });
   }
 
   if (player.bestGame) {
@@ -292,24 +340,20 @@ export function buildSlides(
     });
   }
 
-  if (player.tableMate) {
+  if (player.podiumMates.length > 0) {
     slides.push({
-      key: "table-mate",
+      key: "podium-mates",
       theme: "violet",
       content: (
-        <RecapFrame eyebrow="TABLE MATE">
-          <PlayerAvatar
-            avatarUrl={buildPlayerAvatarUrl({
-              avatarUpdatedAt: player.tableMate.avatarUpdatedAt,
-              groupCode,
-              groupPlayerId: player.tableMate.groupPlayerId,
-            })}
-            className="year-recap-mate-avatar"
-            displayName={player.tableMate.displayName}
+        <RecapFrame eyebrow="PODIUM MATES">
+          <p className="year-recap-kicker">表彰台メイト</p>
+          <h2>一緒にTOP 3へ</h2>
+          <RecapPeople
+            groupCode={groupCode}
+            people={player.podiumMates}
+            valueLabel={(value) => `${value}回`}
           />
-          <p className="year-recap-kicker">もっとも多く同卓したのは</p>
-          <h2>{player.tableMate.displayName}</h2>
-          <p className="year-recap-callout">同じテーブルを囲んだ回数 {player.tableMate.value}回</p>
+          <p className="year-recap-lead">同じ開催で表彰台に並んだ回数が最も多い仲間です。</p>
         </RecapFrame>
       ),
     });
@@ -357,25 +401,19 @@ export function buildSlides(
     });
   }
 
-  if (group.mostActivePlayer && group.mostWinsPlayer) {
+  if (group.mostWinsPlayers.length > 0) {
     slides.push({
-      key: "leaders",
+      key: "most-wins",
       theme: "mint",
       content: (
-        <RecapFrame eyebrow="TABLE LEADERS">
-          <p className="year-recap-kicker">今年のテーブルを彩ったふたり</p>
-          <div className="year-recap-leaders">
-            <div>
-              <small>MOST ACTIVE</small>
-              <strong>{group.mostActivePlayer.displayName}</strong>
-              <span>{group.mostActivePlayer.value}回参加</span>
-            </div>
-            <div>
-              <small>MOST WINS</small>
-              <strong>{group.mostWinsPlayer.displayName}</strong>
-              <span>{group.mostWinsPlayer.value}回優勝</span>
-            </div>
-          </div>
+        <RecapFrame eyebrow="MOST WINS">
+          <p className="year-recap-kicker">年間最多優勝</p>
+          <h2>今年の<br />チャンピオン</h2>
+          <RecapPeople
+            groupCode={groupCode}
+            people={group.mostWinsPlayers}
+            valueLabel={(value) => `${value}回優勝`}
+          />
         </RecapFrame>
       ),
     });
@@ -426,6 +464,54 @@ function Metric({ label, value }: { label: string; value: string }) {
       <strong>{value}</strong>
     </span>
   );
+}
+
+function RecapPeople({
+  groupCode,
+  people,
+  valueLabel,
+}: {
+  groupCode: string;
+  people: YearRecapPlayerHighlight[];
+  valueLabel: (value: number) => string;
+}) {
+  return (
+    <div className={`year-recap-people${people.length > 4 ? " is-crowd" : ""}`}>
+      {people.map((person) => (
+        <span className="year-recap-person" key={person.groupPlayerId}>
+          <PlayerAvatar
+            avatarUrl={buildPlayerAvatarUrl({
+              avatarUpdatedAt: person.avatarUpdatedAt,
+              groupCode,
+              groupPlayerId: person.groupPlayerId,
+            })}
+            className="year-recap-person-avatar"
+            displayName={person.displayName}
+          />
+          <strong>{person.displayName}</strong>
+          <small>{valueLabel(person.value)}</small>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function getStreakCopy(kind: YearRecapStreakKind) {
+  const copy: Record<YearRecapStreakKind, { label: string; description: string }> = {
+    positive: {
+      label: "連続プラス",
+      description: "参加した開催で、プラス収支を続けた最長記録です。",
+    },
+    "top-three": {
+      label: "連続TOP 3",
+      description: "参加した開催で、TOP 3入りを続けた最長記録です。",
+    },
+    attendance: {
+      label: "連続参加",
+      description: "グループの開催へ、欠席せず参加した最長記録です。",
+    },
+  };
+  return copy[kind];
 }
 
 function formatPercent(value: number) {

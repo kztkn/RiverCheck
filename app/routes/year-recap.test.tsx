@@ -1,5 +1,6 @@
 import { createElement, Fragment } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { YearRecapSummary } from "@shared-types/year-recap";
 
@@ -15,7 +16,7 @@ vi.mock("@server/services/year-recap-service.server", () => ({
   getYearRecap: mocked.getYearRecap,
 }));
 
-import { buildSlides, loader } from "./year-recap";
+import YearRecap, { buildSlides, loader } from "./year-recap";
 
 const recap: YearRecapSummary = {
   year: 2026,
@@ -24,18 +25,20 @@ const recap: YearRecapSummary = {
     totalEntries: 18,
     uniquePlayers: 6,
     totalRebuys: 8,
-    mostActivePlayer: {
-      groupPlayerId: "player-2",
-      displayName: "岩田",
-      avatarUpdatedAt: null,
-      value: 4,
-    },
-    mostWinsPlayer: {
-      groupPlayerId: "player-2",
-      displayName: "岩田",
-      avatarUpdatedAt: null,
-      value: 2,
-    },
+    mostWinsPlayers: [
+      {
+        groupPlayerId: "player-2",
+        displayName: "岩田",
+        avatarUpdatedAt: null,
+        value: 2,
+      },
+      {
+        groupPlayerId: "player-3",
+        displayName: "ひろ",
+        avatarUpdatedAt: null,
+        value: 2,
+      },
+    ],
   },
   player: {
     groupPlayerId: "player-1",
@@ -54,12 +57,29 @@ const recap: YearRecapSummary = {
       rank: 1,
       netBb: 120,
     },
-    tableMate: {
-      groupPlayerId: "player-2",
-      displayName: "岩田",
-      avatarUpdatedAt: null,
-      value: 3,
-    },
+    metPlayers: [
+      {
+        groupPlayerId: "player-2",
+        displayName: "岩田",
+        avatarUpdatedAt: null,
+        value: 3,
+      },
+      {
+        groupPlayerId: "player-3",
+        displayName: "ひろ",
+        avatarUpdatedAt: null,
+        value: 2,
+      },
+    ],
+    podiumMates: [
+      {
+        groupPlayerId: "player-2",
+        displayName: "岩田",
+        avatarUpdatedAt: null,
+        value: 2,
+      },
+    ],
+    longestStreak: { kind: "positive", count: 2 },
   },
   stories: { postsCreated: 2, reactionsReceived: 5, reactedPostCount: 3 },
   achievements: [
@@ -126,9 +146,34 @@ describe("year recap slides", () => {
     expect(markup).toContain("<strong>4</strong><span>開催</span>");
     expect(markup).toContain("+155BB");
     expect(markup).toContain("9月ポーカー会");
-    expect(markup).toContain("もっとも多く同卓したのは");
+    expect(markup).toContain("今年出会ったプレイヤー");
+    expect(markup).toContain("今年のロングストリーク");
+    expect(markup).toContain("表彰台メイト");
+    expect(markup).toContain("年間最多優勝");
+    expect(markup.match(/year-recap-person-avatar/g)).toHaveLength(5);
     expect(markup).toContain("TABLE STORIES");
     expect(markup).toContain("初優勝");
+  });
+
+  it("画面の左右にストーリー形式の前後移動領域を置く", () => {
+    const markup = renderToStaticMarkup(
+      createElement(
+        MemoryRouter,
+        null,
+        createElement(YearRecap, {
+          loaderData: {
+            group: { name: "River Check", publicCode: "river-check" },
+            recap,
+          },
+        } as never),
+      ),
+    );
+
+    expect(markup).toContain('class="year-recap-tap-zone is-previous"');
+    expect(markup).toContain('aria-label="前へ"');
+    expect(markup).toContain('class="year-recap-tap-zone is-next"');
+    expect(markup).toContain('aria-label="次へ"');
+    expect(markup).not.toContain("year-recap-step-controls");
   });
 
   it("開催がない年は空状態と締めだけを表示する", () => {
@@ -139,8 +184,7 @@ describe("year recap slides", () => {
         totalEntries: 0,
         uniquePlayers: 0,
         totalRebuys: 0,
-        mostActivePlayer: null,
-        mostWinsPlayer: null,
+        mostWinsPlayers: [],
       },
       player: {
         ...recap.player,
@@ -151,7 +195,9 @@ describe("year recap slides", () => {
         totalNetBb: 0,
         totalRebuys: 0,
         bestGame: null,
-        tableMate: null,
+        metPlayers: [],
+        podiumMates: [],
+        longestStreak: null,
       },
       stories: { postsCreated: 0, reactionsReceived: 0, reactedPostCount: 0 },
       achievements: [],

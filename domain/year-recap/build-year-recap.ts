@@ -1,6 +1,8 @@
 import type {
   YearRecapAchievement,
+  YearRecapPlayerHighlight,
   YearRecapResultSource,
+  YearRecapStreak,
   YearRecapStoryStats,
   YearRecapSummary,
 } from "../../types/year-recap";
@@ -16,30 +18,26 @@ interface BuildYearRecapInput {
 }
 
 export function buildYearRecap(input: BuildYearRecapInput): YearRecapSummary {
-  const games = new Set(input.results.map((result) => result.gameId));
+  const chronologicalGameIds = listChronologicalGameIds(input.results);
   const players = aggregatePlayers(input.results);
   const personalResults = input.results
     .filter((result) => result.groupPlayerId === input.groupPlayerId)
     .sort(compareResults);
   const personalPlayer = players.get(input.groupPlayerId);
-  const tableMate = findTableMate(
-    input.results,
-    personalResults,
-    input.groupPlayerId,
-  );
+  const metPlayers = findMetPlayers(input.results, personalResults, input.groupPlayerId);
+  const podiumMates = findPodiumMates(input.results, personalResults, input.groupPlayerId);
 
   return {
     year: input.year,
     group: {
-      gamesPlayed: games.size,
+      gamesPlayed: chronologicalGameIds.length,
       totalEntries: input.results.length,
       uniquePlayers: players.size,
       totalRebuys: input.results.reduce(
         (total, result) => total + result.totalRebuyCount,
         0,
       ),
-      mostActivePlayer: selectLeader(players, "gamesPlayed"),
-      mostWinsPlayer: selectLeader(players, "wins"),
+      mostWinsPlayers: selectMostWinsPlayers(players),
     },
     player: {
       groupPlayerId: input.groupPlayerId,
@@ -47,7 +45,9 @@ export function buildYearRecap(input: BuildYearRecapInput): YearRecapSummary {
       avatarUpdatedAt: input.avatarUpdatedAt,
       gamesPlayed: personalResults.length,
       attendanceRate:
-        games.size === 0 ? 0 : personalResults.length / games.size * 100,
+        chronologicalGameIds.length === 0
+          ? 0
+          : personalResults.length / chronologicalGameIds.length * 100,
       wins: personalPlayer?.wins ?? 0,
       topThreeFinishes: personalResults.filter((result) => result.rank <= 3)
         .length,
@@ -74,7 +74,9 @@ export function buildYearRecap(input: BuildYearRecapInput): YearRecapSummary {
               : best,
           null,
         ),
-      tableMate,
+      metPlayers,
+      podiumMates,
+      longestStreak: findLongestStreak(personalResults, chronologicalGameIds),
     },
     stories: input.stories,
     achievements: [...input.achievements].sort((left, right) =>
@@ -87,7 +89,6 @@ interface PlayerAggregate {
   groupPlayerId: string;
   displayName: string;
   avatarUpdatedAt: string | null;
-  gamesPlayed: number;
   wins: number;
 }
 
@@ -98,43 +99,41 @@ function aggregatePlayers(results: YearRecapResultSource[]) {
       groupPlayerId: result.groupPlayerId,
       displayName: result.displayName,
       avatarUpdatedAt: result.avatarUpdatedAt,
-      gamesPlayed: 0,
       wins: 0,
     };
-    player.gamesPlayed += 1;
     if (result.rank === 1) player.wins += 1;
     players.set(result.groupPlayerId, player);
   }
   return players;
 }
 
-function selectLeader(
+function selectMostWinsPlayers(
   players: Map<string, PlayerAggregate>,
-  metric: "gamesPlayed" | "wins",
-): YearRecapSummary["group"]["mostActivePlayer"] {
-  const leader = [...players.values()].sort((left, right) =>
-    right[metric] - left[metric] ||
-    right.gamesPlayed - left.gamesPlayed ||
-    left.displayName.localeCompare(right.displayName, "ja"),
-  )[0];
-  return leader
-    ? {
-        groupPlayerId: leader.groupPlayerId,
-        displayName: leader.displayName,
-        avatarUpdatedAt: leader.avatarUpdatedAt,
-        value: leader[metric],
-      }
-    : null;
+): YearRecapPlayerHighlight[] {
+  const maximum = Math.max(0, ...[...players.values()].map((player) => player.wins));
+  if (maximum === 0) return [];
+  return [...players.values()]
+    .filter((player) => player.wins === maximum)
+    .sort((left, right) =>
+      left.displayName.localeCompare(right.displayName, "ja") ||
+      left.groupPlayerId.localeCompare(right.groupPlayerId),
+    )
+    .map((player) => ({
+      groupPlayerId: player.groupPlayerId,
+      displayName: player.displayName,
+      avatarUpdatedAt: player.avatarUpdatedAt,
+      value: player.wins,
+    }));
 }
 
-function findTableMate(
+function findMetPlayers(
   results: YearRecapResultSource[],
   personalResults: YearRecapResultSource[],
   groupPlayerId: string,
-): YearRecapSummary["player"]["tableMate"] {
+): YearRecapPlayerHighlight[] {
   const personalGameIds = new Set(personalResults.map((result) => result.gameId));
-  const counts = new Map<string, YearRecapSummary["player"]["tableMate"]>();
-  for (const result of results) {
+  const counts = new Map<string, YearRecapPlayerHighlight & { firstMetAt: string }>();
+  for (const result of [...results].sort(compareResults)) {
     if (
       result.groupPlayerId === groupPlayerId ||
       !personalGameIds.has(result.gameId)
@@ -147,12 +146,96 @@ function findTableMate(
       displayName: result.displayName,
       avatarUpdatedAt: result.avatarUpdatedAt,
       value: (current?.value ?? 0) + 1,
+      firstMetAt: current?.firstMetAt ?? result.playedAt,
     });
   }
-  return [...counts.values()].sort((left, right) =>
-    right!.value - left!.value ||
-    left!.displayName.localeCompare(right!.displayName, "ja"),
-  )[0] ?? null;
+  return [...counts.values()]
+    .sort((left, right) =>
+      left.firstMetAt.localeCompare(right.firstMetAt) ||
+      left.displayName.localeCompare(right.displayName, "ja") ||
+      left.groupPlayerId.localeCompare(right.groupPlayerId),
+    )
+    .map(({ firstMetAt: _firstMetAt, ...player }) => player);
+}
+
+function findPodiumMates(
+  results: YearRecapResultSource[],
+  personalResults: YearRecapResultSource[],
+  groupPlayerId: string,
+): YearRecapPlayerHighlight[] {
+  const personalPodiumGameIds = new Set(
+    personalResults.filter((result) => result.rank <= 3).map((result) => result.gameId),
+  );
+  const counts = new Map<string, YearRecapPlayerHighlight>();
+  for (const result of results) {
+    if (
+      result.groupPlayerId === groupPlayerId ||
+      result.rank > 3 ||
+      !personalPodiumGameIds.has(result.gameId)
+    ) {
+      continue;
+    }
+    const current = counts.get(result.groupPlayerId);
+    counts.set(result.groupPlayerId, {
+      groupPlayerId: result.groupPlayerId,
+      displayName: result.displayName,
+      avatarUpdatedAt: result.avatarUpdatedAt,
+      value: (current?.value ?? 0) + 1,
+    });
+  }
+  const maximum = Math.max(0, ...[...counts.values()].map((player) => player.value));
+  return [...counts.values()]
+    .filter((player) => player.value === maximum)
+    .sort((left, right) =>
+      left.displayName.localeCompare(right.displayName, "ja") ||
+      left.groupPlayerId.localeCompare(right.groupPlayerId),
+    );
+}
+
+function findLongestStreak(
+  personalResults: YearRecapResultSource[],
+  chronologicalGameIds: string[],
+): YearRecapStreak | null {
+  const personalGameIds = new Set(personalResults.map((result) => result.gameId));
+  const candidates: Array<YearRecapStreak & { priority: number }> = [
+    {
+      kind: "positive",
+      count: findLongestRun(personalResults.map((result) => result.netBb > 0)),
+      priority: 0,
+    },
+    {
+      kind: "top-three",
+      count: findLongestRun(personalResults.map((result) => result.rank <= 3)),
+      priority: 1,
+    },
+    {
+      kind: "attendance",
+      count: findLongestRun(chronologicalGameIds.map((gameId) => personalGameIds.has(gameId))),
+      priority: 2,
+    },
+  ];
+  const longest = candidates.sort(
+    (left, right) => right.count - left.count || left.priority - right.priority,
+  )[0];
+  return longest && longest.count >= 2
+    ? { kind: longest.kind, count: longest.count }
+    : null;
+}
+
+function findLongestRun(values: boolean[]) {
+  let longest = 0;
+  let current = 0;
+  for (const value of values) {
+    current = value ? current + 1 : 0;
+    longest = Math.max(longest, current);
+  }
+  return longest;
+}
+
+function listChronologicalGameIds(results: YearRecapResultSource[]) {
+  return [...new Map(
+    [...results].sort(compareResults).map((result) => [result.gameId, result.gameId]),
+  ).values()];
 }
 
 function compareResults(

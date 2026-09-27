@@ -40,6 +40,13 @@ export interface YearRecapGameHighlight {
   netBb: number;
 }
 
+export type YearRecapStreakKind = "positive" | "top-three" | "attendance";
+
+export interface YearRecapStreak {
+  kind: YearRecapStreakKind;
+  count: number;
+}
+
 export interface YearRecapSummary {
   year: number;
   group: {
@@ -47,8 +54,7 @@ export interface YearRecapSummary {
     totalEntries: number;
     uniquePlayers: number;
     totalRebuys: number;
-    mostActivePlayer: YearRecapPlayerHighlight | null;
-    mostWinsPlayer: YearRecapPlayerHighlight | null;
+    mostWinsPlayers: YearRecapPlayerHighlight[];
   };
   player: {
     groupPlayerId: string;
@@ -61,7 +67,9 @@ export interface YearRecapSummary {
     totalNetBb: number;
     totalRebuys: number;
     bestGame: YearRecapGameHighlight | null;
-    tableMate: YearRecapPlayerHighlight | null;
+    metPlayers: YearRecapPlayerHighlight[];
+    podiumMates: YearRecapPlayerHighlight[];
+    longestStreak: YearRecapStreak | null;
   };
   stories: YearRecapStoryStats;
   achievements: YearRecapAchievement[];

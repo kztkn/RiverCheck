@@ -31,14 +31,9 @@ describe("buildYearRecap", () => {
       uniquePlayers: 3,
       totalRebuys: 4,
     });
-    expect(recap.group.mostActivePlayer).toMatchObject({
-      displayName: "ひろ",
-      value: 3,
-    });
-    expect(recap.group.mostWinsPlayer).toMatchObject({
-      displayName: "岩田",
-      value: 2,
-    });
+    expect(recap.group.mostWinsPlayers).toEqual([
+      expect.objectContaining({ displayName: "岩田", value: 2 }),
+    ]);
     expect(recap.player).toMatchObject({
       gamesPlayed: 2,
       wins: 1,
@@ -48,7 +43,15 @@ describe("buildYearRecap", () => {
     });
     expect(recap.player.attendanceRate).toBeCloseTo(66.67, 1);
     expect(recap.player.bestGame).toMatchObject({ gameId: "game-2", netBb: 120 });
-    expect(recap.player.tableMate).toMatchObject({ displayName: "ひろ", value: 2 });
+    expect(recap.player.metPlayers).toEqual([
+      expect.objectContaining({ displayName: "ひろ", value: 2 }),
+      expect.objectContaining({ displayName: "岩田", value: 2 }),
+    ]);
+    expect(recap.player.podiumMates).toEqual([
+      expect.objectContaining({ displayName: "ひろ", value: 2 }),
+      expect.objectContaining({ displayName: "岩田", value: 2 }),
+    ]);
+    expect(recap.player.longestStreak).toEqual({ kind: "positive", count: 2 });
   });
 
   it("結果がない年も0件のサマリーを返す", () => {
@@ -65,7 +68,10 @@ describe("buildYearRecap", () => {
     expect(recap.group.gamesPlayed).toBe(0);
     expect(recap.player.attendanceRate).toBe(0);
     expect(recap.player.bestGame).toBeNull();
-    expect(recap.player.tableMate).toBeNull();
+    expect(recap.group.mostWinsPlayers).toEqual([]);
+    expect(recap.player.metPlayers).toEqual([]);
+    expect(recap.player.podiumMates).toEqual([]);
+    expect(recap.player.longestStreak).toBeNull();
   });
 
   it("全開催がマイナスなら最大プラス開催を作らない", () => {
@@ -80,6 +86,47 @@ describe("buildYearRecap", () => {
     });
 
     expect(recap.player.bestGame).toBeNull();
+  });
+
+  it("最多優勝が同数なら全員を返し、入力順には依存しない", () => {
+    const tiedResults = [
+      game("game-2", "player-2", "岩田", 1, 40, 0),
+      game("game-1", "player-1", "かずと", 1, 30, 0),
+    ];
+    const build = (orderedResults: YearRecapResultSource[]) => buildYearRecap({
+      year: 2026,
+      groupPlayerId: "player-1",
+      displayName: "かずと",
+      avatarUpdatedAt: null,
+      results: orderedResults,
+      stories: { postsCreated: 0, reactionsReceived: 0, reactedPostCount: 0 },
+      achievements: [],
+    });
+
+    expect(build(tiedResults).group.mostWinsPlayers).toEqual([
+      expect.objectContaining({ displayName: "かずと", value: 1 }),
+      expect.objectContaining({ displayName: "岩田", value: 1 }),
+    ]);
+    expect(build([...tiedResults].reverse())).toEqual(build(tiedResults));
+  });
+
+  it("欠席をまたがない連続参加をロングストリークにする", () => {
+    const recap = buildYearRecap({
+      year: 2026,
+      groupPlayerId: "player-1",
+      displayName: "かずと",
+      avatarUpdatedAt: null,
+      results: [
+        game("game-1", "player-1", "かずと", 4, -10, 0),
+        game("game-2", "player-1", "かずと", 4, -10, 0),
+        game("game-3", "player-2", "岩田", 1, 10, 0),
+        game("game-4", "player-1", "かずと", 4, -10, 0),
+      ],
+      stories: { postsCreated: 0, reactionsReceived: 0, reactedPostCount: 0 },
+      achievements: [],
+    });
+
+    expect(recap.player.longestStreak).toEqual({ kind: "attendance", count: 2 });
   });
 });
 
