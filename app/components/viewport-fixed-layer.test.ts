@@ -1,52 +1,58 @@
-import { describe, expect, it, vi } from "vitest";
-import { activateViewportLayer } from "./viewport-fixed-layer";
+import { describe, expect, it } from "vitest";
+import {
+  positionViewportLayer,
+  readViewportLayerMetrics,
+} from "./viewport-fixed-layer";
 
-describe("activateViewportLayer", () => {
-  it("opens and cleans up a supported manual popover", () => {
-    let open = false;
-    const element = {
-      matches: vi.fn(() => open),
-      showPopover: vi.fn(() => {
-        open = true;
-      }),
-      hidePopover: vi.fn(() => {
-        open = false;
-      }),
-      removeAttribute: vi.fn(),
-    } as unknown as HTMLElement;
+describe("viewport fixed layer", () => {
+  it("uses visual viewport document coordinates while scrolling", () => {
+    const metrics = readViewportLayerMetrics({
+      innerHeight: 844,
+      innerWidth: 390,
+      scrollX: 0,
+      scrollY: 620,
+      visualViewport: {
+        height: 760,
+        pageLeft: 0,
+        pageTop: 664,
+        width: 390,
+      },
+    } as unknown as Window);
 
-    const cleanup = activateViewportLayer(element);
-
-    expect(
-      (element as HTMLElement & { showPopover: () => void }).showPopover,
-    ).toHaveBeenCalledOnce();
-    cleanup();
-    expect(
-      (element as HTMLElement & { hidePopover: () => void }).hidePopover,
-    ).toHaveBeenCalledOnce();
+    expect(metrics).toEqual({
+      height: 760,
+      pageLeft: 0,
+      pageTop: 664,
+      width: 390,
+    });
   });
 
-  it("keeps the body-fixed fallback when popovers are unsupported", () => {
-    const element = {
-      matches: vi.fn(),
-      removeAttribute: vi.fn(),
-    } as unknown as HTMLElement;
+  it("falls back to the window viewport when VisualViewport is unavailable", () => {
+    const metrics = readViewportLayerMetrics({
+      innerHeight: 844,
+      innerWidth: 390,
+      scrollX: 12,
+      scrollY: 620,
+      visualViewport: null,
+    } as unknown as Window);
 
-    expect(() => activateViewportLayer(element)()).not.toThrow();
-    expect(element.removeAttribute).not.toHaveBeenCalled();
+    expect(metrics).toEqual({
+      height: 844,
+      pageLeft: 12,
+      pageTop: 620,
+      width: 390,
+    });
   });
 
-  it("removes the popover attribute when showing the top layer fails", () => {
-    const element = {
-      matches: vi.fn(() => false),
-      showPopover: vi.fn(() => {
-        throw new Error("not fully active");
-      }),
-      removeAttribute: vi.fn(),
-    } as unknown as HTMLElement;
+  it("positions the layer over the currently visible document area", () => {
+    const style = {} as CSSStyleDeclaration;
+    positionViewportLayer(
+      { style } as HTMLElement,
+      { height: 760, pageLeft: 4, pageTop: 664, width: 390 },
+    );
 
-    activateViewportLayer(element);
-
-    expect(element.removeAttribute).toHaveBeenCalledWith("popover");
+    expect(style.width).toBe("390px");
+    expect(style.height).toBe("760px");
+    expect(style.transform).toBe("translate3d(4px, 664px, 0)");
   });
 });
