@@ -11,6 +11,10 @@
 .table-now-item strong { color:#f2f7f4; font-size:.98rem; line-height:1; font-variant-numeric:tabular-nums; }
 .table-now-item small { color:rgba(224,238,231,.56); font-size:.66rem; font-weight:750; letter-spacing:.08em; }
 .table-now-players { border-color:rgba(57,222,141,.16); background:rgba(57,222,141,.045); }
+.table-now-record-event { border-color:rgba(233,186,90,.35); background:rgba(233,186,90,.055); color:#f0d392; }
+.table-now-record-event:hover,.table-now-record-event:focus-visible { border-color:rgba(233,186,90,.62); background:rgba(233,186,90,.1); }
+.table-now-record-event .table-now-record-event-suit { color:#f0d392; font-size:.82rem; line-height:1; }
+.table-now-record-event small { color:#f0d392; font-weight:820; letter-spacing:.075em; }
 .live-table-detail-sheet { max-height:min(72vh,560px); }
 .live-table-detail-list { display:grid; }
 .live-table-detail-row { display:grid; grid-template-columns:52px minmax(0,1fr); gap:12px; align-items:start; border-top:1px solid var(--line); padding:13px 2px; }

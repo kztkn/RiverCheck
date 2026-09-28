@@ -1765,6 +1765,8 @@ input[aria-invalid="true"] {
 }
 
 .app-dialog {
+  position: fixed;
+  inset: 0;
   width: min(calc(100% - 32px), 480px);
   max-height: calc(100dvh - 32px);
   overflow-x: hidden;
@@ -1774,6 +1776,7 @@ input[aria-invalid="true"] {
   background: #102119;
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.62);
   color: var(--ink);
+  margin: auto;
   padding: 0;
 }
 

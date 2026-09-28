@@ -25,6 +25,24 @@ describe("LIVE TABLE presentation", () => {
     expect(markup).not.toContain("72o");
   });
 
+  it("記録権限がある参加画面ではLIVE TABLE内に記録ボタンを表示する", () => {
+    const markup = renderToStaticMarkup(
+      createElement(TableNow, {
+        data: {
+          allInCount: 0,
+          bombPotCount: 0,
+          playerCount: 6,
+          sevenDeuceCount: 0,
+        },
+        onRecordEventClick: () => undefined,
+      }),
+    );
+
+    expect(markup).toContain("TABLE EVENT");
+    expect(markup).toContain("table-now-record-event");
+    expect(markup).not.toContain("table-event-floating-button");
+  });
+
   it("開催一覧のmini表示は記録のあるイベントだけを詳細へリンクする", () => {
     const markup = renderToStaticMarkup(
       createElement(

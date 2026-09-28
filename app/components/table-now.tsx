@@ -35,9 +35,11 @@ export function increasedTableCounts(previous: TableNowData, next: TableNowData)
 export function TableNow({
   data,
   onPlayersClick,
+  onRecordEventClick,
 }: {
   data: TableNowData;
   onPlayersClick?: () => void;
+  onRecordEventClick?: () => void;
 }) {
   const [detailType, setDetailType] = useState<DetailType | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -112,6 +114,19 @@ export function TableNow({
             <small>PLAYERS</small>
           </span>
         </button>
+        {onRecordEventClick ? (
+          <button
+            aria-label="テーブルイベントを記録"
+            className="table-now-item table-now-record-event"
+            onClick={onRecordEventClick}
+            type="button"
+          >
+            <span aria-hidden="true" className="table-now-record-event-suit">♠</span>
+            <span>
+              <small>TABLE EVENT</small>
+            </span>
+          </button>
+        ) : null}
         {events.map(({ key, countKey, label, value, Icon }) => (
           <button
             className={`table-now-item${highlighted.includes(countKey) ? " is-new-record" : ""}`}

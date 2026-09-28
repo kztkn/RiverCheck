@@ -5,16 +5,14 @@ import {
 } from "../components/table-event-recorder";
 
 describe("table event recorder", () => {
-  it("開催参加画面と管理画面から同じtable-events resourceへ接続する", () => {
+  it("開催参加画面だけからtable-events resourceへ接続する", () => {
     expect(buildTableEventsPath("/g/river-check/games/game-1")).toBe(
       "/g/river-check/games/game-1/table-events",
     );
     expect(buildTableEventsPath("/g/river-check/games/game-1/")).toBe(
       "/g/river-check/games/game-1/table-events",
     );
-    expect(buildTableEventsPath("/g/river-check/games/game-1/admin")).toBe(
-      "/g/river-check/games/game-1/table-events",
-    );
+    expect(buildTableEventsPath("/g/river-check/games/game-1/admin")).toBeNull();
     expect(buildTableEventsPath("/g/river-check/games/game-1/admin/edit")).toBeNull();
     expect(buildTableEventsPath("/g/river-check/games/game-1/table-events")).toBeNull();
     expect(TABLE_EVENT_RECORDER_OPEN_EVENT).toBe(

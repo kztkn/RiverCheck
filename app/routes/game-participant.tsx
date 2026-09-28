@@ -106,6 +106,8 @@ import { OrganizerCostShareCollection } from "~/components/organizer-cost-share-
 import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-preview-draft";
 import { INVITE_REQUIRED_RESPONSE_TEXT } from "@domain/routing/public-group-entry";
 import { TableNow } from "~/components/table-now";
+import { openTableEventRecorder } from "~/components/table-event-recorder";
+import { BodyPortal } from "~/components/body-portal";
 import { listOpenGameTableEvents } from "@server/repositories/table-event-repository.server";
 import { scheduleAchievementRefresh } from "@server/services/achievement-service.server";
 import { isSuccessfulRebuyActionResult } from "@domain/routing/should-revalidate-root-data";
@@ -998,6 +1000,9 @@ export default function GameParticipant({
               key={loaderData.game.id}
               data={loaderData.tableNow}
               onPlayersClick={() => setRosterOpenSignal((value) => value + 1)}
+              onRecordEventClick={
+                loaderData.isOrganizer ? openTableEventRecorder : undefined
+              }
             />
           ) : null}
           <ParticipantRosterSheet
@@ -1171,6 +1176,7 @@ export default function GameParticipant({
               key={loaderData.game.id}
               data={loaderData.tableNow}
               onPlayersClick={() => setRosterOpenSignal((value) => value + 1)}
+              onRecordEventClick={openTableEventRecorder}
             />
           ) : null}
           <LocalRulesSheet
@@ -2299,6 +2305,15 @@ export function SettlementPlanSheet({
     else if (!isOpen && dialog.open) dialog.close();
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
   function closeSheet() {
     setIsOpen(false);
   }
@@ -2316,68 +2331,70 @@ export function SettlementPlanSheet({
       >
         <span>今日のまとめ</span>
       </button>
-      <dialog
-        aria-labelledby="settlement-plan-title"
-        className="app-dialog participant-roster-dialog rebuy-rules-dialog"
-        id="settlement-plan-dialog"
-        onCancel={closeSheet}
-        onClick={(event) => {
-          if (event.target === event.currentTarget) closeSheet();
-        }}
-        onClose={() => {
-          setIsOpen(false);
-          triggerRef.current?.focus();
-        }}
-        ref={dialogRef}
-      >
-        <div className="participant-roster-sheet rebuy-rules-sheet">
-          <header className="participant-roster-header">
-            <div>
-              <p className="eyebrow">TODAY'S SUMMARY</p>
-              <h2 id="settlement-plan-title">今日のまとめ</h2>
-            </div>
-            <button
-              aria-label="今日のまとめを閉じる"
-              className="participant-roster-close"
-              onClick={closeSheet}
-              type="button"
-            >
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            </button>
-          </header>
-          <div className="participant-roster-scroll rebuy-rules-content">
-            <div className="settlement-summary-meta">
-              <span>
-                <small>実費</small>
-                <strong>{venueCost.toLocaleString("ja-JP")}円</strong>
-              </span>
-              <span>
-                <small>想定</small>
-                <strong>{participantCount}人</strong>
-              </span>
-              {bbRate > 0 ? (
-                <span className="is-wide">
-                  <small>ゲーム結果</small>
-                  <strong>1BB = {bbRate.toLocaleString("ja-JP")}P</strong>
+      <BodyPortal>
+        <dialog
+          aria-labelledby="settlement-plan-title"
+          className="app-dialog participant-roster-dialog rebuy-rules-dialog"
+          id="settlement-plan-dialog"
+          onCancel={closeSheet}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeSheet();
+          }}
+          onClose={() => {
+            setIsOpen(false);
+            triggerRef.current?.focus();
+          }}
+          ref={dialogRef}
+        >
+          <div className="participant-roster-sheet rebuy-rules-sheet">
+            <header className="participant-roster-header">
+              <div>
+                <p className="eyebrow">TODAY'S SUMMARY</p>
+                <h2 id="settlement-plan-title">今日のまとめ</h2>
+              </div>
+              <button
+                aria-label="今日のまとめを閉じる"
+                className="participant-roster-close"
+                onClick={closeSheet}
+                type="button"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </header>
+            <div className="participant-roster-scroll rebuy-rules-content">
+              <div className="settlement-summary-meta">
+                <span>
+                  <small>実費</small>
+                  <strong>{venueCost.toLocaleString("ja-JP")}円</strong>
                 </span>
-              ) : null}
-            </div>
-            <div
-              aria-label="順位別の負担"
-              className="settlement-plan-grid"
-            >
-              {costShares.map((share, index) => (
-                <span key={index}>
-                  <small>{index + 1}位</small>
-                  <strong>{share.toLocaleString("ja-JP")}P</strong>
+                <span>
+                  <small>想定</small>
+                  <strong>{participantCount}人</strong>
                 </span>
-              ))}
+                {bbRate > 0 ? (
+                  <span className="is-wide">
+                    <small>ゲーム結果</small>
+                    <strong>1BB = {bbRate.toLocaleString("ja-JP")}P</strong>
+                  </span>
+                ) : null}
+              </div>
+              <div
+                aria-label="順位別の負担"
+                className="settlement-plan-grid"
+              >
+                {costShares.map((share, index) => (
+                  <span key={index}>
+                    <small>{index + 1}位</small>
+                    <strong>{share.toLocaleString("ja-JP")}P</strong>
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      </dialog>
+        </dialog>
+      </BodyPortal>
     </div>
   );
 }

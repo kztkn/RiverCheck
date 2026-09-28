@@ -1,36 +1,3 @@
-.table-event-floating-button {
-  position: absolute;
-  z-index: 70;
-  right: max(16px, env(safe-area-inset-right));
-  bottom: calc(16px + env(safe-area-inset-bottom));
-  display: inline-flex;
-  min-height: 48px;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid rgba(233, 186, 90, 0.42);
-  border-radius: 999px;
-  background: #102119;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.38);
-  color: #f0d392;
-  cursor: pointer;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.055em;
-  padding: 0 15px;
-  touch-action: manipulation;
-}
-
-.table-event-floating-button > span {
-  font-size: 0.82rem;
-}
-
-.table-event-floating-button:hover,
-.table-event-floating-button:focus-visible {
-  border-color: rgba(233, 186, 90, 0.68);
-  background: #17251d;
-  color: #ffe4a7;
-}
-
 .table-event-dialog {
   position: fixed;
   inset: 0;

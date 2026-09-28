@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useRevalidator } from "react-router";
 import { BodyPortal } from "./body-portal";
-import { ViewportFixedLayer } from "./viewport-fixed-layer";
 
 interface TableEventParticipant {
   groupPlayerId: string;
@@ -228,18 +227,6 @@ export function TableEventRecorder() {
 
   return (
     <>
-      {!isOpen ? (
-        <ViewportFixedLayer>
-          <button
-            aria-label="テーブルイベントを記録"
-            className="table-event-floating-button"
-            onClick={openTableEventRecorder}
-            type="button"
-          >
-            <span aria-hidden="true">♠</span> TABLE EVENT
-          </button>
-        </ViewportFixedLayer>
-      ) : null}
       <BodyPortal>
         <dialog
           aria-labelledby="table-event-title"
@@ -389,7 +376,7 @@ export function TableEventRecorder() {
 }
 
 export function buildTableEventsPath(pathname: string): string | null {
-  const match = pathname.match(/^(\/g\/[^/]+\/games\/[^/]+)(?:\/admin)?\/?$/u);
+  const match = pathname.match(/^(\/g\/[^/]+\/games\/[^/]+)\/?$/u);
   return match ? `${match[1]}/table-events` : null;
 }
 
