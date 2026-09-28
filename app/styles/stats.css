@@ -949,7 +949,6 @@
   inset: 0;
   width: 100%;
   max-width: none;
-  height: 100dvh;
   max-height: none;
   margin: 0;
   border: 0;
@@ -978,7 +977,9 @@
   border-bottom: 0;
   border-radius: 22px 22px 0 0;
   background: #102119;
-  box-shadow: 0 -18px 60px rgba(0, 0, 0, 0.34);
+  box-shadow:
+    0 120px 0 #102119,
+    0 -18px 60px rgba(0, 0, 0, 0.34);
   overflow: hidden;
 }
 

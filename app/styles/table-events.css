@@ -18,6 +18,7 @@
   letter-spacing: 0.055em;
   padding: 0 15px;
   touch-action: manipulation;
+  transform: translate3d(0, 0, 0);
 }
 
 .table-event-floating-button > span {
@@ -36,7 +37,6 @@
   inset: 0;
   width: 100%;
   max-width: none;
-  height: 100dvh;
   max-height: none;
   margin: 0;
   border: 0;
@@ -64,7 +64,9 @@
   border-bottom: 0;
   border-radius: 24px 24px 0 0;
   background: #0a1712;
-  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.36);
+  box-shadow:
+    0 120px 0 #0a1712,
+    0 -20px 60px rgba(0, 0, 0, 0.36);
   margin-inline: auto;
   padding: 20px 18px calc(22px + env(safe-area-inset-bottom));
 }
