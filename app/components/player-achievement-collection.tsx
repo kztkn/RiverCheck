@@ -6,7 +6,6 @@ import type {
   PlayerAchievementCollection,
   PlayerAchievementItem,
 } from "@shared-types/achievement";
-import { useAppScrollLock } from "~/utils/app-scroll";
 
 type CollectionTab = "unlocked" | "locked";
 
@@ -39,7 +38,14 @@ export function PlayerAchievementCollectionView({
     }
   }, [collectionOpen]);
 
-  useAppScrollLock(collectionOpen);
+  useEffect(() => {
+    if (!collectionOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [collectionOpen]);
 
   function openCollection() {
     setActiveTab(unlockedItems.length > 0 ? "unlocked" : "locked");

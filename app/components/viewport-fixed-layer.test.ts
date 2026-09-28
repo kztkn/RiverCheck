@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { resolveViewportOverlayTarget } from "./viewport-overlay-layer";
+import { resolveViewportFixedTarget } from "./viewport-fixed-layer";
 
-describe("viewport overlay layer", () => {
-  it("uses the overlay root outside the page scroller", () => {
+describe("viewport fixed layer", () => {
+  it("uses the dedicated sticky viewport host", () => {
     const host = {} as HTMLElement;
     const body = {} as HTMLElement;
-    const target = resolveViewportOverlayTarget({
+    const target = resolveViewportFixedTarget({
       body,
       getElementById: () => host,
     });
@@ -15,7 +15,7 @@ describe("viewport overlay layer", () => {
 
   it("falls back to body if the layout host is unavailable", () => {
     const body = {} as HTMLElement;
-    const target = resolveViewportOverlayTarget({
+    const target = resolveViewportFixedTarget({
       body,
       getElementById: () => null,
     });

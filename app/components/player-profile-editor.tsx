@@ -15,7 +15,6 @@ import type { AchievementSummary } from "@shared-types/achievement";
 import {
   PLAYER_PROFILE_MESSAGE_MAX_LENGTH,
 } from "@domain/player-profile/validate-player-profile";
-import { lockAppScroll } from "~/utils/app-scroll";
 
 export function PlayerProfileEditor({
   avatarUrl,
@@ -79,13 +78,14 @@ export function PlayerProfileEditor({
 
   useEffect(() => {
     if (!isAchievementPickerOpen) return;
+    const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setAchievementPickerOpen(false);
     };
-    const unlockScroll = lockAppScroll(document);
+    document.body.style.overflow = "hidden";
     document.addEventListener("keydown", handleKeyDown);
     return () => {
-      unlockScroll();
+      document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isAchievementPickerOpen]);

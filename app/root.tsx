@@ -6,15 +6,14 @@ import {
   Meta,
   Outlet,
   Scripts,
+  ScrollRestoration,
 } from "react-router";
 import { AppErrorPage } from "~/components/error-page";
 import { InviteRequiredPage } from "~/components/invite-required-page";
 import { PwaUpdateNotice } from "~/components/pwa-update-notice";
 import { AchievementUnlockToast } from "~/components/achievement-unlock-toast";
 import { TableEventRecorder } from "~/components/table-event-recorder";
-import { AppScrollRestoration } from "~/components/app-scroll-restoration";
-import { VIEWPORT_OVERLAY_ROOT_ID } from "~/components/viewport-overlay-layer";
-import { APP_SCROLL_ROOT_ID } from "~/utils/app-scroll";
+import { VIEWPORT_FIXED_ROOT_ID } from "~/components/viewport-fixed-layer";
 import type { Route } from "./+types/root";
 import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
 import { hasMultipleActiveGroupsForPlayer } from "@server/repositories/group-repository.server";
@@ -147,12 +146,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <div id="app-shell">
-          <div id={APP_SCROLL_ROOT_ID}>{children}</div>
-          <div id={VIEWPORT_OVERLAY_ROOT_ID} />
-        </div>
+        <div id={VIEWPORT_FIXED_ROOT_ID} />
+        {children}
         <PwaUpdateNotice />
-        <AppScrollRestoration />
+        <ScrollRestoration />
         <Scripts />
       </body>
     </html>

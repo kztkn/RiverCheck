@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { IconQrcode, IconX } from "@tabler/icons-react";
 import { QRCodeSVG } from "qrcode.react";
-import { lockAppScroll } from "~/utils/app-scroll";
 
 export function ParticipantLinkQr({
   description = "読み取ると、参加者画面が直接開きます。",
@@ -22,13 +21,14 @@ export function ParticipantLinkQr({
 
   useEffect(() => {
     if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setIsOpen(false);
     };
-    const unlockScroll = lockAppScroll(document);
+    document.body.style.overflow = "hidden";
     document.addEventListener("keydown", handleKeyDown);
     return () => {
-      unlockScroll();
+      document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen]);
