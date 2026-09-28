@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { ViewportFixedLayer } from "./viewport-fixed-layer";
 
 const SERVICE_WORKER_URL = "/sw.js";
 
@@ -98,21 +98,22 @@ export function PwaUpdateNotice() {
     waitingWorker?.postMessage({ type: "SKIP_WAITING" });
   }
 
-  return createPortal(
-    <aside
-      aria-live="polite"
-      className="pwa-update-notice"
-      role="status"
-    >
-      <div>
-        <strong>新しいバージョンがあります</strong>
-        <p>入力内容を保存してから更新してください。</p>
-      </div>
-      <button disabled={isUpdating} onClick={applyUpdate} type="button">
-        {isUpdating ? "更新中…" : "更新する"}
-      </button>
-    </aside>,
-    document.body,
+  return (
+    <ViewportFixedLayer>
+      <aside
+        aria-live="polite"
+        className="pwa-update-notice"
+        role="status"
+      >
+        <div>
+          <strong>新しいバージョンがあります</strong>
+          <p>入力内容を保存してから更新してください。</p>
+        </div>
+        <button disabled={isUpdating} onClick={applyUpdate} type="button">
+          {isUpdating ? "更新中…" : "更新する"}
+        </button>
+      </aside>
+    </ViewportFixedLayer>
   );
 }
 

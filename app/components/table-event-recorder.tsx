@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useRevalidator } from "react-router";
 import { BodyPortal } from "./body-portal";
+import { ViewportFixedLayer } from "./viewport-fixed-layer";
 
 interface TableEventParticipant {
   groupPlayerId: string;
@@ -226,46 +227,51 @@ export function TableEventRecorder() {
   }
 
   return (
-    <BodyPortal>
-      <button
-        aria-label="テーブルイベントを記録"
-        className="table-event-floating-button"
-        onClick={openTableEventRecorder}
-        type="button"
-      >
-        <span aria-hidden="true">♠</span> TABLE EVENT
-      </button>
-      <dialog
-        aria-labelledby="table-event-title"
-        className="table-event-dialog"
-        onCancel={closeRecorder}
-        onClick={(event) => {
-          if (event.target === event.currentTarget) closeRecorder();
-        }}
-        onClose={() => {
-          setIsOpen(false);
-          returnFocusRef.current?.focus();
-          returnFocusRef.current = null;
-        }}
-        ref={dialogRef}
-      >
-        <div className="table-event-sheet">
-          <header className="table-event-header">
-            <div>
-              <p className="eyebrow">TABLE EVENT</p>
-              <h2 id="table-event-title">テーブルイベントを記録</h2>
-            </div>
-            <button
-              aria-label="テーブルイベントを閉じる"
-              className="participant-roster-close"
-              onClick={closeRecorder}
-              type="button"
-            >
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            </button>
-          </header>
+    <>
+      {!isOpen ? (
+        <ViewportFixedLayer>
+          <button
+            aria-label="テーブルイベントを記録"
+            className="table-event-floating-button"
+            onClick={openTableEventRecorder}
+            type="button"
+          >
+            <span aria-hidden="true">♠</span> TABLE EVENT
+          </button>
+        </ViewportFixedLayer>
+      ) : null}
+      <BodyPortal>
+        <dialog
+          aria-labelledby="table-event-title"
+          className="table-event-dialog"
+          onCancel={closeRecorder}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeRecorder();
+          }}
+          onClose={() => {
+            setIsOpen(false);
+            returnFocusRef.current?.focus();
+            returnFocusRef.current = null;
+          }}
+          ref={dialogRef}
+        >
+          <div className="table-event-sheet">
+            <header className="table-event-header">
+              <div>
+                <p className="eyebrow">TABLE EVENT</p>
+                <h2 id="table-event-title">テーブルイベントを記録</h2>
+              </div>
+              <button
+                aria-label="テーブルイベントを閉じる"
+                className="participant-roster-close"
+                onClick={closeRecorder}
+                type="button"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </header>
 
           {feedback ? <p className="table-event-feedback">✓ {feedback}</p> : null}
           {error ? <p className="table-event-error" role="alert">{error}</p> : null}
@@ -375,9 +381,10 @@ export function TableEventRecorder() {
               </ul>
             </section>
           ) : null}
-        </div>
-      </dialog>
-    </BodyPortal>
+          </div>
+        </dialog>
+      </BodyPortal>
+    </>
   );
 }
 

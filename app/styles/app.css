@@ -150,8 +150,28 @@ a {
   }
 }
 
-.pwa-update-notice {
+.viewport-fixed-layer {
   position: fixed;
+  z-index: 70;
+  inset: 0;
+  width: auto;
+  max-width: none;
+  height: auto;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+  padding: 0;
+  pointer-events: none;
+}
+
+.viewport-fixed-layer > * {
+  pointer-events: auto;
+}
+
+.pwa-update-notice {
+  position: absolute;
   right: max(16px, env(safe-area-inset-right));
   bottom: max(16px, env(safe-area-inset-bottom));
   z-index: 80;
