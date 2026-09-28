@@ -13,6 +13,7 @@ import { InviteRequiredPage } from "~/components/invite-required-page";
 import { PwaUpdateNotice } from "~/components/pwa-update-notice";
 import { AchievementUnlockToast } from "~/components/achievement-unlock-toast";
 import { TableEventRecorder } from "~/components/table-event-recorder";
+import { VIEWPORT_FIXED_ROOT_ID } from "~/components/viewport-fixed-layer";
 import type { Route } from "./+types/root";
 import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
 import { hasMultipleActiveGroupsForPlayer } from "@server/repositories/group-repository.server";
@@ -145,6 +146,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
+        <div id={VIEWPORT_FIXED_ROOT_ID} />
         {children}
         <PwaUpdateNotice />
         <ScrollRestoration />

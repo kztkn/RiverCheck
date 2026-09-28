@@ -57,7 +57,7 @@ ADMIN認証はgroup_idを持たないアプリ全体の署名済みセッショ�
 
 Web App Manifestは`id`、`start_url`、`scope`を`/`で固定し、通常・maskable・Apple用アイコンを提供する。production build後にNode.jsスクリプトがクライアントJS/CSSの内容からversionを生成し、Service Workerテンプレートへ注入する。新しいrouteやchunkはversionへ自動反映し、機能追加ごとのキャッシュ一覧更新を不要にする。
 
-Service Workerはオフライン案内、manifest、PWAアイコンを事前キャッシュし、`/assets/`のハッシュ付き静的ファイルは利用時だけCache Firstで保存する。React RouterのSSR HTML、`.data`、R2配信画像、認証・参加・結果・精算・プロフィールresponse、POSTは傍受・保存しない。navigationはNetwork Onlyとし、通信失敗時だけ静的なオフライン案内を返す。これにより別利用者の情報や古い参加・精算状態を端末キャッシュから表示しない。PWA更新通知とTABLE EVENTの常設入口は共通の`ViewportFixedLayer`からbody直下へportalする。レイヤー自体はabsolute配置とし、`VisualViewport.pageTop / pageLeft / width / height`をwindow・visual viewportのscroll / resize時に同期して、iOSで`position: fixed`やtop layerがlayout viewportへ取り残される問題を回避する。VisualViewport非対応時はwindowのscroll座標とinner sizeへフォールバックする。各コントロールは同期済みレイヤーの右下へabsolute配置する。
+Service Workerはオフライン案内、manifest、PWAアイコンを事前キャッシュし、`/assets/`のハッシュ付き静的ファイルは利用時だけCache Firstで保存する。React RouterのSSR HTML、`.data`、R2配信画像、認証・参加・結果・精算・プロフィールresponse、POSTは傍受・保存しない。navigationはNetwork Onlyとし、通信失敗時だけ静的なオフライン案内を返す。これにより別利用者の情報や古い参加・精算状態を端末キャッシュから表示しない。PWA更新通知とTABLE EVENTの常設入口は、bodyの先頭に置いた`100dvh`の`position: sticky`ホストへ共通の`ViewportFixedLayer`からportalする。ホストの高さは負の下marginで本文レイアウトから相殺し、各コントロールをその右下へabsolute配置する。iOSが不正確な値を返す場合があるVisualViewportの座標計算やscroll listenerには依存しない。
 
 Service Workerの新versionはwaiting状態で通知し、利用者が更新操作を選んだ場合だけ`skipWaiting`して再読込する。結果入力中の自動更新は行わない。開発時はService Workerを登録せず、production buildまたは本番HTTPSで検証する。
 
