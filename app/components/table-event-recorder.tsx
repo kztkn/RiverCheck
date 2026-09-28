@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useRevalidator } from "react-router";
 import { BodyPortal } from "./body-portal";
-import { ViewportFixedLayer } from "./viewport-fixed-layer";
+import { ViewportOverlayLayer } from "./viewport-overlay-layer";
+import { useAppScrollLock } from "~/utils/app-scroll";
 
 interface TableEventParticipant {
   groupPlayerId: string;
@@ -116,14 +117,7 @@ export function TableEventRecorder() {
     if (!isOpen && dialog.open) dialog.close();
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [isOpen]);
+  useAppScrollLock(isOpen);
 
   useEffect(() => {
     const handleOpen = () => {
@@ -229,7 +223,7 @@ export function TableEventRecorder() {
   return (
     <>
       {!isOpen ? (
-        <ViewportFixedLayer>
+        <ViewportOverlayLayer>
           <button
             aria-label="テーブルイベントを記録"
             className="table-event-floating-button"
@@ -238,7 +232,7 @@ export function TableEventRecorder() {
           >
             <span aria-hidden="true">♠</span> TABLE EVENT
           </button>
-        </ViewportFixedLayer>
+        </ViewportOverlayLayer>
       ) : null}
       <BodyPortal>
         <dialog

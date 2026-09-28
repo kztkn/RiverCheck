@@ -17,6 +17,7 @@ import {
   GameStoryReactionBar,
   GameStoryReactionProvider,
 } from "./game-story-reactions";
+import { useAppScrollLock } from "~/utils/app-scroll";
 
 export interface GameStoryPostView extends PublishedGameStoryPost {
   avatarUrl: string | null;
@@ -247,14 +248,7 @@ function StoryEditorDialog({
     if (!isOpen && dialog.open) dialog.close();
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isOpen]);
+  useAppScrollLock(isOpen);
 
   useEffect(() => {
     if (!selectedPhoto) {

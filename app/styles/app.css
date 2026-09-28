@@ -28,16 +28,23 @@
 }
 
 html {
+  width: 100%;
+  height: 100%;
   min-width: 320px;
+  overflow: hidden;
   background: #08130f;
 }
 
 body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 0;
   margin: 0;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  overflow: hidden;
+  padding: 0;
   background:
     radial-gradient(
       circle at 80% -10%,
@@ -53,15 +60,36 @@ body {
 }
 
 body::before {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
+  pointer-events: none;
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
   background-size: 42px 42px;
   content: "";
   mask-image: linear-gradient(to bottom, black, transparent 75%);
+}
+
+#app-shell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+#app-scroll-root {
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  -webkit-overflow-scrolling: touch;
 }
 
 a {
@@ -150,17 +178,15 @@ a {
   }
 }
 
-#viewport-fixed-root {
-  position: sticky;
-  top: 0;
+#viewport-overlay-root {
+  position: absolute;
+  inset: 0;
   z-index: 200;
-  width: 100%;
-  height: 100dvh;
-  margin-bottom: -100dvh;
+  overflow: hidden;
   pointer-events: none;
 }
 
-.viewport-fixed-layer {
+.viewport-overlay-layer {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -172,7 +198,7 @@ a {
   pointer-events: none;
 }
 
-.viewport-fixed-layer > * {
+.viewport-overlay-layer > * {
   pointer-events: auto;
 }
 
@@ -1722,7 +1748,7 @@ input[aria-invalid="true"] {
 }
 
 .app-toast {
-  position: fixed;
+  position: absolute;
   bottom: calc(20px + env(safe-area-inset-bottom));
   left: 50%;
   z-index: 100;

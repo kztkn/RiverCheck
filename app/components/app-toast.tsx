@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
+import { ViewportOverlayLayer } from "./viewport-overlay-layer";
 
 export function AppToast({
   message,
@@ -49,9 +50,11 @@ export function AppToast({
   if (!message || !visible) return null;
 
   return (
-    <div aria-live="polite" className="app-toast" role="status">
-      <span aria-hidden="true">✓</span>
-      {message}
-    </div>
+    <ViewportOverlayLayer>
+      <div aria-live="polite" className="app-toast" role="status">
+        <span aria-hidden="true">✓</span>
+        {message}
+      </div>
+    </ViewportOverlayLayer>
   );
 }

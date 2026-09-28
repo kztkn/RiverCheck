@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ViewportFixedLayer } from "./viewport-fixed-layer";
+import { ViewportOverlayLayer } from "./viewport-overlay-layer";
 
 const SERVICE_WORKER_URL = "/sw.js";
 
@@ -99,7 +99,7 @@ export function PwaUpdateNotice() {
   }
 
   return (
-    <ViewportFixedLayer>
+    <ViewportOverlayLayer>
       <aside
         aria-live="polite"
         className="pwa-update-notice"
@@ -113,7 +113,7 @@ export function PwaUpdateNotice() {
           {isUpdating ? "更新中…" : "更新する"}
         </button>
       </aside>
-    </ViewportFixedLayer>
+    </ViewportOverlayLayer>
   );
 }
 

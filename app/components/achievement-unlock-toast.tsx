@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AchievementIcon } from "~/components/achievement-icon";
 import type { PendingAchievementNotification } from "@shared-types/achievement";
+import { ViewportOverlayLayer } from "./viewport-overlay-layer";
 
 export function AchievementUnlockToast({
   groupCode,
@@ -34,19 +35,21 @@ export function AchievementUnlockToast({
   if (!current) return null;
 
   return (
-    <div
-      aria-live="polite"
-      className="app-toast achievement-unlock-toast"
-      role="status"
-    >
-      <span aria-hidden="true">
-        <AchievementIcon iconKey={current.iconKey} />
-      </span>
-      <span className="achievement-unlock-toast-copy">
-        <small>NEW TITLE</small>
-        <strong>{current.name}</strong>
-        <em>{current.description}</em>
-      </span>
-    </div>
+    <ViewportOverlayLayer>
+      <div
+        aria-live="polite"
+        className="app-toast achievement-unlock-toast"
+        role="status"
+      >
+        <span aria-hidden="true">
+          <AchievementIcon iconKey={current.iconKey} />
+        </span>
+        <span className="achievement-unlock-toast-copy">
+          <small>NEW TITLE</small>
+          <strong>{current.name}</strong>
+          <em>{current.description}</em>
+        </span>
+      </div>
+    </ViewportOverlayLayer>
   );
 }

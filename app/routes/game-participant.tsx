@@ -15,6 +15,7 @@ import {
   IconPencil,
   IconUserCircle,
 } from "@tabler/icons-react";
+import { useAppScrollLock } from "~/utils/app-scroll";
 import {
   findGameWithGroupByPublicCode,
   listGamesForGroup,
@@ -1600,14 +1601,7 @@ export function ParticipantRosterSheet({
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isOpen]);
+  useAppScrollLock(isOpen);
 
   useEffect(() => {
     if (isEditingStatus) return;
@@ -2110,14 +2104,7 @@ export function LocalRulesSheet({
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isOpen]);
+  useAppScrollLock(isOpen);
 
   function closeSheet() {
     setIsOpen(false);
