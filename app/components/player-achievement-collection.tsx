@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { AchievementIcon } from "./achievement-icon";
+import { BodyPortal } from "./body-portal";
 import type {
   PlayerAchievementCollection,
   PlayerAchievementItem,
@@ -90,114 +91,116 @@ export function PlayerAchievementCollectionView({
       ) : null}
 
       {collection.totalCount > 0 ? (
-        <dialog
-          aria-labelledby={headingId}
-          className="achievement-collection-dialog"
-          onCancel={() => setCollectionOpen(false)}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setCollectionOpen(false);
-          }}
-          onClose={() => setCollectionOpen(false)}
-          ref={dialogRef}
-        >
-          <div className="achievement-collection-sheet">
-            <header className="achievement-collection-dialog-header">
-              <div>
-                <p className="eyebrow">TITLE COLLECTION</p>
-                <h2 id={headingId}>称号コレクション</h2>
-                <p>
-                  {collection.unlockedCount} / {collection.totalCount} 獲得
-                </p>
-              </div>
-              <button
-                aria-label="称号コレクションを閉じる"
-                className="achievement-collection-close"
-                onClick={() => setCollectionOpen(false)}
-                type="button"
-              >
-                <IconX aria-hidden="true" />
-              </button>
-            </header>
-
-            <div
-              aria-label="称号の獲得状態"
-              className="achievement-collection-tabs"
-              role="tablist"
-            >
-              <button
-                aria-controls={`${unlockedTabId}-panel`}
-                aria-selected={activeTab === "unlocked"}
-                id={unlockedTabId}
-                onClick={() => setActiveTab("unlocked")}
-                role="tab"
-                type="button"
-              >
-                獲得済み <span>{unlockedItems.length}</span>
-              </button>
-              <button
-                aria-controls={`${lockedTabId}-panel`}
-                aria-selected={activeTab === "locked"}
-                id={lockedTabId}
-                onClick={() => setActiveTab("locked")}
-                role="tab"
-                type="button"
-              >
-                未獲得 <span>{lockedItems.length}</span>
-              </button>
-            </div>
-
-            <div className="achievement-collection-dialog-body">
-              <div
-                aria-labelledby={unlockedTabId}
-                hidden={activeTab !== "unlocked"}
-                id={`${unlockedTabId}-panel`}
-                role="tabpanel"
-              >
-                {unlockedItems.length === 0 ? (
-                  <p className="achievement-modal-empty">
-                    まだ獲得した称号はありません。
+        <BodyPortal>
+          <dialog
+            aria-labelledby={headingId}
+            className="achievement-collection-dialog"
+            onCancel={() => setCollectionOpen(false)}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setCollectionOpen(false);
+            }}
+            onClose={() => setCollectionOpen(false)}
+            ref={dialogRef}
+          >
+            <div className="achievement-collection-sheet">
+              <header className="achievement-collection-dialog-header">
+                <div>
+                  <p className="eyebrow">TITLE COLLECTION</p>
+                  <h2 id={headingId}>称号コレクション</h2>
+                  <p>
+                    {collection.unlockedCount} / {collection.totalCount} 獲得
                   </p>
-                ) : (
-                  <div
-                    aria-label="獲得済み称号"
-                    className="achievement-unlocked-grid"
-                  >
-                    {unlockedItems.map((achievement) => (
-                      <UnlockedAchievement
-                        achievement={achievement}
-                        key={achievement.id}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+                </div>
+                <button
+                  aria-label="称号コレクションを閉じる"
+                  className="achievement-collection-close"
+                  onClick={() => setCollectionOpen(false)}
+                  type="button"
+                >
+                  <IconX aria-hidden="true" />
+                </button>
+              </header>
+
               <div
-                aria-labelledby={lockedTabId}
-                hidden={activeTab !== "locked"}
-                id={`${lockedTabId}-panel`}
-                role="tabpanel"
+                aria-label="称号の獲得状態"
+                className="achievement-collection-tabs"
+                role="tablist"
               >
-                {lockedItems.length === 0 ? (
-                  <p className="achievement-modal-empty">
-                    すべての称号を獲得しています。
-                  </p>
-                ) : (
-                  <ul
-                    aria-label="未獲得称号"
-                    className="achievement-locked-list"
-                  >
-                    {lockedItems.map((achievement) => (
-                      <LockedAchievement
-                        achievement={achievement}
-                        key={achievement.id}
-                      />
-                    ))}
-                  </ul>
-                )}
+                <button
+                  aria-controls={`${unlockedTabId}-panel`}
+                  aria-selected={activeTab === "unlocked"}
+                  id={unlockedTabId}
+                  onClick={() => setActiveTab("unlocked")}
+                  role="tab"
+                  type="button"
+                >
+                  獲得済み <span>{unlockedItems.length}</span>
+                </button>
+                <button
+                  aria-controls={`${lockedTabId}-panel`}
+                  aria-selected={activeTab === "locked"}
+                  id={lockedTabId}
+                  onClick={() => setActiveTab("locked")}
+                  role="tab"
+                  type="button"
+                >
+                  未獲得 <span>{lockedItems.length}</span>
+                </button>
+              </div>
+
+              <div className="achievement-collection-dialog-body">
+                <div
+                  aria-labelledby={unlockedTabId}
+                  hidden={activeTab !== "unlocked"}
+                  id={`${unlockedTabId}-panel`}
+                  role="tabpanel"
+                >
+                  {unlockedItems.length === 0 ? (
+                    <p className="achievement-modal-empty">
+                      まだ獲得した称号はありません。
+                    </p>
+                  ) : (
+                    <div
+                      aria-label="獲得済み称号"
+                      className="achievement-unlocked-grid"
+                    >
+                      {unlockedItems.map((achievement) => (
+                        <UnlockedAchievement
+                          achievement={achievement}
+                          key={achievement.id}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div
+                  aria-labelledby={lockedTabId}
+                  hidden={activeTab !== "locked"}
+                  id={`${lockedTabId}-panel`}
+                  role="tabpanel"
+                >
+                  {lockedItems.length === 0 ? (
+                    <p className="achievement-modal-empty">
+                      すべての称号を獲得しています。
+                    </p>
+                  ) : (
+                    <ul
+                      aria-label="未獲得称号"
+                      className="achievement-locked-list"
+                    >
+                      {lockedItems.map((achievement) => (
+                        <LockedAchievement
+                          achievement={achievement}
+                          key={achievement.id}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </dialog>
+          </dialog>
+        </BodyPortal>
       ) : null}
     </section>
   );

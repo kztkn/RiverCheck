@@ -32,7 +32,28 @@
 }
 
 .table-event-dialog {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  overflow: hidden;
+  padding: 0;
+}
+
+.table-event-dialog[open] {
+  display: grid;
   align-items: end;
+}
+
+.table-event-dialog::backdrop {
+  background: rgba(3, 10, 7, 0.76);
+  backdrop-filter: blur(5px);
 }
 
 .table-event-sheet {
@@ -44,6 +65,7 @@
   border-radius: 24px 24px 0 0;
   background: #0a1712;
   box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.36);
+  margin-inline: auto;
   padding: 20px 18px calc(22px + env(safe-area-inset-bottom));
 }
 
@@ -280,7 +302,7 @@
 }
 
 @media (min-width: 640px) {
-  .table-event-dialog {
+  .table-event-dialog[open] {
     align-items: center;
   }
 

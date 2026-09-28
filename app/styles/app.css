@@ -8710,12 +8710,16 @@ input[aria-invalid="true"] {
 
 .submitted-input-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
 }
 
 .submitted-input-actions > .button {
   width: 100%;
+}
+
+.participant-result-refresh {
+  min-height: 48px;
 }
 
 .result-refresh-message {

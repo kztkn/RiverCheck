@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useLocation, useRevalidator } from "react-router";
+import { BodyPortal } from "./body-portal";
 
 interface TableEventParticipant {
   groupPlayerId: string;
@@ -225,27 +225,19 @@ export function TableEventRecorder() {
     await postEvent(formData, "テーブルイベントを取り消しました");
   }
 
-  const floatingTrigger =
-    typeof document === "undefined"
-      ? null
-      : createPortal(
-          <button
-            aria-label="テーブルイベントを記録"
-            className="table-event-floating-button"
-            onClick={openTableEventRecorder}
-            type="button"
-          >
-            <span aria-hidden="true">♠</span> TABLE EVENT
-          </button>,
-          document.body,
-        );
-
   return (
-    <>
-      {floatingTrigger}
+    <BodyPortal>
+      <button
+        aria-label="テーブルイベントを記録"
+        className="table-event-floating-button"
+        onClick={openTableEventRecorder}
+        type="button"
+      >
+        <span aria-hidden="true">♠</span> TABLE EVENT
+      </button>
       <dialog
         aria-labelledby="table-event-title"
-        className="app-dialog table-event-dialog"
+        className="table-event-dialog"
         onCancel={closeRecorder}
         onClick={(event) => {
           if (event.target === event.currentTarget) closeRecorder();
@@ -385,7 +377,7 @@ export function TableEventRecorder() {
           ) : null}
         </div>
       </dialog>
-    </>
+    </BodyPortal>
   );
 }
 

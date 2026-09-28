@@ -946,9 +946,10 @@
 
 .achievement-collection-dialog {
   position: fixed;
-  inset: auto 0 0 0;
+  inset: 0;
   width: 100%;
   max-width: none;
+  height: 100dvh;
   max-height: none;
   margin: 0;
   border: 0;
@@ -958,6 +959,11 @@
   padding: 0;
 }
 
+.achievement-collection-dialog[open] {
+  display: grid;
+  align-items: end;
+}
+
 .achievement-collection-dialog::backdrop {
   background: rgba(3, 10, 7, 0.76);
   backdrop-filter: blur(3px);
@@ -965,6 +971,7 @@
 
 .achievement-collection-sheet {
   display: grid;
+  width: 100%;
   max-height: min(88dvh, 800px);
   grid-template-rows: auto auto minmax(0, 1fr);
   border: 1px solid rgba(223, 236, 227, 0.13);
@@ -1279,12 +1286,16 @@
 
 @media (min-width: 640px) {
   .achievement-collection-dialog {
-    inset: 0;
-    width: min(calc(100% - 40px), 720px);
-    margin: auto;
+    padding: 20px;
+  }
+
+  .achievement-collection-dialog[open] {
+    align-items: center;
   }
 
   .achievement-collection-sheet {
+    width: min(100%, 720px);
+    justify-self: center;
     border-bottom: 1px solid rgba(223, 236, 227, 0.13);
     border-radius: 22px;
   }

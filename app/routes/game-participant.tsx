@@ -2056,7 +2056,7 @@ function FinalResultRefreshControl() {
   return (
     <>
       <button
-        className="button button-secondary"
+        className="button button-secondary participant-result-refresh"
         disabled={isChecking || revalidator.state !== "idle"}
         onClick={() => {
           setShowPendingMessage(false);
