@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import { encodeResultCode } from "@domain/result-sharing/result-code";
 
 const mocked = vi.hoisted(() => ({
@@ -145,6 +146,7 @@ import {
   ParticipantPlayerSnapshot,
   ParticipantRosterSheet,
   SettlementPlanSheet,
+  ResultEntryForm,
   projectRebuyState,
   resolveUndoableRebuyAction,
   shouldRevalidate,
@@ -601,6 +603,22 @@ describe("game participant route", () => {
     expect(markup).toContain("ゲーム結果");
     expect(markup).toContain("1BB = 10P");
     expect(markup).toContain('class="settlement-plan-grid"');
+  });
+
+  it("残りチップは枚数でなく合計値であることを入力例で伝える", () => {
+    const router = createMemoryRouter([{ path: "/", element: createElement(ResultEntryForm, {
+      initialChips: 20_000,
+      isSubmitting: false,
+      outstandingRebuyCount: 0,
+      remainingChips: null,
+      settlementRebuyCount: null,
+      totalRebuyCount: 0,
+    }) }]);
+    const markup = renderToStaticMarkup(createElement(RouterProvider, { router }));
+    expect(markup).toContain("残りチップ（合計）");
+    expect(markup).toContain("枚数ではなく合計を入力。例：5,000 × 2枚なら10,000");
+    expect(markup).toContain('name="remainingChips"');
+    expect(markup).toContain('value="20000"');
   });
 
   it("未入力の結果フォームは閉じておき、結果入力から開く", () => {

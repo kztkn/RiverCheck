@@ -2562,7 +2562,7 @@ export function resolveUndoableRebuyAction(
   return { eventId: result.eventId, intent: result.intent };
 }
 
-function ResultEntryForm({
+export function ResultEntryForm({
   initialChips,
   isSubmitting,
   outstandingRebuyCount,
@@ -2602,7 +2602,7 @@ function ResultEntryForm({
     >
       <input name="intent" type="hidden" value="save-input" />
       <label className="field">
-        <span className="field-label">残りチップ（枚）</span>
+        <span className="field-label">残りチップ（合計）</span>
         <input
           defaultValue={remainingChips ?? initialChips}
           inputMode="numeric"
@@ -2612,6 +2612,7 @@ function ResultEntryForm({
           required
           type="number"
         />
+        <span className="field-hint">枚数ではなく合計を入力。例：5,000 × 2枚なら10,000</span>
       </label>
       <label className="field">
         <span className="field-label">手元のリバイ証</span>

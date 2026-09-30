@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useRevalidator } from "react-router";
 import { BodyPortal } from "./body-portal";
 
@@ -29,6 +29,51 @@ interface TableEventPanelResponse {
 }
 
 type RecorderMode = "menu" | "seven-deuce" | "all-in";
+type PanelLoadState = "loading" | "ready" | "error" | "unavailable";
+
+/** GET only: retrying a panel load must never replay an event POST. */
+export async function fetchTableEventPanel(path: string, signal: AbortSignal) {
+  const response = await fetch(path, {
+    credentials: "same-origin",
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (!response.ok) throw new Error("テーブルイベントを読み込めませんでした。");
+  const panel = (await response.json()) as TableEventPanelResponse | null;
+  if (!panel || typeof panel.canRecord !== "boolean" || (panel.canRecord && (
+    typeof panel.rules?.sevenDeuce !== "boolean" ||
+    typeof panel.rules?.bombPot !== "boolean" ||
+    !Array.isArray(panel.participants) || !Array.isArray(panel.recentEvents)
+  ))) {
+    throw new Error("テーブルイベントの応答を確認できませんでした。");
+  }
+  return panel;
+}
+
+export function TableEventPanelLoadStatus({
+  state,
+  onRetry,
+}: {
+  state: PanelLoadState;
+  onRetry: () => void;
+}) {
+  if (state === "ready") return null;
+  if (state === "loading") {
+    return <p className="table-event-hint" role="status">テーブルイベントを読み込み中…</p>;
+  }
+  return (
+    <div className="table-event-editor">
+      <p className="table-event-hint" role="alert">
+        {state === "unavailable"
+          ? "現在は記録できません。開催の受付状況や参加状態を確認してください。"
+          : "テーブルイベントを読み込めませんでした。通信状態を確認して、もう一度お試しください。"}
+      </p>
+      <button className="button button-secondary" onClick={onRetry} type="button">
+        再試行
+      </button>
+    </div>
+  );
+}
 
 export const TABLE_EVENT_RECORDER_OPEN_EVENT =
   "rivercheck:open-table-event-recorder";
@@ -46,6 +91,7 @@ export function TableEventRecorder() {
     [location.pathname],
   );
   const [panel, setPanel] = useState<TableEventPanelResponse | null>(null);
+  const [loadState, setLoadState] = useState<PanelLoadState>("loading");
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<RecorderMode>("menu");
   const [subjectId, setSubjectId] = useState("");
@@ -56,57 +102,52 @@ export function TableEventRecorder() {
   const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  const panelRequestRef = useRef<AbortController | null>(null);
+  const recorderSessionRef = useRef(0);
 
-  async function refreshPanel(path = resourcePath) {
-    if (!path) {
-      setPanel(null);
-      return;
-    }
+  const refreshPanel = useCallback(async () => {
+    if (!resourcePath) return;
+    panelRequestRef.current?.abort();
+    const request = new AbortController();
+    panelRequestRef.current = request;
+    setLoadState("loading");
+    setPanel(null);
+    // A stalled connection must not leave the sheet loading indefinitely.
+    const timeout = window.setTimeout(() => {
+      if (request.signal.aborted) return;
+      request.abort();
+      setLoadState("error");
+    }, 15_000);
     try {
-      const response = await fetch(path, {
-        credentials: "same-origin",
-        headers: { Accept: "application/json" },
-      });
-      if (!response.ok) {
-        setPanel(null);
-        return;
-      }
-      const next = (await response.json()) as TableEventPanelResponse;
+      const next = await fetchTableEventPanel(resourcePath, request.signal);
+      if (request.signal.aborted) return;
       setPanel(next.canRecord ? next : null);
+      setLoadState(next.canRecord ? "ready" : "unavailable");
       if (next.currentGroupPlayerId) {
         setSubjectId((current) => current || next.currentGroupPlayerId || "");
       }
     } catch {
-      setPanel(null);
+      if (!request.signal.aborted) setLoadState("error");
+    } finally {
+      window.clearTimeout(timeout);
     }
-  }
+  }, [resourcePath]);
 
   useEffect(() => {
-    let active = true;
-    if (!resourcePath) {
-      setPanel(null);
-      return;
-    }
-    void fetch(resourcePath, {
-      credentials: "same-origin",
-      headers: { Accept: "application/json" },
-    })
-      .then(async (response) => {
-        if (!response.ok) return null;
-        return (await response.json()) as TableEventPanelResponse;
-      })
-      .then((next) => {
-        if (!active) return;
-        setPanel(next?.canRecord ? next : null);
-        if (next?.currentGroupPlayerId) setSubjectId(next.currentGroupPlayerId);
-      })
-      .catch(() => {
-        if (active) setPanel(null);
-      });
-    return () => {
-      active = false;
-    };
+    recorderSessionRef.current += 1;
+    setIsOpen(false);
+    setPanel(null);
+    setSubjectId("");
+    setAllInIds([]);
+    setWinnerIds([]);
+    return () => panelRequestRef.current?.abort();
   }, [resourcePath]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    void refreshPanel();
+    return () => panelRequestRef.current?.abort();
+  }, [isOpen, refreshPanel]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -126,24 +167,29 @@ export function TableEventRecorder() {
 
   useEffect(() => {
     const handleOpen = () => {
+      if (!resourcePath || isOpen) return;
+      recorderSessionRef.current += 1;
       const activeElement = document.activeElement;
       returnFocusRef.current =
         activeElement instanceof HTMLElement ? activeElement : null;
       setMode("menu");
       setFeedback(null);
       setError(null);
+      setLoadState("loading");
+      setPanel(null);
       setIsOpen(true);
-      void refreshPanel();
     };
     window.addEventListener(TABLE_EVENT_RECORDER_OPEN_EVENT, handleOpen);
     return () => {
       window.removeEventListener(TABLE_EVENT_RECORDER_OPEN_EVENT, handleOpen);
     };
-  }, [resourcePath]);
+  }, [resourcePath, isOpen]);
 
-  if (!resourcePath || !panel) return null;
+  if (!resourcePath) return null;
 
   function closeRecorder() {
+    recorderSessionRef.current += 1;
+    panelRequestRef.current?.abort();
     setIsOpen(false);
     setMode("menu");
     setAllInIds([]);
@@ -172,6 +218,7 @@ export function TableEventRecorder() {
 
   async function postEvent(formData: FormData, successMessage: string) {
     if (!resourcePath || pending) return;
+    const session = recorderSessionRef.current;
     setPending(true);
     setError(null);
     try {
@@ -183,17 +230,22 @@ export function TableEventRecorder() {
       });
       const result = (await response.json()) as { ok: boolean; error?: string };
       if (!response.ok || !result.ok) {
-        setError(result.error ?? "テーブルイベントを記録できませんでした。");
+        if (session === recorderSessionRef.current) {
+          setError(result.error ?? "テーブルイベントを記録できませんでした。");
+        }
         return;
       }
+      void revalidator.revalidate();
+      if (session !== recorderSessionRef.current) return;
       setFeedback(successMessage);
       setMode("menu");
       setAllInIds([]);
       setWinnerIds([]);
       await refreshPanel();
-      void revalidator.revalidate();
     } catch {
-      setError("通信に失敗しました。もう一度お試しください。");
+      if (session === recorderSessionRef.current) {
+        setError("通信に失敗しました。もう一度お試しください。");
+      }
     } finally {
       setPending(false);
     }
@@ -263,7 +315,9 @@ export function TableEventRecorder() {
           {feedback ? <p className="table-event-feedback">✓ {feedback}</p> : null}
           {error ? <p className="table-event-error" role="alert">{error}</p> : null}
 
-          {mode === "menu" ? (
+          <TableEventPanelLoadStatus state={loadState} onRetry={() => void refreshPanel()} />
+
+          {panel && (mode === "menu" ? (
             <div className="table-event-menu">
               {panel.rules.sevenDeuce ? (
                 <button onClick={() => setMode("seven-deuce")} type="button">
@@ -348,9 +402,9 @@ export function TableEventRecorder() {
                 {pending ? "記録中…" : "ALL INを記録"}
               </button>
             </div>
-          )}
+          ))}
 
-          {panel.recentEvents.length > 0 ? (
+          {panel && panel.recentEvents.length > 0 ? (
             <section className="table-event-recent">
               <h3>最近のテーブルイベント</h3>
               <ul>
