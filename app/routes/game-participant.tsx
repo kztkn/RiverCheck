@@ -977,7 +977,9 @@ export default function GameParticipant({
             }).format(new Date(loaderData.game.playedAt))}
           </p>
         ) : null}
-        {loaderData.participant && loaderData.isOrganizer && loaderData.game.status === "open" ? (
+        {loaderData.participant &&
+        loaderData.isOrganizer &&
+        loaderData.game.status === "open" ? (
           <NavLink
             className={({ isPending }) =>
               `button button-secondary participant-admin-link${isPending ? " is-pending" : ""}`
@@ -1132,22 +1134,25 @@ export default function GameParticipant({
         </section>
       ) : loaderData.participant ? (
         <section className="participant-panel participant-session">
-          <div className="participant-session-header">
-            <div className="participant-identity">
-              <PlayerAvatar
-                avatarUrl={loaderData.participant.avatarUrl}
-                displayName={loaderData.participant.displayName}
-              />
-              <div>
-                <p>YOU ARE SEATED</p>
-                <h2>{loaderData.participant.displayName}</h2>
+          {loaderData.authenticatedPlayer?.groupPlayerId !==
+          loaderData.participant.groupPlayerId ? (
+            <div className="participant-session-header">
+              <div className="participant-identity">
+                <PlayerAvatar
+                  avatarUrl={loaderData.participant.avatarUrl}
+                  displayName={loaderData.participant.displayName}
+                />
+                <div>
+                  <p>YOU ARE SEATED</p>
+                  <h2>{loaderData.participant.displayName}</h2>
+                </div>
+              </div>
+              <div className="participant-session-state">
+                <strong>ゲーム中</strong>
+                <small>参加済み</small>
               </div>
             </div>
-            <div className="participant-session-state">
-              <strong>ゲーム中</strong>
-              <small>参加済み</small>
-            </div>
-          </div>
+          ) : null}
 
           <section className="participant-phase participant-phase-live">
             <div className="participant-phase-heading">
@@ -1178,25 +1183,27 @@ export default function GameParticipant({
               onRecordEventClick={openTableEventRecorder}
             />
           ) : null}
-          <LocalRulesSheet
-            bigBlindAnteChips={loaderData.game.bigBlindAnteChips}
-            bigBlindChips={loaderData.game.bigBlindChips}
-            bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
-            chipDistribution={loaderData.game.chipDistribution}
-            initialChips={loaderData.game.initialChips}
-            initialStackBb={loaderData.game.initialStackBb}
-            smallBlindChips={loaderData.game.smallBlindChips}
-            sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
-          />
-          {loaderData.game.settlementPlanPublishedAt &&
-          loaderData.game.costShares ? (
-            <SettlementPlanSheet
-              bbRate={loaderData.game.bbRate}
-              costShares={loaderData.game.costShares}
-              participantCount={loaderData.game.previewParticipantCount}
-              venueCost={loaderData.game.venueCost}
+          <section aria-label="開催情報" className="participant-join-info">
+            <LocalRulesSheet
+              bigBlindAnteChips={loaderData.game.bigBlindAnteChips}
+              bigBlindChips={loaderData.game.bigBlindChips}
+              bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
+              chipDistribution={loaderData.game.chipDistribution}
+              initialChips={loaderData.game.initialChips}
+              initialStackBb={loaderData.game.initialStackBb}
+              smallBlindChips={loaderData.game.smallBlindChips}
+              sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
             />
-          ) : null}
+            {loaderData.game.settlementPlanPublishedAt &&
+            loaderData.game.costShares ? (
+              <SettlementPlanSheet
+                bbRate={loaderData.game.bbRate}
+                costShares={loaderData.game.costShares}
+                participantCount={loaderData.game.previewParticipantCount}
+                venueCost={loaderData.game.venueCost}
+              />
+            ) : null}
+          </section>
 
           <section
             className="participant-phase participant-phase-after participant-result-section"
@@ -1368,7 +1375,6 @@ export default function GameParticipant({
           )}
         </div>
       )}
-
     </main>
   );
 }

@@ -293,6 +293,26 @@ describe("game participant route", () => {
     expect(afterJoin).toContain("＋ 100BBリバイ");
     expect(afterJoin).toContain("結果入力");
     expect(afterJoin).not.toContain("Aliceとして登録する");
+    expect(afterJoin).not.toContain("YOU ARE SEATED");
+  });
+
+  it("ヘッダーに本人を表示できない参加者は、参加名の確認カードを残す", async () => {
+    mocked.findGameForGroup.mockResolvedValue({
+      ...openGame, smallBlindChips: 100, bigBlindChips: 200, bigBlindAnteChips: 200,
+      initialStackBb: 100, chipDistribution: null, sevenDeuceRuleEnabled: true,
+      bombPotRuleEnabled: true,
+    });
+    mocked.findParticipantByGroupPlayerId.mockResolvedValue(participant);
+    const data = await loader(loaderArgs());
+    const tokenOnly = renderParticipantPage({ ...data, authenticatedPlayer: null });
+    expect(tokenOnly).toContain("YOU ARE SEATED");
+    expect(tokenOnly).toContain("Alice");
+    expect(tokenOnly).toContain("＋ 100BBリバイ");
+    const otherIdentity = renderParticipantPage({
+      ...data,
+      authenticatedPlayer: { ...data.authenticatedPlayer!, groupPlayerId: "another-player" },
+    });
+    expect(otherIdentity).toContain("YOU ARE SEATED");
   });
 
   it("未認証の登録前も情報確認の次に名前選択と新規参加を表示する", async () => {

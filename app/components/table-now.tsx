@@ -111,11 +111,18 @@ export function TableNow({
           type="button"
         >
           <IconUsers aria-hidden="true" stroke={1.7} />
-          <span>
-            <strong>{data.playerCount ?? "—"}</strong>
-            <small>PLAYERS</small>
+          <span className="table-now-player-copy">
+            <span className="table-now-player-label">
+              <strong>{data.playerCount ?? "—"}</strong>
+              <small>PLAYERS</small>
+            </span>
+            {data.tableCounts ? (
+              <span className="table-now-seat-counts">
+                <small>MAIN {data.tableCounts.main}</small>
+                <small>SUB {data.tableCounts.sub}</small>
+              </span>
+            ) : null}
           </span>
-          {data.tableCounts ? <span className="table-now-seat-counts"><small>MAIN {data.tableCounts.main}</small><small>SUB {data.tableCounts.sub}</small></span> : null}
         </button>
         {onRecordEventClick ? (
           <button
