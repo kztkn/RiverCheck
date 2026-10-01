@@ -20,6 +20,7 @@ interface ParticipantRow {
 }
 
 interface CurrentParticipantRow {
+  table_position: "MAIN" | "SUB";
   group_player_id: string;
   display_name: string;
   status_text: string | null;
@@ -128,6 +129,7 @@ export async function listCurrentGameParticipants(
         participant.group_player_id,
         player.display_name,
         participant.status_text,
+        participant.table_position,
         player.avatar_uploaded_at
       FROM game_participants AS participant
       INNER JOIN games AS game ON game.id = participant.game_id
@@ -145,6 +147,7 @@ export async function listCurrentGameParticipants(
     groupPlayerId: row.group_player_id,
     displayName: row.display_name,
     statusText: row.status_text,
+    tablePosition: row.table_position,
     avatarUpdatedAt: row.avatar_uploaded_at?.toISOString() ?? null,
   }));
 }

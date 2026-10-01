@@ -459,3 +459,11 @@
   font-size: 0.68rem;
   line-height: 1.5;
 }
+
+.participant-player-profile { min-height: 52px; padding: 8px 0; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.participant-player-profile:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 8px; }
+.players-management-scroll[hidden] { display: none; }
+.participant-player-detail .participant-snapshot { min-height: 0; }
+.participant-status-edit-profile { width: 100%; min-height: 44px; margin-block: 16px 6px; }
+.participant-status-edit-profile svg { width: 18px; height: 18px; }
+.participant-snapshot-status small { display: block; margin-bottom: 4px; color: var(--muted); font-size: .65rem; }

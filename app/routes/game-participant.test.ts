@@ -287,7 +287,8 @@ describe("game participant route", () => {
     const afterJoin = renderParticipantPage(await loader(loaderArgs()));
     expect(afterJoin).toContain("LIVE TABLE");
     expect(afterJoin).toContain("EVENT");
-    expect(afterJoin).toContain("TABLES");
+    expect(afterJoin).toContain("PLAYERS");
+    expect(afterJoin).not.toContain("TABLES");
     expect(afterJoin).toContain("開催管理へ");
     expect(afterJoin).toContain("＋ 100BBリバイ");
     expect(afterJoin).toContain("結果入力");
@@ -511,6 +512,17 @@ describe("game participant route", () => {
     expect(mocked.listGameCostShareReceipts).not.toHaveBeenCalled();
   });
 
+  it("卓管理ONだけPLAYERSへ現在の卓内訳を返し、OFFでは内訳を出さない", async () => {
+    mocked.listCurrentGameParticipants.mockResolvedValue([
+      { groupPlayerId, displayName: "Alice", avatarUpdatedAt: null, tablePosition: "MAIN" },
+      { groupPlayerId: "b", displayName: "Bob", avatarUpdatedAt: null, tablePosition: "SUB" },
+      { groupPlayerId: "c", displayName: "Carol", avatarUpdatedAt: null, tablePosition: "MAIN" },
+    ]);
+    expect((await loader(loaderArgs())).tableNow?.tableCounts).toBeNull();
+    mocked.findGameForGroup.mockResolvedValue({ ...openGame, tableManagementStartedAt: "2026-10-01T10:00:00Z" });
+    expect((await loader(loaderArgs())).tableNow?.tableCounts).toEqual({ main: 2, sub: 1 });
+  });
+
   it("参加者入口と一覧には人数・全員の名前・本人表示だけを描画する", () => {
     const markup = renderToStaticMarkup(
       createElement(ParticipantRosterSheet, {
@@ -543,7 +555,7 @@ describe("game participant route", () => {
     expect(markup).not.toContain("残りチップ");
   });
 
-  it("他参加者には簡易戦績ボタンを表示し、本人の編集操作と役割を分ける", () => {
+  it("本人と他参加者の名前がプロフィールへの入口になり、一覧では編集しない", () => {
     const markup = renderToStaticMarkup(
       createElement(ParticipantRosterSheet, {
         available: true,
@@ -569,8 +581,9 @@ describe("game participant route", () => {
       }),
     );
 
-    expect(markup).toContain("Bobの簡易戦績を見る");
-    expect(markup).not.toContain("Aliceの簡易戦績を見る");
+    expect(markup).toContain("Bobのプロフィールを見る");
+    expect(markup).toContain("Aliceのプロフィールを見る");
+    expect(markup).not.toContain("今日のひとことを編集");
   });
 
   it("PLAYER SNAPSHOTはゲーム中に必要な5指標へ絞る", () => {

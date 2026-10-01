@@ -13,8 +13,8 @@ const panel: TableManagementPanel = {
     { groupPlayerId: "b", displayName: "岩田", table: "SUB", subEnteredAt: "2026-10-01T11:18:00Z" },
   ], moves: [{ id: "move", displayName: "岩田", fromTable: "MAIN", toTable: "SUB", recordedAt: "2026-10-01T11:18:00Z" }],
 };
-function render(canManage: boolean, disabled = false) {
-  return renderToStaticMarkup(createElement(TableManagementBoard, { panel: { ...panel, canManage }, now: Date.parse(panel.serverNow), disabled, highlightId: null, onMove: () => {} }));
+function render(canManage: boolean, disabled = false, profiles = false) {
+  return renderToStaticMarkup(createElement(TableManagementBoard, { panel: { ...panel, canManage }, now: Date.parse(panel.serverNow), disabled, highlightId: null, onMove: () => {}, onPlayerClick: profiles ? () => {} : undefined }));
 }
 describe("卓管理UI", () => {
   it("候補と滞在順、履歴、明示的な移動操作を表示する", () => {
@@ -36,6 +36,16 @@ describe("卓管理UI", () => {
     expect(markup).toContain("岩田");
     expect(markup).toContain("42分");
     expect(markup).not.toContain("<button");
+  });
+  it("一般参加者もプロフィールを開けるが卓移動操作は出さない", () => {
+    const markup = render(false, false, true);
+    expect(markup).toContain('aria-label="岩田のプロフィールを見る"');
+    expect(markup).not.toContain("岩田をメインへ移動");
+    expect(markup).not.toContain("メインへ移動</button>");
+    const manager = render(true, false, true);
+    expect(manager).toContain('aria-label="岩田のプロフィールを見る"');
+    expect(manager).toContain('aria-label="岩田をメインへ移動"');
+    expect(manager).toContain("table-seat-move");
   });
   it("OFF開催の一般参加者には入口もシートも出さない", () => {
     const router = createMemoryRouter([{ path: "/", element: createElement(TableManagement, { manager: false, started: false, resourcePath: "/tables" }) }]);

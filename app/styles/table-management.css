@@ -16,7 +16,7 @@
 .table-seat-section li.is-highlighted { border-color: var(--green); }
 .table-seat-section li > button, .table-seat-section li > div, .table-allocation-list > button { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--ink); text-align: left; font: inherit; font-size: .85rem; }
 .table-seat-section strong, .table-allocation-list strong { min-width: 0; overflow-wrap: anywhere; }
-.table-seat-section span, .table-allocation-list span { flex-shrink: 0; color: var(--muted); font-size: .75rem; }
+.table-seat-stay, .table-allocation-list span { flex-shrink: 0; color: var(--muted); font-size: .75rem; }
 .table-management-sheet button:disabled { opacity: .5; }
 .table-management-sheet button:not(:disabled):active { background: rgba(57, 222, 141, .15); }
 .table-allocation-list { display: grid; gap: 6px; margin-bottom: 16px; }
@@ -35,3 +35,14 @@
 .table-move-history li { display: flex; gap: 10px; }
 .table-move-history time { flex-shrink: 0; }
 .table-move-history span { min-width: 0; overflow-wrap: anywhere; }
+
+.table-seat-row { gap: 8px; }
+.table-seat-profile { display: grid; flex: 1 1 auto; min-width: 0; min-height: 44px; gap: 3px; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.table-seat-profile > strong { font-size: .9rem; }
+.table-seat-profile > small { min-width: 0; }
+.table-seat-move { display: grid; flex: 0 0 52px; min-height: 48px; place-items: center; gap: 3px; padding: 5px 3px; border: 1px solid rgba(223,236,227,.18); border-radius: 10px; background: rgba(255,255,255,.04); color: inherit; font: inherit; cursor: pointer; }
+.table-seat-move svg { width: 20px; height: 20px; }
+.table-seat-move small { font-size: .62rem; white-space: nowrap; }
+.table-seat-move:disabled, .table-management-content button:disabled { opacity: .5; }
+.table-seat-profile:focus-visible, .table-seat-move:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.table-seat-profile:active, .table-seat-move:not(:disabled):active { background: rgba(57,222,141,.15); }

@@ -31,6 +31,7 @@ export interface PlayerProfile {
 }
 
 export interface CurrentGameParticipant {
+  tablePosition: "MAIN" | "SUB";
   groupPlayerId: string;
   displayName: string;
   statusText?: string | null;

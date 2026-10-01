@@ -9,6 +9,7 @@ vi.mock("@server/db/client.server", () => ({
   queryDatabase: async (sql: string, values: unknown[] = []) => state.db!.query(sql, values),
   withTransaction: async (work: (tx: unknown) => Promise<unknown>) => state.db!.transaction(work),
 }));
+import { listCurrentGameParticipants } from "@server/repositories/participant-repository.server";
 import { moveTableParticipant, readTableManagement, startTableManagement } from "@server/repositories/table-management-repository.server";
 
 const group = "00000000-0000-4000-8000-000000000001";
@@ -55,6 +56,15 @@ describe("卓管理 repository（実際のPostgreSQLでmigrationと状態遷移�
     const untouched = await db().query("SELECT remaining_chips, total_rebuy_count, outstanding_rebuy_count FROM game_participants WHERE group_player_id = $1", [ids[0]]);
     expect(untouched.rows[0]).toEqual({ remaining_chips: 18000, total_rebuy_count: 2, outstanding_rebuy_count: 1 });
     expect(await start()).toBe(false);
+  });
+
+  it("PLAYERSの既存参加者取得は保存された卓を返し、移動後の人数にも使える", async () => {
+    expect((await listCurrentGameParticipants(group, game)).map((item) => item.tablePosition)).toEqual(["MAIN", "MAIN", "MAIN"]);
+    await start();
+    expect((await listCurrentGameParticipants(group, game)).filter((item) => item.tablePosition === "SUB")).toHaveLength(2);
+    const candidate = orderSubTable((await read())!.participants)[0];
+    await move(candidate.groupPlayerId, "SUB", candidate.subEnteredAt);
+    expect((await listCurrentGameParticipants(group, game)).filter((item) => item.tablePosition === "SUB")).toHaveLength(1);
   });
 
   it("滞在順に候補が更新され、再入場は新しい時刻・更新後も同じ状態と履歴になる", async () => {

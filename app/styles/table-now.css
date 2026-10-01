@@ -5,9 +5,6 @@
 .table-now-actions .table-now-item { min-width:0; min-height:60px; flex-direction:column; justify-content:center; gap:6px; padding:8px 4px; }
 .table-now-actions .table-now-item > span { gap:4px; }
 .table-now-actions .table-now-item small { font-size:.6rem; letter-spacing:.055em; }
-.table-now-tables { border-color:rgba(110,180,255,.4); background:rgba(110,180,255,.08); }
-.table-now-actions .table-now-tables > svg, .table-now-actions .table-now-tables small { color:#a7d3ff; }
-.table-now-actions .table-now-tables:not(:disabled):hover, .table-now-actions .table-now-tables:not(:disabled):focus-visible { border-color:rgba(110,180,255,.7); background:rgba(110,180,255,.14); }
 .table-now-actions .table-now-record-event:not(:disabled):hover, .table-now-actions .table-now-record-event:not(:disabled):focus-visible { border-color:rgba(233,186,90,.62); background:rgba(233,186,90,.1); }
 .table-now-scroller { display:flex; gap:8px; overflow-x:auto; padding:1px 2px 5px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
 .table-now-scroller::-webkit-scrollbar { display:none; }
@@ -148,3 +145,8 @@
     border-color: rgba(113,222,165,.55);
   }
 }
+
+.table-now-actions .table-now-players strong { font-size: 1.4rem; }
+.table-now-actions .table-now-players > .table-now-seat-counts { gap: 10px; }
+.table-now-seat-counts small:first-child { color: #91efbd; }
+.table-now-seat-counts small:last-child { color: #a7d3ff; }

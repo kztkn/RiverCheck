@@ -5,7 +5,6 @@ import {
   IconBomb,
   IconCards,
   IconUsers,
-  IconLayoutGrid,
 } from "@tabler/icons-react";
 
 export interface LiveTableEvent {
@@ -22,6 +21,7 @@ export interface TableNowData {
   playerCount: number | null;
   sevenDeuceCount: number;
   events?: LiveTableEvent[];
+  tableCounts?: { main: number; sub: number } | null;
 }
 
 type DetailType = "all_in" | "bomb_pot" | "seven_deuce";
@@ -37,14 +37,10 @@ export function TableNow({
   data,
   onPlayersClick,
   onRecordEventClick,
-  onTablesClick,
-  tablesStarted = false,
 }: {
   data: TableNowData;
   onPlayersClick?: () => void;
   onRecordEventClick?: () => void;
-  onTablesClick?: () => void;
-  tablesStarted?: boolean;
 }) {
   const [detailType, setDetailType] = useState<DetailType | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -108,6 +104,7 @@ export function TableNow({
       </div>
       <div className="table-now-actions">
         <button
+          aria-label={`参加者 ${data.playerCount ?? "—"}人${data.tableCounts ? `・メイン ${data.tableCounts.main}人・サブ ${data.tableCounts.sub}人` : ""}`}
           className={`table-now-item table-now-players${highlighted.includes("playerCount") ? " is-new-record" : ""}`}
           disabled={!onPlayersClick}
           onClick={onPlayersClick}
@@ -118,6 +115,7 @@ export function TableNow({
             <strong>{data.playerCount ?? "—"}</strong>
             <small>PLAYERS</small>
           </span>
+          {data.tableCounts ? <span className="table-now-seat-counts"><small>MAIN {data.tableCounts.main}</small><small>SUB {data.tableCounts.sub}</small></span> : null}
         </button>
         {onRecordEventClick ? (
           <button
@@ -132,17 +130,7 @@ export function TableNow({
             </span>
           </button>
         ) : null}
-        {onTablesClick ? (
-          <button
-            aria-label={tablesStarted ? "卓管理を開く" : "卓管理を開始"}
-            className="table-now-item table-now-tables"
-            onClick={onTablesClick}
-            type="button"
-          >
-            <IconLayoutGrid aria-hidden="true" stroke={1.7} />
-            <span><small>TABLES</small></span>
-          </button>
-        ) : null}
+
       </div>
       {events.length > 0 ? <div className="table-now-scroller">
         {events.map(({ key, countKey, label, value, Icon }) => (

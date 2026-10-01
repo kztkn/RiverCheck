@@ -20,6 +20,8 @@ describe("LIVE TABLE presentation", () => {
     expect(markup).toContain("LIVE TABLE");
     expect(markup).toContain("6");
     expect(markup).toContain("PLAYERS");
+    expect(markup).not.toContain("MAIN");
+    expect(markup).not.toContain("SUB");
     expect(markup).not.toContain("ALL IN");
     expect(markup).not.toContain("BOMB POT");
     expect(markup).not.toContain("72o");
@@ -44,20 +46,20 @@ describe("LIVE TABLE presentation", () => {
     expect(markup).not.toContain("table-event-floating-button");
   });
 
-  it("卓管理が利用できる開催は3つの操作をまとめ、イベント累計は別の列へ表示する", () => {
+  it("PLAYERSに人数と卓内訳をまとめ、EVENTとの2操作とイベント累計を分ける", () => {
     const markup = renderToStaticMarkup(createElement(TableNow, {
-      data: { allInCount: 2, bombPotCount: 1, playerCount: 10, sevenDeuceCount: 0 },
+      data: { allInCount: 2, bombPotCount: 1, playerCount: 10, sevenDeuceCount: 0, tableCounts: { main: 6, sub: 4 } },
       onPlayersClick: () => undefined,
       onRecordEventClick: () => undefined,
-      onTablesClick: () => undefined,
-      tablesStarted: true,
     }));
     const actions = markup.slice(markup.indexOf('class="table-now-actions"'), markup.indexOf('class="table-now-scroller"'));
-    expect(actions.match(/<button/g)).toHaveLength(3);
+    expect(actions.match(/<button/g)).toHaveLength(2);
     expect(actions).toContain("PLAYERS");
     expect(actions).toContain("EVENT");
-    expect(actions).toContain("TABLES");
-    expect(actions).toContain('aria-label="卓管理を開く"');
+    expect(actions).not.toContain("TABLES");
+    expect(actions).toContain("MAIN 6");
+    expect(actions).toContain("SUB 4");
+    expect(actions).toContain('aria-label="参加者 10人・メイン 6人・サブ 4人"');
     expect(actions).not.toContain("ALL IN");
     expect(markup).toContain("ALL IN");
     expect(markup).toContain("BOMB POT");
