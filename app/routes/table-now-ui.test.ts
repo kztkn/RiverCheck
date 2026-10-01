@@ -57,8 +57,8 @@ describe("LIVE TABLE presentation", () => {
     expect(actions).toContain("PLAYERS");
     expect(actions).toContain("EVENT");
     expect(actions).not.toContain("TABLES");
-    expect(actions).toContain("MAIN 6");
-    expect(actions).toContain("SUB 4");
+    expect(actions).toContain("メイン 6");
+    expect(actions).toContain("サブ 4");
     expect(actions).toContain('aria-label="参加者 10人・メイン 6人・サブ 4人"');
     expect(actions).not.toContain("ALL IN");
     expect(markup).toContain("ALL IN");

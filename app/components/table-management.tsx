@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { IconArrowsShuffle } from "@tabler/icons-react";
+import { IconArrowDown, IconArrowUp } from "@tabler/icons-react";
 import { useRevalidator } from "react-router";
 import { BodyPortal } from "~/components/body-portal";
 import { orderSubTable, subStayMinutes } from "@domain/table-management/table-management";
@@ -50,7 +50,7 @@ export function TableManagement({ resourcePath, started, manager, hideTrigger = 
     const timeout = window.setTimeout(() => {
       controller.abort();
       setLoading(false);
-      setError("卓情報を読み込めませんでした。更新してもう一度お試しください。");
+      setError("情報を読み込めませんでした。更新してもう一度お試しください。");
     }, 15_000);
     try {
       const response = await fetch(resourcePath, { credentials: "same-origin", signal: controller.signal, headers: { Accept: "application/json" } });
@@ -62,11 +62,17 @@ export function TableManagement({ resourcePath, started, manager, hideTrigger = 
       clockRef.current = { server: Date.parse(next.serverNow), local: performance.now() };
       setNow(clockRef.current.server);
     } catch {
-      if (!controller.signal.aborted) setError("卓情報を読み込めませんでした。更新してもう一度お試しください。");
+      if (!controller.signal.aborted) setError("情報を読み込めませんでした。更新してもう一度お試しください。");
     } finally {
       window.clearTimeout(timeout);
       if (!controller.signal.aborted) setLoading(false);
     }
+  }, [resourcePath]);
+
+  useEffect(() => {
+    setPanel(null);
+    setFeedback(null);
+    retryCommand.current = null;
   }, [resourcePath]);
 
   useEffect(() => {
@@ -89,7 +95,6 @@ export function TableManagement({ resourcePath, started, manager, hideTrigger = 
     if (pendingRef.current) return;
     returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setHighlightId(groupPlayerId);
-    setPanel(null);
     setFeedback(null);
     setError(null);
     setAllocating(!embedded);
@@ -114,7 +119,7 @@ export function TableManagement({ resourcePath, started, manager, hideTrigger = 
       const response = await fetch(resourcePath, { method: "POST", body: form, signal: controller.signal, credentials: "same-origin", headers: { Accept: "application/json" } });
       const result = await response.json() as { ok: boolean; error?: string };
       if (!response.ok || !result.ok) {
-        setError(result.error ?? "卓を変更できませんでした。更新してください。");
+        setError(result.error ?? "変更できませんでした。更新してください。");
         return;
       }
       retryCommand.current = null;
@@ -142,7 +147,7 @@ export function TableManagement({ resourcePath, started, manager, hideTrigger = 
     form.set("fromTable", seat.table);
     form.set("toTable", target);
     form.set("expectedSubEnteredAt", seat.subEnteredAt ?? "");
-    void post(form, `${seat.displayName}を${target === "MAIN" ? "メイン" : "サブ"}卓へ移動しました`);
+    void post(form, `${seat.displayName}を${target === "MAIN" ? "メイン" : "サブ"}へ移動しました`);
   }
   function start() {
     if (!panel) return;
@@ -154,33 +159,33 @@ export function TableManagement({ resourcePath, started, manager, hideTrigger = 
   function close() { if (!pendingRef.current) setOpen(false); }
   const active = panel?.startedAt != null;
   const canManage = panel?.canManage === true;
-  const subSeats = panel ? orderSubTable(panel.participants) : [];
 
   useEffect(() => { onPendingChange?.(pending); }, [pending, onPendingChange]);
 
   if (!embedded && !manager && !started) return null;
   const content = <div className="table-management-content" aria-busy={pending}>
           {error ? <p className="table-event-error" role="alert">{error}</p> : null}
-          {feedback ? <p className="table-event-feedback" role="status">{feedback}</p> : null}
-          <button className="table-management-refresh" disabled={loading || pending} type="button" onClick={() => { void refresh(); void revalidator.revalidate(); }}>{active || started ? "卓情報を更新" : "参加者を更新"}</button>
+          <div className="table-management-toolbar">
+            <p className="table-management-feedback" role="status" title={feedback ?? undefined}>{feedback}</p>
+            <button className="table-management-refresh" disabled={loading || pending} type="button" onClick={() => { void refresh(); void revalidator.revalidate(); }}>{loading ? "更新中…" : "情報を更新"}</button>
+          </div>
           {!panel && !started && embedded ? children : null}
-          {loading ? <p className="table-event-hint" role="status">読み込み中…</p> : null}
-          {!loading && panel ? active ? <TableManagementBoard panel={panel} now={now} disabled={pending} highlightId={highlightId} onMove={move} onPlayerClick={onPlayerClick} playerDetails={playerDetails} /> : canManage && allocating ? <>
+          {loading && !panel ? <p className="table-event-hint" role="status">読み込み中…</p> : null}
+          {panel ? active ? <TableManagementBoard panel={panel} now={now} disabled={pending || loading} highlightId={highlightId} onMove={move} onPlayerClick={onPlayerClick} playerDetails={playerDetails} /> : canManage && allocating ? <>
             {embedded ? <button className="table-management-refresh" disabled={pending} type="button" onClick={() => setAllocating(false)}>一覧に戻る</button> : null}
             <p className="table-event-hint">名前をタップして振り分けます。サブ滞在時間は開始した時点から計測します。</p>
             <h3>メイン {panel.participants.length - subIds.length}人 / サブ {subIds.length}人</h3>
             <div className="table-allocation-list">
-              {panel.participants.map((seat) => <button key={seat.groupPlayerId} type="button" disabled={pending}
+              {panel.participants.map((seat) => <button key={seat.groupPlayerId} type="button" disabled={pending || loading}
                 className={subIds.includes(seat.groupPlayerId) ? "is-sub-table" : "is-main-table"}
-                aria-label={`${seat.displayName}を${subIds.includes(seat.groupPlayerId) ? "メイン" : "サブ"}卓へ振り分け`}
+                aria-label={`${seat.displayName}を${subIds.includes(seat.groupPlayerId) ? "メイン" : "サブ"}へ振り分け`}
                 onClick={() => setSubIds((ids) => ids.includes(seat.groupPlayerId) ? ids.filter((id) => id !== seat.groupPlayerId) : [...ids, seat.groupPlayerId])}>
                 <strong>{seat.displayName}</strong><span className="table-position-badge">{subIds.includes(seat.groupPlayerId) ? "サブ" : "メイン"} ⇄</span>
               </button>)}
             </div>
-            <button className="button button-primary" disabled={pending || subIds.length === 0 || subIds.length === panel.participants.length} type="button" onClick={start}>{pending ? "開始中…" : "この振り分けで開始"}</button>
+            <button className="button button-primary" disabled={pending || loading || subIds.length === 0 || subIds.length === panel.participants.length} type="button" onClick={start}>{pending ? "開始中…" : "この振り分けで開始"}</button>
             {panel.participants.length < 2 ? <p className="table-event-hint">2人以上の参加者が必要です。</p> : null}
           </> : <>{children}{canManage ? <button className="button button-secondary table-management-trigger" type="button" onClick={() => setAllocating(true)}>卓管理を開始</button> : null}</> : null}
-          {active && !loading && subSeats.length === 0 ? <p className="table-event-hint">サブ卓に参加者はいません。</p> : null}
   </div>;
   if (embedded) return content;
   return <>
@@ -218,7 +223,7 @@ export function TableManagementBoard({ panel, now, disabled, highlightId, onMove
       <span>サブ滞在 {subStayMinutes(candidate.subEnteredAt!, now)}分</span>
       {panel.canManage ? <button className="button button-primary" disabled={disabled} type="button" onClick={() => onMove(candidate)}>メインへ移動</button> : null}
     </section> : null}
-    {([{ name: "メイン卓", tone: "is-main-table", seats: panel.participants.filter((seat) => seat.table === "MAIN") }, { name: "サブ卓", tone: "is-sub-table", seats: sub }]).map(({ name, tone, seats }) =>
+    {([{ name: "メイン", tone: "is-main-table", seats: panel.participants.filter((seat) => seat.table === "MAIN") }, { name: "サブ", tone: "is-sub-table", seats: sub }]).map(({ name, tone, seats }) =>
       <section key={name} className={`table-seat-section ${tone}`}>
         <h3>{name}<small>{seats.length}人</small></h3>
         <ul>{seats.map((seat) => <li key={seat.groupPlayerId} className={highlightId === seat.groupPlayerId ? "is-highlighted" : undefined}>
@@ -227,15 +232,15 @@ export function TableManagementBoard({ panel, now, disabled, highlightId, onMove
               <strong>{seat.displayName}</strong>{playerDetails?.(seat)}
             </button> : <strong>{seat.displayName}</strong>}
             {seat.table === "SUB" ? <span className="table-seat-stay">{subStayMinutes(seat.subEnteredAt!, now)}分</span> : null}
-            {panel.canManage ? <button className="table-seat-move" disabled={disabled} type="button" aria-label={`${seat.displayName}を${seat.table === "MAIN" ? "サブ" : "メイン"}へ移動`} onClick={() => onMove(seat)}>
-              <IconArrowsShuffle aria-hidden="true" stroke={1.7} /><small>{seat.table === "MAIN" ? "サブへ" : "メインへ"}</small>
+            {panel.canManage ? <button className={`table-seat-move ${seat.table === "MAIN" ? "to-sub" : "to-main"}`} disabled={disabled} type="button" aria-label={`${seat.displayName}を${seat.table === "MAIN" ? "サブ" : "メイン"}へ移動`} title={`${seat.table === "MAIN" ? "サブ" : "メイン"}へ移動`} onClick={() => onMove(seat)}>
+              {seat.table === "MAIN" ? <IconArrowDown aria-hidden="true" stroke={1.7} /> : <IconArrowUp aria-hidden="true" stroke={1.7} />}
             </button> : null}
           </div>
         </li>)}</ul>
       </section>)}
-    {panel.canManage ? <p className="table-event-hint">右端の矢印を押すと表示先の卓へ移動します。</p> : null}
-    {panel.moves.length > 0 ? <details className="table-move-history"><summary>卓移動の履歴（{panel.moves.length}件）</summary>
-      <ol>{panel.moves.map((move) => <li key={move.id}><time dateTime={move.recordedAt}>{new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(move.recordedAt))}</time><span>{move.displayName} {move.fromTable} → {move.toTable}</span></li>)}</ol>
+    {panel.canManage ? <p className="table-event-hint">↓でサブ、↑でメインへ移動します。</p> : null}
+    {panel.moves.length > 0 ? <details className="table-move-history"><summary>移動の履歴（{panel.moves.length}件）</summary>
+      <ol>{panel.moves.map((move) => <li key={move.id}><time dateTime={move.recordedAt}>{new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(move.recordedAt))}</time><span>{move.displayName} {move.fromTable === "MAIN" ? "メイン" : "サブ"} → {move.toTable === "MAIN" ? "メイン" : "サブ"}</span></li>)}</ol>
     </details> : null}
   </div>;
 }

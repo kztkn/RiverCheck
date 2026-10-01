@@ -118,8 +118,8 @@ export function TableNow({
             </span>
             {data.tableCounts ? (
               <span className="table-now-seat-counts">
-                <small>MAIN {data.tableCounts.main}</small>
-                <small>SUB {data.tableCounts.sub}</small>
+                <small>メイン {data.tableCounts.main}</small>
+                <small>サブ {data.tableCounts.sub}</small>
               </span>
             ) : null}
           </span>

@@ -28,7 +28,12 @@ describe("卓管理UI", () => {
     expect(markup).toContain('class="table-seat-section is-sub-table"');
     expect(markup.indexOf('aria-label="岩田をメインへ移動"')).toBeLessThan(markup.indexOf('aria-label="ひろをメインへ移動"'));
     expect(markup).toContain("20:18");
-    expect(markup).toContain("MAIN → SUB");
+    expect(markup).toContain("メイン → サブ");
+    expect(markup).toContain("移動の履歴");
+    expect(markup).not.toContain("メイン卓");
+    expect(markup).not.toContain("サブ卓");
+    expect(markup).not.toContain("MAIN → SUB");
+    expect(markup).not.toContain("サブへ</small>");
     expect(render(true, true)).toContain('disabled=""');
   });
   it("閲覧専用では移動ボタンを一切表示しない", () => {
