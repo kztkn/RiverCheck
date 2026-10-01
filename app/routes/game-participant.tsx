@@ -1033,6 +1033,31 @@ export default function GameParticipant({
         </>
       ) : null}
 
+      {shouldShowLocalRules(loaderData.game.status) &&
+      !loaderData.participant ? (
+        <section aria-label="開催情報" className="participant-join-info">
+          <LocalRulesSheet
+            bigBlindAnteChips={loaderData.game.bigBlindAnteChips}
+            bigBlindChips={loaderData.game.bigBlindChips}
+            bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
+            chipDistribution={loaderData.game.chipDistribution}
+            initialChips={loaderData.game.initialChips}
+            initialStackBb={loaderData.game.initialStackBb}
+            smallBlindChips={loaderData.game.smallBlindChips}
+            sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
+          />
+          {loaderData.game.settlementPlanPublishedAt &&
+          loaderData.game.costShares ? (
+            <SettlementPlanSheet
+              bbRate={loaderData.game.bbRate}
+              costShares={loaderData.game.costShares}
+              participantCount={loaderData.game.previewParticipantCount}
+              venueCost={loaderData.game.venueCost}
+            />
+          ) : null}
+        </section>
+      ) : null}
+
       {loaderData.game.status === "finalized" &&
       loaderData.pastGameNavigation ? (
         <PastGameNavigation
@@ -1347,30 +1372,6 @@ export default function GameParticipant({
         </div>
       )}
 
-      {shouldShowLocalRules(loaderData.game.status) &&
-      !loaderData.participant ? (
-        <section aria-label="開催情報" className="participant-join-info">
-          <LocalRulesSheet
-            bigBlindAnteChips={loaderData.game.bigBlindAnteChips}
-            bigBlindChips={loaderData.game.bigBlindChips}
-            bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
-            chipDistribution={loaderData.game.chipDistribution}
-            initialChips={loaderData.game.initialChips}
-            initialStackBb={loaderData.game.initialStackBb}
-            smallBlindChips={loaderData.game.smallBlindChips}
-            sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
-          />
-          {loaderData.game.settlementPlanPublishedAt &&
-          loaderData.game.costShares ? (
-            <SettlementPlanSheet
-              bbRate={loaderData.game.bbRate}
-              costShares={loaderData.game.costShares}
-              participantCount={loaderData.game.previewParticipantCount}
-              venueCost={loaderData.game.venueCost}
-            />
-          ) : null}
-        </section>
-      ) : null}
     </main>
   );
 }

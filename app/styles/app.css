@@ -2574,7 +2574,7 @@ input[aria-invalid="true"] {
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
   gap: 10px;
-  margin-top: 20px;
+  margin: 12px 0;
 }
 
 .participant-join-info .local-rules-entry {

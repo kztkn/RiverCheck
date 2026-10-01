@@ -263,7 +263,7 @@ describe("game participant route", () => {
     expect(mocked.findParticipantByGroupPlayerId).toHaveBeenCalledTimes(2);
   });
 
-  it("登録前は主催者でも本人参加を先頭にし、情報確認だけを下へ残す", async () => {
+  it("登録前は情報確認の次に本人参加を表示し、主催者にも管理操作を出さない", async () => {
     mocked.findGameForGroup.mockResolvedValue({
       ...openGame, smallBlindChips: 100, bigBlindChips: 200, bigBlindAnteChips: 200,
       initialStackBb: 100, chipDistribution: null, sevenDeuceRuleEnabled: true,
@@ -276,7 +276,8 @@ describe("game participant route", () => {
     const beforeJoin = renderParticipantPage(data);
     expect(beforeJoin).toContain("Aliceとして登録する");
     expect(beforeJoin).toContain('name="intent" value="join-self"');
-    expect(beforeJoin.indexOf("Aliceとして登録する")).toBeLessThan(beforeJoin.indexOf("ゲーム情報"));
+    expect(beforeJoin.indexOf("ゲーム情報")).toBeLessThan(beforeJoin.indexOf("Aliceとして登録する"));
+    expect(beforeJoin.indexOf("今日のまとめ")).toBeLessThan(beforeJoin.indexOf("Aliceとして登録する"));
     expect(beforeJoin).toContain("今日のまとめ");
     expect(beforeJoin).not.toContain("LIVE TABLE");
     expect(beforeJoin).not.toContain("開催管理へ");
@@ -293,7 +294,7 @@ describe("game participant route", () => {
     expect(afterJoin).not.toContain("Aliceとして登録する");
   });
 
-  it("未認証の登録前も名前選択と新規参加を先に表示する", async () => {
+  it("未認証の登録前も情報確認の次に名前選択と新規参加を表示する", async () => {
     mocked.findGameForGroup.mockResolvedValue({
       ...openGame, smallBlindChips: 100, bigBlindChips: 200, bigBlindAnteChips: 200,
       initialStackBb: 100, chipDistribution: null, sevenDeuceRuleEnabled: true,
@@ -307,7 +308,7 @@ describe("game participant route", () => {
     expect(html).toContain("参加する名前を選択");
     expect(html).toContain("Alice");
     expect(html).toContain("この名前で参加");
-    expect(html.indexOf("この名前で参加")).toBeLessThan(html.indexOf("ゲーム情報"));
+    expect(html.indexOf("ゲーム情報")).toBeLessThan(html.indexOf("参加する名前を選択"));
     expect(html).not.toContain("LIVE TABLE");
     expect(html).not.toContain("今日のまとめ");
   });
