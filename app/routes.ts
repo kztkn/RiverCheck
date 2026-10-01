@@ -34,6 +34,7 @@ export default [
     "routes/game-story-reactions.ts",
   ),
   route("g/:groupCode/games/:gameId/timeline", "routes/game-timeline.ts"),
+  route("g/:groupCode/games/:gameId/tables", "routes/game-tables.ts"),
   route(
     "g/:groupCode/games/:gameId/table-events",
     "routes/game-table-events.ts",

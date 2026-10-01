@@ -20,6 +20,7 @@ describe("classifyRateLimitedRequest", () => {
   });
 
   it("管理者の変更系routeを管理者制限へ分類する", () => {
+    expect(classifyRateLimitedRequest("POST", "/g/test/games/game/tables")).toBe("admin-write");
     expect(
       classifyRateLimitedRequest("POST", "/g/river-check/games/new"),
     ).toBe("admin-write");

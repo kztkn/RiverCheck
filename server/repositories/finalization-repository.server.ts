@@ -14,6 +14,7 @@ import type {
 import type { FinalizationParticipant } from "@domain/finalization/calculate-final-results";
 
 interface GameRow {
+  table_management_started_at: Date | null;
   id: string;
   group_id: string;
   title: string;
@@ -75,7 +76,7 @@ export async function lockGameForFinalization(
 ): Promise<GameDetails | null> {
   const result = await transaction.query<GameRow>(
     `
-      SELECT id, group_id, title, played_at, status, initial_chips,
+      SELECT id, group_id, title, played_at, status, initial_chips, table_management_started_at,
              small_blind_chips, big_blind_chips, big_blind_ante_chips,
              initial_stack_bb, rebuy_chips, preview_participant_count, venue_cost,
              first_place_cost, second_place_cost, third_place_cost,
@@ -330,6 +331,7 @@ function mapGame(row: GameRow): GameDetails {
   const initialChips = Number(row.initial_chips);
   const legacyBigBlindChips = initialChips / row.initial_stack_bb;
   return {
+    tableManagementStartedAt: row.table_management_started_at?.toISOString() ?? null,
     id: row.id,
     groupId: row.group_id,
     createdByPlayerId: null,

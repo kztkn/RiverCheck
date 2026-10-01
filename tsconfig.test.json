@@ -4,6 +4,7 @@
     "domain/**/*.ts",
     "types/achievement.ts",
     "types/game.ts",
+    "types/table-management.ts",
     "types/year-recap.ts"
   ],
   "compilerOptions": {

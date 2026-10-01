@@ -20,6 +20,7 @@ interface GameSummaryRow {
 }
 
 interface GameDetailsRow {
+  table_management_started_at: Date | null;
   id: string;
   title: string;
   played_at: Date;
@@ -152,6 +153,7 @@ export async function findGameForGroup(
         initial_stack_bb,
         rebuy_chips,
         chip_distribution,
+        table_management_started_at,
         preview_participant_count,
         venue_cost,
         first_place_cost,
@@ -196,6 +198,7 @@ export async function findGameWithGroupByPublicCode(
         game.initial_stack_bb,
         game.rebuy_chips,
         game.chip_distribution,
+        game.table_management_started_at,
         game.preview_participant_count,
         game.venue_cost,
         game.first_place_cost,
@@ -564,6 +567,7 @@ function mapGameDetails(row: GameDetailsRow): GameDetails {
   const initialChips = Number(row.initial_chips);
   const legacyBigBlindChips = initialChips / row.initial_stack_bb;
   return {
+    tableManagementStartedAt: row.table_management_started_at?.toISOString() ?? null,
     id: row.id,
     groupId: row.group_id,
     createdByPlayerId: row.created_by_player_id,

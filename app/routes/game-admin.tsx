@@ -29,6 +29,7 @@ import {
 } from "@server/services/participant-session.server";
 import { hashToken } from "@server/services/token.server";
 import { requireGameManager } from "@server/services/game-authorization-service.server";
+import { TableManagement, openTableManagement } from "~/components/table-management";
 import {
   adjustOrganizerRebuyState,
   recordOrganizerRebuyAction,
@@ -1239,6 +1240,13 @@ export default function GameAdmin({
           </div>
         </section>
 
+        {loaderData.game.status === "open" ? (
+          <TableManagement
+            manager
+            started={loaderData.game.tableManagementStartedAt !== null}
+            resourcePath={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/tables`}
+          />
+        ) : null}
         <NavLink
           className={({ isPending }) =>
             `button button-secondary admin-own-play-link${isPending ? " is-pending" : ""}`
@@ -1516,6 +1524,12 @@ export default function GameAdmin({
                         >
                           記録を修正
                         </button>
+                        {loaderData.game.tableManagementStartedAt ? (
+                          <button className="button button-secondary button-small" type="button"
+                            onClick={() => openTableManagement(participant.groupPlayerId)}>
+                            卓を移動
+                          </button>
+                        ) : null}
                         <button
                           aria-label={
                             participant.displayName + "のその他の操作"

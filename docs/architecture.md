@@ -81,6 +81,16 @@ buildとdeployの間は旧Workerが新schemaへ接続し得るため、自動適
 
 Workers はリクエストをまたいだネットワーク I/O の再利用を許可しないため、DB 問い合わせごとに新しい pg Client を作成して同じ処理内で閉じる。本番で Hyperdrive を利用する場合、PostgreSQL への接続プールは Hyperdrive が管理する。SQL は repository 内でプレースホルダーを使って実行する。
 
+## リングゲームの卓管理
+
+追加migration `0036_add_table_management.sql`でgamesへ開始日時、game_participantsへ卓位置・現在のSUB入場日時、`game_table_moves`へ移動監査履歴を追加する。参加者カラムはMAIN／NULLを既定とし、OFF開催と途中参加の既存INSERTを後方互換に保つ。MAIN／SUBと入場日時の整合はDB CHECKでも保証する。
+
+既存`game_table_events`は72o・BOMB POT・ALL INの振り返り、参加者による取消、称号集計の責務を持つ。その型・取消・集計へ卓運用を混ぜないため移動履歴を分離するが、表示は同じBodyPortal＋native dialogのBottom Sheetパターンを再利用する。`/g/:groupCode/games/:gameId/tables`のReact Router loader/actionからserviceを呼び、更新は既存`requireGameManager`で認可する。POSTは管理操作のRate Limiting対象とする。
+
+repositoryはgames行をlockし、open状態と開始状態を確認して開始／移動を実行する。開始は参加者集合を再取得して検証し、移動は元卓＋元入場日時を条件にUPDATEして履歴INSERTと同じtransactionでcommitする。command IDの一意制約と保存済み指示の照合で二重POSTを安全に再送できる。現在席・全移動履歴・サーバー現在時刻は1 queryのsnapshotで取得する。
+
+親画面はゲーム取得queryの開始日時で入口表示だけを決め、OFFの参加者画面では追加queryを発行しない。シートは開いた時と手動更新時にno-storeでロードし、移動後はシートだけ更新する。開始時だけ親loaderを再検証する。サーバー時刻と端末の単調時計を対応させて連続滞在表示を更新し、端末の時刻設定の差を避ける。新しい依存はテスト専用PGliteのみで、全migrationと実際のrepository SQLをメモリ内PostgreSQLで検証する。本番データへテスト接続しない。
+
 ## リバイUNDOの操作フィードバック
 
 参加者のリバイ・開催設定に応じたBB返済は既存の`useFetcher`による1操作1保存を維持する。成功後のUNDO導線は画面下部の時間制限付きtoastへ置かず、`RebuyTracker`内の操作ボタン直下に「直前の操作」として表示する。成功した直前イベントIDをクライアントstateへ保持し、時間経過では失効させない。次のリバイ・返済が成功した場合だけ新しいイベントへ置き換え、操作失敗時は既存のUNDO対象を保持する。UNDO成功、ページ再読込、ページ遷移でクライアントstateを破棄する。サーバー側の「直前のイベントだけUNDO可能」という既存制約を正とする。

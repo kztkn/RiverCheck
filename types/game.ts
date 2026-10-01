@@ -19,6 +19,7 @@ export interface GameListItem extends GameSummary {
 }
 
 export interface GameDetails extends GameSummary {
+  tableManagementStartedAt: string | null;
   groupId: string;
   createdByPlayerId: string | null;
   initialChips: number;

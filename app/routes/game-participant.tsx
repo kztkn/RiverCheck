@@ -107,6 +107,7 @@ import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-previe
 import { INVITE_REQUIRED_RESPONSE_TEXT } from "@domain/routing/public-group-entry";
 import { TableNow } from "~/components/table-now";
 import { openTableEventRecorder } from "~/components/table-event-recorder";
+import { TableManagement } from "~/components/table-management";
 import { BodyPortal } from "~/components/body-portal";
 import { listOpenGameTableEvents } from "@server/repositories/table-event-repository.server";
 import { scheduleAchievementRefresh } from "@server/services/achievement-service.server";
@@ -993,6 +994,13 @@ export default function GameParticipant({
         ) : null}
       </section>
 
+      {loaderData.game.status === "open" && (loaderData.isOrganizer || loaderData.game.tableManagementStartedAt) ? (
+        <TableManagement
+          manager={loaderData.isOrganizer}
+          started={Boolean(loaderData.game.tableManagementStartedAt)}
+          resourcePath={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/tables`}
+        />
+      ) : null}
       {loaderData.tableNow ? (
         <>
           {!loaderData.participant ? (

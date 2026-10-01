@@ -1,0 +1,29 @@
+.table-management-trigger { width: 100%; margin-block: 12px; min-height: 44px; }
+.table-management-dialog { height: 100dvh; }
+.table-management-sheet { overflow-x: hidden; }
+.table-management-sheet h3 { font-size: .95rem; }
+.table-management-refresh { display: block; margin: 0 0 14px auto; min-height: 44px; border: 0; background: transparent; color: var(--green); font: inherit; font-size: .8rem; }
+.table-management-board { display: grid; gap: 18px; }
+.table-next-candidate { display: grid; gap: 6px; padding: 16px; border: 1px solid rgba(57, 222, 141, .4); background: rgba(57, 222, 141, .08); border-radius: 16px; }
+.table-next-candidate p { margin: 0; color: var(--green); font-size: .8rem; }
+.table-next-candidate > strong { overflow-wrap: anywhere; font-size: 1.2rem; }
+.table-next-candidate > span { color: var(--muted); font-size: .8rem; }
+.table-next-candidate .button { margin-top: 5px; min-height: 44px; }
+.table-seat-section h3 { display: flex; justify-content: space-between; align-items: center; margin: 0 0 8px; }
+.table-seat-section h3 small { color: var(--muted); font-weight: normal; }
+.table-seat-section ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.table-seat-section li { border: 1px solid rgba(223, 236, 227, .12); border-radius: 12px; }
+.table-seat-section li.is-highlighted { border-color: var(--green); }
+.table-seat-section li > button, .table-seat-section li > div, .table-allocation-list > button { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--ink); text-align: left; font: inherit; font-size: .85rem; }
+.table-seat-section strong, .table-allocation-list strong { min-width: 0; overflow-wrap: anywhere; }
+.table-seat-section span, .table-allocation-list span { flex-shrink: 0; color: var(--muted); font-size: .75rem; }
+.table-management-sheet button:disabled { opacity: .5; }
+.table-management-sheet button:not(:disabled):active { background: rgba(57, 222, 141, .15); }
+.table-allocation-list { display: grid; gap: 6px; margin-bottom: 16px; }
+.table-allocation-list > button { border: 1px solid rgba(223, 236, 227, .12); }
+.table-move-history { font-size: .8rem; color: var(--muted); }
+.table-move-history summary { min-height: 44px; cursor: pointer; }
+.table-move-history ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.table-move-history li { display: flex; gap: 10px; }
+.table-move-history time { flex-shrink: 0; }
+.table-move-history span { min-width: 0; overflow-wrap: anywhere; }
