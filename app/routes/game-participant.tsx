@@ -975,7 +975,7 @@ export default function GameParticipant({
             }).format(new Date(loaderData.game.playedAt))}
           </p>
         ) : null}
-        {loaderData.isOrganizer && loaderData.game.status === "open" ? (
+        {loaderData.participant && loaderData.isOrganizer && loaderData.game.status === "open" ? (
           <NavLink
             className={({ isPending }) =>
               `button button-secondary participant-admin-link${isPending ? " is-pending" : ""}`
@@ -995,7 +995,7 @@ export default function GameParticipant({
         ) : null}
       </section>
 
-      {loaderData.game.status === "open" && (loaderData.isOrganizer || loaderData.game.tableManagementStartedAt) ? (
+      {loaderData.participant && loaderData.game.status === "open" && (loaderData.isOrganizer || loaderData.game.tableManagementStartedAt) ? (
         <TableManagement
           hideTrigger
           manager={loaderData.isOrganizer}
@@ -1003,20 +1003,8 @@ export default function GameParticipant({
           resourcePath={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/tables`}
         />
       ) : null}
-      {loaderData.tableNow ? (
+      {loaderData.participant && loaderData.tableNow ? (
         <>
-          {!loaderData.participant ? (
-            <TableNow
-              key={loaderData.game.id}
-              data={loaderData.tableNow}
-              onPlayersClick={() => setRosterOpenSignal((value) => value + 1)}
-              onRecordEventClick={
-                loaderData.isOrganizer ? openTableEventRecorder : undefined
-              }
-              onTablesClick={loaderData.isOrganizer || loaderData.game.tableManagementStartedAt ? () => openTableManagement() : undefined}
-              tablesStarted={Boolean(loaderData.game.tableManagementStartedAt)}
-            />
-          ) : null}
           <ParticipantRosterSheet
             available={loaderData.participantRoster.available}
             externalOpenSignal={rosterOpenSignal}
@@ -1042,31 +1030,6 @@ export default function GameParticipant({
             quickStatsFetcher={quickStatsFetcher}
             statusFetcher={loaderData.participant ? statusFetcher : undefined}
           />
-        </>
-      ) : null}
-
-      {shouldShowLocalRules(loaderData.game.status) &&
-      !loaderData.participant ? (
-        <>
-          <LocalRulesSheet
-            bigBlindAnteChips={loaderData.game.bigBlindAnteChips}
-            bigBlindChips={loaderData.game.bigBlindChips}
-            bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
-            chipDistribution={loaderData.game.chipDistribution}
-            initialChips={loaderData.game.initialChips}
-            initialStackBb={loaderData.game.initialStackBb}
-            smallBlindChips={loaderData.game.smallBlindChips}
-            sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
-          />
-          {loaderData.game.settlementPlanPublishedAt &&
-          loaderData.game.costShares ? (
-            <SettlementPlanSheet
-              bbRate={loaderData.game.bbRate}
-              costShares={loaderData.game.costShares}
-              participantCount={loaderData.game.previewParticipantCount}
-              venueCost={loaderData.game.venueCost}
-            />
-          ) : null}
         </>
       ) : null}
 
@@ -1383,6 +1346,31 @@ export default function GameParticipant({
           )}
         </div>
       )}
+
+      {shouldShowLocalRules(loaderData.game.status) &&
+      !loaderData.participant ? (
+        <section aria-label="開催情報" className="participant-join-info">
+          <LocalRulesSheet
+            bigBlindAnteChips={loaderData.game.bigBlindAnteChips}
+            bigBlindChips={loaderData.game.bigBlindChips}
+            bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
+            chipDistribution={loaderData.game.chipDistribution}
+            initialChips={loaderData.game.initialChips}
+            initialStackBb={loaderData.game.initialStackBb}
+            smallBlindChips={loaderData.game.smallBlindChips}
+            sevenDeuceRuleEnabled={loaderData.game.sevenDeuceRuleEnabled}
+          />
+          {loaderData.game.settlementPlanPublishedAt &&
+          loaderData.game.costShares ? (
+            <SettlementPlanSheet
+              bbRate={loaderData.game.bbRate}
+              costShares={loaderData.game.costShares}
+              participantCount={loaderData.game.previewParticipantCount}
+              venueCost={loaderData.game.venueCost}
+            />
+          ) : null}
+        </section>
+      ) : null}
     </main>
   );
 }

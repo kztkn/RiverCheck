@@ -2569,6 +2569,22 @@ input[aria-invalid="true"] {
   gap: 16px;
 }
 
+.participant-join-info {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.participant-join-info .local-rules-entry {
+  margin: 0;
+}
+
+.participant-selection-page .player-selection {
+  margin-bottom: 0;
+}
+
 .new-player-panel {
   align-items: end;
 }

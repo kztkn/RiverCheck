@@ -304,6 +304,8 @@ CSS・ソース検査のテストはSafari実機の描画保証にはならな�
 
 ## モーダルの背面スクロールとLIVE TABLEの操作
 
+参加者routeはopen・participantなしの登録前画面では本人登録／プロフィール引継ぎ／名前選択を先に描画し、その下へゲーム情報と公開済みの今日のまとめを置く。主催者かどうかにかかわらず登録前のLIVE TABLEと開催管理リンクを表示せず、TableManagement・参加者一覧シートもparticipantが存在する場合だけmountする。登録POST・認可・登録後のプレイ中UIは既存処理を使う。
+
 root Layoutの共通`useModalScrollLock`はnative dialogのopen状態と`role="dialog" aria-modal="true"`のオーバーレイを監視する。閉じたままDOMに残るプロフィール編集・端末変更のオーバーレイは`aria-modal=false`にし、CSS transition中のcomputed visibilityへ依存しない。1つ以上開いている間だけbodyを現在のscrollX/Yに合わせてfixedへ切り替え、htmlのoverflowを止める。元のinline style・scroll位置を保存し、最後のモーダルの閉鎖・DOMからの除去・監視のcleanupで復元する。pathnameが変わった場合は旧ページの位置へ戻さずReact RouterのScrollRestorationに任せる。各画面に重複していたbody overflow操作は廃止し、重なったモーダルの閉じる順による解除漏れを避ける。
 
 touchmoveは、モーダル内のスクロール可能な要素が現在の方向へスクロールできる場合だけ許可する。背面・上下端からの伝播を止め、シート内の縦スクロール・選択肢の横スクロール・ピンチズームは維持する。desktopのスクロールバー幅とsafe areaの余白を維持する。

@@ -138,7 +138,7 @@ vi.mock("~/components/site-menu", () => ({
   GroupSiteHeader: vi.fn(() => null),
 }));
 
-import {
+import GameParticipant, {
   action,
   loader,
   LocalRulesSheet,
@@ -261,6 +261,55 @@ describe("game participant route", () => {
     expect(second.participant).toBeNull();
     expect(mocked.joinAuthenticatedParticipant).not.toHaveBeenCalled();
     expect(mocked.findParticipantByGroupPlayerId).toHaveBeenCalledTimes(2);
+  });
+
+  it("登録前は主催者でも本人参加を先頭にし、情報確認だけを下へ残す", async () => {
+    mocked.findGameForGroup.mockResolvedValue({
+      ...openGame, smallBlindChips: 100, bigBlindChips: 200, bigBlindAnteChips: 200,
+      initialStackBb: 100, chipDistribution: null, sevenDeuceRuleEnabled: true,
+      bombPotRuleEnabled: true, tableManagementStartedAt: "2026-10-01T10:00:00Z",
+      settlementPlanPublishedAt: "2026-10-01T10:00:00Z", venueCost: 12000,
+      previewParticipantCount: 2, costShares: [5000, 7000], bbRate: 0,
+    });
+    mocked.getGameManagementActor.mockResolvedValue({ kind: "admin", playerId: null });
+    const data = await loader(loaderArgs());
+    const beforeJoin = renderParticipantPage(data);
+    expect(beforeJoin).toContain("Aliceとして登録する");
+    expect(beforeJoin).toContain('name="intent" value="join-self"');
+    expect(beforeJoin.indexOf("Aliceとして登録する")).toBeLessThan(beforeJoin.indexOf("ゲーム情報"));
+    expect(beforeJoin).toContain("今日のまとめ");
+    expect(beforeJoin).not.toContain("LIVE TABLE");
+    expect(beforeJoin).not.toContain("開催管理へ");
+    expect(beforeJoin).not.toContain("table-management-dialog");
+
+    mocked.findParticipantByGroupPlayerId.mockResolvedValue(participant);
+    const afterJoin = renderParticipantPage(await loader(loaderArgs()));
+    expect(afterJoin).toContain("LIVE TABLE");
+    expect(afterJoin).toContain("EVENT");
+    expect(afterJoin).toContain("TABLES");
+    expect(afterJoin).toContain("開催管理へ");
+    expect(afterJoin).toContain("＋ 100BBリバイ");
+    expect(afterJoin).toContain("結果入力");
+    expect(afterJoin).not.toContain("Aliceとして登録する");
+  });
+
+  it("未認証の登録前も名前選択と新規参加を先に表示する", async () => {
+    mocked.findGameForGroup.mockResolvedValue({
+      ...openGame, smallBlindChips: 100, bigBlindChips: 200, bigBlindAnteChips: 200,
+      initialStackBb: 100, chipDistribution: null, sevenDeuceRuleEnabled: true,
+      bombPotRuleEnabled: true,
+    });
+    mocked.getAuthenticatedPlayerProfile.mockResolvedValue(null);
+    mocked.listRegisteredPlayersForGame.mockResolvedValue([
+      { id: groupPlayerId, displayName: "Alice", avatarUpdatedAt: null },
+    ]);
+    const html = renderParticipantPage(await loader(loaderArgs()));
+    expect(html).toContain("参加する名前を選択");
+    expect(html).toContain("Alice");
+    expect(html).toContain("この名前で参加");
+    expect(html.indexOf("この名前で参加")).toBeLessThan(html.indexOf("ゲーム情報"));
+    expect(html).not.toContain("LIVE TABLE");
+    expect(html).not.toContain("今日のまとめ");
   });
 
   it("内部の.dataリクエストを共有URLへ含めない", async () => {
@@ -1165,6 +1214,13 @@ function loaderArgs(
     params: { gameId, groupCode: "river-check" },
     request: new Request(requestUrl),
   } as Parameters<typeof loader>[0];
+}
+
+function renderParticipantPage(loaderData: Awaited<ReturnType<typeof loader>>) {
+  const router = createMemoryRouter([{ path: "/", element: createElement(GameParticipant, {
+    loaderData, actionData: undefined,
+  } as Parameters<typeof GameParticipant>[0]) }]);
+  return renderToStaticMarkup(createElement(RouterProvider, { router }));
 }
 
 function actionArgs(values: Record<string, string>) {
