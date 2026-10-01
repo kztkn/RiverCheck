@@ -49,6 +49,7 @@ import {
   formatSignedBbValue,
 } from "@domain/score/bb-score";
 import { encodeResultCode } from "@domain/result-sharing/result-code";
+import { getDisplayedGameChipDistribution } from "@domain/chip-distribution/game-chip-distribution";
 import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
 import {
   PARTICIPANT_TABLE_STATUS_MAX_LENGTH,
@@ -2136,6 +2137,10 @@ export function LocalRulesSheet({
     bombPotRuleEnabled,
     initialStackBb,
   );
+  const displayedDistribution = getDisplayedGameChipDistribution(
+    chipDistribution,
+    initialChips,
+  );
 
   return (
     <div className="local-rules-entry">
@@ -2207,18 +2212,18 @@ export function LocalRulesSheet({
                 {formatChipValue(bigBlindChips)}チップ
               </p>
             </section>
-            {chipDistribution ? (
+            {displayedDistribution ? (
               <section
-                aria-label="リバイ1口のチップ構成"
+                aria-label="初期配布・リバイ1口のチップ構成"
                 className="game-chip-distribution"
               >
                 <header>
                   <div>
-                    <span>REBUY STACK</span>
-                    <h3>リバイ1口のチップ構成</h3>
+                    <span>STARTING / REBUY STACK</span>
+                    <h3>初期配布・リバイ1口のチップ構成</h3>
                   </div>
                   <strong>
-                    {chipDistribution.reduce(
+                    {displayedDistribution.reduce(
                       (total, allocation) => total + allocation.count,
                       0,
                     )}
@@ -2226,7 +2231,7 @@ export function LocalRulesSheet({
                   </strong>
                 </header>
                 <div className="game-chip-allocation-grid">
-                  {[...chipDistribution]
+                  {[...displayedDistribution]
                     .sort(
                       (left, right) =>
                         right.denomination - left.denomination,
@@ -2243,14 +2248,19 @@ export function LocalRulesSheet({
                 </div>
                 <p>
                   合計{" "}
-                  {chipDistribution.reduce(
+                  {displayedDistribution.reduce(
                     (total, allocation) => total + allocation.count,
                     0,
                   )}
                   枚 / {initialChips.toLocaleString("ja-JP")}チップ
                 </p>
               </section>
-            ) : null}
+            ) : (
+              <section aria-label="チップ構成" className="game-chip-distribution">
+                <h3>チップ構成</h3>
+                <p>現在の初期チップに合う構成は未設定です。開催管理のゲーム設定から構成を計算して保存してください。</p>
+              </section>
+            )}
             {rules.map((rule) => (
               <section
                 className={`local-rule-card${rule.enabled ? "" : " is-disabled"}`}

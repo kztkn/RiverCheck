@@ -40,6 +40,11 @@ describe("settlement preview draft", () => {
     expect(parseSettlementPreviewDraft(JSON.stringify(draft))).toEqual(draft);
   });
 
+  it("上限を超える人数・順位数の古い下書きを復元して画面を長くしない", () => {
+    expect(parseSettlementPreviewDraft(JSON.stringify({ ...draft, participantCount: "99999" }))).toBeNull();
+    expect(parseSettlementPreviewDraft(JSON.stringify({ ...draft, shareValues: Array(21).fill("0") }))).toBeNull();
+  });
+
   it("壊れた下書きは無視する", () => {
     expect(parseSettlementPreviewDraft("not-json")).toBeNull();
     expect(

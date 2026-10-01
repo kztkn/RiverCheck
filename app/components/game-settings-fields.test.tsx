@@ -26,6 +26,15 @@ const baseValues: GameSettingsValues = {
 };
 
 describe("GameSettingsFields local rules", () => {
+  it("大きな人数を受け取ってもプレビューは最大20人に収まる", () => {
+    const markup = renderToStaticMarkup(createElement(GameSettingsFields, {
+      errors: {}, values: { ...baseValues, previewParticipantCount: "1000000", costShares: [] },
+    }));
+    expect(markup).toContain('max="20"');
+    expect(markup.match(/name="costShare"/g)).toHaveLength(20);
+    expect(markup).not.toContain("1000000人");
+  });
+
   it("50BBと100BBのショートカットはBBを変えず初期チップを調整する", () => {
     const markup = renderToStaticMarkup(
       createElement(GameSettingsFields, {

@@ -19,6 +19,7 @@ import {
 import { notifyNewGameCreated } from "@server/services/push-notification-service.server";
 
 import { validateCostSharePlan } from "@domain/cost-sharing/validate-cost-share-plan";
+import { MAX_PREVIEW_PARTICIPANT_COUNT } from "@domain/cost-sharing/preview-participant-count";
 import { isSupportedBbRate } from "@domain/settlement/calculate-game-settlements";
 import { calculateInitialStackBb } from "@domain/score/bb-score";
 import { validateGameChipDistribution } from "@domain/chip-distribution/game-chip-distribution";
@@ -385,6 +386,12 @@ export function validateGameSettingsForm(
       minimumParticipantCount === MINIMUM_PARTICIPANT_COUNT
         ? "人数は2人以上で試算してください."
         : `現在の参加人数（${minimumParticipantCount}人）以上で試算してください。`;
+  }
+  if (
+    previewParticipantCount !== null &&
+    previewParticipantCount > MAX_PREVIEW_PARTICIPANT_COUNT
+  ) {
+    errors.previewParticipantCount = "人数は20人以下で試算してください。";
   }
 
   let firstPlaceCost: number | null = null;

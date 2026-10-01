@@ -1,5 +1,23 @@
 import type { GameChipAllocation } from "../../types/game";
 
+const DEFAULT_CHIP_DISTRIBUTION: readonly GameChipAllocation[] = [
+  { denomination: 100, count: 10 },
+  { denomination: 500, count: 8 },
+  { denomination: 1_000, count: 5 },
+  { denomination: 5_000, count: 2 },
+];
+
+/** Saved allocations take precedence; never show a default with a wrong total. */
+export function getDisplayedGameChipDistribution(
+  saved: GameChipAllocation[] | null,
+  initialChips: number,
+): GameChipAllocation[] | null {
+  if (saved) return saved;
+  return initialChips === 20_000
+    ? DEFAULT_CHIP_DISTRIBUTION.map((allocation) => ({ ...allocation }))
+    : null;
+}
+
 export type GameChipDistributionValidationResult =
   | { ok: true; value: GameChipAllocation[] }
   | { ok: false; error: string };

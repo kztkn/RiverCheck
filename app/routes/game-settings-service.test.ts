@@ -275,6 +275,15 @@ describe("game settings cost shares", () => {
     });
   });
 
+  it("20人までのプレビューを保存でき、上限を超える直接送信は拒否する", () => {
+    const values = { ...validValues, venueCost: "0", previewParticipantCount: "20", costShares: Array(20).fill("0") };
+    expect(validateGameSettingsForm(values)).toMatchObject({ ok: true, input: { previewParticipantCount: 20 } });
+    for (const count of ["21", "1000000"]) {
+      expect(validateGameSettingsForm({ ...values, previewParticipantCount: count, costShares: [] }))
+        .toMatchObject({ ok: false, errors: { previewParticipantCount: "人数は20人以下で試算してください。" } });
+    }
+  });
+
   it("BBレートが未送信なら後方互換の0として扱う", () => {
     expect(readGameSettingsForm(new FormData()).bbRate).toBe("");
     expect(validateGameSettingsForm({ ...validValues, bbRate: "" })).toEqual(

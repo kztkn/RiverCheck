@@ -1075,6 +1075,9 @@ describe("LocalRulesSheet", () => {
     expect(html).toContain("<small>SB</small><strong>100</strong>");
     expect(html).toContain("<small>BB</small><strong>200</strong>");
     expect(html).toContain("<small>BBA</small><strong>200</strong>");
+    expect(html).toContain("初期配布・リバイ1口のチップ構成");
+    expect(html).toContain("5,000チップ");
+    expect(html).toContain("× 10");
   });
 
   it("保存済みのリバイ1口分チップ構成をゲーム情報へ表示する", () => {
@@ -1083,12 +1086,7 @@ describe("LocalRulesSheet", () => {
         bigBlindAnteChips: 200,
         bigBlindChips: 200,
         bombPotRuleEnabled: true,
-        chipDistribution: [
-          { denomination: 100, count: 10 },
-          { denomination: 500, count: 8 },
-          { denomination: 1_000, count: 5 },
-          { denomination: 5_000, count: 2 },
-        ],
+        chipDistribution: [{ denomination: 10_000, count: 2 }],
         initialChips: 20_000,
         smallBlindChips: 100,
         sevenDeuceRuleEnabled: true,
@@ -1096,12 +1094,11 @@ describe("LocalRulesSheet", () => {
     );
 
     expect(html).toContain("リバイ1口のチップ構成");
-    expect(html).toContain("5,000チップ");
+    expect(html).toContain("10,000チップ");
     expect(html).toContain("× 2");
-    expect(html).toContain("100チップ");
-    expect(html).toContain("× 10");
+    expect(html).not.toContain("5,000チップ");
+    expect(html).not.toContain("× 10");
     expect(html).toContain("合計");
-    expect(html).toContain("25");
     expect(html).toContain("20,000チップ");
   });
 
@@ -1123,6 +1120,8 @@ describe("LocalRulesSheet", () => {
     expect(html).toContain("<small>BB</small><strong>100</strong>");
     expect(html).toContain("<small>BBA</small><strong>100</strong>");
     expect(html).toContain("初期 10,000チップ ・ 1BB = 100チップ");
+    expect(html).toContain("現在の初期チップに合う構成は未設定");
+    expect(html).not.toContain("5,000チップ");
   });
 
   it("BBAなしの開催は参加者へ『なし』と表示する", () => {

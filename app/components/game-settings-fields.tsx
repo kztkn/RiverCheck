@@ -4,6 +4,10 @@ import {
   GAME_TITLE_RECOMMENDED_LENGTH,
 } from "@domain/game/game-title";
 import { calculateCostShares } from "@domain/cost-sharing/calculate-cost-shares";
+import {
+  limitPreviewParticipantCount,
+  MAX_PREVIEW_PARTICIPANT_COUNT,
+} from "@domain/cost-sharing/preview-participant-count";
 import { MINIMUM_PODIUM_PARTICIPANT_COUNT } from "@domain/cost-sharing/calculate-podium-cost-shares";
 import { formatOrdinal } from "@domain/ranking/format-ordinal";
 import { calculateFinalResults } from "@domain/finalization/calculate-final-results";
@@ -77,7 +81,7 @@ export function GameSettingsFields({
     });
   const [venueCost, setVenueCost] = useState(values.venueCost);
   const [participantCountInput, setParticipantCountInput] = useState(
-    String(Math.max(2, Number(values.previewParticipantCount) || 2)),
+    normalizeParticipantCount(values.previewParticipantCount),
   );
   const [recommendationMode, setRecommendationMode] =
     useState<RecommendationMode>("standard");
@@ -331,6 +335,7 @@ export function GameSettingsFields({
 
   const podiumRecommendationAvailable = useMemo(() => {
     try {
+      if (actualParticipantCount > MAX_PREVIEW_PARTICIPANT_COUNT) return false;
       recommendTopCostsForAttendance(
         parsePreviewInteger(venueCost),
         parseParticipantCount(participantCountInput),
@@ -354,6 +359,12 @@ export function GameSettingsFields({
     try {
       const intendedParticipantCount =
         parseParticipantCount(nextParticipantCount);
+      if (actualParticipantCount > MAX_PREVIEW_PARTICIPANT_COUNT) {
+        setRecommendationNotice(
+          "負担プレビューは20人までです。現在の参加人数を確認してください。",
+        );
+        return;
+      }
       if (
         mode === "podium" &&
         Math.max(intendedParticipantCount, actualParticipantCount) <
@@ -673,10 +684,13 @@ export function GameSettingsFields({
                   error={errors.previewParticipantCount}
                   inputMode="numeric"
                   label="人数"
+                  max={MAX_PREVIEW_PARTICIPANT_COUNT}
                   min={2}
                   name="previewParticipantCount"
                   onChange={(event) => {
-                    const nextParticipantCount = event.target.value;
+                    const nextParticipantCount = limitPreviewParticipantCount(
+                      event.target.value,
+                    );
                     setRecommendationNotice(null);
                     setParticipantCountInput(nextParticipantCount);
                     onParticipantCountChange?.(nextParticipantCount);
@@ -811,6 +825,13 @@ export function GameSettingsFields({
                           onChange={(event) =>
                             updateShare(index, event.target.value)
                           }
+                          onFocus={(event) => {
+                            const input = event.currentTarget;
+                            input.setSelectionRange(
+                              input.value.length,
+                              input.value.length,
+                            );
+                          }}
                           onKeyDown={(event) => {
                             if (event.key === "Enter") {
                               event.preventDefault();
@@ -1040,25 +1061,22 @@ function formatSignedPoints(value: number): string {
 
 function parseParticipantCount(value: string): number {
   const parsed = parsePreviewInteger(value);
-  if (parsed < 2) throw new RangeError("participant count is too small");
+  if (parsed < 2 || parsed > MAX_PREVIEW_PARTICIPANT_COUNT) {
+    throw new RangeError("participant count is out of range");
+  }
   return parsed;
 }
 
 function normalizeParticipantCount(value: string): string {
   try {
-    return String(parseParticipantCount(value));
+    return String(parseParticipantCount(limitPreviewParticipantCount(value)));
   } catch {
     return "2";
   }
 }
 
 function buildInitialShares(values: GameSettingsValues): string[] {
-  let participantCount: number;
-  try {
-    participantCount = parseParticipantCount(values.previewParticipantCount);
-  } catch {
-    participantCount = 2;
-  }
+  const participantCount = Number(normalizeParticipantCount(values.previewParticipantCount));
   if (values.costShares.length === participantCount) {
     return [...values.costShares];
   }
@@ -1107,7 +1125,7 @@ function analyzeSettlement(
     participantCount = parseParticipantCount(participantCountValue);
   } catch {
     return invalidAnalysis(
-      "人数は2人以上で入力してください。",
+      "人数は2〜20人で入力してください。",
       settlementTotal,
     );
   }

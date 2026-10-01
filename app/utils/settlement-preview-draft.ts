@@ -1,3 +1,5 @@
+import { MAX_PREVIEW_PARTICIPANT_COUNT } from "@domain/cost-sharing/preview-participant-count";
+
 export type SettlementDraftRecommendationMode =
   | "podium"
   | "standard"
@@ -44,9 +46,10 @@ export function parseSettlementPreviewDraft(
     if (!value || value.version !== 1) return null;
     if (typeof value.venueCost !== "string") return null;
     if (typeof value.participantCount !== "string") return null;
+    if (Number(value.participantCount) > MAX_PREVIEW_PARTICIPANT_COUNT) return null;
     if (
       !Array.isArray(value.shareValues) ||
-      value.shareValues.length > 100 ||
+      value.shareValues.length > MAX_PREVIEW_PARTICIPANT_COUNT ||
       value.shareValues.some((share) => typeof share !== "string")
     ) {
       return null;
