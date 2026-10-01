@@ -57,7 +57,7 @@ ADMIN認証はgroup_idを持たないアプリ全体の署名済みセッショ�
 
 Web App Manifestは`id`、`start_url`、`scope`を`/`で固定し、通常・maskable・Apple用アイコンを提供する。production build後にNode.jsスクリプトがクライアントJS/CSSの内容からversionを生成し、Service Workerテンプレートへ注入する。新しいrouteやchunkはversionへ自動反映し、機能追加ごとのキャッシュ一覧更新を不要にする。
 
-Service Workerはオフライン案内、manifest、PWAアイコンを事前キャッシュし、`/assets/`のハッシュ付き静的ファイルは利用時だけCache Firstで保存する。React RouterのSSR HTML、`.data`、R2配信画像、認証・参加・結果・精算・プロフィールresponse、POSTは傍受・保存しない。navigationはNetwork Onlyとし、通信失敗時だけ静的なオフライン案内を返す。これにより別利用者の情報や古い参加・精算状態を端末キャッシュから表示しない。PWA更新通知は、bodyの先頭に置いた`100dvh`の`position: sticky`ホストへ`ViewportFixedLayer`からportalする。ホストの高さは負の下marginで本文レイアウトから相殺し、通知をその右下へabsolute配置する。iOSが不正確な値を返す場合があるVisualViewportの座標計算やscroll listenerには依存しない。TABLE EVENT入口は固定レイヤーを使わず、参加者画面のLIVE TABLE内へ通常のボタンとして描画する。
+Service Workerはオフライン案内、manifest、PWAアイコンを事前キャッシュし、`/assets/`のハッシュ付き静的ファイルは利用時だけCache Firstで保存する。React RouterのSSR HTML、`.data`、R2配信画像、認証・参加・結果・精算・プロフィールresponse、POSTは傍受・保存しない。navigationはNetwork Onlyとし、通信失敗時だけ静的なオフライン案内を返す。これにより別利用者の情報や古い参加・精算状態を端末キャッシュから表示しない。PWA更新通知は、bodyの先頭に置いた`100dvh`の`position: sticky`ホストへ`ViewportFixedLayer`からportalする。ホストの高さは負の下marginで本文レイアウトから相殺し、通知をその右下へabsolute配置する。iOSが不正確な値を返す場合があるVisualViewportの座標計算やscroll listenerには依存しない。EVENT入口は固定レイヤーを使わず、参加者画面のLIVE TABLE内へ通常のボタンとして描画する。
 
 Service Workerの新versionはwaiting状態で通知し、利用者が更新操作を選んだ場合だけ`skipWaiting`して再読込する。結果入力中の自動更新は行わない。開発時はService Workerを登録せず、production buildまたは本番HTTPSで検証する。
 
@@ -292,8 +292,16 @@ root loaderのプロフィール・主催者認証・所属数・称号通知は
 
 参加者・開催管理routeは定期ポーリングやfocus・pageshow・表示復帰を契機にした再検証を行わない。保存・記録・取消後の既存の再検証と、参加者一覧を開いた際の更新を維持する。開催管理上部の「開催進行」はloader済みデータと精算下書きの現在値だけから純粋関数で次アクションを決め、参加者2人未満、終了入力未完了、不正なリバイ回数、リバイ記録差、精算人数不一致、チップ差分、確定可能の順に優先表示する。DB状態や新しいAPIは追加せず、終了入力の進捗も同じデータから算出する。ゲーム設定とローカルルール変更は同じ開催管理actionを`useFetcher`から送信し、成功時はredirectせずaction dataを返す。これによりURL・スクロール位置・開閉中のDOMを維持し、保存状態だけをボタンとトーストへ反映する。参加者のリバイ・返済操作は保存前後とも上部の`RebuyTracker`内に置き、既存の`useFetcher`を再利用する。rootの`TableEventRecorder`は参加者routeだけでtable-events resourceへ接続し、LIVE TABLE内の入口から開く。レコーダーのPOST先・権限判定・取消処理は既存resourceを共用する。開催管理routeではレコーダーを取得・表示しない。結果入力欄は保存前後とも同じ位置に置き、保存後のリバイ変更は参加者取得時に`submitted_at`以降のイベントの有無を同一DBクエリで確認して再保存を促す。別フォームや二重送信経路は作らない。開催管理の「入力状況を更新」、入力済み参加者の「確定結果を確認する」は共通の`GameRefreshButton`から既存loaderを1回だけ再検証し、遷移・fetcher処理・再検証中は押せない。主催者が確定済みなら同じ参加者routeで結果を表示する。終了時入力はDOMを維持する開閉式にして入力を保持する。LIVE TABLEは前回取得した累計と比較して増加した指標だけを短時間強調する。グループTOPの主開催がopenなら同じloaderで取得済みの参加人数・イベント件数だけをLiveTableMiniへ渡し、追加通信なしで開催中のライブ面へ切り替える。
 
-native dialogを使う共通モーダルはCSSで`position: fixed; inset: 0`を明示し、Safariで本文スクロール後に文書座標へ配置されることを防ぐ。参加者画面の「今日のまとめ」はhydration後にbody直下へportalし、表示中だけbodyのoverflowを止める。ボトムシート固有の`margin: auto auto 0`と組み合わせ、開いた時点の本文スクロール位置に関係なくvisual viewport下端へ配置する。閉じた後は元のoverflowとフォーカスを復元し、rootやページ全体のスクロールコンテナは変更しない。
+native dialogを使う共通モーダルはCSSで`position: fixed; inset: 0`を明示し、Safariで本文スクロール後に文書座標へ配置されることを防ぐ。参加者画面の「今日のまとめ」はhydration後にbody直下へportalする。ボトムシート固有の`margin: auto auto 0`と組み合わせ、開いた時点の本文スクロール位置に関係なくvisual viewport下端へ配置する。閉じた後は元のスタイル・スクロール位置とフォーカスを復元する。モーダルが閉じている通常表示のスクロールコンテナは変更しない。
 
 TABLE EVENTのdialogはpanel取得前から描画し、開いた時だけ既存resourceへGETする。取得中・取得失敗・記録不可・記録可能を区別し、GETの再試行入口をシート内に置く。取得は15秒で打ち切り、再試行・閉じる・route変更ではAbortControllerで旧GETを中断する。旧応答は新しい開催や閉じたシートへ反映しない。POSTはこの再試行処理へ含めず、保存済みのイベントを重複記録しない。遅れてPOSTが成功した場合も、一覧の再検証は行うが閉じたシートを再表示しない。
 
 CSS・ソース検査のテストはSafari実機の描画保証にはならない。開催前のUI確認では、Safariとホーム画面PWAの双方で、ページ下部までスクロールして「ゲーム情報」「今日のまとめ」「参加者一覧」「TABLE EVENT」を開き、見出し・閉じる操作が画面内にあること、長い内容をシート内で読めること、閉じた後に元のページ位置から操作を続けられることを確認する。モーダル操作後もトップ・プロフィール・ランキングを下端まで閲覧できることを合わせて確認する。
+
+## モーダルの背面スクロールとLIVE TABLEの操作
+
+root Layoutの共通`useModalScrollLock`はnative dialogのopen状態と`role="dialog" aria-modal="true"`のオーバーレイを監視する。閉じたままDOMに残るプロフィール編集・端末変更のオーバーレイは`aria-modal=false`にし、CSS transition中のcomputed visibilityへ依存しない。1つ以上開いている間だけbodyを現在のscrollX/Yに合わせてfixedへ切り替え、htmlのoverflowを止める。元のinline style・scroll位置を保存し、最後のモーダルの閉鎖・DOMからの除去・監視のcleanupで復元する。pathnameが変わった場合は旧ページの位置へ戻さずReact RouterのScrollRestorationに任せる。各画面に重複していたbody overflow操作は廃止し、重なったモーダルの閉じる順による解除漏れを避ける。
+
+touchmoveは、モーダル内のスクロール可能な要素が現在の方向へスクロールできる場合だけ許可する。背面・上下端からの伝播を止め、シート内の縦スクロール・選択肢の横スクロール・ピンチズームは維持する。desktopのスクロールバー幅とsafe areaの余白を維持する。
+
+参加者画面の卓管理は独立した全幅ボタンを出さず、TableNowのPLAYERS／EVENT／TABLESの固定3列から既存のイベントでシートを開く。TABLESは管理者、または卓管理開始後の閲覧者だけに出し、サーバー認可は変更しない。イベント累計は主操作の下に別の横スクロール列で表示する。開催管理の入口とリバイ代理入力からの移動導線は維持する。

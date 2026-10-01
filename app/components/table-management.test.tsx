@@ -24,6 +24,8 @@ describe("卓管理UI", () => {
     expect(markup).toContain("メインへ移動");
     expect(markup).toContain('aria-label="かずとをサブへ移動"');
     expect(markup).toContain('aria-label="岩田をメインへ移動"');
+    expect(markup).toContain('class="table-seat-section is-main-table"');
+    expect(markup).toContain('class="table-seat-section is-sub-table"');
     expect(markup.indexOf('aria-label="岩田をメインへ移動"')).toBeLessThan(markup.indexOf('aria-label="ひろをメインへ移動"'));
     expect(markup).toContain("20:18");
     expect(markup).toContain("MAIN → SUB");

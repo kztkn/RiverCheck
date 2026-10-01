@@ -38,9 +38,29 @@ describe("LIVE TABLE presentation", () => {
       }),
     );
 
-    expect(markup).toContain("TABLE EVENT");
+    expect(markup).toContain("EVENT");
+    expect(markup).not.toContain("TABLE EVENT");
     expect(markup).toContain("table-now-record-event");
     expect(markup).not.toContain("table-event-floating-button");
+  });
+
+  it("卓管理が利用できる開催は3つの操作をまとめ、イベント累計は別の列へ表示する", () => {
+    const markup = renderToStaticMarkup(createElement(TableNow, {
+      data: { allInCount: 2, bombPotCount: 1, playerCount: 10, sevenDeuceCount: 0 },
+      onPlayersClick: () => undefined,
+      onRecordEventClick: () => undefined,
+      onTablesClick: () => undefined,
+      tablesStarted: true,
+    }));
+    const actions = markup.slice(markup.indexOf('class="table-now-actions"'), markup.indexOf('class="table-now-scroller"'));
+    expect(actions.match(/<button/g)).toHaveLength(3);
+    expect(actions).toContain("PLAYERS");
+    expect(actions).toContain("EVENT");
+    expect(actions).toContain("TABLES");
+    expect(actions).toContain('aria-label="卓管理を開く"');
+    expect(actions).not.toContain("ALL IN");
+    expect(markup).toContain("ALL IN");
+    expect(markup).toContain("BOMB POT");
   });
 
   it("開催一覧のmini表示は記録のあるイベントだけを詳細へリンクする", () => {

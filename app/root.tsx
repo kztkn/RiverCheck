@@ -25,6 +25,7 @@ import {
 } from "@domain/routing/public-group-entry";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { rememberLastVisitedGroup } from "~/utils/last-visited-group";
+import { useModalScrollLock } from "~/utils/modal-scroll-lock";
 import { getPendingPlayerAchievementNotifications } from "@server/services/achievement-service.server";
 import { shouldRevalidateRootData } from "@domain/routing/should-revalidate-root-data";
 import { hasGroupEventCreatorPermission } from "@server/repositories/game-authorization-repository.server";
@@ -137,6 +138,7 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  useModalScrollLock();
   return (
     <html lang="ja">
       <head>

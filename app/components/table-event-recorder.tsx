@@ -156,14 +156,6 @@ export function TableEventRecorder() {
     if (!isOpen && dialog.open) dialog.close();
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [isOpen]);
 
   useEffect(() => {
     const handleOpen = () => {

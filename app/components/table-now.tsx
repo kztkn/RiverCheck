@@ -5,6 +5,7 @@ import {
   IconBomb,
   IconCards,
   IconUsers,
+  IconLayoutGrid,
 } from "@tabler/icons-react";
 
 export interface LiveTableEvent {
@@ -36,10 +37,14 @@ export function TableNow({
   data,
   onPlayersClick,
   onRecordEventClick,
+  onTablesClick,
+  tablesStarted = false,
 }: {
   data: TableNowData;
   onPlayersClick?: () => void;
   onRecordEventClick?: () => void;
+  onTablesClick?: () => void;
+  tablesStarted?: boolean;
 }) {
   const [detailType, setDetailType] = useState<DetailType | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -101,7 +106,7 @@ export function TableNow({
       <div className="table-now-heading">
         <span>LIVE TABLE</span>
       </div>
-      <div className="table-now-scroller">
+      <div className="table-now-actions">
         <button
           className={`table-now-item table-now-players${highlighted.includes("playerCount") ? " is-new-record" : ""}`}
           disabled={!onPlayersClick}
@@ -123,10 +128,23 @@ export function TableNow({
           >
             <span aria-hidden="true" className="table-now-record-event-suit">♠</span>
             <span>
-              <small>TABLE EVENT</small>
+              <small>EVENT</small>
             </span>
           </button>
         ) : null}
+        {onTablesClick ? (
+          <button
+            aria-label={tablesStarted ? "卓管理を開く" : "卓管理を開始"}
+            className="table-now-item table-now-tables"
+            onClick={onTablesClick}
+            type="button"
+          >
+            <IconLayoutGrid aria-hidden="true" stroke={1.7} />
+            <span><small>TABLES</small></span>
+          </button>
+        ) : null}
+      </div>
+      {events.length > 0 ? <div className="table-now-scroller">
         {events.map(({ key, countKey, label, value, Icon }) => (
           <button
             className={`table-now-item${highlighted.includes(countKey) ? " is-new-record" : ""}`}
@@ -141,7 +159,7 @@ export function TableNow({
             </span>
           </button>
         ))}
-      </div>
+      </div> : null}
 
       <dialog
         aria-labelledby="live-table-detail-title"

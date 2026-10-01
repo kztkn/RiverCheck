@@ -272,7 +272,7 @@ export default function StatsPlayer({
       {loaderData.canEditProfile ? (
         <section
           aria-label="プロフィールを編集"
-          aria-modal="true"
+          aria-modal={Boolean(loaderData.profileEditorOpen || profileSaveFailure)}
           className={`profile-edit-modal${loaderData.profileEditorOpen || profileSaveFailure ? " is-open" : ""}`}
           role="dialog"
         >
@@ -371,7 +371,7 @@ export default function StatsPlayer({
       {loaderData.canEditProfile ? (
         <section
           aria-label="この端末のプレイヤーを変更"
-          aria-modal="true"
+          aria-modal={Boolean(loaderData.switchPlayerOpen || switchPlayerFailure)}
           className={`profile-edit-modal device-player-switch-modal${
             loaderData.switchPlayerOpen || switchPlayerFailure ? " is-open" : ""
           }`}

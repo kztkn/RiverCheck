@@ -16,14 +16,13 @@ describe("dialog viewport positioning", () => {
     expect(rule).toContain("margin: auto;");
   });
 
-  it("今日のまとめをbody直下へportalし、表示中は背面スクロールを止める", () => {
+  it("今日のまとめをbody直下へportalする", () => {
     const settlementPlanSource = participantSource.slice(
       participantSource.indexOf("export function SettlementPlanSheet"),
       participantSource.indexOf("export function shouldShowLocalRules"),
     );
 
     expect(settlementPlanSource).toContain("<BodyPortal>");
-    expect(settlementPlanSource).toContain('document.body.style.overflow = "hidden"');
     expect(settlementPlanSource).toContain(
       'className="app-dialog participant-roster-dialog rebuy-rules-dialog"',
     );

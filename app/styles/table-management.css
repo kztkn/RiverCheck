@@ -21,6 +21,14 @@
 .table-management-sheet button:not(:disabled):active { background: rgba(57, 222, 141, .15); }
 .table-allocation-list { display: grid; gap: 6px; margin-bottom: 16px; }
 .table-allocation-list > button { border: 1px solid rgba(223, 236, 227, .12); }
+.table-allocation-list > .is-main-table, .table-seat-section.is-main-table li { border-color:rgba(57,222,141,.35); background:rgba(57,222,141,.08); }
+.table-allocation-list > .is-sub-table, .table-seat-section.is-sub-table li { border-color:rgba(110,180,255,.4); background:rgba(110,180,255,.1); }
+.table-allocation-list > .is-main-table strong, .table-seat-section.is-main-table h3 { color:#91efbd; }
+.table-allocation-list > .is-sub-table strong, .table-seat-section.is-sub-table h3 { color:#a7d3ff; }
+.table-allocation-list .table-position-badge { border-radius:999px; padding:4px 9px; font-weight:800; }
+.table-allocation-list > .is-main-table .table-position-badge { background:rgba(57,222,141,.16); color:#91efbd; }
+.table-allocation-list > .is-sub-table .table-position-badge { background:rgba(110,180,255,.18); color:#a7d3ff; }
+.table-seat-section li.is-highlighted { outline:2px solid var(--green); outline-offset:1px; }
 .table-move-history { font-size: .8rem; color: var(--muted); }
 .table-move-history summary { min-height: 44px; cursor: pointer; }
 .table-move-history ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }

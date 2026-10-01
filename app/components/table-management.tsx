@@ -7,12 +7,12 @@ import "~/styles/table-events.css";
 import "~/styles/table-management.css";
 
 const OPEN_EVENT = "rivercheck:open-table-management";
-export function openTableManagement(groupPlayerId: string) {
+export function openTableManagement(groupPlayerId: string | null = null) {
   window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: groupPlayerId }));
 }
 
-export function TableManagement({ resourcePath, started, manager }: {
-  resourcePath: string; started: boolean; manager: boolean;
+export function TableManagement({ resourcePath, started, manager, hideTrigger = false }: {
+  resourcePath: string; started: boolean; manager: boolean; hideTrigger?: boolean;
 }) {
   const revalidator = useRevalidator();
   const [open, setOpen] = useState(false);
@@ -63,12 +63,9 @@ export function TableManagement({ resourcePath, started, manager }: {
     if (!open) return;
     void refresh();
     const timer = window.setInterval(() => setNow(clockRef.current.server + performance.now() - clockRef.current.local), 10_000);
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     return () => {
       requestRef.current?.abort();
       window.clearInterval(timer);
-      document.body.style.overflow = previous;
     };
   }, [open, refresh]);
 
@@ -87,7 +84,7 @@ export function TableManagement({ resourcePath, started, manager }: {
     setOpen(true);
   }
   useEffect(() => {
-    const listener = (event: Event) => show((event as CustomEvent<string>).detail);
+    const listener = (event: Event) => show((event as CustomEvent<string | null>).detail);
     window.addEventListener(OPEN_EVENT, listener);
     return () => window.removeEventListener(OPEN_EVENT, listener);
   });
@@ -148,9 +145,9 @@ export function TableManagement({ resourcePath, started, manager }: {
 
   if (!manager && !started) return null;
   return <>
-    <button className="button button-secondary table-management-trigger" type="button" onClick={() => show()}>
+    {!hideTrigger ? <button className="button button-secondary table-management-trigger" type="button" onClick={() => show()}>
       {started ? "卓管理" : "卓管理を開始"}
-    </button>
+    </button> : null}
     <BodyPortal>
       <dialog ref={dialog} className="table-event-dialog table-management-dialog" aria-labelledby="table-management-title"
         onCancel={(event) => { event.preventDefault(); close(); }}
@@ -170,9 +167,10 @@ export function TableManagement({ resourcePath, started, manager }: {
             <h3>メイン {panel.participants.length - subIds.length}人 / サブ {subIds.length}人</h3>
             <div className="table-allocation-list">
               {panel.participants.map((seat) => <button key={seat.groupPlayerId} type="button" disabled={pending}
+                className={subIds.includes(seat.groupPlayerId) ? "is-sub-table" : "is-main-table"}
                 aria-label={`${seat.displayName}を${subIds.includes(seat.groupPlayerId) ? "メイン" : "サブ"}卓へ振り分け`}
                 onClick={() => setSubIds((ids) => ids.includes(seat.groupPlayerId) ? ids.filter((id) => id !== seat.groupPlayerId) : [...ids, seat.groupPlayerId])}>
-                <strong>{seat.displayName}</strong><span>{subIds.includes(seat.groupPlayerId) ? "サブ" : "メイン"} ⇄</span>
+                <strong>{seat.displayName}</strong><span className="table-position-badge">{subIds.includes(seat.groupPlayerId) ? "サブ" : "メイン"} ⇄</span>
               </button>)}
             </div>
             <button className="button button-primary" disabled={pending || subIds.length === 0 || subIds.length === panel.participants.length} type="button" onClick={start}>{pending ? "開始中…" : "この振り分けで開始"}</button>
@@ -197,8 +195,8 @@ export function TableManagementBoard({ panel, now, disabled, highlightId, onMove
       <span>サブ滞在 {subStayMinutes(candidate.subEnteredAt!, now)}分</span>
       {panel.canManage ? <button className="button button-primary" disabled={disabled} type="button" onClick={() => onMove(candidate)}>メインへ移動</button> : null}
     </section> : null}
-    {([{ name: "メイン卓", seats: panel.participants.filter((seat) => seat.table === "MAIN") }, { name: "サブ卓", seats: sub }]).map(({ name, seats }) =>
-      <section key={name} className="table-seat-section">
+    {([{ name: "メイン卓", tone: "is-main-table", seats: panel.participants.filter((seat) => seat.table === "MAIN") }, { name: "サブ卓", tone: "is-sub-table", seats: sub }]).map(({ name, tone, seats }) =>
+      <section key={name} className={`table-seat-section ${tone}`}>
         <h3>{name}<small>{seats.length}人</small></h3>
         <ul>{seats.map((seat) => <li key={seat.groupPlayerId} className={highlightId === seat.groupPlayerId ? "is-highlighted" : undefined}>
           {panel.canManage ? <button disabled={disabled} type="button" aria-label={`${seat.displayName}を${seat.table === "MAIN" ? "サブ" : "メイン"}へ移動`} onClick={() => onMove(seat)}>

@@ -107,7 +107,7 @@ import { buildSettlementPreviewDraftStorageKey } from "~/utils/settlement-previe
 import { INVITE_REQUIRED_RESPONSE_TEXT } from "@domain/routing/public-group-entry";
 import { TableNow } from "~/components/table-now";
 import { openTableEventRecorder } from "~/components/table-event-recorder";
-import { TableManagement } from "~/components/table-management";
+import { TableManagement, openTableManagement } from "~/components/table-management";
 import { BodyPortal } from "~/components/body-portal";
 import { listOpenGameTableEvents } from "@server/repositories/table-event-repository.server";
 import { scheduleAchievementRefresh } from "@server/services/achievement-service.server";
@@ -996,6 +996,7 @@ export default function GameParticipant({
 
       {loaderData.game.status === "open" && (loaderData.isOrganizer || loaderData.game.tableManagementStartedAt) ? (
         <TableManagement
+          hideTrigger
           manager={loaderData.isOrganizer}
           started={Boolean(loaderData.game.tableManagementStartedAt)}
           resourcePath={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/tables`}
@@ -1011,6 +1012,8 @@ export default function GameParticipant({
               onRecordEventClick={
                 loaderData.isOrganizer ? openTableEventRecorder : undefined
               }
+              onTablesClick={loaderData.isOrganizer || loaderData.game.tableManagementStartedAt ? () => openTableManagement() : undefined}
+              tablesStarted={Boolean(loaderData.game.tableManagementStartedAt)}
             />
           ) : null}
           <ParticipantRosterSheet
@@ -1185,6 +1188,8 @@ export default function GameParticipant({
               data={loaderData.tableNow}
               onPlayersClick={() => setRosterOpenSignal((value) => value + 1)}
               onRecordEventClick={openTableEventRecorder}
+              onTablesClick={loaderData.isOrganizer || loaderData.game.tableManagementStartedAt ? () => openTableManagement() : undefined}
+              tablesStarted={Boolean(loaderData.game.tableManagementStartedAt)}
             />
           ) : null}
           <LocalRulesSheet
@@ -1614,14 +1619,6 @@ export function ParticipantRosterSheet({
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isOpen]);
 
   useEffect(() => {
     if (isEditingStatus) return;
@@ -2124,14 +2121,6 @@ export function LocalRulesSheet({
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isOpen]);
 
   function closeSheet() {
     setIsOpen(false);
@@ -2313,14 +2302,6 @@ export function SettlementPlanSheet({
     else if (!isOpen && dialog.open) dialog.close();
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isOpen]);
 
   function closeSheet() {
     setIsOpen(false);
