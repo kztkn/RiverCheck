@@ -218,15 +218,10 @@ export function TableManagementBoard({ panel, now, disabled, highlightId, onMove
   const sub = orderSubTable(panel.participants);
   const candidate = sub[0];
   return <div className="table-management-board">
-    {candidate ? <section className="table-next-candidate" aria-label="次のメイン候補">
-      <p>次のメイン候補</p><strong>{candidate.displayName}</strong>
-      <span>サブ滞在 {subStayMinutes(candidate.subEnteredAt!, now)}分</span>
-      {panel.canManage ? <button className="button button-primary" disabled={disabled} type="button" onClick={() => onMove(candidate)}>メインへ移動</button> : null}
-    </section> : null}
     {([{ name: "メイン", tone: "is-main-table", seats: panel.participants.filter((seat) => seat.table === "MAIN") }, { name: "サブ", tone: "is-sub-table", seats: sub }]).map(({ name, tone, seats }) =>
       <section key={name} className={`table-seat-section ${tone}`}>
         <h3>{name}<small>{seats.length}人</small></h3>
-        <ul>{seats.map((seat) => <li key={seat.groupPlayerId} className={highlightId === seat.groupPlayerId ? "is-highlighted" : undefined}>
+        <ul>{seats.map((seat) => <li key={seat.groupPlayerId} className={[highlightId === seat.groupPlayerId ? "is-highlighted" : "", candidate?.groupPlayerId === seat.groupPlayerId ? "is-next-candidate" : ""].filter(Boolean).join(" ") || undefined} aria-label={candidate?.groupPlayerId === seat.groupPlayerId ? "次のメイン候補" : undefined}>
           <div className="table-seat-row">
             {onPlayerClick ? <button className="table-seat-profile" type="button" aria-label={`${seat.displayName}のプロフィールを見る`} onClick={() => onPlayerClick(seat)}>
               <strong>{seat.displayName}</strong>{playerDetails?.(seat)}

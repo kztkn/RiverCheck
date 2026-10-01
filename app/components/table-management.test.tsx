@@ -20,7 +20,10 @@ describe("卓管理UI", () => {
   it("候補と滞在順、履歴、明示的な移動操作を表示する", () => {
     const markup = render(true);
     expect(markup).toContain("次のメイン候補");
-    expect(markup).toContain("サブ滞在 42分");
+    expect(markup).toContain("42分");
+    expect(markup).toContain('class="is-next-candidate" aria-label="次のメイン候補"');
+    expect(markup).not.toContain("table-next-candidate");
+    expect(markup.match(/is-next-candidate/g)).toHaveLength(1);
     expect(markup).toContain("メインへ移動");
     expect(markup).toContain('aria-label="かずとをサブへ移動"');
     expect(markup).toContain('aria-label="岩田をメインへ移動"');
@@ -41,6 +44,14 @@ describe("卓管理UI", () => {
     expect(markup).toContain("岩田");
     expect(markup).toContain("42分");
     expect(markup).not.toContain("<button");
+  });
+  it("候補がメインへ移ると残るサブの先頭だけを強調し、サブ0人なら候補を残さない", () => {
+    const participants = panel.participants.map((seat) => seat.groupPlayerId === "b" ? { ...seat, table: "MAIN" as const, subEnteredAt: null } : seat);
+    const board = (seats: typeof participants) => renderToStaticMarkup(createElement(TableManagementBoard, { panel: { ...panel, participants: seats }, now: Date.parse(panel.serverNow), disabled: false, highlightId: null, onMove: () => {} }));
+    const markup = board(participants);
+    expect(markup).toContain('aria-label="次のメイン候補"><div class="table-seat-row"><strong>ひろ</strong>');
+    expect(markup.match(/is-next-candidate/g)).toHaveLength(1);
+    expect(board(participants.map((seat) => ({ ...seat, table: "MAIN", subEnteredAt: null })))).not.toContain("次のメイン候補");
   });
   it("一般参加者もプロフィールを開けるが卓移動操作は出さない", () => {
     const markup = render(false, false, true);

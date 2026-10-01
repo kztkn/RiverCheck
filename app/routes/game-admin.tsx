@@ -29,7 +29,9 @@ import {
 } from "@server/services/participant-session.server";
 import { hashToken } from "@server/services/token.server";
 import { requireGameManager } from "@server/services/game-authorization-service.server";
-import { TableManagement, openTableManagement } from "~/components/table-management";
+import { openTableManagement } from "~/components/table-management";
+import { ParticipantRosterSheet, type ParticipantQuickStatsData } from "~/components/participant-roster-sheet";
+import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import {
   adjustOrganizerRebuyState,
   recordOrganizerRebuyAction,
@@ -516,6 +518,7 @@ export default function GameAdmin({
     useFetcher<OrganizerParticipantInputActionData>();
   const gameConfigurationFetcher = useFetcher<GameConfigurationActionData>();
   const localRulesFetcher = useFetcher<LocalRulesActionData>();
+  const quickStatsFetcher = useFetcher<ParticipantQuickStatsData>();
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
   const failedAction =
@@ -1241,11 +1244,25 @@ export default function GameAdmin({
         </section>
 
         {loaderData.game.status === "open" ? (
-          <TableManagement
-            manager
-            started={loaderData.game.tableManagementStartedAt !== null}
-            resourcePath={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/tables`}
-          />
+          <>
+            <button className="button button-secondary table-management-trigger" type="button" onClick={() => openTableManagement()}>
+              {loaderData.game.tableManagementStartedAt ? "卓管理" : "卓管理を開始"}
+            </button>
+            <ParticipantRosterSheet
+              available
+              hideTrigger
+              items={loaderData.participants.map((participant) => ({
+                groupPlayerId: participant.groupPlayerId,
+                displayName: participant.displayName,
+                avatarUrl: buildPlayerAvatarUrl({ groupCode: loaderData.group.publicCode, groupPlayerId: participant.groupPlayerId, avatarUpdatedAt: participant.avatarUpdatedAt }),
+                isCurrentUser: false,
+              }))}
+              tableManagement={{ manager: true, started: loaderData.game.tableManagementStartedAt !== null, resourcePath: `/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/tables` }}
+              profileBasePath={`/g/${loaderData.group.publicCode}/stats`}
+              quickStatsBasePath={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/players`}
+              quickStatsFetcher={quickStatsFetcher}
+            />
+          </>
         ) : null}
         <NavLink
           className={({ isPending }) =>
