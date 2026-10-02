@@ -2,7 +2,7 @@
 .table-now-heading { display:flex; align-items:baseline; gap:8px; padding-inline:2px; }
 .table-now-heading > span { color:rgba(231,244,237,.72); font-size:.68rem; font-weight:800; letter-spacing:.18em; }
 .table-now-actions { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); gap:7px; }
-.table-now-actions .table-now-item { min-width:0; min-height:48px; flex-direction:row; justify-content:center; gap:8px; padding:8px 10px; }
+.table-now-actions .table-now-item { min-width:0; min-height:48px; flex-direction:row; justify-content:flex-start; gap:8px; padding:8px 10px; text-align:left; }
 .table-now-actions .table-now-item > span { gap:4px; }
 .table-now-actions .table-now-item small { font-size:.6rem; letter-spacing:.055em; }
 .table-now-actions .table-now-record-event:not(:disabled):hover, .table-now-actions .table-now-record-event:not(:disabled):focus-visible { border-color:rgba(233,186,90,.62); background:rgba(233,186,90,.1); }
@@ -18,6 +18,7 @@
 .table-now-players { border-color:rgba(57,222,141,.16); background:rgba(57,222,141,.045); }
 .table-now-record-event { border-color:rgba(233,186,90,.35); background:rgba(233,186,90,.055); color:#f0d392; }
 .table-now-record-event:hover,.table-now-record-event:focus-visible { border-color:rgba(233,186,90,.62); background:rgba(233,186,90,.1); }
+.table-now-actions .table-now-record-event-suit { flex:0 0 18px; justify-content:center; }
 .table-now-record-event .table-now-record-event-suit { color:#f0d392; font-size:.82rem; line-height:1; }
 .table-now-record-event small { color:#f0d392; font-weight:820; letter-spacing:.075em; }
 .live-table-detail-sheet { max-height:min(72vh,560px); }
