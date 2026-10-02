@@ -320,3 +320,11 @@ TableManagementは同じ開催の取得済みpanelをbackground refresh中にも
 開催管理loaderはlistCurrentGameParticipantsから当日のひとことを含むrosterを取得し、認証済みプロフィールのgroupPlayerId（なければ参加Cookie）で本人だけを識別する。共通ParticipantRosterSheetにstatusFetcherと参加者routeのstatusActionを渡し、今日のひとことの編集・保存は既存の本人認可actionを使う。管理者権限だけで他者のひとことを変更する操作は追加しない。
 
 定期通信のポーリングは設けない。テーブル管理の10秒タイマーはサーバー時刻とperformance.nowの差から滞在時間を表示更新するだけで、fetchしない。年間まとめの自動送り、toast・ハイライト消去も端末内処理に限る。PWAは起動・pageshow・visibilitychangeでService Workerの配信更新を確認するが、開催DBを定期取得しない。開催情報はシートを開いた時・手動更新・操作後に同期する。
+
+## Stateless preparation tools
+
+- グループ配下の `/g/:groupCode/tools` は、その場で試す補助計算を置くページとする。開催データやユーザー設定の永続化責務を持たせない。
+- チップ在庫からブラインドと初期構成を選ぶ計算は `domain/chip-distribution/recommend-blind-structure.ts` の純粋関数へ置き、React側は入力と結果表示だけを担当する。
+- 推奨計算は参加人数で割った額面別の1人あたり在庫上限を守り、100BBをexact sumで構成できる3〜4額面を探索する。
+- 評価では25枚を絶対条件にせず20〜40枚を探索し、25枚付近、小額チップの厚み、両替しやすい額面構成、高額チップへの偏りの少なさを優先する。35枚超は追加ペナルティとする。
+- ツールページにはDB write、action、localStorage保存を追加しない。
