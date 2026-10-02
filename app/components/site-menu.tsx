@@ -8,7 +8,8 @@ type SiteMenuIcon =
   | "logout"
   | "organizer"
   | "profile"
-  | "stats";
+  | "stats"
+  | "tools";
 
 export interface SiteMenuItem {
   icon: SiteMenuIcon;
@@ -162,6 +163,8 @@ export function GroupSiteMenu({
     });
   }
 
+  items.push({ icon: "tools", label: "ツール", to: `${basePath}/tools` });
+
   if (hasMultipleGroups || organizer) {
     items.push({
       icon: "groups",
@@ -301,6 +304,15 @@ function SiteMenuItemIcon({ name }: { name: SiteMenuIcon }) {
         <path d="M5 20v-6h3v6" />
         <path d="M10.5 20V9h3v11" />
         <path d="M16 20V4h3v16" />
+      </>
+    ),
+    tools: (
+      <>
+        <rect height="18" rx="2" width="14" x="5" y="3" />
+        <path d="M8 7h8" />
+        <path d="M8 11h1M12 11h1M16 11h1" />
+        <path d="M8 15h1M12 15h1M16 15h1" />
+        <path d="M8 18h1M12 18h5" />
       </>
     ),
   };
