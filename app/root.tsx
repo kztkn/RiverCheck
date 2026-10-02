@@ -39,7 +39,7 @@ import "./styles/participant-status.css";
 import "./styles/stats.css";
 import "./styles/timeline.css";
 import "./styles/table-events.css";
-import "./styles/table-now.css";
+import "./styles/table-now.css";\nimport "./styles/tools.css";
 import "./styles/year-recap.css";
 
 export async function loader({ request }: Route.LoaderArgs) {
