@@ -32,6 +32,13 @@ describe("GroupSiteMenu", () => {
     expect(html).not.toContain("/g/river-check/profile");
   });
 
+  it("ツールは認証種別によらずグループメニューから開ける", () => {
+    const html = renderMenu();
+
+    expect(html).toContain("ツール");
+    expect(html).toContain("/g/river-check/tools");
+  });
+
   it("本人認証済みならプロフィール導線を表示する", () => {
     const html = renderMenu({
       hasPlayer: true,
