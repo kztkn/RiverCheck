@@ -7,7 +7,7 @@ export default [
   route("g/:groupCode", "routes/group-top.tsx"),
   route("g/:groupCode/join", "routes/group-join.tsx"),
   route("g/:groupCode/groups", "routes/group-directory.tsx"),
-  route("g/:groupCode/about", "routes/about.tsx"),
+  route("g/:groupCode/about", "routes/about.tsx"),\n  route("g/:groupCode/tools", "routes/tools.tsx"),
   route("g/:groupCode/stats", "routes/stats-index.tsx"),
   route("g/:groupCode/stats/:groupPlayerId", "routes/stats-player.tsx"),
   route("g/:groupCode/recap/2026", "routes/year-recap.tsx"),
