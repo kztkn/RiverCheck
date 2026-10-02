@@ -63,6 +63,7 @@ export function ParticipantRosterSheet({
   quickStatsBasePath,
   quickStatsFetcher,
   statusFetcher,
+  statusAction,
   tableManagement,
 }: {
   tableManagement?: {
@@ -79,6 +80,7 @@ export function ParticipantRosterSheet({
   quickStatsBasePath?: string;
   quickStatsFetcher?: ParticipantQuickStatsFetcher;
   statusFetcher?: ParticipantStatusFetcher;
+  statusAction?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [tablePending, setTablePending] = useState(false);
@@ -364,6 +366,7 @@ export function ParticipantRosterSheet({
               isEditingStatus &&
               statusFetcher ? (
                 <statusFetcher.Form
+                  action={statusAction}
                   className="participant-status-editor"
                   method="post"
                 >

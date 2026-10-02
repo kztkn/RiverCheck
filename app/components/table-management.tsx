@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { IconArrowDown, IconArrowUp } from "@tabler/icons-react";
+import { IconSwitchHorizontal } from "@tabler/icons-react";
 import { useRevalidator } from "react-router";
 import { BodyPortal } from "~/components/body-portal";
 import { orderSubTable, subStayMinutes } from "@domain/table-management/table-management";
@@ -154,7 +154,7 @@ export function TableManagement({ resourcePath, started, manager, hideTrigger = 
     const form = new FormData();
     form.set("intent", "start");
     panel.participants.forEach((seat) => form.append(subIds.includes(seat.groupPlayerId) ? "subIds" : "mainIds", seat.groupPlayerId));
-    void post(form, "卓管理を開始しました");
+    void post(form, "テーブル管理を開始しました");
   }
   function close() { if (!pendingRef.current) setOpen(false); }
   const active = panel?.startedAt != null;
@@ -185,12 +185,12 @@ export function TableManagement({ resourcePath, started, manager, hideTrigger = 
             </div>
             <button className="button button-primary" disabled={pending || loading || subIds.length === 0 || subIds.length === panel.participants.length} type="button" onClick={start}>{pending ? "開始中…" : "この振り分けで開始"}</button>
             {panel.participants.length < 2 ? <p className="table-event-hint">2人以上の参加者が必要です。</p> : null}
-          </> : <>{children}{canManage ? <button className="button button-secondary table-management-trigger" type="button" onClick={() => setAllocating(true)}>卓管理を開始</button> : null}</> : null}
+          </> : <>{children}{canManage ? <button className="button button-secondary table-management-trigger" type="button" onClick={() => setAllocating(true)}>テーブル管理を開始</button> : null}</> : null}
   </div>;
   if (embedded) return content;
   return <>
     {!hideTrigger ? <button className="button button-secondary table-management-trigger" type="button" onClick={() => show()}>
-      {started ? "卓管理" : "卓管理を開始"}
+      {started ? "テーブル管理" : "テーブル管理を開始"}
     </button> : null}
     <BodyPortal>
       <dialog ref={dialog} className="table-event-dialog table-management-dialog" aria-labelledby="table-management-title"
@@ -199,8 +199,8 @@ export function TableManagement({ resourcePath, started, manager, hideTrigger = 
         onClose={() => { setOpen(false); returnFocus.current?.focus(); }}>
         <div className="table-event-sheet table-management-sheet">
           <header className="table-event-header">
-            <div><p className="eyebrow">TABLES</p><h2 id="table-management-title">卓管理</h2></div>
-            <button className="participant-roster-close" aria-label="卓管理を閉じる" disabled={pending} type="button" onClick={close}>×</button>
+            <div><p className="eyebrow">TABLES</p><h2 id="table-management-title">テーブル管理</h2></div>
+            <button className="participant-roster-close" aria-label="テーブル管理を閉じる" disabled={pending} type="button" onClick={close}>×</button>
           </header>
           {content}
         </div>
@@ -228,12 +228,12 @@ export function TableManagementBoard({ panel, now, disabled, highlightId, onMove
             </button> : <strong>{seat.displayName}</strong>}
             {seat.table === "SUB" ? <span className="table-seat-stay">{subStayMinutes(seat.subEnteredAt!, now)}分</span> : null}
             {panel.canManage ? <button className={`table-seat-move ${seat.table === "MAIN" ? "to-sub" : "to-main"}`} disabled={disabled} type="button" aria-label={`${seat.displayName}を${seat.table === "MAIN" ? "サブ" : "メイン"}へ移動`} title={`${seat.table === "MAIN" ? "サブ" : "メイン"}へ移動`} onClick={() => onMove(seat)}>
-              {seat.table === "MAIN" ? <IconArrowDown aria-hidden="true" stroke={1.7} /> : <IconArrowUp aria-hidden="true" stroke={1.7} />}
+              <IconSwitchHorizontal aria-hidden="true" stroke={1.7} />
             </button> : null}
           </div>
         </li>)}</ul>
       </section>)}
-    {panel.canManage ? <p className="table-event-hint">↓でサブ、↑でメインへ移動します。</p> : null}
+    {panel.canManage ? <p className="table-event-hint">切り替えアイコンでメイン・サブを変更します。</p> : null}
     {panel.moves.length > 0 ? <details className="table-move-history"><summary>移動の履歴（{panel.moves.length}件）</summary>
       <ol>{panel.moves.map((move) => <li key={move.id}><time dateTime={move.recordedAt}>{new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(move.recordedAt))}</time><span>{move.displayName} {move.fromTable === "MAIN" ? "メイン" : "サブ"} → {move.toTable === "MAIN" ? "メイン" : "サブ"}</span></li>)}</ol>
     </details> : null}

@@ -13,6 +13,9 @@ const mocked = vi.hoisted(() => ({
   validateGameSettingsForm: vi.fn(),
   requireGameManager: vi.fn(),
   saveGamePayPayRecipientLink: vi.fn(),
+  listGameParticipants: vi.fn(),
+  listCurrentGameParticipants: vi.fn(),
+  getAuthenticatedPlayerProfile: vi.fn(),
 }));
 
 vi.mock("@server/repositories/game-repository.server", () => ({
@@ -26,7 +29,8 @@ vi.mock("@server/repositories/group-repository.server", () => ({
 }));
 vi.mock("@server/repositories/participant-repository.server", () => ({
   findParticipantByTokenHash: vi.fn(),
-  listGameParticipants: vi.fn(),
+  listGameParticipants: mocked.listGameParticipants,
+  listCurrentGameParticipants: mocked.listCurrentGameParticipants,
   removeParticipant: vi.fn(),
   updateParticipantInputByGroupPlayerId: vi.fn(),
 }));
@@ -36,6 +40,9 @@ vi.mock("@server/services/participant-session.server", () => ({
 }));
 vi.mock("@server/services/token.server", () => ({
   hashToken: vi.fn(),
+}));
+vi.mock("@server/services/player-profile-service.server", () => ({
+  getAuthenticatedPlayerProfile: mocked.getAuthenticatedPlayerProfile,
 }));
 vi.mock("@server/services/game-authorization-service.server", () => ({
   requireGameManager: mocked.requireGameManager,
@@ -63,7 +70,7 @@ vi.mock("~/components/site-menu", () => ({
   GroupSiteHeader: vi.fn(() => null),
 }));
 
-import { action, shouldOpenParticipantSharePanel } from "./game-admin";
+import { action, loader, shouldOpenParticipantSharePanel } from "./game-admin";
 
 const group = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -95,6 +102,27 @@ describe("game admin share panel", () => {
     expect(shouldOpenParticipantSharePanel(0)).toBe(true);
     expect(shouldOpenParticipantSharePanel(1)).toBe(false);
     expect(shouldOpenParticipantSharePanel(8)).toBe(false);
+  });
+});
+
+describe("開催管理のテーブル管理プロフィール", () => {
+  it("本人だけを識別し、各参加者の今日のひとことを表示用データへ含める", async () => {
+    mocked.findGameWithGroupByPublicCode.mockResolvedValue({ group, game });
+    mocked.requireGameManager.mockResolvedValue({ kind: "admin", playerId: "self" });
+    mocked.listGameParticipants.mockResolvedValue([]);
+    mocked.listCurrentGameParticipants.mockResolvedValue([
+      { groupPlayerId: "self", displayName: "かずと", statusText: "絶好調 🔥", avatarUpdatedAt: null },
+      { groupPlayerId: "other", displayName: "岩田", statusText: "今日は堅め", avatarUpdatedAt: null },
+    ]);
+    mocked.getAuthenticatedPlayerProfile.mockResolvedValue({ profile: { groupPlayerId: "self" } });
+    const result = await loader({ request: new Request("https://example.com/g/river-check/games/test/admin"), params: { groupCode: group.publicCode, gameId: game.id }, context: {} } as Parameters<typeof loader>[0]);
+    expect(result.participantRoster.items).toEqual([
+      { groupPlayerId: "self", displayName: "かずと", statusText: "絶好調 🔥", avatarUrl: null, isCurrentUser: true },
+      { groupPlayerId: "other", displayName: "岩田", statusText: "今日は堅め", avatarUrl: null, isCurrentUser: false },
+    ]);
+    mocked.getAuthenticatedPlayerProfile.mockResolvedValue(null);
+    const unlinked = await loader({ request: new Request("https://example.com/g/river-check/games/test/admin"), params: { groupCode: group.publicCode, gameId: game.id }, context: {} } as Parameters<typeof loader>[0]);
+    expect(unlinked.participantRoster.items.every((item) => !item.isCurrentUser)).toBe(true);
   });
 });
 

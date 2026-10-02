@@ -20,6 +20,7 @@ import {
 import {
   findParticipantByTokenHash,
   listGameParticipants,
+  listCurrentGameParticipants,
   removeParticipant,
   updateParticipantInputByGroupPlayerId,
 } from "@server/repositories/participant-repository.server";
@@ -30,7 +31,8 @@ import {
 import { hashToken } from "@server/services/token.server";
 import { requireGameManager } from "@server/services/game-authorization-service.server";
 import { openTableManagement } from "~/components/table-management";
-import { ParticipantRosterSheet, type ParticipantQuickStatsData } from "~/components/participant-roster-sheet";
+import { ParticipantRosterSheet, type ParticipantQuickStatsData, type ParticipantStatusActionData } from "~/components/participant-roster-sheet";
+import { getAuthenticatedPlayerProfile } from "@server/services/player-profile-service.server";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import {
   adjustOrganizerRebuyState,
@@ -128,7 +130,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (authorized.game.status === "finalized") {
     throw redirect("/g/" + params.groupCode + "/games/" + params.gameId);
   }
-  const [participants, currentParticipant] = await Promise.all([
+  const [participants, currentParticipant, roster, profileOverview] = await Promise.all([
     listGameParticipants(authorized.group.id, params.gameId),
     participantTokenHash
       ? findParticipantByTokenHash(
@@ -137,6 +139,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
           participantTokenHash,
         )
       : Promise.resolve(null),
+    listCurrentGameParticipants(authorized.group.id, params.gameId)
+      .then((items) => ({ available: true, items }))
+      .catch(() => ({ available: false, items: [] })),
+    getAuthenticatedPlayerProfile(request, params.groupCode),
   ]);
   const url = new URL(request.url);
   const payload = {
@@ -146,6 +152,16 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     },
     game: authorized.game,
     participants,
+    participantRoster: {
+      available: roster.available,
+      items: roster.items.map((item) => ({
+        groupPlayerId: item.groupPlayerId,
+        displayName: item.displayName,
+        avatarUrl: buildPlayerAvatarUrl({ groupCode: params.groupCode, groupPlayerId: item.groupPlayerId, avatarUpdatedAt: item.avatarUpdatedAt }),
+        isCurrentUser: item.groupPlayerId === (profileOverview?.profile?.groupPlayerId ?? currentParticipant?.groupPlayerId),
+        ...(item.statusText ? { statusText: item.statusText } : {}),
+      })),
+    },
     currentParticipant: currentParticipant
       ? { displayName: currentParticipant.displayName }
       : null,
@@ -519,6 +535,7 @@ export default function GameAdmin({
   const gameConfigurationFetcher = useFetcher<GameConfigurationActionData>();
   const localRulesFetcher = useFetcher<LocalRulesActionData>();
   const quickStatsFetcher = useFetcher<ParticipantQuickStatsData>();
+  const statusFetcher = useFetcher<ParticipantStatusActionData>();
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
   const failedAction =
@@ -1246,21 +1263,18 @@ export default function GameAdmin({
         {loaderData.game.status === "open" ? (
           <>
             <button className="button button-secondary table-management-trigger" type="button" onClick={() => openTableManagement()}>
-              {loaderData.game.tableManagementStartedAt ? "卓管理" : "卓管理を開始"}
+              {loaderData.game.tableManagementStartedAt ? "テーブル管理" : "テーブル管理を開始"}
             </button>
             <ParticipantRosterSheet
-              available
+              available={loaderData.participantRoster.available}
               hideTrigger
-              items={loaderData.participants.map((participant) => ({
-                groupPlayerId: participant.groupPlayerId,
-                displayName: participant.displayName,
-                avatarUrl: buildPlayerAvatarUrl({ groupCode: loaderData.group.publicCode, groupPlayerId: participant.groupPlayerId, avatarUpdatedAt: participant.avatarUpdatedAt }),
-                isCurrentUser: false,
-              }))}
+              items={loaderData.participantRoster.items}
               tableManagement={{ manager: true, started: loaderData.game.tableManagementStartedAt !== null, resourcePath: `/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/tables` }}
               profileBasePath={`/g/${loaderData.group.publicCode}/stats`}
               quickStatsBasePath={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}/players`}
               quickStatsFetcher={quickStatsFetcher}
+              statusFetcher={statusFetcher}
+              statusAction={`/g/${loaderData.group.publicCode}/games/${loaderData.game.id}`}
             />
           </>
         ) : null}
@@ -1541,12 +1555,6 @@ export default function GameAdmin({
                         >
                           記録を修正
                         </button>
-                        {loaderData.game.tableManagementStartedAt ? (
-                          <button className="button button-secondary button-small" type="button"
-                            onClick={() => openTableManagement(participant.groupPlayerId)}>
-                            卓を移動
-                          </button>
-                        ) : null}
                         <button
                           aria-label={
                             participant.displayName + "のその他の操作"

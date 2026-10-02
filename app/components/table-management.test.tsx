@@ -66,6 +66,6 @@ describe("卓管理UI", () => {
   it("OFF開催の一般参加者には入口もシートも出さない", () => {
     const router = createMemoryRouter([{ path: "/", element: createElement(TableManagement, { manager: false, started: false, resourcePath: "/tables" }) }]);
     const markup = renderToStaticMarkup(createElement(RouterProvider, { router }));
-    expect(markup).not.toContain("卓管理");
+    expect(markup).not.toContain("テーブル管理");
   });
 });
