@@ -2030,20 +2030,21 @@ export function ResultEntryForm({
   totalRebuyCount: number | null;
 }) {
   const [reportedCount, setReportedCount] = useState(
-    settlementRebuyCount ?? outstandingRebuyCount,
+    String(settlementRebuyCount ?? outstandingRebuyCount),
   );
   const reportedCountEditedRef = useRef(settlementRebuyCount !== null);
 
   useEffect(() => {
     if (settlementRebuyCount !== null) {
       reportedCountEditedRef.current = true;
-      setReportedCount(settlementRebuyCount);
+      setReportedCount(String(settlementRebuyCount));
       return;
     }
     if (!reportedCountEditedRef.current) {
-      setReportedCount(outstandingRebuyCount);
+      setReportedCount(String(outstandingRebuyCount));
     }
   }, [outstandingRebuyCount, settlementRebuyCount]);
+  const reportedCountValue = parseNonNegativeInteger(reportedCount);
 
   return (
     <Form
@@ -2074,10 +2075,7 @@ export function ResultEntryForm({
           name="settlementRebuyCount"
           onChange={(event) => {
             reportedCountEditedRef.current = true;
-            const value = Number(event.currentTarget.value);
-            if (Number.isSafeInteger(value) && value >= 0) {
-              setReportedCount(value);
-            }
+            setReportedCount(event.currentTarget.value);
           }}
           required
           type="number"
@@ -2090,10 +2088,10 @@ export function ResultEntryForm({
           <span>今日の累計リバイ</span>
           <strong>{formatTotalRebuyCount(totalRebuyCount)}</strong>
         </div>
-        <RebuyMatchStatus
+        {reportedCountValue === null ? <p className="field-hint">リバイ証は0以上の整数で入力してください。</p> : <RebuyMatchStatus
           outstandingRebuyCount={outstandingRebuyCount}
-          settlementRebuyCount={reportedCount}
-        />
+          settlementRebuyCount={reportedCountValue}
+        />}
       </div>
       <button
         className="button button-primary"

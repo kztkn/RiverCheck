@@ -758,6 +758,13 @@ describe("game participant route", () => {
     expect(mocked.saveFinalizedGameStory).not.toHaveBeenCalled();
   });
 
+  it("リバイ証を消したまま保存しても0として扱わず入力エラーにする", async () => {
+    const result = await action(actionArgs({ intent: "save-input", remainingChips: "20000", settlementRebuyCount: "" }));
+    expect(result).toEqual({ error: "残りチップとリバイ証は0以上の整数で入力してください。" });
+    expect(mocked.updateParticipantInputByGroupPlayerId).not.toHaveBeenCalled();
+    expect(mocked.updateParticipantInput).not.toHaveBeenCalled();
+  });
+
   it("主催者は確定後も参加者投稿を削除できる", async () => {
     mocked.findGameForGroup.mockResolvedValue({
       ...openGame,
