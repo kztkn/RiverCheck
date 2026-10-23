@@ -4,12 +4,13 @@ import {
   IconArrowUp,
   IconBomb,
   IconCards,
+  IconArrowsUpDown,
   IconUsers,
 } from "@tabler/icons-react";
 
 export interface LiveTableEvent {
   id: string;
-  type: "seven_deuce" | "bomb_pot" | "all_in";
+  type: "seven_deuce" | "stand_up_loser" | "bomb_pot" | "all_in";
   recordedAt: string;
   subject: { displayName: string } | null;
   players: Array<{ displayName: string; isWinner: boolean }>;
@@ -20,16 +21,17 @@ export interface TableNowData {
   bombPotCount: number;
   playerCount: number | null;
   sevenDeuceCount: number;
+  standUpCount?: number;
   events?: LiveTableEvent[];
   tableCounts?: { main: number; sub: number } | null;
 }
 
-type DetailType = "all_in" | "bomb_pot" | "seven_deuce";
-type CountKey = "allInCount" | "bombPotCount" | "sevenDeuceCount" | "playerCount";
+type DetailType = "all_in" | "bomb_pot" | "seven_deuce" | "stand_up_loser";
+type CountKey = "allInCount" | "bombPotCount" | "sevenDeuceCount" | "standUpCount" | "playerCount";
 
 export function increasedTableCounts(previous: TableNowData, next: TableNowData): CountKey[] {
-  const keys: CountKey[] = ["allInCount", "bombPotCount", "sevenDeuceCount", "playerCount"];
-  return keys.filter((key) => previous[key] !== null && next[key] !== null
+  const keys: CountKey[] = ["allInCount", "bombPotCount", "sevenDeuceCount", "standUpCount", "playerCount"];
+  return keys.filter((key) => typeof previous[key] === "number" && typeof next[key] === "number"
     && next[key]! > previous[key]!);
 }
 
@@ -54,7 +56,7 @@ export function TableNow({
     if (increases.length === 0) return;
     const timer = window.setTimeout(() => setHighlighted([]), 1_200);
     return () => window.clearTimeout(timer);
-  }, [data.allInCount, data.bombPotCount, data.sevenDeuceCount, data.playerCount]);
+  }, [data.allInCount, data.bombPotCount, data.sevenDeuceCount, data.standUpCount, data.playerCount]);
 
   const events = [
     data.allInCount > 0
@@ -73,6 +75,15 @@ export function TableNow({
           label: "BOMB POT",
           value: data.bombPotCount,
           Icon: IconBomb,
+        }
+      : null,
+    (data.standUpCount ?? 0) > 0
+      ? {
+          key: "stand_up_loser" as const,
+          countKey: "standUpCount" as const,
+          label: "STAND UP",
+          value: data.standUpCount ?? 0,
+          Icon: IconArrowsUpDown,
         }
       : null,
     data.sevenDeuceCount > 0
@@ -235,6 +246,13 @@ export function LiveTableMini({
       visible: data.bombPotCount > 0,
     },
     {
+      Icon: IconArrowsUpDown,
+      key: "stand-up",
+      label: "STAND UP",
+      value: data.standUpCount ?? 0,
+      visible: (data.standUpCount ?? 0) > 0,
+    },
+    {
       Icon: IconCards,
       key: "seven-deuce",
       label: "72o",
@@ -286,6 +304,7 @@ export function LiveTableMini({
 function detailLabel(type: DetailType) {
   if (type === "all_in") return "ALL IN";
   if (type === "bomb_pot") return "BOMB POT";
+  if (type === "stand_up_loser") return "STAND UP";
   return "72o成立";
 }
 
@@ -295,6 +314,9 @@ function renderEventCopy(event: LiveTableEvent) {
   }
   if (event.type === "bomb_pot") {
     return <strong>BOMB POT</strong>;
+  }
+  if (event.type === "stand_up_loser") {
+    return <strong>最後まで立っていた人：{event.subject?.displayName ?? "プレイヤー"}</strong>;
   }
 
   const winners = event.players

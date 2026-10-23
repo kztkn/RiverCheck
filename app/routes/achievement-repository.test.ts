@@ -84,6 +84,7 @@ describe("achievement repository", () => {
           tracked_outstanding_rebuy_count: null,
           settlement_rebuy_count: 1,
           seven_deuce_count: 2,
+          stand_up_loser_count: 1,
           all_in_win_count: 1,
           all_in_loss_count: 3,
           story_post_count: 1,
@@ -105,6 +106,7 @@ describe("achievement repository", () => {
         outstandingRebuyCount: null,
         settlementRebuyCount: 1,
         sevenDeuceCount: 2,
+        standUpLoserCount: 1,
         allInWinCount: 1,
         allInLossCount: 3,
         storyPostCount: 1,
@@ -112,6 +114,7 @@ describe("achievement repository", () => {
     ]);
     const sql = String(query.mock.calls[0]?.[0]);
     expect(sql).toContain("seven_deuce_metrics");
+    expect(sql).toContain("stand_up_metrics");
     expect(sql).toContain("all_in_metrics");
     expect(sql).toContain("story_metrics");
     expect(sql).toContain("event.canceled_at IS NULL");

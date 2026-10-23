@@ -27,6 +27,14 @@ describe("LIVE TABLE presentation", () => {
     expect(markup).not.toContain("72o");
   });
 
+  it("STAND UPは記録がある開催だけLIVE TABLEに表示する", () => {
+    const markup = renderToStaticMarkup(createElement(TableNow, {
+      data: { allInCount: 0, bombPotCount: 0, sevenDeuceCount: 0, standUpCount: 2, playerCount: 6 },
+    }));
+    expect(markup).toContain("STAND UP");
+    expect(markup).toContain(">2</strong>");
+  });
+
   it("記録権限がある参加画面ではLIVE TABLE内に記録ボタンを表示する", () => {
     const markup = renderToStaticMarkup(
       createElement(TableNow, {

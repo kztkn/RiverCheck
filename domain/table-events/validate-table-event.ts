@@ -1,5 +1,6 @@
 export const TABLE_EVENT_TYPES = [
   "seven_deuce",
+  "stand_up_loser",
   "bomb_pot",
   "all_in",
 ] as const;

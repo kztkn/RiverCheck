@@ -87,7 +87,7 @@ Workers はリクエストをまたいだネットワーク I/O の再利用を�
 
 追加migration `0036_add_table_management.sql`でgamesへ開始日時、game_participantsへ卓位置・現在のSUB入場日時、`game_table_moves`へ移動監査履歴を追加する。参加者カラムはMAIN／NULLを既定とし、OFF開催と途中参加の既存INSERTを後方互換に保つ。MAIN／SUBと入場日時の整合はDB CHECKでも保証する。
 
-既存`game_table_events`は72o・BOMB POT・ALL INの振り返り、参加者による取消、称号集計の責務を持つ。その型・取消・集計へ卓運用を混ぜないため移動履歴を分離するが、表示は同じBodyPortal＋native dialogのBottom Sheetパターンを再利用する。`/g/:groupCode/games/:gameId/tables`のReact Router loader/actionからserviceを呼び、更新は既存`requireGameManager`で認可する。POSTは管理操作のRate Limiting対象とする。
+既存`game_table_events`は72o・BOMB POT・ALL IN・STAND UPの振り返り、参加者による取消、称号集計の責務を持つ。その型・取消・集計へ卓運用を混ぜないため移動履歴を分離するが、表示は同じBodyPortal＋native dialogのBottom Sheetパターンを再利用する。`/g/:groupCode/games/:gameId/tables`のReact Router loader/actionからserviceを呼び、更新は既存`requireGameManager`で認可する。POSTは管理操作のRate Limiting対象とする。
 
 repositoryはgames行をlockし、open状態と開始状態を確認して開始／移動を実行する。開始は参加者集合を再取得して検証し、移動は元卓＋元入場日時を条件にUPDATEして履歴INSERTと同じtransactionでcommitする。command IDの一意制約と保存済み指示の照合で二重POSTを安全に再送できる。現在席・全移動履歴・サーバー現在時刻は1 queryのsnapshotで取得する。
 

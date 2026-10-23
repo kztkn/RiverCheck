@@ -48,6 +48,19 @@ export async function action({ request, params }: Route.ActionArgs) {
     return Response.json(result, { status: result.ok ? 200 : 400 });
   }
 
+  if (intent === "stand-up") {
+    const subjectGroupPlayerId = readString(formData, "subjectGroupPlayerId");
+    if (!isUuid(subjectGroupPlayerId)) {
+      return Response.json({ ok: false, error: "最後まで立っていた人を選んでください。" }, { status: 400 });
+    }
+    const result = await recordTableEvent(request, params.groupCode, params.gameId, {
+      type: "stand_up_loser",
+      commandId,
+      subjectGroupPlayerId,
+    });
+    return Response.json(result, { status: result.ok ? 200 : 400 });
+  }
+
   if (intent === "bomb-pot") {
     const result = await recordTableEvent(request, params.groupCode, params.gameId, {
       type: "bomb_pot",

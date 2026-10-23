@@ -155,6 +155,8 @@ BBレート有効時は`sum(score - initial_chips) = 0`、すなわちチップ�
 
 `games.seven_deuce_rule_enabled`と`games.bomb_pot_rule_enabled`は開催ごとの適用有無だけを保持する。新規開催は初期ON、導入前の既存開催はOFFとし、主催者は`open`中だけ切り替えられる。`finalized`後は設定を変更しない。RiverCheckはルールを参照表示するだけとし、72oやボムポットの成立判定、対象者、支払い、チップ増減は自動記録しない。
 
+STAND UPは必要な開催でEVENTから任意記録する（開催設定のON/OFFは不要）。各ラウンドでポット獲得などにより順に着席し、最後まで立っていた参加者1名を「ラストプレイヤー」として選択する。ラウンド単位で何件でも記録でき、誤登録は記録者本人または開催管理者がopen中に取消できる。記録はあくまで出来事・称号用であり、チップ・スコア・Pの集計には影響しない。ルールの詳細な進行・取り決めは卓内で決める。
+
 ## チップ設定
 
 `rebuy_chips` は常に `initial_chips` と同じ値にし、1リバイのBB数も`initial_chips / big_blind_chips`で派生する`initial_stack_bb`と同じにする。画面ではリバイチップを個別設定しない。
@@ -230,6 +232,7 @@ open中に`initial_chips`またはSB / BBを変更する場合も、`rebuy_chips
 
 - 72oは取消されていない`game_table_events.event_type = 'seven_deuce'`の`subject_group_player_id`を数える
 - ALL INは取消されていない`all_in`イベントに参加したプレイヤーを数え、`is_winner = TRUE`を勝利、それ以外を敗北とする。複数勝者にも対応する
+- STAND UPは取消されていない`stand_up_loser`イベントの`subject_group_player_id`を数え、確定済み開催で1回でも該当したら称号を獲得する
 - リバイは`game_results.total_rebuy_count`を使い、移行前データでNULLの場合だけ`settlement_rebuy_count`を互換値として扱う
 - TABLE STORIESは削除されていない本人投稿を数える。投稿保存時にも本人分を再評価する
 - 投稿リアクションは種類数ではなく、リアクションした異なる投稿数を数える。同じ投稿へ複数リアクションを付けても1件とする
@@ -255,11 +258,12 @@ open中に`initial_chips`またはSB / BBを変更する場合も、`rebuy_chips
 - 銀メダル収集家: 通算3回2位
 - 王座防衛: 本人の参加開催で2開催連続1位
 
-### テーブルイベント・交流・ネタ系12件
+### テーブルイベント・交流・ネタ系13件
 
 - 72oデビュー: 72oを通算1回成立
 - 72o職人: 72oを通算3回成立
 - 72oマスター: 72oを通算5回成立
+- 立ちっぱなし: STAND UPで最後まで立っていた人として1回以上記録される
 - 勝負師: ALL INで通算5回勝利
 - 散り際まで美しく: ALL INで通算5回敗北
 - 10回目の正直: 通算10回リバイ

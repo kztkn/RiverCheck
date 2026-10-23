@@ -9,7 +9,7 @@ interface TableEventParticipant {
 
 interface RecentTableEvent {
   id: string;
-  type: "seven_deuce" | "bomb_pot" | "all_in";
+  type: "seven_deuce" | "stand_up_loser" | "bomb_pot" | "all_in";
   recordedAt: string;
   subject: { groupPlayerId: string; displayName: string } | null;
   players: Array<{
@@ -28,7 +28,7 @@ interface TableEventPanelResponse {
   recentEvents: RecentTableEvent[];
 }
 
-type RecorderMode = "menu" | "seven-deuce" | "all-in";
+type RecorderMode = "menu" | "seven-deuce" | "stand-up" | "all-in";
 type PanelLoadState = "loading" | "ready" | "error" | "unavailable";
 
 /** GET only: retrying a panel load must never replay an event POST. */
@@ -95,6 +95,7 @@ export function TableEventRecorder() {
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<RecorderMode>("menu");
   const [subjectId, setSubjectId] = useState("");
+  const [standUpSubjectId, setStandUpSubjectId] = useState("");
   const [allInIds, setAllInIds] = useState<string[]>([]);
   const [winnerIds, setWinnerIds] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
@@ -138,6 +139,7 @@ export function TableEventRecorder() {
     setIsOpen(false);
     setPanel(null);
     setSubjectId("");
+    setStandUpSubjectId("");
     setAllInIds([]);
     setWinnerIds([]);
     return () => panelRequestRef.current?.abort();
@@ -165,6 +167,7 @@ export function TableEventRecorder() {
       returnFocusRef.current =
         activeElement instanceof HTMLElement ? activeElement : null;
       setMode("menu");
+      setStandUpSubjectId("");
       setFeedback(null);
       setError(null);
       setLoadState("loading");
@@ -184,6 +187,7 @@ export function TableEventRecorder() {
     panelRequestRef.current?.abort();
     setIsOpen(false);
     setMode("menu");
+    setStandUpSubjectId("");
     setAllInIds([]);
     setWinnerIds([]);
     setError(null);
@@ -231,6 +235,7 @@ export function TableEventRecorder() {
       if (session !== recorderSessionRef.current) return;
       setFeedback(successMessage);
       setMode("menu");
+      setStandUpSubjectId("");
       setAllInIds([]);
       setWinnerIds([]);
       await refreshPanel();
@@ -248,6 +253,13 @@ export function TableEventRecorder() {
     const formData = baseCommand("seven-deuce");
     formData.set("subjectGroupPlayerId", subjectId);
     void postEvent(formData, "72o成立を記録しました");
+  }
+
+  function recordStandUpLoser() {
+    if (!standUpSubjectId) return;
+    const formData = baseCommand("stand-up");
+    formData.set("subjectGroupPlayerId", standUpSubjectId);
+    void postEvent(formData, "STAND UPのラストプレイヤーを記録しました");
   }
 
   function recordBombPot() {
@@ -323,6 +335,10 @@ export function TableEventRecorder() {
                   <small>この瞬間をワンタップで記録</small>
                 </button>
               ) : null}
+              <button onClick={() => setMode("stand-up")} type="button">
+                <strong>STAND UP</strong>
+                <small>最後まで立っていた人を記録</small>
+              </button>
               <button onClick={() => setMode("all-in")} type="button">
                 <strong>ALL IN</strong>
                 <small>参加者と勝者だけを残す</small>
@@ -346,6 +362,27 @@ export function TableEventRecorder() {
               </div>
               <button className="button button-primary" disabled={!subjectId || pending} onClick={recordSevenDeuce} type="button">
                 {pending ? "記録中…" : "72o成立を記録"}
+              </button>
+            </div>
+          ) : mode === "stand-up" ? (
+            <div className="table-event-editor">
+              <button className="table-event-back" onClick={() => setMode("menu")} type="button">‹ 戻る</button>
+              <h3>最後まで立っていたのは？</h3>
+              <p className="table-event-hint">STAND UPのラストプレイヤーを1人選択。複数ラウンドはその都度記録できます。</p>
+              <div className="table-event-player-grid">
+                {panel.participants.map((participant) => (
+                  <button
+                    className={standUpSubjectId === participant.groupPlayerId ? "is-selected" : undefined}
+                    key={participant.groupPlayerId}
+                    onClick={() => setStandUpSubjectId(participant.groupPlayerId)}
+                    type="button"
+                  >
+                    {participant.displayName}
+                  </button>
+                ))}
+              </div>
+              <button className="button button-primary" disabled={!standUpSubjectId || pending} onClick={recordStandUpLoser} type="button">
+                {pending ? "記録中…" : "ラストプレイヤーを記録"}
               </button>
             </div>
           ) : (
@@ -446,6 +483,7 @@ function formatRecentEvent(event: RecentTableEvent): string {
   if (event.type === "seven_deuce") {
     return `72o成立 · ${event.subject?.displayName ?? "-"}`;
   }
+  if (event.type === "stand_up_loser") return `STAND UP · ${event.subject?.displayName ?? "-"}`;
   if (event.type === "bomb_pot") return "BOMB POT";
   const players = event.players.map((player) => player.displayName).join(" vs ");
   const winners = event.players

@@ -87,6 +87,47 @@ export async function createSevenDeuceTableEvent(input: {
   return result.rows[0]?.id ?? null;
 }
 
+/** Records the player who was last standing in one STAND UP round. */
+export async function createStandUpLoserTableEvent(input: {
+  actor: ActorInput;
+  commandId: string;
+  gameId: string;
+  groupId: string;
+  subjectGroupPlayerId: string;
+}): Promise<string | null> {
+  const result = await queryDatabase<{ id: string }>(
+    `
+      INSERT INTO game_table_events (
+        command_id,
+        game_id,
+        event_type,
+        subject_group_player_id,
+        recorded_by_group_player_id,
+        recorded_by_type
+      )
+      SELECT $3, game.id, 'stand_up_loser', participant.group_player_id, $5, $6
+      FROM games AS game
+      INNER JOIN game_participants AS participant
+        ON participant.game_id = game.id
+       AND participant.group_player_id = $4
+      WHERE game.id = $1
+        AND game.group_id = $2
+        AND game.status = 'open'
+      ON CONFLICT (command_id) DO NOTHING
+      RETURNING id
+    `,
+    [
+      input.gameId,
+      input.groupId,
+      input.commandId,
+      input.subjectGroupPlayerId,
+      input.actor.groupPlayerId,
+      input.actor.type,
+    ],
+  );
+  return result.rows[0]?.id ?? null;
+}
+
 export async function createBombPotTableEvent(input: {
   actor: ActorInput;
   commandId: string;

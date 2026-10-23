@@ -11,6 +11,7 @@ import {
   createAllInTableEvent,
   createBombPotTableEvent,
   createSevenDeuceTableEvent,
+  createStandUpLoserTableEvent,
   listOpenGameTableEvents,
   type TableEventActorType,
 } from "@server/repositories/table-event-repository.server";
@@ -31,6 +32,7 @@ export type TableEventCommand =
       commandId: string;
       subjectGroupPlayerId: string;
     }
+  | { type: "stand_up_loser"; commandId: string; subjectGroupPlayerId: string }
   | { type: "bomb_pot"; commandId: string }
   | {
       type: "all_in";
@@ -125,6 +127,14 @@ export async function recordTableEvent(
       return { ok: false, error: "この開催では72oボーナスはOFFです。" };
     }
     eventId = await createSevenDeuceTableEvent({
+      actor,
+      commandId: command.commandId,
+      gameId,
+      groupId: context.group.id,
+      subjectGroupPlayerId: command.subjectGroupPlayerId,
+    });
+  } else if (command.type === "stand_up_loser") {
+    eventId = await createStandUpLoserTableEvent({
       actor,
       commandId: command.commandId,
       gameId,

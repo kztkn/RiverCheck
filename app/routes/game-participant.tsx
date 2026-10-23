@@ -197,6 +197,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
             allInCount: 0,
             bombPotCount: 0,
             sevenDeuceCount: 0,
+            standUpCount: 0,
           }),
       context.game.status === "open"
         ? listOpenGameTableEvents(context.group.id, params.gameId, 100)

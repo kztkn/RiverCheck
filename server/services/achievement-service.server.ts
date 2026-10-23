@@ -84,6 +84,7 @@ export async function awardAchievementsForPlayers(
         outstandingRebuyCount: game.outstandingRebuyCount,
         settlementRebuyCount: game.settlementRebuyCount,
         sevenDeuceCount: game.sevenDeuceCount,
+        standUpLoserCount: game.standUpLoserCount,
         allInWinCount: game.allInWinCount,
         allInLossCount: game.allInLossCount,
         storyPostCount: game.storyPostCount,

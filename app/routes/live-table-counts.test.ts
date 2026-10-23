@@ -7,6 +7,12 @@ describe("LIVE TABLE updates", () => {
     expect(increasedTableCounts(counts, { ...counts, bombPotCount: 1, playerCount: 7 }))
       .toEqual(["bombPotCount", "playerCount"]);
   });
+  it("STAND UPでラストプレイヤーを記録した時だけ増分を強調する", () => {
+    expect(increasedTableCounts(
+      { ...counts, standUpCount: 0 },
+      { ...counts, standUpCount: 1 },
+    )).toEqual(["standUpCount"]);
+  });
   it("does not highlight unchanged counts, cancellations, or unavailable-to-known counts", () => {
     expect(increasedTableCounts(counts, counts)).toEqual([]);
     expect(increasedTableCounts(counts, { ...counts, allInCount: 1 })).toEqual([]);

@@ -18,6 +18,7 @@ export type EvaluatedAchievementCode =
   | "seven-deuce-first"
   | "seven-deuce-three"
   | "seven-deuce-five"
+  | "stand-up-last"
   | "all-in-five-wins"
   | "all-in-five-losses"
   | "rebuy-ten"
@@ -48,6 +49,7 @@ export const evaluatedAchievementCodes = [
   "seven-deuce-first",
   "seven-deuce-three",
   "seven-deuce-five",
+  "stand-up-last",
   "all-in-five-wins",
   "all-in-five-losses",
   "rebuy-ten",
@@ -68,6 +70,7 @@ export interface AchievementGameResult {
   outstandingRebuyCount: number | null;
   settlementRebuyCount: number;
   sevenDeuceCount: number;
+  standUpLoserCount: number;
   allInWinCount: number;
   allInLossCount: number;
   storyPostCount: number;
@@ -193,6 +196,10 @@ export function evaluateAchievements(
     }
     if (cumulativeRebuys >= 10) {
       unlock("rebuy-ten", game.gameId);
+    }
+
+    if (game.standUpLoserCount >= 1) {
+      unlock("stand-up-last", game.gameId);
     }
 
     cumulativeSevenDeuce += game.sevenDeuceCount;

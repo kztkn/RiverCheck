@@ -125,6 +125,16 @@
   content: "";
 }
 
+.game-timeline-marker.is-stand_up_loser {
+  color: #e9ba5a;
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
+.game-timeline-marker.is-stand_up_loser::before {
+  display: none;
+}
+
 .game-timeline-marker.is-repayment::before {
   width: 7px;
   height: 2px;

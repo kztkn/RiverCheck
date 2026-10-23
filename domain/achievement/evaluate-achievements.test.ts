@@ -17,6 +17,7 @@ function game(
     outstandingRebuyCount: 0,
     settlementRebuyCount: 0,
     sevenDeuceCount: 0,
+    standUpLoserCount: 0,
     allInWinCount: 0,
     allInLossCount: 0,
     storyPostCount: 0,
@@ -323,6 +324,21 @@ describe("achievement evaluation reconciliation", () => {
 
 
 describe("追加称号", () => {
+  it("STAND UPの最後まで立っていた人に初回だけ称号を付与する", () => {
+    const games = [
+      game("g1", { standUpLoserCount: 0 }),
+      game("g2", { standUpLoserCount: 2 }),
+      game("g3", { standUpLoserCount: 1 }),
+    ];
+    expect(evaluateAchievements(games).filter((unlock) => unlock.code === "stand-up-last"))
+      .toEqual([{ code: "stand-up-last", sourceGameId: "g2" }]);
+  });
+
+  it("STAND UP記録がない人へは称号を付与しない", () => {
+    expect(codes([game("g1"), game("g2")])).not.toContain("stand-up-last");
+  });
+
+
   it("72oを1・3・5回で段階的に解除する", () => {
     const unlocks = evaluateAchievements([
       game("g1", { sevenDeuceCount: 1 }),

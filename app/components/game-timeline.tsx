@@ -12,7 +12,7 @@ interface RebuyTimelineEvent {
 
 interface SevenDeuceTimelineEvent {
   id: string;
-  type: "seven_deuce";
+  type: "seven_deuce" | "stand_up_loser";
   recordedAt: string;
   subject: {
     groupPlayerId: string;
@@ -145,6 +145,7 @@ function TimelineItem({
 }) {
   const isHighlight =
     event.type === "seven_deuce" ||
+    event.type === "stand_up_loser" ||
     event.type === "bomb_pot" ||
     event.type === "all_in";
   return (
@@ -156,6 +157,8 @@ function TimelineItem({
       >
         {event.type === "seven_deuce"
           ? "72"
+          : event.type === "stand_up_loser"
+            ? "S"
           : event.type === "bomb_pot"
             ? "B"
             : event.type === "all_in"
@@ -184,6 +187,18 @@ function TimelineItem({
           <div>
             <strong>72o成立</strong>
             <p>{event.subject?.displayName ?? "達成者不明"}</p>
+          </div>
+        </div>
+      ) : event.type === "stand_up_loser" ? (
+        <div className="game-timeline-event">
+          <PlayerAvatar
+            avatarUrl={event.subject?.avatarUrl ?? null}
+            className="game-timeline-avatar"
+            displayName={event.subject?.displayName ?? "STAND UP"}
+          />
+          <div>
+            <strong>STAND UP · 最後まで立っていた人</strong>
+            <p>{event.subject?.displayName ?? "プレイヤー不明"}</p>
           </div>
         </div>
       ) : event.type === "bomb_pot" ? (

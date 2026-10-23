@@ -21,6 +21,7 @@ interface AchievementHistoryRow {
   tracked_outstanding_rebuy_count: number | null;
   settlement_rebuy_count: number;
   seven_deuce_count: number;
+  stand_up_loser_count: number;
   all_in_win_count: number;
   all_in_loss_count: number;
   story_post_count: number;
@@ -68,6 +69,7 @@ export interface AchievementHistoryGame {
   outstandingRebuyCount: number | null;
   settlementRebuyCount: number;
   sevenDeuceCount: number;
+  standUpLoserCount: number;
   allInWinCount: number;
   allInLossCount: number;
   storyPostCount: number;
@@ -139,6 +141,20 @@ export async function listAchievementHistoryGames(
           AND event.subject_group_player_id IS NOT NULL
         GROUP BY event.game_id, event.subject_group_player_id
       ),
+      stand_up_metrics AS (
+        SELECT
+          event.game_id,
+          event.subject_group_player_id AS group_player_id,
+          COUNT(*)::INTEGER AS stand_up_loser_count
+        FROM game_table_events AS event
+        INNER JOIN games AS game ON game.id = event.game_id
+        WHERE game.group_id = $1
+          AND game.status = 'finalized'
+          AND event.event_type = 'stand_up_loser'
+          AND event.canceled_at IS NULL
+          AND event.subject_group_player_id IS NOT NULL
+        GROUP BY event.game_id, event.subject_group_player_id
+      ),
       all_in_metrics AS (
         SELECT
           event.game_id,
@@ -180,6 +196,7 @@ export async function listAchievementHistoryGames(
         finalized_results.initial_chips,
         finalized_results.net_bb,
         COALESCE(seven_deuce_metrics.seven_deuce_count, 0) AS seven_deuce_count,
+        COALESCE(stand_up_metrics.stand_up_loser_count, 0) AS stand_up_loser_count,
         COALESCE(all_in_metrics.all_in_win_count, 0) AS all_in_win_count,
         COALESCE(all_in_metrics.all_in_loss_count, 0) AS all_in_loss_count,
         COALESCE(story_metrics.story_post_count, 0) AS story_post_count
@@ -187,6 +204,9 @@ export async function listAchievementHistoryGames(
       LEFT JOIN seven_deuce_metrics
         ON seven_deuce_metrics.game_id = finalized_results.game_id
        AND seven_deuce_metrics.group_player_id = finalized_results.group_player_id
+      LEFT JOIN stand_up_metrics
+        ON stand_up_metrics.game_id = finalized_results.game_id
+       AND stand_up_metrics.group_player_id = finalized_results.group_player_id
       LEFT JOIN all_in_metrics
         ON all_in_metrics.game_id = finalized_results.game_id
        AND all_in_metrics.group_player_id = finalized_results.group_player_id
@@ -220,6 +240,7 @@ export async function listAchievementHistoryGames(
     outstandingRebuyCount: row.tracked_outstanding_rebuy_count,
     settlementRebuyCount: row.settlement_rebuy_count,
     sevenDeuceCount: row.seven_deuce_count,
+    standUpLoserCount: row.stand_up_loser_count,
     allInWinCount: row.all_in_win_count,
     allInLossCount: row.all_in_loss_count,
     storyPostCount: row.story_post_count,

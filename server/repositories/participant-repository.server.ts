@@ -84,12 +84,14 @@ export interface OpenGameTableEventCounts {
   allInCount: number;
   bombPotCount: number;
   sevenDeuceCount: number;
+  standUpCount: number;
 }
 
 interface OpenGameTableEventCountRow {
   all_in_count: number;
   bomb_pot_count: number;
   seven_deuce_count: number;
+  stand_up_count: number;
 }
 
 export async function getOpenGameTableEventCounts(
@@ -101,7 +103,8 @@ export async function getOpenGameTableEventCounts(
       SELECT
         COUNT(*) FILTER (WHERE event.event_type = 'all_in')::int AS all_in_count,
         COUNT(*) FILTER (WHERE event.event_type = 'bomb_pot')::int AS bomb_pot_count,
-        COUNT(*) FILTER (WHERE event.event_type = 'seven_deuce')::int AS seven_deuce_count
+        COUNT(*) FILTER (WHERE event.event_type = 'seven_deuce')::int AS seven_deuce_count,
+        COUNT(*) FILTER (WHERE event.event_type = 'stand_up_loser')::int AS stand_up_count
       FROM game_table_events AS event
       INNER JOIN games AS game ON game.id = event.game_id
       WHERE game.id = $1
@@ -116,6 +119,7 @@ export async function getOpenGameTableEventCounts(
     allInCount: row?.all_in_count ?? 0,
     bombPotCount: row?.bomb_pot_count ?? 0,
     sevenDeuceCount: row?.seven_deuce_count ?? 0,
+    standUpCount: row?.stand_up_count ?? 0,
   };
 }
 

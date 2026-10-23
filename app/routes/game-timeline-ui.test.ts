@@ -63,6 +63,21 @@ describe("game timeline", () => {
     expect(markup).toContain("Alice WIN");
   });
 
+  it("確定後のSTAND UPのラストプレイヤーをタイムラインへ表示する", () => {
+    const markup = renderToStaticMarkup(createElement(GameTimelineView, {
+      events: [{
+        id: "standup-1",
+        recordedAt: "2026-10-24T11:00:00.000Z",
+        type: "stand_up_loser" as const,
+        subject: { groupPlayerId: "p1", displayName: "Alice", avatarUrl: null },
+        players: [] as [],
+      }],
+    }));
+    expect(markup).toContain("STAND UP");
+    expect(markup).toContain("最後まで立っていた人");
+    expect(markup).toContain("Alice");
+  });
+
   it("ALL IN敗者の3分以内のリバイをALL INの続きとして表示する", () => {
     const markup = renderToStaticMarkup(
       createElement(GameTimelineView, {
