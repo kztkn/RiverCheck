@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PayPayLinkEditor } from "./paypay-link-editor";
 
 function renderEditor(link: string | null, collapsible = false) {
@@ -24,6 +24,12 @@ function renderEditor(link: string | null, collapsible = false) {
 }
 
 describe("PayPayLinkEditor", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-25T00:00:00.000Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+
   it("登録済みリンクには送信しないクリアボタンを表示する", () => {
     const markup = renderEditor("https://pay.paypay.ne.jp/example");
 
@@ -46,5 +52,14 @@ describe("PayPayLinkEditor", () => {
     expect(markup).toContain("PayPay受取リンク");
     expect(markup).toContain("有効");
     expect(markup).toContain('class="disclosure-chevron"');
+  });
+
+  it("表示期限を過ぎたリンクは期限切れと表示する", () => {
+    vi.setSystemTime(new Date("2026-10-09T00:00:00.000Z"));
+
+    const markup = renderEditor("https://pay.paypay.ne.jp/example", true);
+
+    expect(markup).toContain("期限切れ");
+    expect(markup).not.toContain("<small>有効");
   });
 });

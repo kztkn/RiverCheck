@@ -57,7 +57,7 @@ npm run dev          # ローカル開発サーバー
 npm run test         # domain unit test
 npm run typecheck    # Worker 型生成、route 型生成、TypeScript 検査
 npm run build        # OSSライセンス検査 + Cloudflare Workers向けproduction build
-npm run release:build # CI検証・build・本番migrationを順番に実行
+npm run release:build # 型検査・全テスト・build（DB変更なし）
 npm run license:check # 本番依存のOSSライセンス許可リスト検査
 npm run pwa:icons    # PWA用PNGアイコンを再生成
 npm run pwa:build    # build/clientへService Workerを生成
@@ -113,19 +113,20 @@ npm run db:migrate:production
 npm run deploy
 ```
 
-### main push時のmigration
+### main push時のbuildとmigrationの分離
 
-Cloudflare Workers Buildsでは、次の設定にするとmainへのpushを契機に、検証、production build、本番migration、Worker deployの順で実行できます。
+Cloudflare Workers Buildsでは、次の設定にするとmainへのpushを契機に、検証、production build、Worker deployの順で実行できます。本番migrationは自動実行しません。
 
 ```text
 Build command:  npm run release:build
 Deploy command: npx wrangler deploy
-Build secret:   DATABASE_URL=<本番PostgreSQLの直接接続URL>
 ```
 
-Build secretはWorker runtimeのSecretとは別にCloudflare Buildsへ登録します。schema変更にはHyperdriveではなく、migration実行用の直接接続URLを使用します。`release:build`は`typecheck`、全テスト、`build`が成功した場合だけ`db:migrate:production`へ進みます。migration runnerは`schema_migrations`で適用済みファイルをスキップし、PostgreSQLのsession-level advisory lockで並行実行を直列化します。
+`release:build`は`typecheck`、全テスト、`build`のみを実行します。本番migrationはユーザーの明示的な承認後に、接続先と未適用ファイルを確認して`npm run db:migrate:production`で別途実行します。schema変更にはHyperdriveではなく、migration実行用の直接接続URLを使用します。migration runnerは`schema_migrations`で適用済みファイルをスキップし、PostgreSQLのsession-level advisory lockで並行実行を直列化します。
 
-この自動経路へ含めるmigrationは、旧Workerと新Workerのどちらからも利用できる追加的・後方互換な変更に限定します。カラム削除、rename、型の破壊的変更は自動migrationへ直接含めず、利用停止を先にデプロイしてから後続リリースで適用します。Cloudflare Buildsを設定するまでは、上記の手動コマンドを使用します。
+旧Workerと新Workerのどちらからも利用できる追加的・後方互換なmigrationは、承認後、新Workerの公開前に適用します。カラム削除、rename、型の破壊的変更は、利用停止を先にデプロイしてから後続リリースで適用します。Cloudflare Buildsを設定するまでは、上記の手動コマンドを使用します。
+
+STAND UPの新規記録と称号「立ちっぱなし」には`0037_add_stand_up_loser_event.sql`の適用が必要です。未適用の場合は本番でSTAND UPの記録を開始せず、承認後の適用を待ちます。確定済み開催への追記UI・APIは設けず、必要時だけ管理者がSQLでメンテナンスします。SQLによる過去記録の追加はmigrationと分け、称号の再評価も運用で行います。
 
 写真・アイコンの置換や参照解除ではDB参照だけを更新し、旧R2 objectは自動削除しません。参照されなくなったobjectは必要に応じてR2側で運用削除します。
 

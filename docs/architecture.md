@@ -75,9 +75,9 @@ VAPID公開鍵・秘密JWK・連絡先subjectはCloudflare Secretから取得す
 
 `npm run dev` のHyperdrive bindingは `wrangler.jsonc` の `localConnectionString` でDocker PostgreSQLへ接続する。migrationとseedは無指定コマンドをローカルDB専用とし、Neonへ適用する場合だけ `:production` コマンドと `.env` を明示的に使用する。
 
-Cloudflare Workers Buildsでは`release:build`をBuild commandとして、型検査、テスト、production buildがすべて成功した後に本番migrationを適用し、別のDeploy commandでWorkerを公開する。Build環境の`DATABASE_URL`にはHyperdriveではなく本番PostgreSQLの直接接続URLをSecretとして設定する。migration runnerは`schema_migrations`によるファイル単位の冪等性に加え、全migrationを通してsession-level PostgreSQL advisory lockを保持し、再実行や並行buildを直列化する。接続終了時にlockは自動解放される。
+Cloudflare Workers Buildsでは`release:build`をBuild commandとして、型検査、テスト、production buildを実行し、別のDeploy commandでWorkerを公開する。buildから本番migrationは実行しない。本番migrationはユーザーの明示的な承認後に接続先・未適用ファイルを確認し、Hyperdriveではなく本番PostgreSQLの直接接続URLを使う独立した運用操作とする。migration runnerは`schema_migrations`によるファイル単位の冪等性に加え、全migrationを通してsession-level PostgreSQL advisory lockを保持し、並行実行を直列化する。接続終了時にlockは自動解放される。
 
-buildとdeployの間は旧Workerが新schemaへ接続し得るため、自動適用するmigrationは追加的かつ後方互換なものに限定する。カラムや制約の削除、rename、既存値と非互換な型変更は、旧コードからの利用を先に停止するexpand-contractの複数リリースで行う。
+承認後、新Workerの公開前に適用するmigrationは、旧Workerが新schemaへ接続し得るため追加的かつ後方互換なものに限定する。カラムや制約の削除、rename、既存値と非互換な型変更は、旧コードからの利用を先に停止するexpand-contractの複数リリースで行う。
 
 `wrangler.jsonc` は `nodejs_compat` を有効にし、`pg` が必要とする Node.js 互換 API を Workers 上で利用する。Worker は Smart Placement を有効にし、外部 PostgreSQL に近い場所で実行できる構成とする。
 

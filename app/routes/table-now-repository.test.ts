@@ -14,7 +14,7 @@ describe("TABLE NOW repository", () => {
 
   it("受付中開催の有効なイベント数を種別ごとに返す", async () => {
     mocked.queryDatabase.mockResolvedValue({
-      rows: [{ all_in_count: 3, bomb_pot_count: 2, seven_deuce_count: 1 }],
+      rows: [{ all_in_count: 3, bomb_pot_count: 2, seven_deuce_count: 1, stand_up_count: 4 }],
     });
 
     await expect(
@@ -23,6 +23,7 @@ describe("TABLE NOW repository", () => {
       allInCount: 3,
       bombPotCount: 2,
       sevenDeuceCount: 1,
+      standUpCount: 4,
     });
 
     const sql = String(mocked.queryDatabase.mock.calls[0]?.[0]);

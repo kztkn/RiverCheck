@@ -48,7 +48,7 @@
 ## 技術 TODO
 
 - 本番 PostgreSQL を決め、Cloudflare Hyperdrive binding と secret を構成する
-- Cloudflare Workers Buildsへ`release:build`、`npx wrangler deploy`、本番DB直接接続URLのBuild Secretを設定する
+- Cloudflare Workers Buildsへ`release:build`、`npx wrangler deploy`を設定する。本番migrationは明示的な承認後に別途実行する
 - 入力上限と PostgreSQL `BIGINT` → JavaScript number の変換境界を明示する
 - group code のルート既定値を seed 設定から安全に解決する（現在 `/` は `river-check` 固定）
 - アプリケーションログとエラー監視を導入する
