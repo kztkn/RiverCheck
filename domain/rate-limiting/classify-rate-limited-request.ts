@@ -9,7 +9,7 @@ const ORGANIZER_LOGIN_PATTERN = new RegExp(
   "u",
 );
 const ADMIN_WRITE_PATTERN = new RegExp(
-  String.raw`^${GROUP_PATH}/(?:players|settings|games/(?:new|[^/]+/(?:admin|cost-share-receipts|tables)))/?$`,
+  String.raw`^${GROUP_PATH}/(?:players|settings|stats|games/(?:new|[^/]+/(?:admin|cost-share-receipts|tables)))/?$`,
   "u",
 );
 const PARTICIPANT_WRITE_PATTERN = new RegExp(

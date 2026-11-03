@@ -1,3 +1,4 @@
+import type { DatabaseTransaction } from "@server/db/client.server";
 import { queryDatabase } from "@server/db/client.server";
 import type {
   PlayerStatsAggregate,
@@ -71,8 +72,10 @@ export interface FinalizedPlayerGameStat {
 
 export async function listPlayerStatsRankingSnapshots(
   groupId: string,
+  range?: { startAt: string; endAt: string },
+  database: DatabaseTransaction = { query: queryDatabase },
 ): Promise<PlayerStatsRankingSnapshots> {
-  const result = await queryDatabase<RankingRow>(
+  const result = await database.query<RankingRow>(
     `
       WITH finalized_games AS (
         SELECT id, played_at, finalized_at, initial_chips, initial_stack_bb,
@@ -82,6 +85,7 @@ export async function listPlayerStatsRankingSnapshots(
           ) AS game_number
         FROM games
         WHERE group_id = $1 AND status = 'finalized'
+          ${range ? 'AND played_at >= $2::timestamptz AND played_at < $3::timestamptz' : ''}
       ),
       finalized_results AS (
         SELECT
@@ -205,8 +209,9 @@ export async function listPlayerStatsRankingSnapshots(
         achievement_icon_key,
         achievement_category
       FROM player_aggregates
+      ORDER BY comparison_scope, group_player_id
     `,
-    [groupId],
+    range ? [groupId, range.startAt, range.endAt] : [groupId],
   );
 
   assertValidInitialChips(

@@ -20,6 +20,7 @@ describe("classifyRateLimitedRequest", () => {
   });
 
   it("管理者の変更系routeを管理者制限へ分類する", () => {
+    expect(classifyRateLimitedRequest("POST", "/g/river-check/stats")).toBe("admin-write");
     expect(classifyRateLimitedRequest("POST", "/g/test/games/game/tables")).toBe("admin-write");
     expect(
       classifyRateLimitedRequest("POST", "/g/river-check/games/new"),
@@ -75,7 +76,7 @@ describe("classifyRateLimitedRequest", () => {
   });
 
   it("対象外routeや紛らわしいパスは分類しない", () => {
-    expect(classifyRateLimitedRequest("POST", "/g/river-check/stats")).toBeNull();
+    expect(classifyRateLimitedRequest("POST", "/g/river-check/recap/2026")).toBeNull();
     expect(
       classifyRateLimitedRequest(
         "POST",

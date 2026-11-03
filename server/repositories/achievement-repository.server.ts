@@ -446,6 +446,7 @@ export async function listPlayerAchievementCollection(
        AND player_achievement.achievement_id = achievement.id
       LEFT JOIN games AS source_game
         ON source_game.id = player_achievement.source_game_id
+      WHERE achievement.category <> 'season' OR player_achievement.id IS NOT NULL
       ORDER BY achievement.sort_order ASC, achievement.code ASC
     `,
     [groupId, groupPlayerId],

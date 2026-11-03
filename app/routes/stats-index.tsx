@@ -1,36 +1,53 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { GroupSiteHeader } from "~/components/site-menu";
-import { NavLink } from "react-router";
+import { data, Form, NavLink, useActionData, useNavigate, useNavigation } from "react-router";
 import { PlayerAvatar } from "~/components/player-avatar";
 import { AchievementBadge } from "~/components/achievement-badge";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
 import { formatSignedBbValue } from "@domain/score/bb-score";
 import { rankPlayers } from "@domain/player-stats/rank-players";
 import { RankingPosition } from "~/components/ranking-position";
-import {
-  getPlayerStatsRanking,
-  parsePlayerStatsSort,
-} from "@server/services/player-stats-service.server";
+
 import type { Route } from "./+types/stats-index";
 import type {
   PlayerStatsRankingRow,
   PlayerStatsSort,
 } from "@shared-types/player-stats";
+import { BodyPortal } from "~/components/body-portal";
+import { rankSeason } from "@domain/season/season";
 import { RANKING_OPTIONS } from "~/utils/ranking-options";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
+  const { parsePlayerStatsSort } = await import('@server/services/player-stats-service.server');
   const sort = parsePlayerStatsSort(new URL(request.url).searchParams.get("sort"));
-  const overview = await getPlayerStatsRanking(params.groupCode, sort);
-  if (!overview) throw new Response("Group not found", { status: 404 });
-  return overview;
+  const { getSeasonOverview } = await import('@server/services/season-service.server');
+  return data(await getSeasonOverview(request,params.groupCode,sort),{headers:headers()});
+}
+export function headers() { return { 'Cache-Control':'private, no-store' }; }
+export async function action({request,params}: Route.ActionArgs) {
+  const form = await request.formData();
+  if (form.get('intent') !== 'finalize-season') throw new Response('Unknown action',{status:400});
+  const { finalizeSeason } = await import('@server/services/season-service.server');
+  return finalizeSeason(request,params.groupCode,String(form.get('season')),String(form.get('version')));
 }
 
 export default function StatsIndex({ loaderData }: Route.ComponentProps) {
   const { group, ranking, sort } = loaderData;
+  const navigate = useNavigate();
+  const navigation = useNavigation();
+  const actionData = useActionData<typeof action>();
+  const [confirming,setConfirming] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(()=>{
+    if (!dialog.current) return;
+    if (confirming && !dialog.current.open) dialog.current.showModal();
+    if (!confirming && dialog.current.open) dialog.current.close();
+  },[confirming]);
+  useEffect(()=>{ setActiveSort(sort); setConfirming(false); },[loaderData,sort]);
   const [activeSort, setActiveSort] = useState<PlayerStatsSort>(sort);
   const visibleRanking = useMemo(
-    () => rankPlayers(ranking, activeSort),
-    [ranking, activeSort],
+    () => loaderData.selectedSeason ? rankSeason(ranking, activeSort) : rankPlayers(ranking, activeSort),
+    [ranking, activeSort, loaderData.selectedSeason],
   );
 
   function handleSortChange(nextSort: PlayerStatsSort) {
@@ -53,6 +70,43 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
         <h1>RANKING</h1>
         <p>{group.name} のプレイヤーを、好きな指標で比べる。</p>
       </section>
+      <section className="season-selector">
+        <label className="field">シーズン
+          <select value={loaderData.selectedSeason?.key ?? 'all'} onChange={e=>navigate(`?season=${e.target.value}&sort=${activeSort}`)}>
+            {loaderData.seasons.map(season=><option key={season.key} value={season.key}>{season.name}</option>)}
+            <option value="all">通算</option>
+          </select>
+        </label>
+        {loaderData.selectedSeason ? <>
+          <h2>{loaderData.selectedSeason.name} {loaderData.finalizedAt ? '確定済み' : '集計中'}</h2>
+          <p>{formatSeasonDate(loaderData.selectedSeason.startAt)}〜{formatSeasonDate(new Date(Date.parse(loaderData.selectedSeason.endAt)-1).toISOString())}</p>
+          <small>シーズン表彰は累計BBのみで順位を決定します。</small>
+        </> : null}
+        {loaderData.unavailable ? <p>シーズン機能は準備中です。通算ランキングを表示しています。</p> : null}
+        {actionData?.error ? <p role="alert">{actionData.error}</p> : null}
+        {loaderData.canFinalize ? <button type="button" className="button button-secondary" disabled={!ranking.length} onClick={()=>setConfirming(true)}>シーズン確定の確認</button> : null}
+      </section>
+      {loaderData.preview && loaderData.selectedSeason ? <BodyPortal>
+        <dialog ref={dialog} className="table-event-dialog season-confirm-dialog" onCancel={()=>setConfirming(false)} aria-labelledby="season-confirm-title">
+          <div className="season-confirm-body">
+            <h2 id="season-confirm-title">{loaderData.selectedSeason.name}を確定</h2>
+            <p>参加者 {loaderData.preview.ranking.length}人</p>
+            {loaderData.preview.pendingCount > 0 ? <p role="alert">未確定の開催が{loaderData.preview.pendingCount}件残っています。</p> : null}
+            <p>確定後は取り消せません。以降の開催追加・結果確定・訂正はシーズン順位と称号に反映されません。通算と年間まとめは従来どおり更新されます。</p>
+            <ul>{loaderData.preview.ranking.map(player=><li key={player.groupPlayerId}>
+              <strong>{player.rank}位 {player.displayName} {formatSignedBbValue(player.totalNetBb)}</strong>
+              <p>{loaderData.preview?.awards.find(a=>a.groupPlayerId===player.groupPlayerId)?.titles.map(t=>t.name).join(' ／ ')}</p>
+            </li>)}</ul>
+            <Form method="post">
+              <input type="hidden" name="intent" value="finalize-season"/>
+              <input type="hidden" name="season" value={loaderData.selectedSeason.key}/>
+              <input type="hidden" name="version" value={loaderData.version}/>
+              <button className="button button-primary" disabled={navigation.state !== 'idle'}>順位を固定して称号を付与</button>
+              <button type="button" className="button button-secondary" onClick={()=>setConfirming(false)}>戻る</button>
+            </Form>
+          </div>
+        </dialog>
+      </BodyPortal> : null}
       <section className="stats-ranking-section" aria-label="ランキング">
         <div className="section-heading stats-heading">
           <div className="stats-sort" aria-label="ランキングの並び順">
@@ -201,3 +255,5 @@ function formatDecimal(value: number): string {
 function getBbToneClass(value: number): string {
   return value > 0 ? "bb-positive" : value < 0 ? "bb-negative" : "bb-neutral";
 }
+
+function formatSeasonDate(value: string) { return new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value)); }
