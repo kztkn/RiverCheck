@@ -1,9 +1,10 @@
 import { Suspense } from "react";
-import { Await, Link, NavLink, useRouteLoaderData } from "react-router";
+import { Await, data, Link, NavLink, useRouteLoaderData } from "react-router";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { LiveTableMini } from "~/components/table-now";
 import { orderActiveGamesBySchedule } from "@domain/game/order-active-games";
 import { formatTokyoDateNumeric } from "@domain/date/format-tokyo-date";
+import { isYearRecapPromotionVisible } from "@domain/year-recap/year-recap-promotion";
 import { getGroupOverview } from "@server/services/group-service.server";
 import type { GameListItem } from "@shared-types/game";
 import type { Route } from "./+types/group-top";
@@ -35,7 +36,14 @@ export async function loader({ params }: Route.LoaderArgs) {
           return null;
         })
     : Promise.resolve(null);
-  return { ...overview, liveTable };
+  return data(
+    { ...overview, liveTable, showYearRecap: isYearRecapPromotionVisible(new Date()) },
+    { headers: headers() },
+  );
+}
+
+export function headers() {
+  return { "Cache-Control": "private, no-store" };
 }
 
 export default function GroupTop({ loaderData }: Route.ComponentProps) {
@@ -173,6 +181,16 @@ export default function GroupTop({ loaderData }: Route.ComponentProps) {
           </div>
         )}
       </section>
+
+      {loaderData.showYearRecap ? (
+        <section aria-labelledby="wrapped-2026-heading" className="home-wrapped-card">
+          <h2 id="wrapped-2026-heading">RIVERCHECK WRAPPED 2026</h2>
+          <p>今年のポーカーを振り返ろう。</p>
+          <Link className="button button-secondary" to={`/g/${group.publicCode}/recap/2026`}>
+            2026年のまとめを見る <span aria-hidden="true">→</span>
+          </Link>
+        </section>
+      ) : null}
 
       <PastGames games={pastGames} />
 

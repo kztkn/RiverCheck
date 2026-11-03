@@ -109,6 +109,7 @@ export async function findYearRecapStoryStats(
           ON participant.id = story.game_participant_id
         INNER JOIN games AS game ON game.id = participant.game_id
         WHERE game.group_id = $1
+          AND game.status = 'finalized'
           AND game.played_at >= $3::TIMESTAMPTZ
           AND game.played_at < $4::TIMESTAMPTZ
           AND story.deleted_at IS NULL

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import {
   IconChevronRight,
   IconPlayerPause,
@@ -6,7 +6,7 @@ import {
   IconRefresh,
   IconX,
 } from "@tabler/icons-react";
-import { Link } from "react-router";
+import { data, Link } from "react-router";
 import { AchievementIcon } from "~/components/achievement-icon";
 import { PlayerAvatar } from "~/components/player-avatar";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
@@ -22,6 +22,10 @@ import type { Route } from "./+types/year-recap";
 
 const RECAP_YEAR = 2026;
 const AUTO_ADVANCE_MS = 7_000;
+
+export function headers() {
+  return { "Cache-Control": "private, no-store" };
+}
 
 export function meta({ params }: Route.MetaArgs) {
   return [
@@ -39,7 +43,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!overview) throw new Response("Group not found", { status: 404 });
   if (!overview.profile) throw new Response("Forbidden", { status: 403 });
 
-  return {
+  return data({
     group: {
       name: overview.group.name,
       publicCode: overview.group.publicCode,
@@ -49,7 +53,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       overview.profile,
       RECAP_YEAR,
     ),
-  };
+  }, { headers: headers() });
 }
 
 export default function YearRecap({ loaderData }: Route.ComponentProps) {
@@ -76,6 +80,11 @@ export default function YearRecap({ loaderData }: Route.ComponentProps) {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
+      if (
+        event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey ||
+        (event.target instanceof Element && event.target.closest("button, a, input, textarea, select, [contenteditable]")) ||
+        document.querySelector("dialog[open]")
+      ) return;
       if (event.key === "ArrowRight") {
         setActiveIndex((current) => Math.min(current + 1, slides.length - 1));
       }
@@ -90,6 +99,14 @@ export default function YearRecap({ loaderData }: Route.ComponentProps) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [slides.length]);
+
+  useEffect(() => {
+    function pauseWhenHidden() {
+      if (document.hidden) setIsPlaying(false);
+    }
+    document.addEventListener("visibilitychange", pauseWhenHidden);
+    return () => document.removeEventListener("visibilitychange", pauseWhenHidden);
+  }, []);
 
   function startRecap() {
     setActiveIndex(Math.min(1, slides.length - 1));
@@ -108,6 +125,13 @@ export default function YearRecap({ loaderData }: Route.ComponentProps) {
   function showNextSlide() {
     if (activeIndex === 0) setIsPlaying(true);
     setActiveIndex((current) => Math.min(current + 1, slides.length - 1));
+  }
+
+  function handleStageClick(event: MouseEvent<HTMLElement>) {
+    if (event.target instanceof Element && event.target.closest("button, a")) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    if (event.clientX - bounds.left < bounds.width * 0.35) showPreviousSlide();
+    else showNextSlide();
   }
 
   return (
@@ -133,6 +157,7 @@ export default function YearRecap({ loaderData }: Route.ComponentProps) {
           <button
             aria-label={isPlaying ? "自動再生を一時停止" : "自動再生を再開"}
             className="year-recap-icon-button"
+            disabled={isLastSlide}
             onClick={() => setIsPlaying((current) => !current)}
             type="button"
           >
@@ -152,6 +177,8 @@ export default function YearRecap({ loaderData }: Route.ComponentProps) {
         aria-live="polite"
         className="year-recap-stage"
         key={activeSlide.key}
+        onClick={handleStageClick}
+        onScroll={() => setIsPlaying(false)}
       >
         {activeSlide.content}
         <button
@@ -389,7 +416,7 @@ export function buildSlides(
           <p className="year-recap-kicker">今年手に入れた称号</p>
           <BigNumber value={recap.achievements.length} suffix="個" />
           <div className="year-recap-achievements">
-            {recap.achievements.slice(0, 4).map((achievement) => (
+            {recap.achievements.map((achievement) => (
               <span key={achievement.id}>
                 <AchievementIcon iconKey={achievement.iconKey} />
                 <strong>{achievement.name}</strong>

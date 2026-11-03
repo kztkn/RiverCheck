@@ -1,4 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import type { GameListItem } from "@shared-types/game";
 
 const mocked = vi.hoisted(() => ({
@@ -16,11 +19,12 @@ vi.mock("~/components/site-menu", () => ({
   GroupSiteHeader: vi.fn(() => null),
 }));
 
-import {
+import GroupTop, {
   buildGameUrl,
   getCreateGameUrl,
   getPrimaryGameTiming,
   loader,
+  headers,
 } from "./group-top";
 
 const game = {
@@ -89,10 +93,11 @@ describe("group top navigation", () => {
       }),
     );
 
-    const result = await loader({
+    const response = await loader({
       params: { groupCode: "river-check" },
       request: new Request("https://example.com/g/river-check"),
     } as Parameters<typeof loader>[0]);
+    const result = response.data;
 
     expect(result.group.name).toBe("River Check");
     expect(result.liveTable).toBeInstanceOf(Promise);
@@ -117,5 +122,44 @@ describe("group top navigation", () => {
 describe("group top pending navigation", () => {
   it("keeps URL construction independent from pending UI", () => {
     expect(buildGameUrl(game, false, true)).toBe(`games/${game.id}`);
+  });
+});
+
+describe("年間まとめの期間限定導線", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it.each([
+    ["2026-11-30T00:00:00+09:00", false],
+    ["2026-11-30T23:59:59.999+09:00", false],
+    ["2026-12-01T00:00:00+09:00", true],
+    ["2027-01-31T23:59:59.999+09:00", true],
+    ["2027-02-01T00:00:00+09:00", false],
+  ])("JST %s のカード表示は %s", async (now, visible) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(now));
+    mocked.getGroupOverview.mockResolvedValue({
+      group: { id: "another-group", publicCode: "another-table", name: "別のテーブル" },
+      games: [],
+    });
+    const response = await loader({ params: { groupCode: "another-table" } } as never);
+    const loaderData = response.data;
+    expect(loaderData.showYearRecap).toBe(visible);
+
+    // Rendering uses the server decision even when the client clock differs.
+    vi.setSystemTime(new Date("2030-01-01T00:00:00Z"));
+    const router = createMemoryRouter([{
+      path: "/", element: createElement(GroupTop, { loaderData } as never),
+    }]);
+    const markup = renderToStaticMarkup(createElement(RouterProvider, { router }));
+    expect(markup.includes("RIVERCHECK WRAPPED 2026")).toBe(visible);
+    expect(markup.includes('href="/g/another-table/recap/2026"')).toBe(visible);
+    if (visible) {
+      expect(markup).toContain("今年のポーカーを振り返ろう。");
+      expect(markup).toContain("2026年のまとめを見る");
+      expect(markup.indexOf('class="home-current-empty"')).toBeLessThan(markup.indexOf('class="home-wrapped-card"'));
+      expect(markup.indexOf('class="home-wrapped-card"')).toBeLessThan(markup.indexOf('class="home-history"'));
+    }
+    expect(headers()["Cache-Control"]).toBe("private, no-store");
+    router.dispose();
   });
 });

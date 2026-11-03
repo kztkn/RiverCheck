@@ -16,7 +16,7 @@ vi.mock("@server/services/year-recap-service.server", () => ({
   getYearRecap: mocked.getYearRecap,
 }));
 
-import YearRecap, { buildSlides, loader } from "./year-recap";
+import YearRecap, { buildSlides, headers, loader } from "./year-recap";
 
 const recap: YearRecapSummary = {
   year: 2026,
@@ -95,6 +95,15 @@ const recap: YearRecapSummary = {
 describe("year recap loader", () => {
   beforeEach(() => vi.resetAllMocks());
 
+  it("存在しないグループは集計せず404を返す", async () => {
+    mocked.getAuthenticatedPlayerProfile.mockResolvedValue(null);
+    await expect(loader({
+      request: new Request("https://example.com/g/unknown/recap/2026"),
+      params: { groupCode: "unknown" },
+    } as never)).rejects.toMatchObject({ status: 404 });
+    expect(mocked.getYearRecap).not.toHaveBeenCalled();
+  });
+
   it("本人プロフィールの2026年まとめだけを返す", async () => {
     const profile = {
       groupPlayerId: "player-1",
@@ -107,13 +116,15 @@ describe("year recap loader", () => {
     mocked.getYearRecap.mockResolvedValue(recap);
 
     const result = await loader({
-      request: new Request("https://example.com/g/river-check/recap/2026"),
+      request: new Request("https://example.com/g/river-check/recap/2026?groupPlayerId=player-2"),
       params: { groupCode: "river-check" },
       context: {},
     } as never);
 
     expect(mocked.getYearRecap).toHaveBeenCalledWith("group-1", profile, 2026);
-    expect(result).toMatchObject({ recap, group: { publicCode: "river-check" } });
+    expect(result.data).toMatchObject({ recap, group: { publicCode: "river-check" } });
+    expect(result.init?.headers).toEqual(headers());
+    expect(headers()["Cache-Control"]).toBe("private, no-store");
   });
 
   it("本人プロフィールがない端末には公開しない", async () => {
@@ -134,6 +145,14 @@ describe("year recap loader", () => {
 });
 
 describe("year recap slides", () => {
+  it("獲得称号が5個以上でも全件を読める", () => {
+    const achievements = Array.from({ length: 8 }, (_, i) => ({
+      ...recap.achievements[0], id: `achievement-${i}`, name: `称号${i + 1}`,
+    }));
+    const slide = buildSlides({ ...recap, achievements }, "river-check")
+      .find((slide) => slide.key === "achievements");
+    expect(renderToStaticMarkup(slide!.content)).toContain("称号8");
+  });
   it("年間の主要記録を自動送り用スライドへ展開する", () => {
     const slides = buildSlides(recap, "river-check");
     const markup = renderToStaticMarkup(

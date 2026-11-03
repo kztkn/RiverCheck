@@ -6,7 +6,8 @@
   isolation: isolate;
   display: grid;
   width: 100%;
-  min-height: 100svh;
+  height: 100svh;
+  min-height: 0;
   grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
   background:
@@ -132,9 +133,12 @@
 
 .year-recap-stage {
   position: relative;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
-  place-items: center;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
   padding: 8px max(22px, env(safe-area-inset-right)) 12px max(22px, env(safe-area-inset-left));
 }
 
@@ -143,6 +147,9 @@
   z-index: 1;
   display: grid;
   width: min(100%, 560px);
+  flex-shrink: 0;
+  margin: auto;
+  overflow-wrap: anywhere;
   gap: clamp(22px, 5vh, 42px);
   animation: year-recap-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -433,18 +440,18 @@
   border: 0;
   background: transparent;
   padding: 0;
-  touch-action: manipulation;
+  touch-action: pan-y;
   -webkit-tap-highlight-color: transparent;
 }
 
 .year-recap-tap-zone.is-previous {
   left: 0;
-  width: 35%;
+  width: 20px;
 }
 
 .year-recap-tap-zone.is-next {
   right: 0;
-  width: 65%;
+  width: 20px;
 }
 
 .year-recap-tap-zone:disabled {

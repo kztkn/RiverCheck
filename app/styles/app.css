@@ -697,6 +697,31 @@ fieldset {
   font-size: 0.85rem;
 }
 
+.home-wrapped-card {
+  margin-block: 24px;
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  border-radius: 20px;
+  background: linear-gradient(120deg, rgba(233, 186, 90, 0.10), rgba(57, 222, 141, 0.04));
+  padding: 22px;
+}
+
+.home-wrapped-card h2 {
+  margin: 0;
+  color: var(--gold);
+  font-size: clamp(0.85rem, 3.8vw, 1.05rem);
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+}
+
+.home-wrapped-card p {
+  margin: 10px 0 18px;
+}
+
+.home-wrapped-card .button {
+  width: 100%;
+  gap: 8px;
+}
+
 .home-history {
   margin-bottom: clamp(46px, 8vw, 68px);
 }
