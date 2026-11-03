@@ -1,3 +1,4 @@
+import { readRankingPeriodPreference } from "./ranking-period-preference.server";
 import { availableSeasons, type Season } from "@domain/season/season";
 import { withTransaction } from "@server/db/client.server";
 import { findGroupByPublicCode } from "@server/repositories/group-repository.server";
@@ -69,7 +70,7 @@ export async function getSeasonOverview(
 ) {
   const seasons = availableSeasons();
   const selected = selectSeason(
-    new URL(request.url).searchParams.get("season"),
+    new URL(request.url).searchParams.get("season") ?? readRankingPeriodPreference(request, code),
   );
   const group = await findGroupByPublicCode(code);
   if (!group) throw new Response("Group not found", { status: 404 });
@@ -84,7 +85,7 @@ export async function getSeasonOverview(
       unavailable = true;
     }
   }
-  if (!selected || unavailable) {
+  if (!selected) {
     const all = await getPlayerStatsRanking(code, sort);
     return {
       ...all!,
@@ -106,7 +107,7 @@ export async function getSeasonOverview(
     selectedSeason: selected,
     finalizedAt: saved?.finalizedAt ?? null,
     canFinalize:
-      admin && !saved && Date.now() >= Date.parse(selected.finalizeAt),
+      admin && !saved && !unavailable && Date.now() >= Date.parse(selected.finalizeAt),
     preview:
       admin && !saved
         ? {

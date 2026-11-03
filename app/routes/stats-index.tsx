@@ -13,6 +13,7 @@ import type {
   PlayerStatsRankingRow,
   PlayerStatsSort,
 } from "@shared-types/player-stats";
+import { RankingPeriodPicker } from "~/components/ranking-period-picker";
 import { BodyPortal } from "~/components/body-portal";
 import { rankSeason } from "@domain/season/season";
 import { RANKING_OPTIONS } from "~/utils/ranking-options";
@@ -21,9 +22,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const { parsePlayerStatsSort } = await import('@server/services/player-stats-service.server');
   const sort = parsePlayerStatsSort(new URL(request.url).searchParams.get("sort"));
   const { getSeasonOverview } = await import('@server/services/season-service.server');
-  return data(await getSeasonOverview(request,params.groupCode,sort),{headers:headers()});
+  const overview = await getSeasonOverview(request,params.groupCode,sort);
+  const responseHeaders = new Headers(headers());
+  if (new URL(request.url).searchParams.has('season')) {
+    const { rankingPeriodCookie } = await import('@server/services/ranking-period-preference.server');
+    responseHeaders.set('Set-Cookie',rankingPeriodCookie(request,params.groupCode,overview.selectedSeason?.key ?? 'all'));
+  }
+  return data(overview,{headers:responseHeaders});
 }
-export function headers() { return { 'Cache-Control':'private, no-store' }; }
+export function headers(args?: Route.HeadersArgs) { const result = new Headers(args?.loaderHeaders); result.set('Cache-Control','private, no-store'); return result; }
 export async function action({request,params}: Route.ActionArgs) {
   const form = await request.formData();
   if (form.get('intent') !== 'finalize-season') throw new Response('Unknown action',{status:400});
@@ -71,18 +78,11 @@ export default function StatsIndex({ loaderData }: Route.ComponentProps) {
         <p>{group.name} のプレイヤーを、好きな指標で比べる。</p>
       </section>
       <section className="season-selector">
-        <label className="field">シーズン
-          <select value={loaderData.selectedSeason?.key ?? 'all'} onChange={e=>navigate(`?season=${e.target.value}&sort=${activeSort}`)}>
-            {loaderData.seasons.map(season=><option key={season.key} value={season.key}>{season.name}</option>)}
-            <option value="all">通算</option>
-          </select>
-        </label>
-        {loaderData.selectedSeason ? <>
-          <h2>{loaderData.selectedSeason.name} {loaderData.finalizedAt ? '確定済み' : '集計中'}</h2>
-          <p>{formatSeasonDate(loaderData.selectedSeason.startAt)}〜{formatSeasonDate(new Date(Date.parse(loaderData.selectedSeason.endAt)-1).toISOString())}</p>
-          <small>シーズン表彰は累計BBのみで順位を決定します。</small>
-        </> : null}
-        {loaderData.unavailable ? <p>シーズン機能は準備中です。通算ランキングを表示しています。</p> : null}
+        <RankingPeriodPicker seasons={loaderData.seasons} selectedKey={loaderData.selectedSeason?.key ?? 'all'} onSelect={key=>navigate(`?season=${key}&sort=${activeSort}`)} />
+        {loaderData.selectedSeason ? <p className="season-period">
+          {formatSeasonDate(loaderData.selectedSeason.startAt)}〜{formatSeasonDate(new Date(Date.parse(loaderData.selectedSeason.endAt)-1).toISOString())}
+          {loaderData.finalizedAt ? <span className="season-finalized">確定済み</span> : null}
+        </p> : null}
         {actionData?.error ? <p role="alert">{actionData.error}</p> : null}
         {loaderData.canFinalize ? <button type="button" className="button button-secondary" disabled={!ranking.length} onClick={()=>setConfirming(true)}>シーズン確定の確認</button> : null}
       </section>

@@ -163,7 +163,7 @@ describe("年間まとめ（実際のPostgreSQLで集計・更新・グループ
     );
     expect(titles.rows).toHaveLength(6);
   });
-  it("migration未適用時も通算を閲覧できる", async () => {
+  it("migration未適用でも現在シーズンを集計し、確定操作だけ停止する", async () => {
     await addGame("2026-12-01T00:00:00Z");
     await db().exec(
       "ALTER TABLE ranking_seasons RENAME TO unavailable_seasons",
@@ -175,6 +175,8 @@ describe("年間まとめ（実際のPostgreSQLで集計・更新・グループ
         "total",
       );
       expect(result.unavailable).toBe(true);
+      expect(result.selectedSeason?.key).toBe("2026");
+      expect(result.canFinalize).toBe(false);
       expect(result.ranking).toHaveLength(2);
     } finally {
       await db().exec(

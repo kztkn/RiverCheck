@@ -167,4 +167,4 @@ Cloudflareは `build/client` を静的assetとして配信するため、公開�
 - [今後の TODO](docs/TODO.md)
 
 ### シーズンランキングの有効化
-`0038_add_ranking_seasons.sql`は追加テーブルだけのmigrationです。本番では未適用migration一覧・接続先を確認し、明示的な承認後に既存の`npm run db:migrate:production`で適用してください。release:buildから自動適用はしません。未適用の間はランキングを通算表示へ退避します。適用後は現在シーズンが既定となり、ADMINは終了月にランキング画面から確認・確定できます。確定すると取消UIはなく、以降の訂正は通算・年間まとめへだけ反映されます。
+`0038_add_ranking_seasons.sql`は追加テーブルだけのmigrationです。本番では未適用migration一覧・接続先を確認し、明示的な承認後に既存の`npm run db:migrate:production`で適用してください。release:buildから自動適用はしません。未適用でも現在シーズンの最新集計を表示します。確定保存と称号付与だけは適用後に利用でき、ADMINは終了月にランキング画面から確認・確定できます。確定すると取消UIはなく、以降の訂正は通算・年間まとめへだけ反映されます。
