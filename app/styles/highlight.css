@@ -429,3 +429,5 @@
   }
 
 }
+.game-story-reaction-chip, .game-story-reaction-option, .game-story-reaction-add { touch-action: manipulation; }
+.game-story-reaction-error { color: var(--red); font-size: .8rem; margin: 6px 0; }

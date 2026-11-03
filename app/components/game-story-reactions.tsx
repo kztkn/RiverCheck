@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
   type ReactNode,
 } from "react";
 import { GAME_STORY_REACTION_TYPES } from "@domain/story/game-story-reaction";
@@ -22,18 +23,24 @@ const REACTION_VISUALS: ReadonlyArray<{
   { type: "fire", label: "熱い", src: "/reactions/fluent-fire.svg" },
   { type: "shock", label: "えぐい", src: "/reactions/fluent-shock.svg" },
   { type: "nice", label: "ナイス", src: "/reactions/fluent-nice.svg" },
-  { type: "respect", label: "GG・リスペクト", src: "/reactions/fluent-respect.svg" },
+  {
+    type: "respect",
+    label: "GG・リスペクト",
+    src: "/reactions/fluent-respect.svg",
+  },
 ];
 
-type ReactionState = { active: boolean; count: number };
-type ReactionStore = Record<
-  string,
-  Partial<Record<GameStoryReactionType, ReactionState>>
->;
+import {
+  StoryReactionController,
+  getReactionState,
+  setReactionState,
+  type ReactionStore,
+} from "~/utils/story-reaction-controller";
 
 interface ReactionContextValue {
   canReact: boolean;
   loaded: boolean;
+  errors: Record<string, string>;
   pending: ReadonlySet<string>;
   store: ReactionStore;
   toggle: (postId: string, type: GameStoryReactionType) => void;
@@ -41,15 +48,27 @@ interface ReactionContextValue {
 
 const ReactionContext = createContext<ReactionContextValue | null>(null);
 
-export function GameStoryReactionProvider({ children }: { children: ReactNode }) {
-  const pathname = typeof window === "undefined" ? "" : window.location.pathname;
+export function GameStoryReactionProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const pathname =
+    typeof window === "undefined" ? "" : window.location.pathname;
   const endpoint = buildGameStoryReactionPath(pathname);
   const [loaded, setLoaded] = useState(false);
   const [canReact, setCanReact] = useState(false);
   const [store, setStore] = useState<ReactionStore>({});
   const [pending, setPending] = useState<Set<string>>(() => new Set());
 
+  const controllerRef = useRef<StoryReactionController | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   useEffect(() => {
+    controllerRef.current?.dispose();
+    controllerRef.current = null;
+    setPending(new Set());
+    setErrors({});
+    setCanReact(false);
     if (!endpoint) {
       setLoaded(true);
       setCanReact(false);
@@ -64,7 +83,8 @@ export function GameStoryReactionProvider({ children }: { children: ReactNode })
       signal: controller.signal,
     })
       .then(async (response) => {
-        if (!response.ok) throw new Error(`Reaction load failed: ${response.status}`);
+        if (!response.ok)
+          throw new Error(`Reaction load failed: ${response.status}`);
         return response.json() as Promise<{
           canReact: boolean;
           reactions: GameStoryReactionSummary[];
@@ -73,7 +93,49 @@ export function GameStoryReactionProvider({ children }: { children: ReactNode })
       .then((overview) => {
         if (controller.signal.aborted) return;
         setCanReact(overview.canReact);
-        setStore(buildReactionStore(overview.reactions));
+        const initialStore = buildReactionStore(overview.reactions);
+        setStore(initialStore);
+        controllerRef.current = new StoryReactionController(
+          initialStore,
+          async (postId, type, active) => {
+            const formData = new FormData();
+            formData.set("postId", postId);
+            formData.set("reactionType", type);
+            formData.set("active", active ? "yes" : "no");
+            const response = await fetch(endpoint, {
+              method: "POST",
+              body: formData,
+              headers: { Accept: "application/json" },
+              signal: controller.signal,
+            });
+            const result = (await response.json()) as {
+              ok?: unknown;
+              active?: unknown;
+              count?: unknown;
+            } | null;
+            if (
+              !response.ok ||
+              !result ||
+              result.ok !== true ||
+              typeof result.active !== "boolean" ||
+              typeof result.count !== "number" ||
+              !Number.isFinite(result.count) ||
+              result.count < 0
+            )
+              throw new Error("Reaction save failed");
+            return { active: result.active, count: result.count };
+          },
+          (next, pendingKeys) => {
+            setStore(next);
+            setPending(pendingKeys);
+          },
+          (postId) =>
+            setErrors((current) => ({
+              ...current,
+              [postId]:
+                "スタンプを保存できませんでした。もう一度お試しください。",
+            })),
+        );
         setLoaded(true);
       })
       .catch((error) => {
@@ -83,68 +145,26 @@ export function GameStoryReactionProvider({ children }: { children: ReactNode })
         setStore({});
         setLoaded(true);
       });
-    return () => controller.abort();
+    return () => {
+      controllerRef.current?.dispose();
+      controllerRef.current = null;
+      controller.abort();
+    };
   }, [endpoint]);
 
   function toggle(postId: string, type: GameStoryReactionType) {
     if (!endpoint || !canReact) return;
-    const key = reactionKey(postId, type);
-    if (pending.has(key)) return;
-    const previous = getReactionState(store, postId, type);
-    const desired = !previous.active;
-
-    setStore((current) =>
-      setReactionState(current, postId, type, {
-        active: desired,
-        count: Math.max(0, previous.count + (desired ? 1 : -1)),
-      }),
-    );
-    setPending((current) => new Set(current).add(key));
-
-    const formData = new FormData();
-    formData.set("postId", postId);
-    formData.set("reactionType", type);
-    formData.set("active", desired ? "yes" : "no");
-    void fetch(endpoint, {
-      method: "POST",
-      body: formData,
-      headers: { Accept: "application/json" },
-    })
-      .then(async (response) => {
-        const data = await response.json() as {
-          ok: boolean;
-          active?: boolean;
-          count?: number;
-          error?: string;
-        };
-        if (!response.ok || !data.ok || typeof data.count !== "number") {
-          throw new Error(data.error ?? `Reaction save failed: ${response.status}`);
-        }
-        setStore((current) =>
-          setReactionState(current, postId, type, {
-            active: Boolean(data.active),
-            count: data.count ?? 0,
-          }),
-        );
-      })
-      .catch((error) => {
-        console.error("Failed to save game story reaction", error);
-        setStore((current) =>
-          setReactionState(current, postId, type, previous),
-        );
-      })
-      .finally(() => {
-        setPending((current) => {
-          const next = new Set(current);
-          next.delete(key);
-          return next;
-        });
-      });
+    setErrors((current) => {
+      const next = { ...current };
+      delete next[postId];
+      return next;
+    });
+    controllerRef.current?.toggle(postId, type);
   }
 
   const value = useMemo(
-    () => ({ canReact, loaded, pending, store, toggle }),
-    [canReact, loaded, pending, store],
+    () => ({ canReact, loaded, pending, store, toggle, errors }),
+    [canReact, loaded, pending, store, errors],
   );
   return (
     <ReactionContext.Provider value={value}>
@@ -159,21 +179,30 @@ export function GameStoryReactionBar({ postId }: { postId: string }) {
   if (!context?.loaded) return null;
 
   const visible = REACTION_VISUALS.filter(
-    ({ type }) => getReactionState(context.store, postId, type).count > 0,
+    ({ type }) =>
+      getReactionState(context.store, postId, type).count > 0 ||
+      context.pending.has(reactionKey(postId, type)),
   );
   if (!context.canReact && visible.length === 0) return null;
 
   return (
     <div className="game-story-reactions">
+      {context.errors[postId] ? (
+        <p role="alert" className="game-story-reaction-error">
+          {context.errors[postId]}
+        </p>
+      ) : null}
       <div className="game-story-reaction-row">
         {visible.map((reaction) => {
           const state = getReactionState(context.store, postId, reaction.type);
-          const isPending = context.pending.has(reactionKey(postId, reaction.type));
+          const isPending = context.pending.has(
+            reactionKey(postId, reaction.type),
+          );
           return context.canReact ? (
             <button
               aria-pressed={state.active}
               className={`game-story-reaction-chip${state.active ? " is-selected" : ""}`}
-              disabled={isPending}
+              aria-busy={isPending}
               key={reaction.type}
               onClick={() => context.toggle(postId, reaction.type)}
               title={reaction.label}
@@ -202,16 +231,25 @@ export function GameStoryReactionBar({ postId }: { postId: string }) {
         ) : null}
       </div>
       {context.canReact && pickerOpen ? (
-        <div className="game-story-reaction-picker" aria-label="リアクションを選択">
+        <div
+          className="game-story-reaction-picker"
+          aria-label="リアクションを選択"
+        >
           {REACTION_VISUALS.map((reaction) => {
-            const state = getReactionState(context.store, postId, reaction.type);
-            const isPending = context.pending.has(reactionKey(postId, reaction.type));
+            const state = getReactionState(
+              context.store,
+              postId,
+              reaction.type,
+            );
+            const isPending = context.pending.has(
+              reactionKey(postId, reaction.type),
+            );
             return (
               <button
                 aria-label={`${reaction.label}${state.active ? "を取り消す" : "を付ける"}`}
                 aria-pressed={state.active}
                 className={`game-story-reaction-option${state.active ? " is-selected" : ""}`}
-                disabled={isPending}
+                aria-busy={isPending}
                 key={reaction.type}
                 onClick={() => context.toggle(postId, reaction.type)}
                 title={reaction.label}
@@ -227,7 +265,11 @@ export function GameStoryReactionBar({ postId }: { postId: string }) {
   );
 }
 
-function ReactionImage({ reaction }: { reaction: (typeof REACTION_VISUALS)[number] }) {
+function ReactionImage({
+  reaction,
+}: {
+  reaction: (typeof REACTION_VISUALS)[number];
+}) {
   return (
     <img
       alt=""
@@ -258,29 +300,6 @@ export function buildReactionStore(
     });
   }
   return store;
-}
-
-function getReactionState(
-  store: ReactionStore,
-  postId: string,
-  type: GameStoryReactionType,
-): ReactionState {
-  return store[postId]?.[type] ?? { active: false, count: 0 };
-}
-
-function setReactionState(
-  store: ReactionStore,
-  postId: string,
-  type: GameStoryReactionType,
-  value: ReactionState,
-): ReactionStore {
-  return {
-    ...store,
-    [postId]: {
-      ...store[postId],
-      [type]: value,
-    },
-  };
 }
 
 function reactionKey(postId: string, type: GameStoryReactionType): string {

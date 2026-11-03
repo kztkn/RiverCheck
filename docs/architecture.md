@@ -116,7 +116,7 @@ R2とPostgreSQLをまたぐ分散トランザクションは作らない。参�
 
 TABLE STORIESのリアクションは`game_story_reactions`へ分離し、投稿、リアクションした`group_player`、固定のreaction typeを保持する。同一投稿・同一プレイヤー・同一種別を一意制約にし、1投稿への複数種別を許可する。開催参加者ではなくプロフィール認証済みのグループメンバーを操作主体とするため、`game_participant_id`ではなく`group_player_id`を参照する。
 
-リアクション一覧と更新は専用resource routeを使用し、TABLE STORIES本体のloaderを再実行しない。クライアントはタップ時に件数と選択状態を先に更新するOptimistic UIとし、種別ごとに独立してPOSTする。サーバーは`active`の最終状態を受け取り、INSERTは`ON CONFLICT DO NOTHING`、解除はDELETEとして冪等に保存する。保存後はその種別の最新件数を返し、失敗時だけクライアントが直前状態へ戻す。
+リアクション一覧と更新は専用resource routeを使用し、TABLE STORIES本体のloaderを再実行しない。クライアントはタップ時に件数と選択状態を先に更新するOptimistic UIとし、種別ごとに独立してPOSTする。サーバーは`active`の最終状態を受け取り、INSERTは`ON CONFLICT DO NOTHING`、解除はDELETEとして冪等に保存する。保存後はその種別の最新件数を返す。クライアントのStoryReactionControllerが投稿・種別ごとの送信を直列化し、通信中の再タップは即時表示したうえで最後の希望状態へまとめる。古い応答は新しい選択を上書きしない。失敗時は最後に確認済みの状態へ戻してインライン通知し、画面遷移時はdisposeとAbortControllerで遅延応答を破棄する。
 
 ## 会費回収の即時更新
 
