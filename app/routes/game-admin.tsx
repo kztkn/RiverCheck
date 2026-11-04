@@ -16,6 +16,7 @@ import {
   findGameWithGroupByPublicCode,
   publishSettlementPlan,
   updateLocalRules,
+  StandUpRuleUnavailableError,
 } from "@server/repositories/game-repository.server";
 import {
   findParticipantByTokenHash,
@@ -283,11 +284,20 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   if (intent === "save-local-rules") {
-    const updated = await updateLocalRules(authorized.group.id, params.gameId, {
-      sevenDeuceRuleEnabled:
-        readString(formData, "sevenDeuceRuleEnabled") === "yes",
-      bombPotRuleEnabled: readString(formData, "bombPotRuleEnabled") === "yes",
-    });
+    let updated: boolean;
+    try {
+      updated = await updateLocalRules(authorized.group.id, params.gameId, {
+        sevenDeuceRuleEnabled:
+          readString(formData, "sevenDeuceRuleEnabled") === "yes",
+        bombPotRuleEnabled: readString(formData, "bombPotRuleEnabled") === "yes",
+        standUpRuleEnabled: readString(formData, "standUpRuleEnabled") === "yes",
+      });
+    } catch (error) {
+      if (error instanceof StandUpRuleUnavailableError) {
+        return { ok: false as const, intent: "save-local-rules" as const, error: error.message };
+      }
+      throw error;
+    }
     if (!updated) {
       return {
         ok: false as const,
@@ -649,6 +659,7 @@ export default function GameAdmin({
   const [bombPotRuleEnabled, setBombPotRuleEnabled] = useState(
     loaderData.game.bombPotRuleEnabled,
   );
+  const [standUpRuleEnabled, setStandUpRuleEnabled] = useState(loaderData.game.standUpRuleEnabled);
 
   useEffect(() => {
     if (
@@ -675,7 +686,9 @@ export default function GameAdmin({
   useEffect(() => {
     setSevenDeuceRuleEnabled(loaderData.game.sevenDeuceRuleEnabled);
     setBombPotRuleEnabled(loaderData.game.bombPotRuleEnabled);
+    setStandUpRuleEnabled(loaderData.game.standUpRuleEnabled);
   }, [
+    loaderData.game.standUpRuleEnabled,
     loaderData.game.bombPotRuleEnabled,
     loaderData.game.sevenDeuceRuleEnabled,
   ]);
@@ -1691,7 +1704,7 @@ export default function GameAdmin({
               <span className="local-rules-summary-title">ローカルルール</span>
               <span className="local-rules-summary-status">
                 72o {sevenDeuceRuleEnabled ? "ON" : "OFF"} ・ ボムポット{" "}
-                {bombPotRuleEnabled ? "ON" : "OFF"}
+                {bombPotRuleEnabled ? "ON" : "OFF"} ・ STAND UP {standUpRuleEnabled ? "ON" : "OFF"}
               </span>
               <span aria-hidden="true" className="local-rules-summary-chevron">
                 ›
@@ -1734,6 +1747,20 @@ export default function GameAdmin({
                   <small>
                     決められたタイミングで全員が2.5BBを強制ベットし、プリフロップを飛ばしてフロップからプレイします。
                   </small>
+                </span>
+                <span aria-hidden="true" className="local-rule-switch" />
+              </label>
+              <label className="local-rule-toggle-card">
+                <input
+                  checked={standUpRuleEnabled}
+                  name="standUpRuleEnabled"
+                  onChange={(event) => setStandUpRuleEnabled(event.target.checked)}
+                  type="checkbox"
+                  value="yes"
+                />
+                <span className="local-rule-toggle-copy">
+                  <strong>STAND UP</strong>
+                  <small>全員が立ち、ポットを獲得した人から着席。最後まで立っていた1人をEVENTで記録します。進行や支払いは卓内で確認してください。</small>
                 </span>
                 <span aria-hidden="true" className="local-rule-switch" />
               </label>
@@ -2212,6 +2239,7 @@ function gameToFormValues(game: Route.ComponentProps["loaderData"]["game"]) {
     bbRate: String(game.bbRate),
     sevenDeuceRuleEnabled: game.sevenDeuceRuleEnabled,
     bombPotRuleEnabled: game.bombPotRuleEnabled,
+    standUpRuleEnabled: game.standUpRuleEnabled,
   };
 }
 

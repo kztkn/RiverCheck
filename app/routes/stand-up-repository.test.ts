@@ -19,6 +19,7 @@ import {
   listFinalizedGameTableEvents,
   listOpenGameTableEvents,
 } from "@server/repositories/table-event-repository.server";
+import { findGameForGroup, insertGame, updateLocalRules } from "@server/repositories/game-repository.server";
 import { getOpenGameTableEventCounts } from "@server/repositories/participant-repository.server";
 import {
   insertAchievementUnlocks,
@@ -67,6 +68,25 @@ describe("STAND UP migration・repository統合", () => {
       await expect(insertEvent("bomb_pot", playerId)).rejects.toMatchObject({ constraint: "game_table_events_subject_valid" });
       await expect(insertEvent("unknown", null)).rejects.toMatchObject({ constraint: "game_table_events_type_valid" });
 
+      // A deploy before explicit migration approval must keep the old behavior working.
+      expect((await findGameForGroup(groupId, gameId))?.standUpRuleEnabled).toBe(true);
+      expect(await updateLocalRules(groupId, gameId, { sevenDeuceRuleEnabled: true, bombPotRuleEnabled: true, standUpRuleEnabled: true })).toBe(true);
+      await expect(updateLocalRules(groupId, gameId, { sevenDeuceRuleEnabled: true, bombPotRuleEnabled: true, standUpRuleEnabled: false })).rejects.toMatchObject({ name: "StandUpRuleUnavailableError" });
+      const newGameInput = {
+        title: "設定テスト", playedAt: "2026-11-04T00:00:00Z", initialChips: 20000,
+        smallBlindChips: 100, bigBlindChips: 200, bigBlindAnteChips: 200,
+        initialStackBb: 100, rebuyChips: 20000, chipDistribution: null,
+        venueCost: 0, roundingUnit: 100, firstPlaceCost: 0, secondPlaceCost: 0,
+        thirdPlaceCost: 0, previewParticipantCount: 2, costShares: [0, 0], bbRate: 0,
+        sevenDeuceRuleEnabled: true, bombPotRuleEnabled: true, standUpRuleEnabled: true,
+      };
+      const legacyCreated = await insertGame(groupId, newGameInput);
+      expect((await findGameForGroup(groupId, legacyCreated))?.standUpRuleEnabled).toBe(true);
+      await expect(insertGame(groupId, { ...newGameInput, standUpRuleEnabled: false })).rejects.toMatchObject({ name: "StandUpRuleUnavailableError" });
+      await db.exec(await readFile(resolve(directory, "0039_add_stand_up_rule.sql"), "utf8"));
+      expect((await db.query("SELECT stand_up_rule_enabled FROM games WHERE id = $1", [gameId])).rows).toEqual([{ stand_up_rule_enabled: true }]);
+      const created = await insertGame(groupId, { ...newGameInput, standUpRuleEnabled: false });
+      expect((await findGameForGroup(groupId, created))?.standUpRuleEnabled).toBe(false);
       const participantBefore = (await db.query("SELECT * FROM game_participants")).rows;
       const input = { actor: { groupPlayerId: playerId, type: "participant" as const }, commandId: crypto.randomUUID(), gameId, groupId, subjectGroupPlayerId: playerId };
       const eventId = await createStandUpLoserTableEvent(input);
@@ -80,6 +100,12 @@ describe("STAND UP migration・repository統合", () => {
         id: eventId, type: "stand_up_loser", subject: expect.objectContaining({ groupPlayerId: playerId }),
       }));
 
+      expect(await updateLocalRules(groupId, gameId, { sevenDeuceRuleEnabled: true, bombPotRuleEnabled: true, standUpRuleEnabled: false })).toBe(true);
+      expect((await findGameForGroup(groupId, gameId))?.standUpRuleEnabled).toBe(false);
+      expect(await createStandUpLoserTableEvent({ ...input, commandId: crypto.randomUUID() })).toBeNull();
+      expect((await listOpenGameTableEvents(groupId, gameId)).some((event) => event.id === eventId)).toBe(true);
+      // Rule changes do not remove historical events or change achievement evaluation.
+      await db.query("UPDATE games SET stand_up_rule_enabled = TRUE WHERE id = $1", [gameId]);
       const canceledId = await createStandUpLoserTableEvent({ ...input, commandId: crypto.randomUUID() });
       expect(await cancelTableEvent({ ...input, eventId: canceledId! })).toBe(true);
       expect((await getOpenGameTableEventCounts(groupId, gameId)).standUpCount).toBe(1);
@@ -90,6 +116,7 @@ describe("STAND UP migration・repository統合", () => {
       await db.query(`INSERT INTO game_results (game_id, group_player_id, remaining_chips, settlement_rebuy_count, score, rank, cost_share)
         VALUES ($1, $2, 20000, 0, 20000, 1, 0)`, [gameId, playerId]);
       await db.query("UPDATE games SET status = 'finalized', finalized_at = NOW() WHERE id = $1", [gameId]);
+      expect(await updateLocalRules(groupId, gameId, { sevenDeuceRuleEnabled: true, bombPotRuleEnabled: true, standUpRuleEnabled: false })).toBe(false);
       expect(await createStandUpLoserTableEvent({ ...input, commandId: crypto.randomUUID() })).toBeNull();
       expect(await cancelTableEvent({ ...input, eventId: eventId! })).toBe(false);
       const timeline = await listFinalizedGameTableEvents(groupId, gameId);

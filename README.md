@@ -168,3 +168,6 @@ Cloudflareは `build/client` を静的assetとして配信するため、公開�
 
 ### シーズンランキングの有効化
 `0038_add_ranking_seasons.sql`は追加テーブルだけのmigrationです。本番では未適用migration一覧・接続先を確認し、明示的な承認後に既存の`npm run db:migrate:production`で適用してください。release:buildから自動適用はしません。未適用でも現在シーズンの最新集計を表示します。確定保存と称号付与だけは適用後に利用でき、ADMINは終了月にランキング画面から確認・確定できます。確定すると取消UIはなく、以降の訂正は通算・年間まとめへだけ反映されます。
+
+### STAND UPのON/OFF設定を有効にする
+`migrations/0039_add_stand_up_rule.sql`は開催ごとのSTAND UP設定を追加します（既存開催・新規開催とも初期ON）。本番適用は管理者の明示的な承認後に既存のproduction migration手順で行ってください。未適用でも従来のON状態で開催の閲覧・作成・記録を継続できますが、OFF設定の保存はできません。記録や称号のデータ変更・バックフィルは不要です。

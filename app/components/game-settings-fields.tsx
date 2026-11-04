@@ -40,6 +40,7 @@ export interface GameSettingsValues extends GameConfigurationValues {
   bbRate: string;
   sevenDeuceRuleEnabled: boolean;
   bombPotRuleEnabled: boolean;
+  standUpRuleEnabled: boolean;
 }
 
 type AdjustmentMode = "top-three" | "individual";
@@ -117,11 +118,13 @@ export function GameSettingsFields({
   const [bombPotRuleEnabled, setBombPotRuleEnabled] = useState(
     values.bombPotRuleEnabled,
   );
+  const [standUpRuleEnabled, setStandUpRuleEnabled] = useState(values.standUpRuleEnabled);
 
   useEffect(() => {
     setSevenDeuceRuleEnabled(values.sevenDeuceRuleEnabled);
     setBombPotRuleEnabled(values.bombPotRuleEnabled);
-  }, [values.bombPotRuleEnabled, values.sevenDeuceRuleEnabled]);
+    setStandUpRuleEnabled(values.standUpRuleEnabled);
+  }, [values.standUpRuleEnabled, values.bombPotRuleEnabled, values.sevenDeuceRuleEnabled]);
 
   useEffect(() => {
     setGameConfiguration({
@@ -558,7 +561,7 @@ export function GameSettingsFields({
                   <strong>ローカルルール</strong>
                   <small>
                     72o {sevenDeuceRuleEnabled ? "ON" : "OFF"} ・ ボムポット{" "}
-                    {bombPotRuleEnabled ? "ON" : "OFF"}
+                    {bombPotRuleEnabled ? "ON" : "OFF"} ・ STAND UP {standUpRuleEnabled ? "ON" : "OFF"}
                   </small>
                 </span>
               </summary>
@@ -596,6 +599,20 @@ export function GameSettingsFields({
                     <small>
                       決められたタイミングで全員が2.5BBを強制ベットし、プリフロップを飛ばしてフロップからプレイします。
                     </small>
+                  </span>
+                  <span aria-hidden="true" className="local-rule-switch" />
+                </label>
+                <label className="local-rule-toggle-card">
+                  <input
+                    checked={standUpRuleEnabled}
+                    name="standUpRuleEnabled"
+                    onChange={(event) => setStandUpRuleEnabled(event.target.checked)}
+                    type="checkbox"
+                    value="yes"
+                  />
+                  <span className="local-rule-toggle-copy">
+                    <strong>STAND UP</strong>
+                    <small>全員が立ち、ポットを獲得した人から着席。最後まで立っていた1人をEVENTで記録します。進行や支払いは卓内で確認してください。</small>
                   </span>
                   <span aria-hidden="true" className="local-rule-switch" />
                 </label>

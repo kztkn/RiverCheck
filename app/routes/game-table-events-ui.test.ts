@@ -44,7 +44,7 @@ describe("table event panel loading", () => {
   it("取得失敗後の再試行はGETだけを送り、記録POSTを繰り返さない", async () => {
     const panel = {
       canRecord: true,
-      rules: { sevenDeuce: true, bombPot: true },
+      rules: { sevenDeuce: true, bombPot: true, standUp: true },
       participants: [], recentEvents: [],
     };
     const fetchMock = vi.fn()

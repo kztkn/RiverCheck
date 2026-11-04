@@ -51,7 +51,7 @@ export async function getTableEventPanel(
     return {
       canRecord: false,
       currentGroupPlayerId: null,
-      rules: { sevenDeuce: false, bombPot: false },
+      rules: { sevenDeuce: false, bombPot: false, standUp: false },
       participants: [],
       recentEvents: [],
     };
@@ -71,6 +71,7 @@ export async function getTableEventPanel(
       rules: {
         sevenDeuce: context.game.sevenDeuceRuleEnabled,
         bombPot: context.game.bombPotRuleEnabled,
+        standUp: context.game.standUpRuleEnabled,
       },
       participants: [],
       recentEvents: [],
@@ -87,6 +88,7 @@ export async function getTableEventPanel(
     rules: {
       sevenDeuce: context.game.sevenDeuceRuleEnabled,
       bombPot: context.game.bombPotRuleEnabled,
+      standUp: context.game.standUpRuleEnabled,
     },
     participants: participants.map((participant) => ({
       groupPlayerId: participant.groupPlayerId,
@@ -134,6 +136,9 @@ export async function recordTableEvent(
       subjectGroupPlayerId: command.subjectGroupPlayerId,
     });
   } else if (command.type === "stand_up_loser") {
+    if (!context.game.standUpRuleEnabled) {
+      return { ok: false, error: "この開催ではSTAND UPはOFFです。" };
+    }
     eventId = await createStandUpLoserTableEvent({
       actor,
       commandId: command.commandId,

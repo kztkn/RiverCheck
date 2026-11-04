@@ -1,6 +1,7 @@
 import {
   deleteOpenGame,
   insertGame,
+  StandUpRuleUnavailableError,
   updateOpenGameConfiguration,
   updateOpenGameIdentity,
   updateOpenGameTitle,
@@ -45,6 +46,7 @@ export interface GameSettingsFormValues {
   bbRate: string;
   sevenDeuceRuleEnabled: boolean;
   bombPotRuleEnabled: boolean;
+  standUpRuleEnabled: boolean;
 }
 
 export interface GameIdentityFormValues {
@@ -120,6 +122,7 @@ export function readGameSettingsForm(
     sevenDeuceRuleEnabled:
       readString(formData, "sevenDeuceRuleEnabled") === "yes",
     bombPotRuleEnabled: readString(formData, "bombPotRuleEnabled") === "yes",
+    standUpRuleEnabled: readString(formData, "standUpRuleEnabled") === "yes",
   };
 }
 
@@ -146,7 +149,15 @@ export async function createGameForGroup(
     };
   }
 
-  const gameId = await insertGame(group.id, validation.input, createdByPlayerId);
+  let gameId: string;
+  try {
+    gameId = await insertGame(group.id, validation.input, createdByPlayerId);
+  } catch (error) {
+    if (error instanceof StandUpRuleUnavailableError) {
+      return { ok: false, errors: { title: error.message }, values };
+    }
+    throw error;
+  }
   try {
     await notifyNewGameCreated({
       gameId,
@@ -510,6 +521,7 @@ export function validateGameSettingsForm(
       bbRate: bbRate!,
       sevenDeuceRuleEnabled: values.sevenDeuceRuleEnabled,
       bombPotRuleEnabled: values.bombPotRuleEnabled,
+      standUpRuleEnabled: values.standUpRuleEnabled,
     },
   };
 }

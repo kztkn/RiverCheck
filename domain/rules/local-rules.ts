@@ -1,6 +1,6 @@
 export interface LocalRuleDefinition {
   enabled: boolean;
-  key: "rebuy-repayment" | "seven-deuce-bonus" | "bomb-pot";
+  key: "rebuy-repayment" | "seven-deuce-bonus" | "bomb-pot" | "stand-up";
   note: string | null;
   steps: Array<{ label: string; text: string }>;
   title: string;
@@ -10,6 +10,7 @@ export function buildLocalRules(
   sevenDeuceRuleEnabled: boolean,
   bombPotRuleEnabled: boolean,
   rebuyStackBb = 100,
+  standUpRuleEnabled = true,
 ): LocalRuleDefinition[] {
   return [
     {
@@ -61,6 +62,20 @@ export function buildLocalRules(
         },
       ],
       title: "ボムポット",
+    },
+    {
+      enabled: standUpRuleEnabled,
+      key: "stand-up",
+      title: "STAND UP",
+      note: standUpRuleEnabled
+        ? "進行や支払いの取り決めは卓内で確認してください。記録はチップ・スコア・Pに影響しません。"
+        : "この開催では適用しません。",
+      steps: [
+        { label: "開始", text: "参加者全員が立ってスタートします" },
+        { label: "着席", text: "ポットを獲得したプレイヤーから座ります" },
+        { label: "記録", text: "最後まで立っていた1人を、EVENTからラストプレイヤーとして記録します" },
+        { label: "称号", text: "開催確定後に「立ちっぱなし」を獲得します" },
+      ],
     },
   ];
 }

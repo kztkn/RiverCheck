@@ -267,7 +267,8 @@ describe("game participant route", () => {
     mocked.findGameForGroup.mockResolvedValue({
       ...openGame, smallBlindChips: 100, bigBlindChips: 200, bigBlindAnteChips: 200,
       initialStackBb: 100, chipDistribution: null, sevenDeuceRuleEnabled: true,
-      bombPotRuleEnabled: true, tableManagementStartedAt: "2026-10-01T10:00:00Z",
+      bombPotRuleEnabled: true,
+      standUpRuleEnabled: true, tableManagementStartedAt: "2026-10-01T10:00:00Z",
       settlementPlanPublishedAt: "2026-10-01T10:00:00Z", venueCost: 12000,
       previewParticipantCount: 2, costShares: [5000, 7000], bbRate: 0,
     });
@@ -301,6 +302,7 @@ describe("game participant route", () => {
       ...openGame, smallBlindChips: 100, bigBlindChips: 200, bigBlindAnteChips: 200,
       initialStackBb: 100, chipDistribution: null, sevenDeuceRuleEnabled: true,
       bombPotRuleEnabled: true,
+      standUpRuleEnabled: true,
     });
     mocked.findParticipantByGroupPlayerId.mockResolvedValue(participant);
     const data = await loader(loaderArgs());
@@ -320,6 +322,7 @@ describe("game participant route", () => {
       ...openGame, smallBlindChips: 100, bigBlindChips: 200, bigBlindAnteChips: 200,
       initialStackBb: 100, chipDistribution: null, sevenDeuceRuleEnabled: true,
       bombPotRuleEnabled: true,
+      standUpRuleEnabled: true,
     });
     mocked.getAuthenticatedPlayerProfile.mockResolvedValue(null);
     mocked.listRegisteredPlayersForGame.mockResolvedValue([
@@ -1147,6 +1150,7 @@ describe("LocalRulesSheet", () => {
         bigBlindAnteChips: 200,
         bigBlindChips: 200,
         bombPotRuleEnabled: true,
+        standUpRuleEnabled: true,
         chipDistribution: null,
         initialChips: 20_000,
         smallBlindChips: 100,
@@ -1159,6 +1163,8 @@ describe("LocalRulesSheet", () => {
     expect(html).toContain("72oボーナス");
     expect(html).toContain("ほかの参加者全員から2.5BBずつ受け取ります");
     expect(html).toContain("ボムポット");
+    expect(html).toContain("STAND UP");
+    expect(html).toContain("立ちっぱなし");
     expect(html).toContain("プリフロップ");
     expect(html).toContain("適用中");
     expect(html).toContain("STARTING STACK");
@@ -1176,6 +1182,7 @@ describe("LocalRulesSheet", () => {
         bigBlindAnteChips: 200,
         bigBlindChips: 200,
         bombPotRuleEnabled: true,
+        standUpRuleEnabled: true,
         chipDistribution: [{ denomination: 10_000, count: 2 }],
         initialChips: 20_000,
         smallBlindChips: 100,
@@ -1198,6 +1205,7 @@ describe("LocalRulesSheet", () => {
         bigBlindAnteChips: 100,
         bigBlindChips: 100,
         bombPotRuleEnabled: true,
+        standUpRuleEnabled: true,
         chipDistribution: null,
         initialChips: 10_000,
         initialStackBb: 100,
@@ -1220,6 +1228,7 @@ describe("LocalRulesSheet", () => {
         bigBlindAnteChips: 0,
         bigBlindChips: 200,
         bombPotRuleEnabled: true,
+        standUpRuleEnabled: true,
         chipDistribution: null,
         initialChips: 20_000,
         smallBlindChips: 100,
@@ -1236,6 +1245,7 @@ describe("LocalRulesSheet", () => {
         bigBlindAnteChips: 200,
         bigBlindChips: 200,
         bombPotRuleEnabled: false,
+        standUpRuleEnabled: false,
         chipDistribution: null,
         initialChips: 20_000,
         smallBlindChips: 100,

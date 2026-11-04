@@ -23,6 +23,7 @@ const baseValues: GameSettingsValues = {
   bbRate: "0",
   sevenDeuceRuleEnabled: true,
   bombPotRuleEnabled: true,
+  standUpRuleEnabled: true,
 };
 
 describe("GameSettingsFields local rules", () => {
@@ -158,7 +159,7 @@ describe("GameSettingsFields local rules", () => {
       "<strong>ゲーム設定</strong><small>100BB開始 ・ SB 100 / BB 200 / BBA 200</small>",
     );
     expect(markup).toContain(
-      "<strong>ローカルルール</strong><small>72o ON ・ ボムポット ON</small>",
+      "<strong>ローカルルール</strong><small>72o ON ・ ボムポット ON ・ STAND UP ON</small>",
     );
     expect(markup.match(/class="advanced-setting-disclosure"/gu) ?? []).toHaveLength(2);
     expect(markup).not.toMatch(
@@ -294,10 +295,13 @@ describe("GameSettingsFields local rules", () => {
           ...baseValues,
           sevenDeuceRuleEnabled: false,
           bombPotRuleEnabled: false,
+          standUpRuleEnabled: false,
         },
       }),
     );
 
-    expect(markup).toContain("72o OFF ・ ボムポット OFF");
+    expect(markup).toContain("72o OFF ・ ボムポット OFF ・ STAND UP OFF");
+    expect(markup).toContain('name="standUpRuleEnabled"');
+    expect(markup).toContain("最後まで立っていた1人をEVENTで記録");
   });
 });

@@ -34,6 +34,7 @@ const game = {
   initialChips: 20000, rebuyChips: 20000, previewParticipantCount: 4,
   venueCost: 0, firstPlaceCost: 0, secondPlaceCost: 0, thirdPlaceCost: 0,
   costShares: [0, 0, 0, 0], sevenDeuceRuleEnabled: true, bombPotRuleEnabled: true,
+  standUpRuleEnabled: true,
 };
 const ids = ["p1", "p2", "p3", "p4"];
 

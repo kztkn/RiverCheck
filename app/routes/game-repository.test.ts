@@ -5,7 +5,9 @@ const mocked = vi.hoisted(() => ({
 }));
 
 vi.mock("@server/db/client.server", () => ({
-  queryDatabase: mocked.queryDatabase,
+  queryDatabase: (sql: string, values?: unknown[]) => sql.includes("AS supported")
+    ? Promise.resolve({ rows: [{ supported: true }] })
+    : mocked.queryDatabase(sql, values),
 }));
 
 import {
@@ -233,6 +235,7 @@ describe("game repository local rules", () => {
       updateLocalRules("group-1", "game-1", {
         sevenDeuceRuleEnabled: true,
         bombPotRuleEnabled: false,
+        standUpRuleEnabled: false,
       }),
     ).resolves.toBe(true);
 
@@ -245,6 +248,7 @@ describe("game repository local rules", () => {
       "group-1",
       true,
       false,
+      false,
     ]);
   });
 
@@ -255,6 +259,7 @@ describe("game repository local rules", () => {
       updateLocalRules("group-1", "game-1", {
         sevenDeuceRuleEnabled: false,
         bombPotRuleEnabled: false,
+        standUpRuleEnabled: false,
       }),
     ).resolves.toBe(false);
   });
@@ -288,6 +293,7 @@ describe("game repository open game management", () => {
         bbRate: 10,
         sevenDeuceRuleEnabled: true,
         bombPotRuleEnabled: true,
+        standUpRuleEnabled: true,
       }, "creator-1"),
     ).resolves.toBe("game-1");
 
@@ -312,6 +318,7 @@ describe("game repository open game management", () => {
       8,
       [0, 500, 1_000, 1_400, 1_800, 2_000, 2_200, 2_400],
       10,
+      true,
       true,
       true,
       "creator-1",

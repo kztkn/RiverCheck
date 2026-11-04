@@ -154,7 +154,7 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 - `game_results.game_settlement_amount` は確定時に計算した符号付きの100円単位`BIGINT NOT NULL DEFAULT 0`を保存する。最終精算額はこの列から`cost_share`を引いて導出し、重複保存しない
 - `games.seven_deuce_rule_enabled` は72oボーナスの開催単位スナップショットとする。新規開催の既定値はONだが、導入前データは移行時にOFFとして過去開催へ遡及させない
 - `games.bomb_pot_rule_enabled` はボムポットの開催単位スナップショットとする。新規開催の既定値はONだが、導入前データは移行時にOFFとして過去開催へ遡及させない
-- ローカルルールの文言は`domain/rules/local-rules.ts`へ集約し、受付中の参加者画面は開始スタックと同じBB数の返済ルール、72o設定、ボムポット設定を同じ参照用ボトムシートへ描画する。確定結果では表示せず、各ルールの成立や支払いはDBイベント化しない
+- ローカルルールの文言は`domain/rules/local-rules.ts`へ集約し、受付中の参加者画面は開始スタックと同じBB数の返済ルール、72o設定、ボムポット設定、STAND UP設定を同じ参照用ボトムシートへ描画する。確定結果では表示せず、各ルールの成立や支払いはDBイベント化しない
 - TABLE STORIESは投稿者の役割にかかわらず`game_story_posts`へ保存し、`game_participant_id`で一意にする
 - チップ終了入力とTABLE STORIES投稿を別ユースケースにし、投稿repositoryは`finalized`の参加者だけを更新対象にする
 
@@ -337,3 +337,6 @@ TableManagementは同じ開催の取得済みpanelをbackground refresh中にも
 `domain/season`がJST期間、シーズン累計BBの競技順位、称号名を定義する。既存ランキングrepositoryへ期間とtransaction queryの任意引数を追加し、既存SQLのBB換算・7指標・期間内前回比較を再利用する。通算や個人履歴の既定動作は変えない。
 0038の`ranking_seasons`は(group_id,season_key)を主キーとし、開始・終了日時、ADMINによる確定日時、全指標・最終順位・付与予定称号のJSONBスナップショットを保持する。保存後はこれを表示し再集計しない。確認内容のSHA-256と確定時再集計を比較し、repeatable-readトランザクションとグループ行ロック、一意制約で重複・部分保存を防ぐ。既存achievementとplayer_achievementsにシーズン別code・metadataを保存する。通知済みとして追加し、新規の通知を発生させない。管理用の保守SQLではsnapshotと称号metadataを併せて参照可能。
 stats loader/actionはseason-serviceを呼び、確定にはサーバー側で既存の署名付きADMINセッションを必須にする。開催作成者権限は使わない。POSTはadmin-write制限対象。確認dialogはBodyPortalで既存のviewport・スクロールロックを再利用する。0038未適用でも既存開催データからシーズンをライブ集計し、確定操作だけを無効にする。年間まとめのroute/domain/repositoryは変更しない。
+
+### STAND UPの開催設定
+`0039_add_stand_up_rule.sql`で`games.stand_up_rule_enabled BOOLEAN NOT NULL DEFAULT TRUE`を追加する。既存の記録・称号には変更を加えない。参加者EVENTではONのときだけ入口を表示し、serviceとINSERTのSQL条件でも適用状態を検証する。migration未適用時はJSONによる行参照で従来のON相当として読み取り、開催作成・ローカルルール保存もONなら旧スキーマで継続する。OFF保存だけ入力値を維持したエラー表示で停止し、未保存のOFFを成功扱いにしない。スキーマ対応状況は書込ごとに確認し、適用後の再デプロイは不要。本番migrationは明示的な承認後に適用する。

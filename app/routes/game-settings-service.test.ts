@@ -42,6 +42,7 @@ const validValues: GameSettingsFormValues = {
   bbRate: "0",
   sevenDeuceRuleEnabled: true,
   bombPotRuleEnabled: true,
+  standUpRuleEnabled: true,
 };
 
 describe("open game configuration", () => {
@@ -235,6 +236,7 @@ describe("game settings cost shares", () => {
     );
     formData.set("sevenDeuceRuleEnabled", "yes");
     formData.set("bombPotRuleEnabled", "yes");
+    formData.set("standUpRuleEnabled", "yes");
     formData.set("bbRate", "5");
     validValues.costShares.forEach((share) =>
       formData.append("costShare", share),
@@ -244,6 +246,7 @@ describe("game settings cost shares", () => {
       costShares: validValues.costShares,
       sevenDeuceRuleEnabled: true,
       bombPotRuleEnabled: true,
+      standUpRuleEnabled: true,
       bbRate: "5",
       smallBlindChips: "100",
       bigBlindChips: "200",
@@ -255,6 +258,7 @@ describe("game settings cost shares", () => {
     expect(readGameSettingsForm(new FormData())).toMatchObject({
       sevenDeuceRuleEnabled: false,
       bombPotRuleEnabled: false,
+      standUpRuleEnabled: false,
     });
   });
 
@@ -270,6 +274,7 @@ describe("game settings cost shares", () => {
         costShares: [1800, 2000, 2300, 2500, 2800],
         sevenDeuceRuleEnabled: true,
         bombPotRuleEnabled: true,
+        standUpRuleEnabled: true,
         bbRate: 0,
       },
     });

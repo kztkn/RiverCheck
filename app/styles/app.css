@@ -8554,7 +8554,7 @@ input[aria-invalid="true"] {
   color: var(--muted);
   font-size: 0.74rem;
   font-weight: 750;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .local-rules-summary-chevron {

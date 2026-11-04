@@ -70,6 +70,7 @@ const settings = {
   bbRate: 0,
   sevenDeuceRuleEnabled: true,
   bombPotRuleEnabled: true,
+  standUpRuleEnabled: true,
 };
 
 describe("game finalization notification", () => {
@@ -97,6 +98,7 @@ describe("game finalization notification", () => {
       bbRate: settings.bbRate,
       sevenDeuceRuleEnabled: true,
       bombPotRuleEnabled: true,
+      standUpRuleEnabled: true,
     });
     mocked.lockParticipants.mockResolvedValue(
       ["A", "B", "C", "D"].map((displayName, index) => ({

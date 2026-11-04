@@ -79,6 +79,7 @@ const group = {
 };
 const game = {
   bombPotRuleEnabled: false,
+  standUpRuleEnabled: false,
   costShares: [1_000, 2_000],
   firstPlaceCost: 1_000,
   id: "22222222-2222-4222-8222-222222222222",
@@ -281,6 +282,7 @@ describe("game admin management action", () => {
     expect(mocked.updateLocalRules).toHaveBeenCalledWith(group.id, game.id, {
       sevenDeuceRuleEnabled: true,
       bombPotRuleEnabled: false,
+      standUpRuleEnabled: false,
     });
     expect(result).toEqual({
       ok: true,

@@ -113,6 +113,7 @@ export async function createStandUpLoserTableEvent(input: {
       WHERE game.id = $1
         AND game.group_id = $2
         AND game.status = 'open'
+        AND COALESCE((to_jsonb(game)->>'stand_up_rule_enabled')::BOOLEAN, TRUE) = TRUE
       ON CONFLICT (command_id) DO NOTHING
       RETURNING id
     `,

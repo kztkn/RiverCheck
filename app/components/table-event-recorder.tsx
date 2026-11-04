@@ -23,7 +23,7 @@ interface RecentTableEvent {
 interface TableEventPanelResponse {
   canRecord: boolean;
   currentGroupPlayerId: string | null;
-  rules: { sevenDeuce: boolean; bombPot: boolean };
+  rules: { sevenDeuce: boolean; bombPot: boolean; standUp: boolean };
   participants: TableEventParticipant[];
   recentEvents: RecentTableEvent[];
 }
@@ -43,6 +43,7 @@ export async function fetchTableEventPanel(path: string, signal: AbortSignal) {
   if (!panel || typeof panel.canRecord !== "boolean" || (panel.canRecord && (
     typeof panel.rules?.sevenDeuce !== "boolean" ||
     typeof panel.rules?.bombPot !== "boolean" ||
+    typeof panel.rules?.standUp !== "boolean" ||
     !Array.isArray(panel.participants) || !Array.isArray(panel.recentEvents)
   ))) {
     throw new Error("テーブルイベントの応答を確認できませんでした。");
@@ -335,10 +336,12 @@ export function TableEventRecorder() {
                   <small>この瞬間をワンタップで記録</small>
                 </button>
               ) : null}
-              <button onClick={() => setMode("stand-up")} type="button">
-                <strong>STAND UP</strong>
-                <small>最後まで立っていた人を記録</small>
-              </button>
+              {panel.rules.standUp ? (
+                <button onClick={() => setMode("stand-up")} type="button">
+                  <strong>STAND UP</strong>
+                  <small>最後まで立っていた人を記録</small>
+                </button>
+              ) : null}
               <button onClick={() => setMode("all-in")} type="button">
                 <strong>ALL IN</strong>
                 <small>参加者と勝者だけを残す</small>

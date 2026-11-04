@@ -1011,6 +1011,7 @@ export default function GameParticipant({
             bigBlindAnteChips={loaderData.game.bigBlindAnteChips}
             bigBlindChips={loaderData.game.bigBlindChips}
             bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
+            standUpRuleEnabled={loaderData.game.standUpRuleEnabled}
             chipDistribution={loaderData.game.chipDistribution}
             initialChips={loaderData.game.initialChips}
             initialStackBb={loaderData.game.initialStackBb}
@@ -1158,6 +1159,7 @@ export default function GameParticipant({
               bigBlindAnteChips={loaderData.game.bigBlindAnteChips}
               bigBlindChips={loaderData.game.bigBlindChips}
               bombPotRuleEnabled={loaderData.game.bombPotRuleEnabled}
+              standUpRuleEnabled={loaderData.game.standUpRuleEnabled}
               chipDistribution={loaderData.game.chipDistribution}
               initialChips={loaderData.game.initialChips}
               initialStackBb={loaderData.game.initialStackBb}
@@ -1547,6 +1549,7 @@ export function LocalRulesSheet({
   bigBlindAnteChips,
   bigBlindChips,
   bombPotRuleEnabled,
+  standUpRuleEnabled,
   chipDistribution,
   initialChips,
   initialStackBb = 100,
@@ -1556,6 +1559,7 @@ export function LocalRulesSheet({
   bigBlindAnteChips: number;
   bigBlindChips: number;
   bombPotRuleEnabled: boolean;
+  standUpRuleEnabled: boolean;
   chipDistribution: GameChipAllocation[] | null;
   initialChips: number;
   initialStackBb?: number;
@@ -1590,6 +1594,7 @@ export function LocalRulesSheet({
     sevenDeuceRuleEnabled,
     bombPotRuleEnabled,
     initialStackBb,
+    standUpRuleEnabled,
   );
   const displayedDistribution = getDisplayedGameChipDistribution(
     chipDistribution,

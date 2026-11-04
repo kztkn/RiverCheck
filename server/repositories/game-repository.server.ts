@@ -44,6 +44,7 @@ interface GameDetailsRow {
   settlement_plan_published_at: Date | null;
   seven_deuce_rule_enabled: boolean;
   bomb_pot_rule_enabled: boolean;
+  stand_up_rule_enabled: boolean;
   paypay_recipient_link: string | null;
   paypay_link_registered_at: Date | null;
   paypay_owner_player_id: string | null;
@@ -163,7 +164,8 @@ export async function findGameForGroup(
         bb_rate,
         settlement_plan_published_at,
         seven_deuce_rule_enabled,
-        bomb_pot_rule_enabled
+        bomb_pot_rule_enabled,
+             COALESCE((to_jsonb(games)->>'stand_up_rule_enabled')::BOOLEAN, TRUE) AS stand_up_rule_enabled
         ,paypay_recipient_link
         ,paypay_link_registered_at
         ,paypay_owner_player_id
@@ -209,6 +211,7 @@ export async function findGameWithGroupByPublicCode(
         game.settlement_plan_published_at,
         game.seven_deuce_rule_enabled,
         game.bomb_pot_rule_enabled,
+        COALESCE((to_jsonb(game)->>'stand_up_rule_enabled')::BOOLEAN, TRUE) AS stand_up_rule_enabled,
         game.paypay_recipient_link,
         game.paypay_link_registered_at,
         game.paypay_owner_player_id,
@@ -274,6 +277,8 @@ export async function insertGame(
   input: CreateGameInput,
   createdByPlayerId: string | null = null,
 ): Promise<string> {
+  const hasStandUpRule = await supportsStandUpRule();
+  requireStandUpRuleSupport(hasStandUpRule, input.standUpRuleEnabled);
   const result = await queryDatabase<{ id: string }>(
     `
       INSERT INTO games (
@@ -298,13 +303,14 @@ export async function insertGame(
         bb_rate,
         seven_deuce_rule_enabled,
         bomb_pot_rule_enabled
+        ${hasStandUpRule ? ",stand_up_rule_enabled" : ""}
         ,created_by_player_id
         ,paypay_recipient_link
         ,paypay_link_registered_at
         ,paypay_owner_player_id
       )
       SELECT $1, $2, $3, 'open', $4, $5, $6, $7, $8, $9, $10::JSONB, $11, 100,
-             $12, $13, $14, $15, $16::BIGINT[], $17, $18, $19, $20,
+             $12, $13, $14, $15, $16::BIGINT[], $17, $18, $19, ${hasStandUpRule ? "$20, $21" : "$20"},
              game_group.paypay_recipient_link,
              game_group.paypay_link_registered_at,
              game_group.paypay_owner_player_id
@@ -332,6 +338,7 @@ export async function insertGame(
       input.bbRate,
       input.sevenDeuceRuleEnabled,
       input.bombPotRuleEnabled,
+      ...(hasStandUpRule ? [input.standUpRuleEnabled] : []),
       createdByPlayerId,
     ],
   );
@@ -393,19 +400,23 @@ export async function updateLocalRules(
   rules: {
     sevenDeuceRuleEnabled: boolean;
     bombPotRuleEnabled: boolean;
+    standUpRuleEnabled: boolean;
   },
 ): Promise<boolean> {
+  const hasStandUpRule = await supportsStandUpRule();
+  requireStandUpRuleSupport(hasStandUpRule, rules.standUpRuleEnabled);
   const result = await queryDatabase(
     `
       UPDATE games
       SET seven_deuce_rule_enabled = $3,
           bomb_pot_rule_enabled = $4,
+          ${hasStandUpRule ? "stand_up_rule_enabled = $5," : ""}
           updated_at = NOW()
       WHERE id = $1
         AND group_id = $2
         AND status = 'open'
     `,
-    [gameId, groupId, rules.sevenDeuceRuleEnabled, rules.bombPotRuleEnabled],
+    [gameId, groupId, rules.sevenDeuceRuleEnabled, rules.bombPotRuleEnabled, ...(hasStandUpRule ? [rules.standUpRuleEnabled] : [])],
   );
   return result.rowCount === 1;
 }
@@ -598,6 +609,7 @@ function mapGameDetails(row: GameDetailsRow): GameDetails {
       row.settlement_plan_published_at?.toISOString() ?? null,
     sevenDeuceRuleEnabled: row.seven_deuce_rule_enabled,
     bombPotRuleEnabled: row.bomb_pot_rule_enabled,
+    standUpRuleEnabled: row.stand_up_rule_enabled,
     payPayRecipientLink: row.paypay_recipient_link,
     payPayLinkRegisteredAt: row.paypay_link_registered_at?.toISOString() ?? null,
     payPayOwnerPlayerId: row.paypay_owner_player_id,
@@ -624,4 +636,29 @@ function readBlindChipValue(
   legacyFallback: number,
 ): number {
   return value === null ? legacyFallback : Number(value);
+}
+
+// No cross-request cache: a newly applied migration takes effect immediately.
+async function supportsStandUpRule(): Promise<boolean> {
+  const result = await queryDatabase<{ supported: boolean }>(`
+    SELECT EXISTS (
+      SELECT 1 FROM pg_attribute
+      WHERE attrelid = 'games'::regclass AND attname = 'stand_up_rule_enabled'
+        AND NOT attisdropped
+    ) AS supported
+  `);
+  return result.rows[0]?.supported === true;
+}
+
+function requireStandUpRuleSupport(supported: boolean, enabled: boolean) {
+  if (!supported && !enabled) {
+    throw new StandUpRuleUnavailableError();
+  }
+}
+
+export class StandUpRuleUnavailableError extends Error {
+  constructor() {
+    super("STAND UPのOFF設定は準備中です。管理者によるDB更新後に利用できます。");
+    this.name = "StandUpRuleUnavailableError";
+  }
 }

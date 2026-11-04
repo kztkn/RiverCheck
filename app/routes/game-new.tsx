@@ -59,6 +59,7 @@ const defaults = {
   bbRate: "0",
   sevenDeuceRuleEnabled: true,
   bombPotRuleEnabled: true,
+  standUpRuleEnabled: true,
 };
 
 export default function NewGame({

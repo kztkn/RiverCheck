@@ -39,6 +39,7 @@ export interface GameDetails extends GameSummary {
   settlementPlanPublishedAt: string | null;
   sevenDeuceRuleEnabled: boolean;
   bombPotRuleEnabled: boolean;
+  standUpRuleEnabled: boolean;
   payPayRecipientLink: string | null;
   payPayLinkRegisteredAt: string | null;
   payPayOwnerPlayerId: string | null;
@@ -65,4 +66,5 @@ export interface CreateGameInput {
   bbRate: number;
   sevenDeuceRuleEnabled: boolean;
   bombPotRuleEnabled: boolean;
+  standUpRuleEnabled: boolean;
 }

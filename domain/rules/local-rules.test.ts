@@ -7,6 +7,7 @@ describe("buildLocalRules", () => {
       true,
       false,
       false,
+      true,
     ]);
     expect(buildLocalRules(true, true)[1]).toMatchObject({
       enabled: true,
@@ -24,6 +25,14 @@ describe("buildLocalRules", () => {
         expect.objectContaining({ text: expect.stringContaining("フロップ") }),
       ]),
     );
+  });
+
+  it("STAND UPのON/OFFと進行・記録・称号の説明を返す", () => {
+    expect(buildLocalRules(true, true, 100, false)[3]).toMatchObject({ enabled: false, key: "stand-up", note: "この開催では適用しません。" });
+    const rule = buildLocalRules(true, true, 100, true)[3]!;
+    expect(rule.enabled).toBe(true);
+    expect(rule.steps.map((step) => step.text).join(" ")).toContain("立ちっぱなし");
+    expect(rule.steps.map((step) => step.text).join(" ")).toContain("EVENT");
   });
 
   it("50BB開始では返済単位も50BBとして案内する", () => {

@@ -40,6 +40,7 @@ const values: CreateGameFormValues = {
   bbRate: "0",
   sevenDeuceRuleEnabled: true,
   bombPotRuleEnabled: true,
+  standUpRuleEnabled: true,
 };
 
 describe("game creation notification", () => {

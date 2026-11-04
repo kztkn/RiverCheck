@@ -36,6 +36,7 @@ interface GameRow {
   settlement_plan_published_at: Date | null;
   seven_deuce_rule_enabled: boolean;
   bomb_pot_rule_enabled: boolean;
+  stand_up_rule_enabled: boolean;
 }
 
 interface ParticipantRow {
@@ -82,7 +83,8 @@ export async function lockGameForFinalization(
              first_place_cost, second_place_cost, third_place_cost,
              cost_shares, settlement_plan_published_at,
              bb_rate,
-             seven_deuce_rule_enabled, bomb_pot_rule_enabled
+             seven_deuce_rule_enabled, bomb_pot_rule_enabled,
+             COALESCE((to_jsonb(games)->>'stand_up_rule_enabled')::BOOLEAN, TRUE) AS stand_up_rule_enabled
       FROM games
       WHERE id = $1 AND group_id = $2
       FOR UPDATE
@@ -365,6 +367,7 @@ function mapGame(row: GameRow): GameDetails {
       row.settlement_plan_published_at?.toISOString() ?? null,
     sevenDeuceRuleEnabled: row.seven_deuce_rule_enabled,
     bombPotRuleEnabled: row.bomb_pot_rule_enabled,
+    standUpRuleEnabled: row.stand_up_rule_enabled,
     payPayRecipientLink: null,
     payPayLinkRegisteredAt: null,
     payPayOwnerPlayerId: null,
