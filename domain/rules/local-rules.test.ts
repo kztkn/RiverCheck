@@ -27,12 +27,16 @@ describe("buildLocalRules", () => {
     );
   });
 
-  it("STAND UPのON/OFFと進行・記録・称号の説明を返す", () => {
+  it("STAND UPのON/OFFと目印チップ・支払いのルールを返す", () => {
     expect(buildLocalRules(true, true, 100, false)[3]).toMatchObject({ enabled: false, key: "stand-up", note: "この開催では適用しません。" });
     const rule = buildLocalRules(true, true, 100, true)[3]!;
     expect(rule.enabled).toBe(true);
-    expect(rule.steps.map((step) => step.text).join(" ")).toContain("立ちっぱなし");
-    expect(rule.steps.map((step) => step.text).join(" ")).toContain("EVENT");
+    expect(rule.note).toBeNull();
+    expect(rule.steps).toEqual([
+      { label: "開始時", text: "参加者全員が目印チップを受け取ります" },
+      { label: "ポット獲得", text: "ポットを獲得した人から目印チップを返します" },
+      { label: "最後の1人", text: "目印チップが最後まで残った人は、ほかの参加者全員へ2.5BBずつ渡します" },
+    ]);
   });
 
   it("50BB開始では返済単位も50BBとして案内する", () => {

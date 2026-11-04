@@ -302,6 +302,6 @@ describe("GameSettingsFields local rules", () => {
 
     expect(markup).toContain("72o OFF ・ ボムポット OFF ・ STAND UP OFF");
     expect(markup).toContain('name="standUpRuleEnabled"');
-    expect(markup).toContain("最後まで立っていた1人をEVENTで記録");
+    expect(markup).toContain("ほかの参加者全員へ2.5BBずつ渡します");
   });
 });

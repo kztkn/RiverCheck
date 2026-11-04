@@ -612,7 +612,7 @@ export function GameSettingsFields({
                   />
                   <span className="local-rule-toggle-copy">
                     <strong>STAND UP</strong>
-                    <small>全員が立ち、ポットを獲得した人から着席。最後まで立っていた1人をEVENTで記録します。進行や支払いは卓内で確認してください。</small>
+                    <small>参加者全員が目印チップを受け取り、ポットを獲得した人から返します。最後まで残った人は、ほかの参加者全員へ2.5BBずつ渡します。</small>
                   </span>
                   <span aria-hidden="true" className="local-rule-switch" />
                 </label>

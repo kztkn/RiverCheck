@@ -1164,7 +1164,9 @@ describe("LocalRulesSheet", () => {
     expect(html).toContain("ほかの参加者全員から2.5BBずつ受け取ります");
     expect(html).toContain("ボムポット");
     expect(html).toContain("STAND UP");
-    expect(html).toContain("立ちっぱなし");
+    expect(html).toContain("参加者全員が目印チップを受け取ります");
+    expect(html).toContain("ほかの参加者全員へ2.5BBずつ渡します");
+    expect(html).not.toContain("立ちっぱなし");
     expect(html).toContain("プリフロップ");
     expect(html).toContain("適用中");
     expect(html).toContain("STARTING STACK");
