@@ -21,9 +21,9 @@ describe("admin participant state", () => {
     })).toBe("pending");
   });
 
-  it("treats a submitted and matching rebuy count as complete", () => {
+  it("counts saved zero chips and zero rebuy slips as complete", () => {
     expect(getAdminParticipantInputState({
-      remainingChips: 20_000,
+      remainingChips: 0,
       outstandingRebuyCount: 0,
       settlementRebuyCount: 0,
     })).toBe("complete");

@@ -142,7 +142,6 @@ import GameParticipant, {
   action,
   loader,
   LocalRulesSheet,
-  ParticipantResultEntrySection,
   ParticipantPlayerSnapshot,
   ParticipantRosterSheet,
   SettlementPlanSheet,
@@ -166,6 +165,10 @@ const playerId = "44444444-4444-4444-8444-444444444444";
 const openGame = {
   id: gameId,
   initialChips: 20_000,
+  initialStackBb: 100,
+  smallBlindChips: 100,
+  bigBlindChips: 200,
+  bigBlindAnteChips: 200,
   playedAt: "2026-08-10T00:00:00.000Z",
   status: "open",
   title: "8月の会",
@@ -283,6 +286,7 @@ describe("game participant route", () => {
     expect(beforeJoin).not.toContain("LIVE TABLE");
     expect(beforeJoin).not.toContain("開催管理へ");
     expect(beforeJoin).not.toContain("table-management-dialog");
+    expect(beforeJoin).not.toContain('value="join-new"');
 
     mocked.findParticipantByGroupPlayerId.mockResolvedValue(participant);
     const afterJoin = renderParticipantPage(await loader(loaderArgs()));
@@ -317,7 +321,7 @@ describe("game participant route", () => {
     expect(otherIdentity).toContain("YOU ARE SEATED");
   });
 
-  it("未認証の登録前も情報確認の次に名前選択と新規参加を表示する", async () => {
+  it("未認証の参加画面では情報と登録済みの名前一覧より先に新規参加フォームを表示する", async () => {
     mocked.findGameForGroup.mockResolvedValue({
       ...openGame, smallBlindChips: 100, bigBlindChips: 200, bigBlindAnteChips: 200,
       initialStackBb: 100, chipDistribution: null, sevenDeuceRuleEnabled: true,
@@ -332,6 +336,7 @@ describe("game participant route", () => {
     expect(html).toContain("参加する名前を選択");
     expect(html).toContain("Alice");
     expect(html).toContain("この名前で参加");
+    expect(html.indexOf('name="displayName"')).toBeLessThan(html.indexOf("ゲーム情報"));
     expect(html.indexOf("ゲーム情報")).toBeLessThan(html.indexOf("参加する名前を選択"));
     expect(html).not.toContain("LIVE TABLE");
     expect(html).not.toContain("今日のまとめ");
@@ -424,6 +429,7 @@ describe("game participant route", () => {
 
     expect(result.groupInvitePlayer).toEqual({ displayName: "Alice" });
     expect(mocked.listRegisteredPlayersForGame).not.toHaveBeenCalled();
+    expect(renderParticipantPage(result)).not.toContain('value="join-new"');
   });
 
   it("参加者一覧の取得失敗だけでは開催ページをエラーにしない", async () => {
@@ -707,35 +713,27 @@ describe("game participant route", () => {
     expect(markup).toContain('value="20000"');
   });
 
-  it("未入力の結果フォームは閉じておき、結果入力から開く", () => {
-    const markup = renderToStaticMarkup(
-      createElement(
-        ParticipantResultEntrySection,
-        null,
-        createElement("span", null, "入力フォーム"),
-      ),
-    );
+  it.each(["joined", "submitted"])("%sでも結果フォームを常時表示し、保存後は入力済みを表示する", async (status) => {
+    const saved = status === "submitted";
+    mocked.findParticipantByGroupPlayerId.mockResolvedValue({
+      ...participant,
+      status,
+      remainingChips: saved ? 0 : null,
+      settlementRebuyCount: saved ? 0 : null,
+    });
+    const markup = renderParticipantPage(await loader(loaderArgs()));
+    const resultSection = markup.split('id="participant-result"')[1]?.split("</section>")[0];
 
-    expect(markup).toContain("結果を入力する");
-    expect(markup).toContain(
-      "残りチップと手元のリバイ証を保存します。主催者の確定前は修正できます。",
-    );
-    expect(markup).toContain("入力フォーム");
-    expect(markup).toContain("<details");
-    expect(markup).toContain("<summary");
-    expect(markup).not.toContain('open=""');
-  });
-
-  it("保存失敗時のフォームは開いた状態で再表示する", () => {
-    const markup = renderToStaticMarkup(
-      createElement(ParticipantResultEntrySection, {
-        initiallyOpen: true,
-        children: "入力フォーム",
-      }),
-    );
-    expect(markup).toContain('open=""');
-    expect(markup).toContain("結果を入力する");
-    expect(markup).toContain('class="disclosure-chevron"');
+    expect(markup).toContain('href="#participant-result"');
+    expect(resultSection).toContain('name="remainingChips"');
+    expect(resultSection).toContain('name="settlementRebuyCount"');
+    expect(resultSection).not.toContain("<details");
+    if (saved) {
+      expect(resultSection).toContain("入力済み");
+      expect(resultSection).toContain('name="remainingChips" value="0"');
+    } else {
+      expect(resultSection).not.toContain("入力済み");
+    }
   });
 
   it("最終結果だけを保存し、TABLE STORYは更新しない", async () => {
@@ -763,7 +761,7 @@ describe("game participant route", () => {
 
   it("リバイ証を消したまま保存しても0として扱わず入力エラーにする", async () => {
     const result = await action(actionArgs({ intent: "save-input", remainingChips: "20000", settlementRebuyCount: "" }));
-    expect(result).toEqual({ error: "残りチップとリバイ証は0以上の整数で入力してください。" });
+    expect(result).toEqual({ intent: "save-input", error: "残りチップとリバイ証は0以上の整数で入力してください。" });
     expect(mocked.updateParticipantInputByGroupPlayerId).not.toHaveBeenCalled();
     expect(mocked.updateParticipantInput).not.toHaveBeenCalled();
   });

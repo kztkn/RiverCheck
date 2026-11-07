@@ -2610,6 +2610,12 @@ input[aria-invalid="true"] {
   margin-bottom: 0;
 }
 
+.participant-selection-page > .player-selection-create {
+  margin-top: 0;
+  border-top: 0;
+  padding-block: 18px;
+}
+
 .new-player-panel {
   align-items: end;
 }
@@ -4295,28 +4301,6 @@ input[aria-invalid="true"] {
   background: var(--green);
 }
 
-.participant-after-entry {
-  display: block;
-  overflow: hidden;
-  padding: 0;
-}
-
-.participant-after-entry > .participant-phase-heading {
-  display: grid;
-  min-height: 70px;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 11px;
-  padding: 15px;
-}
-
-.participant-after-entry-body {
-  display: grid;
-  gap: 14px;
-  border-top: 1px solid var(--line);
-  padding: 16px;
-}
-
 .participant-roster-close svg {
   width: 20px;
   height: 20px;
@@ -5123,17 +5107,13 @@ input[aria-invalid="true"] {
   color: #a99360;
 }
 
-.participant-session .participant-after-entry {
-  display: block;
-  overflow: visible;
-  border-bottom: 1px solid var(--line);
-  padding: 0;
+.participant-session .participant-result-section .participant-phase-heading {
+  display: flex;
+  justify-content: space-between;
 }
 
-.participant-session .participant-after-entry-body {
-  gap: 16px;
-  border-top: 1px solid var(--line);
-  padding: 18px 0 22px;
+.participant-result-section .status {
+  flex-shrink: 0;
 }
 
 .participant-hero-playing {
@@ -5157,28 +5137,11 @@ input[aria-invalid="true"] {
 .participant-session > .table-now {
   margin-top: 22px;
 }
-.participant-result-entry-trigger {
-  display: flex;
+.participant-result-link {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 58px;
-  padding: 12px 3px;
-  color: var(--ink);
-  font-weight: 750;
-  font-size: 0.9rem;
-  cursor: pointer;
-  list-style: none;
-  touch-action: manipulation;
-}
-.participant-result-entry-trigger::-webkit-details-marker {
-  display: none;
-}
-.participant-result-entry-trigger:focus-visible {
-  outline: 2px solid var(--green);
-  outline-offset: 3px;
-}
-.participant-result-entry-trigger .disclosure-chevron {
+  gap: 6px;
+  min-height: 44px;
   color: var(--green);
 }
 .admin-own-play-link {
@@ -6866,6 +6829,16 @@ input[aria-invalid="true"] {
 
 .admin-page .admin-participants .section-heading {
   margin-bottom: 12px;
+}
+
+.admin-participant-input-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .participant-state-summary {

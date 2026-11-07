@@ -717,13 +717,17 @@ export default function GameAdmin({
         (participant) => participant.id !== optimisticallyRemoved.id,
       )
     : loaderData.participants;
-  const submittedCount = visibleParticipants.filter(
-    (participant) =>
-      participant.remainingChips !== null &&
-      participant.settlementRebuyCount !== null,
-  ).length;
   const participantStateSummary =
     summarizeAdminParticipantStates(visibleParticipants);
+  const submittedCount = participantStateSummary.complete + participantStateSummary.warning;
+  const allInputsSubmitted = submittedCount > 0 && participantStateSummary.pending === 0;
+  const inputStateOrder = { pending: 0, warning: 1, complete: 2 };
+  const participantsByInputState = visibleParticipants
+    .map((participant) => ({
+      participant,
+      inputState: getAdminParticipantInputState(participant),
+    }))
+    .sort((a, b) => inputStateOrder[a.inputState] - inputStateOrder[b.inputState]);
   const totalRebuyCount = visibleParticipants.reduce(
     (total, participant) => total + (participant.totalRebuyCount ?? 0),
     0,
@@ -1374,11 +1378,14 @@ export default function GameAdmin({
               <p className="form-brand-label">PLAYERS</p>
               <h2>参加者と入力状況</h2>
             </div>
-            <div className="section-heading-actions">
-              <span className="count-badge">
-                {visibleParticipants.length}人
-              </span>
-            </div>
+          </div>
+          <div className="admin-participant-input-summary" role="status">
+            <strong>結果入力 {submittedCount} / {visibleParticipants.length}人 完了</strong>
+            {allInputsSubmitted ? (
+              <span className="status status-open">全員入力済み</span>
+            ) : participantStateSummary.pending > 0 ? (
+              <span className="status status-draft">未入力 {participantStateSummary.pending}人</span>
+            ) : null}
           </div>
           <GameRefreshButton>入力状況を更新</GameRefreshButton>
           <div
@@ -1406,8 +1413,7 @@ export default function GameAdmin({
             </div>
           ) : (
             <div className="participant-admin-list">
-              {visibleParticipants.map((participant) => {
-                const inputState = getAdminParticipantInputState(participant);
+              {participantsByInputState.map(({ participant, inputState }) => {
                 const repaymentCount = Math.max(
                   0,
                   (participant.totalRebuyCount ?? 0) -
@@ -1420,12 +1426,6 @@ export default function GameAdmin({
                 const pendingIntent = isParticipantActionPending
                   ? rebuyFetcher.formData?.get("intent")
                   : null;
-                const stateLabel =
-                  inputState === "complete"
-                    ? "入力済み"
-                    : inputState === "warning"
-                      ? "要確認"
-                      : "未入力";
                 const operationsId = "participant-operations-" + participant.id;
 
                 return (
@@ -1455,7 +1455,7 @@ export default function GameAdmin({
                           <div className="participant-admin-title">
                             <strong>{participant.displayName}</strong>
                             <span className="participant-input-status">
-                              {stateLabel}
+                              {inputState === "pending" ? "未入力" : "入力済み"}
                             </span>
                           </div>
                           <div className="participant-admin-facts">
@@ -1490,8 +1490,9 @@ export default function GameAdmin({
                                 )}
                               </strong>
                               <small>
-                                リバイ証 {participant.settlementRebuyCount ?? 0}
-                                枚
+                                リバイ証 {participant.settlementRebuyCount === null
+                                  ? "未入力"
+                                  : `${participant.settlementRebuyCount}枚`}
                               </small>
                             </>
                           )}

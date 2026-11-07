@@ -9,7 +9,7 @@ import {
   useRevalidator,
   type ShouldRevalidateFunctionArgs,
 } from "react-router";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   findGameWithGroupByPublicCode,
   listGamesForGroup,
@@ -736,6 +736,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     );
     if (remainingChips === null || settlementRebuyCount === null) {
       return {
+        intent,
         error: "残りチップとリバイ証は0以上の整数で入力してください。",
       };
     }
@@ -750,6 +751,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         : null;
     if (!target) {
       return {
+        intent,
         error: "入力を保存できませんでした。受付状況を確認してください。",
       };
     }
@@ -771,6 +773,7 @@ export async function action({ request, params }: Route.ActionArgs) {
           );
     if (!updated) {
       return {
+        intent,
         error: "入力を保存できませんでした。受付状況を確認してください。",
       };
     }
@@ -821,6 +824,19 @@ export default function GameParticipant({
   const quickStatsFetcher = useFetcher<ParticipantQuickStatsData>();
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
+  const showNewPlayerForm =
+    loaderData.game.status === "open" &&
+    !loaderData.participant &&
+    !loaderData.authenticatedPlayer &&
+    !loaderData.groupInvitePlayer;
+  const resultInputError =
+    loaderData.game.status === "open" &&
+    loaderData.participant &&
+    actionData &&
+    "intent" in actionData &&
+    actionData.intent === "save-input"
+      ? actionData.error
+      : null;
   const [rosterOpenSignal, setRosterOpenSignal] = useState(0);
   const [rebuyLocal, setRebuyLocal] = useState<{
     participant: NonNullable<typeof loaderData.participant>;
@@ -967,7 +983,25 @@ export default function GameParticipant({
             )}
           </NavLink>
         ) : null}
+        {loaderData.participant && loaderData.game.status === "open" ? (
+          <a className="text-link participant-result-link" href="#participant-result">
+            結果入力へ <span aria-hidden="true">↓</span>
+          </a>
+        ) : null}
       </section>
+
+      {showNewPlayerForm ? (
+        <section className="player-selection-create">
+          <div>
+            <h2>はじめて参加する方</h2>
+            <p className="muted-copy">名前を入力して参加できます。</p>
+          </div>
+          {actionData?.error ? (
+            <p className="error-notice" role="alert">{actionData.error}</p>
+          ) : null}
+          <JoinNewPlayerForm />
+        </section>
+      ) : null}
 
       {loaderData.participant && loaderData.tableNow ? (
         <>
@@ -1044,7 +1078,7 @@ export default function GameParticipant({
           {noticeMessage}
         </div>
       ) : null}
-      {actionData?.error ? (
+      {actionData?.error && !showNewPlayerForm && !resultInputError ? (
         <p className="error-notice">{actionData.error}</p>
       ) : null}
 
@@ -1179,18 +1213,23 @@ export default function GameParticipant({
 
           <section
             className="participant-phase participant-phase-after participant-result-section"
-            aria-label="結果入力"
+            aria-labelledby="participant-result-heading"
+            id="participant-result"
+            tabIndex={-1}
           >
             <div className="participant-phase-heading">
               <div>
                 <span className="participant-phase-label">プレイ終了後</span>
-                <h3>残りチップとリバイ証</h3>
+                <h3 id="participant-result-heading">結果入力</h3>
                 <p>
                   {loaderData.participant.status === "submitted"
-                    ? "保存済み・主催者の確定待ち。確定前は修正できます。"
-                    : "主催者の確定前に、いつでも保存・修正できます。"}
+                    ? "主催者の確定待ちです。確定前は下のフォームから修正できます。"
+                    : "プレイが終わったら、残りチップと手元のリバイ証を保存してください。"}
                 </p>
               </div>
+              {loaderData.participant.status === "submitted" ? (
+                <span className="status status-open">入力済み</span>
+              ) : null}
             </div>
             {loaderData.participant.status === "submitted" ? (
               <>
@@ -1233,40 +1272,20 @@ export default function GameParticipant({
                     <FinalResultRefreshControl />
                   </div>
                 </div>
-                <ParticipantResultEntrySection
-                  initiallyOpen={Boolean(actionData?.error)}
-                  key={loaderData.game.id}
-                  summaryLabel="入力内容を修正"
-                >
-                  <ResultEntryForm
-                    initialChips={loaderData.game.initialChips}
-                    isSubmitting={isSubmitting}
-                    outstandingRebuyCount={visibleRebuy.outstandingRebuyCount}
-                    remainingChips={loaderData.participant.remainingChips}
-                    settlementRebuyCount={
-                      loaderData.participant.settlementRebuyCount
-                    }
-                    totalRebuyCount={visibleRebuy.totalRebuyCount}
-                  />
-                </ParticipantResultEntrySection>
               </>
-            ) : (
-              <ParticipantResultEntrySection
-                key={loaderData.game.id}
-                initiallyOpen={Boolean(actionData?.error)}
-              >
-                <ResultEntryForm
-                  initialChips={loaderData.game.initialChips}
-                  isSubmitting={isSubmitting}
-                  outstandingRebuyCount={visibleRebuy.outstandingRebuyCount}
-                  remainingChips={loaderData.participant.remainingChips}
-                  settlementRebuyCount={
-                    loaderData.participant.settlementRebuyCount
-                  }
-                  totalRebuyCount={visibleRebuy.totalRebuyCount}
-                />
-              </ParticipantResultEntrySection>
-            )}
+            ) : null}
+            {resultInputError ? (
+              <p className="error-notice" role="alert">{resultInputError}</p>
+            ) : null}
+            <ResultEntryForm
+              key={`${loaderData.game.id}:${loaderData.participant.id}:${loaderData.participant.status}`}
+              initialChips={loaderData.game.initialChips}
+              isSubmitting={isSubmitting}
+              outstandingRebuyCount={visibleRebuy.outstandingRebuyCount}
+              remainingChips={loaderData.participant.remainingChips}
+              settlementRebuyCount={loaderData.participant.settlementRebuyCount}
+              totalRebuyCount={visibleRebuy.totalRebuyCount}
+            />
           </section>
 
           <ParticipantLeaveControl isSubmitting={isSubmitting} />
@@ -1309,41 +1328,29 @@ export default function GameParticipant({
               isSubmitting={isSubmitting}
             />
           ) : (
-            <>
-              <section className="player-selection-primary">
-                <div className="section-heading compact-heading">
-                  <div>
-                    <p className="eyebrow">JOIN THE TABLE</p>
-                    <h2>参加する名前を選択</h2>
-                  </div>
-                </div>
-                <p className="muted-copy">
-                  自分の名前を選び、確認して今回のゲームへ参加します。
-                </p>
-                {loaderData.players.length === 0 ? (
-                  <p className="muted-copy">登録済みメンバーはまだいません。</p>
-                ) : (
-                  <PlayerChoiceList
-                    actionLabel="参加"
-                    confirmBeforeSubmit
-                    intent="join-existing"
-                    isSubmitting={isSubmitting}
-                    players={loaderData.players}
-                    reloadDocument
-                  />
-                )}
-              </section>
-
-              <section className="player-selection-create">
+            <section className="player-selection-primary">
+              <div className="section-heading compact-heading">
                 <div>
-                  <h2>一覧に名前がない方</h2>
-                  <p className="muted-copy">
-                    名前を追加して参加できます。次回から一覧に表示されます。
-                  </p>
+                  <p className="eyebrow">JOIN THE TABLE</p>
+                  <h2>参加する名前を選択</h2>
                 </div>
-                <JoinNewPlayerForm />
-              </section>
-            </>
+              </div>
+              <p className="muted-copy">
+                自分の名前を選び、確認して今回のゲームへ参加します。
+              </p>
+              {loaderData.players.length === 0 ? (
+                <p className="muted-copy">登録済みメンバーはまだいません。</p>
+              ) : (
+                <PlayerChoiceList
+                  actionLabel="参加"
+                  confirmBeforeSubmit
+                  intent="join-existing"
+                  isSubmitting={isSubmitting}
+                  players={loaderData.players}
+                  reloadDocument
+                />
+              )}
+            </section>
           )}
         </div>
       )}
@@ -1404,7 +1411,7 @@ function JoinNewPlayerForm() {
         </span>
       </label>
       <button
-        className="button button-secondary"
+        className="button button-primary"
         disabled={submitting}
         ref={buttonRef}
         type="submit"
@@ -2107,41 +2114,6 @@ export function ResultEntryForm({
         {isSubmitting ? "保存中…" : "結果を保存"}
       </button>
     </Form>
-  );
-}
-
-export function ParticipantResultEntrySection({
-  children,
-  initiallyOpen = false,
-  summaryLabel = "結果を入力する",
-}: {
-  children: ReactNode;
-  initiallyOpen?: boolean;
-  summaryLabel?: string;
-}) {
-  const [open, setOpen] = useState(initiallyOpen);
-  useEffect(() => {
-    if (initiallyOpen) setOpen(true);
-  }, [initiallyOpen]);
-
-  return (
-    <details
-      aria-label="残りチップとリバイ証を入力"
-      className="participant-after-entry"
-      open={open}
-      onToggle={(event) => setOpen(event.currentTarget.open)}
-    >
-      <summary className="participant-result-entry-trigger">
-        <span>{summaryLabel}</span>
-        <span aria-hidden="true" className="disclosure-chevron">›</span>
-      </summary>
-      <div className="participant-after-entry-body">
-        <p className="muted-copy">
-          残りチップと手元のリバイ証を保存します。主催者の確定前は修正できます。
-        </p>
-        {children}
-      </div>
-    </details>
   );
 }
 
