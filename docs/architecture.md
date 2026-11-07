@@ -196,6 +196,8 @@ React Router内で発生した画面表示エラーはrootのErrorBoundaryで共
 
 ## 主催者導線と認証
 
+開催参加・グループ参加・未登録時のプロフィール画面は、名前入力を `NewPlayerRegistration` で共用する。新規入力を既存メンバー一覧より前へ配置し、送信intent・成功後の遷移・native POST / SPA送信・サーバー検証は各routeが担当する。共通部品は送信直後の重複送信防止と表示、エラー後・ブラウザバック時の再入力を扱う。
+
 開催不要のグループ招待は `/g/:groupCode/join` で提供し、rootの未所属者向け公開入口にこのrouteだけを追加する。`group-entry-service`が既存の本人プロフィール選択・新規作成を組み立て、routeはHttpOnlyの本人Cookieを返してグループTOPへ303 redirectする。GETは副作用を持たず、game_participantsを作成しない。別グループで認証済みの場合は送信されたplayer IDを信用せず本人セッションから解決し、`joinPlayerToGroup`で所属だけを追加する。このrepository関数は主催者用の追加処理と異なり、無効化済み所属を再有効化しない。未認証の表示データは有効メンバーの名前・アバターに限定し、他グループの再利用候補は取得しない。POSTには既存の参加者用Rate Limitingを適用し、responseはno-storeとする。
 
 開催運営ホームは `/g/:groupCode/manage` とする。ADMINにはメンバー管理とグループ設定を表示し、一般の権限ユーザーには表示しない。他人が作成した開催は通常の開催詳細へ遷移させる。`/g/:groupCode/settings` のPayPay設定は新規開催用デフォルトであり、開催作成transaction相当のINSERTで`games`へリンク・登録時刻・受取人をコピーする。

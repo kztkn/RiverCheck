@@ -1,7 +1,7 @@
 import { Form, Link, redirect, useNavigation } from "react-router";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { PlayerChoiceList } from "~/components/player-choice-list";
-import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
+import { NewPlayerRegistration } from "~/components/new-player-registration";
 import { getGroupEntry, enterGroup } from "@server/services/group-entry-service.server";
 import { createPlayerProfileCookie } from "@server/services/player-profile-session.server";
 import type { Route } from "./+types/group-join";
@@ -37,14 +37,14 @@ export default function GroupJoin({ loaderData, actionData }: Route.ComponentPro
   const isSubmitting = useNavigation().state !== "idle";
   const basePath = `/g/${loaderData.group.publicCode}`;
   return (
-    <main className="page-shell form-page">
+    <main className="page-shell form-page group-join-page">
       <GroupSiteHeader groupCode={loaderData.group.publicCode} hideNavigation={!loaderData.profile} />
       <section className="form-intro">
         <p className="eyebrow">WELCOME TO THE GROUP</p>
         <h1>{loaderData.group.name}</h1>
         <p>自分のプロフィールで、みんなの戦績や次の開催をチェック。</p>
       </section>
-      {actionData?.ok === false ? <p className="error-notice" role="alert">{actionData.error}</p> : null}
+      {actionData?.ok === false && (loaderData.profile || loaderData.identity) ? <p className="error-notice" role="alert">{actionData.error}</p> : null}
       {loaderData.profile ? (
         <section className="participant-panel">
           <h2>{loaderData.profile.displayName}としてログイン中</h2>
@@ -63,6 +63,12 @@ export default function GroupJoin({ loaderData, actionData }: Route.ComponentPro
         </section>
       ) : (
         <div className="player-selection">
+          <NewPlayerRegistration
+            buttonLabel="この名前で登録"
+            defaultValue={actionData?.displayName}
+            error={actionData?.ok === false ? actionData.error : null}
+            intent="create-player"
+          />
           <section className="player-selection-primary">
             <h2>自分の名前でログイン</h2>
             <p className="muted-copy">名前を選ぶと、この端末では次回から自分として開きます。</p>
@@ -77,21 +83,6 @@ export default function GroupJoin({ loaderData, actionData }: Route.ComponentPro
                 reloadDocument
               />
             ) : <p className="muted-copy">まだ登録されているメンバーはいません。</p>}
-          </section>
-          <section className="player-selection-create">
-            <h2>はじめての方</h2>
-            <p className="muted-copy">一覧に名前がなければ、新しく登録してください。</p>
-            <Form className="new-player-form" method="post" reloadDocument>
-              <input type="hidden" name="intent" value="create-player" />
-              <label className="field">
-                <span className="field-label">表示名</span>
-                <input name="displayName" defaultValue={actionData?.displayName ?? ""} maxLength={PLAYER_DISPLAY_NAME_MAX_LENGTH} required />
-                <span className="field-hint">最大{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字</span>
-              </label>
-              <button className="button button-primary" disabled={isSubmitting} type="submit">
-                {isSubmitting ? "登録中…" : "この名前で登録"}
-              </button>
-            </Form>
           </section>
         </div>
       )}

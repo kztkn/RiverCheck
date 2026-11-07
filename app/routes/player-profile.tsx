@@ -1,5 +1,5 @@
 import { GroupSiteHeader } from "~/components/site-menu";
-import { Form, redirect, useNavigation } from "react-router";
+import { redirect, useNavigation } from "react-router";
 import { PlayerProfileEditor } from "~/components/player-profile-editor";
 import { AppToast } from "~/components/app-toast";
 import { PlayerChoiceList } from "~/components/player-choice-list";
@@ -14,7 +14,7 @@ import {
 } from "@server/services/player-service.server";
 import { createPlayerProfileCookie } from "@server/services/player-profile-session.server";
 import { buildPlayerAvatarUrl } from "@domain/player-profile/build-player-avatar-url";
-import { PLAYER_DISPLAY_NAME_MAX_LENGTH } from "@domain/player-profile/validate-player-profile";
+import { NewPlayerRegistration } from "~/components/new-player-registration";
 import { getPlayerAchievementCollection } from "@server/services/achievement-service.server";
 import type { Route } from "./+types/player-profile";
 
@@ -218,6 +218,17 @@ export default function PlayerProfileRoute({
         </>
       ) : (
         <div className="player-selection">
+          <NewPlayerRegistration
+            buttonLabel="この名前で登録"
+            defaultValue={actionData?.ok === false &&
+              actionData.intent === "create-player" &&
+              "value" in actionData ? actionData.value : ""}
+            error={actionData?.ok === false && actionData.intent === "create-player"
+              ? actionData.error : null}
+            intent="create-player"
+            noValidate
+            reloadDocument={false}
+          />
           <section className="player-selection-primary">
             <div className="section-heading compact-heading">
               <div>
@@ -237,35 +248,6 @@ export default function PlayerProfileRoute({
               isSubmitting={isSubmitting}
               players={loaderData.players}
             />
-          </section>
-
-          <section className="player-selection-create">
-            <div>
-              <h2>一覧に名前がない方</h2>
-              <p className="muted-copy">新しいプレイヤーとして登録します。</p>
-            </div>
-            <Form className="new-player-form" method="post" noValidate>
-              <input name="intent" type="hidden" value="create-player" />
-              <label className="field">
-                <span className="field-label">表示名（{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字以内）</span>
-                <input
-                  defaultValue={actionData?.ok === false &&
-                    actionData.intent === "create-player" &&
-                    "value" in actionData
-                    ? actionData.value
-                    : ""}
-                  maxLength={PLAYER_DISPLAY_NAME_MAX_LENGTH}
-                  name="displayName"
-                  required
-                />
-              </label>
-              {actionData?.ok === false && actionData.intent === "create-player"
-                ? <p className="error-notice" role="alert">{actionData.error}</p>
-                : null}
-              <button className="button button-secondary" disabled={isSubmitting} type="submit">
-                この名前で登録
-              </button>
-            </Form>
           </section>
         </div>
       )}

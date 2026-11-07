@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createMemoryRouter, RouterProvider } from "react-router";
 
 const mocked = vi.hoisted(() => ({
   findGroupByPublicCode: vi.fn(),
@@ -19,8 +22,9 @@ vi.mock("@server/services/player-profile-service.server", () => ({
 }));
 vi.mock("@server/services/player-service.server", () => ({ addPlayerForGroup: mocked.addPlayerForGroup }));
 vi.mock("@server/services/player-profile-session.server", () => ({ createPlayerProfileCookie: mocked.createPlayerProfileCookie }));
+vi.mock("~/components/site-menu", () => ({ GroupSiteHeader: () => null }));
 
-import { action, loader } from "./group-join";
+import GroupJoin, { action, loader } from "./group-join";
 
 const group = { id: "group-1", publicCode: "friends", name: "Friends" };
 const playerId = "11111111-1111-4111-8111-111111111111";
@@ -54,6 +58,10 @@ describe("開催不要のグループ参加リンク", () => {
     expect(mocked.addPlayerForGroup).not.toHaveBeenCalled();
     expect(mocked.joinPlayerToGroup).not.toHaveBeenCalled();
     expect(mocked.selectPlayerProfile).not.toHaveBeenCalled();
+    const html = renderJoinPage(result);
+    expect(html.indexOf('name="displayName"')).toBeLessThan(html.indexOf("自分の名前でログイン"));
+    expect(html).toContain('value="create-player"');
+    expect(html).toContain('aria-label="Aliceとしてログイン"');
   });
 
   it("新規登録後に本人Cookieを設定してグループへ進む", async () => {
@@ -69,7 +77,11 @@ describe("開催不要のグループ参加リンク", () => {
 
   it("登録エラーではCookieを発行せず入力した名前を残す", async () => {
     mocked.addPlayerForGroup.mockResolvedValue({ ok: false, errors: { displayName: "長すぎます。" } });
-    expect(await action(args({ intent: "create-player", displayName: "too-long-name" }))).toEqual({ ok: false, error: "長すぎます。", displayName: "too-long-name" });
+    const result = await action(args({ intent: "create-player", displayName: "too-long-name" }));
+    expect(result).toEqual({ ok: false, error: "長すぎます。", displayName: "too-long-name" });
+    const html = renderJoinPage(await loader(args()), result as Exclude<typeof result, Response>);
+    expect(html).toContain('value="too-long-name"');
+    expect(html).toContain('role="alert">長すぎます。');
     expect(mocked.selectPlayerProfile).not.toHaveBeenCalled();
     expect(mocked.createPlayerProfileCookie).not.toHaveBeenCalled();
   });
@@ -126,3 +138,14 @@ describe("開催不要のグループ参加リンク", () => {
     expect(mocked.addPlayerForGroup).not.toHaveBeenCalled();
   });
 });
+
+function renderJoinPage(
+  loaderData: Awaited<ReturnType<typeof loader>>,
+  actionData?: Parameters<typeof GroupJoin>[0]["actionData"],
+) {
+  const router = createMemoryRouter([{
+    path: "/",
+    element: createElement(GroupJoin, { loaderData, actionData } as Parameters<typeof GroupJoin>[0]),
+  }]);
+  return renderToStaticMarkup(createElement(RouterProvider, { router }));
+}

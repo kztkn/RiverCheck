@@ -72,6 +72,7 @@ import { createPlayerProfileCookie } from "@server/services/player-profile-sessi
 import { GameStories } from "../components/game-stories";
 import { GroupSiteHeader } from "~/components/site-menu";
 import { GroupInviteJoinPanel } from "~/components/group-invite-join-panel";
+import { NewPlayerRegistration } from "~/components/new-player-registration";
 import { isOrganizerAuthenticated } from "@server/services/organizer-auth.server";
 import {
   getGameManagementActor,
@@ -991,16 +992,11 @@ export default function GameParticipant({
       </section>
 
       {showNewPlayerForm ? (
-        <section className="player-selection-create">
-          <div>
-            <h2>はじめて参加する方</h2>
-            <p className="muted-copy">名前を入力して参加できます。</p>
-          </div>
-          {actionData?.error ? (
-            <p className="error-notice" role="alert">{actionData.error}</p>
-          ) : null}
-          <JoinNewPlayerForm />
-        </section>
+        <NewPlayerRegistration
+          buttonLabel="この名前で参加"
+          error={actionData?.error}
+          intent="join-new"
+        />
       ) : null}
 
       {loaderData.participant && loaderData.tableNow ? (
@@ -1355,70 +1351,6 @@ export default function GameParticipant({
         </div>
       )}
     </main>
-  );
-}
-
-function JoinNewPlayerForm() {
-  const submittingRef = useRef(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    function restoreOnBackNavigation(event: PageTransitionEvent) {
-      if (!event.persisted) return;
-      submittingRef.current = false;
-      setSubmitting(false);
-      if (buttonRef.current) {
-        buttonRef.current.disabled = false;
-        buttonRef.current.textContent = "この名前で参加";
-      }
-    }
-    window.addEventListener("pageshow", restoreOnBackNavigation);
-    return () =>
-      window.removeEventListener("pageshow", restoreOnBackNavigation);
-  }, []);
-
-  return (
-    <Form
-      className="new-player-form"
-      method="post"
-      onSubmit={(event) => {
-        if (submittingRef.current) {
-          event.preventDefault();
-          return;
-        }
-        submittingRef.current = true;
-        setSubmitting(true);
-        // A native POST may navigate before React gets a chance to paint.
-        if (buttonRef.current) {
-          buttonRef.current.textContent = "登録中…";
-          buttonRef.current.disabled = true;
-        }
-      }}
-      reloadDocument
-    >
-      <input name="intent" type="hidden" value="join-new" />
-      <label className="field">
-        <span className="field-label">表示名</span>
-        <input
-          maxLength={PLAYER_DISPLAY_NAME_MAX_LENGTH}
-          name="displayName"
-          placeholder="例：プレイヤー"
-          required
-        />
-        <span className="field-hint">
-          最大{PLAYER_DISPLAY_NAME_MAX_LENGTH}文字
-        </span>
-      </label>
-      <button
-        className="button button-primary"
-        disabled={submitting}
-        ref={buttonRef}
-        type="submit"
-      >
-        {submitting ? "登録中…" : "この名前で参加"}
-      </button>
-    </Form>
   );
 }
 

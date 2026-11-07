@@ -2610,12 +2610,6 @@ input[aria-invalid="true"] {
   margin-bottom: 0;
 }
 
-.participant-selection-page > .player-selection-create {
-  margin-top: 0;
-  border-top: 0;
-  padding-block: 18px;
-}
-
 .new-player-panel {
   align-items: end;
 }
@@ -4038,6 +4032,17 @@ input[aria-invalid="true"] {
   margin-bottom: 5px;
   font-size: 1rem;
 }
+
+.new-player-registration {
+  margin-top: 0;
+  border-top: 0;
+  padding-block: 18px;
+}
+
+.group-join-page .form-intro {
+  padding: 28px 0 18px;
+}
+
 .result-revisions {
   gap: 10px;
 }
