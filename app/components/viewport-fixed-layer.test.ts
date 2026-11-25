@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { resolveViewportFixedTarget } from "./viewport-fixed-layer";
 
 describe("viewport fixed layer", () => {
-  it("uses the dedicated sticky viewport host", () => {
+  it("uses the dedicated viewport host", () => {
     const host = {} as HTMLElement;
     const body = {} as HTMLElement;
     const target = resolveViewportFixedTarget({

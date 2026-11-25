@@ -4,9 +4,8 @@ import { createPortal } from "react-dom";
 export const VIEWPORT_FIXED_ROOT_ID = "viewport-fixed-root";
 
 /**
- * Mount floating controls in the sticky viewport host rendered before the
- * scrollable page. The host avoids iOS fixed-position and VisualViewport
- * coordinate drift without moving the controls from JavaScript.
+ * Mount floating controls outside document flow so the shared host cannot
+ * change the page's scroll range as the mobile viewport changes height.
  */
 export function ViewportFixedLayer({ children }: { children: ReactNode }) {
   const [target, setTarget] = useState<HTMLElement | null>(null);
