@@ -50,7 +50,7 @@ describe("game cost share receipt service", () => {
     );
   });
 
-  it("0Pの参加者を受取済みにはしない", async () => {
+  it("0円の参加者を受取済みにはしない", async () => {
     mocked.lockCostShareForReceipt.mockResolvedValue({
       costShare: 0,
       gameSettlementAmount: 0,
@@ -60,7 +60,7 @@ describe("game cost share receipt service", () => {
       updateGameCostShareReceipt("group-1", "game-1", "player-1", true),
     ).resolves.toEqual({
       ok: false,
-      error: "0Pの参加者は対象外です。",
+      error: "0円の参加者は対象外です。",
     });
     expect(mocked.setGameCostShareReceived).not.toHaveBeenCalled();
   });
@@ -75,7 +75,7 @@ describe("game cost share receipt service", () => {
       updateGameCostShareReceipt("group-1", "game-1", "player-1", true),
     ).resolves.toEqual({
       ok: false,
-      error: "0Pの参加者は対象外です。",
+      error: "0円の参加者は対象外です。",
     });
   });
 

@@ -266,7 +266,7 @@ export function FinalResults({
             }}
             type="button"
           >
-            <span aria-hidden="true">P</span>
+            <span aria-hidden="true">円</span>
             {payPay.ownerDisplayName
               ? `${payPay.ownerDisplayName}に送金`
               : "PayPayで支払う"}
@@ -278,7 +278,7 @@ export function FinalResults({
           {showSettlementAmounts ? (
             <div className="result-total">
               <span>負担合計</span>
-              <strong>{formatNumber(settlementTotal)}P</strong>
+              <strong>{formatNumber(settlementTotal)}円</strong>
             </div>
           ) : null}
           <p className="bb-basis">
@@ -287,7 +287,7 @@ export function FinalResults({
           </p>
           {bbRate > 0 ? (
             <p className="bb-basis">
-              ゲーム結果 1BB = {formatNumber(bbRate)}P
+              ゲーム結果 1BB = {formatNumber(bbRate)}円
             </p>
           ) : null}
         </div>
@@ -383,7 +383,7 @@ function ResultSettlementAmount({
   if (bbRate === 0) {
     return (
       <strong className="result-cost">
-        {formatNumber(result.costShare)}P
+        {formatNumber(result.costShare)}円
       </strong>
     );
   }
@@ -393,11 +393,11 @@ function ResultSettlementAmount({
   return (
     <span className="result-settlement-amount">
       <strong className={`result-cost result-cost-${settlementTone(balance)}`}>
-        {formatSignedPoints(balance)}
+        {formatSignedYen(balance)}
       </strong>
       <small>
-        ゲーム {formatSignedPoints(gameAmount)} / 負担 -
-        {formatNumber(result.costShare)}P
+        ゲーム {formatSignedYen(gameAmount)} / 負担 -
+        {formatNumber(result.costShare)}円
       </small>
     </span>
   );
@@ -409,8 +409,8 @@ function settlementTone(value: number): "positive" | "negative" | "neutral" {
   return "neutral";
 }
 
-function formatSignedPoints(value: number): string {
-  return `${value > 0 ? "+" : ""}${formatNumber(value)}P`;
+function formatSignedYen(value: number): string {
+  return `${value > 0 ? "+" : ""}${formatNumber(value)}円`;
 }
 
 function ResultParticipantMeta({ result }: { result: GameResultSummary }) {

@@ -253,10 +253,10 @@ export function ResultCorrectionPanel({
                   </span>
                   <strong>
                     {game.bbRate > 0
-                      ? formatResultPoints(
+                      ? formatSignedYen(
                           result.gameSettlementAmount - result.costShare,
                         )
-                      : formatPoints(result.costShare)}
+                      : formatYen(result.costShare)}
                   </strong>
                 </div>
               ))}
@@ -352,12 +352,12 @@ function scoreClassName(
       : "result-score-neutral";
 }
 
-function formatPoints(value: number): string {
-  return `${value.toLocaleString("ja-JP")}P`;
+function formatYen(value: number): string {
+  return `${value.toLocaleString("ja-JP")}円`;
 }
 
-function formatResultPoints(value: number): string {
-  return `${value > 0 ? "+" : ""}${value.toLocaleString("ja-JP")}P`;
+function formatSignedYen(value: number): string {
+  return `${value > 0 ? "+" : ""}${value.toLocaleString("ja-JP")}円`;
 }
 
 function formatSignedNumber(value: number): string {

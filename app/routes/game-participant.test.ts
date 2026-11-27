@@ -676,8 +676,8 @@ describe("game participant route", () => {
     expect(markup).toContain("今日のまとめ");
     expect(markup).toContain("1位");
     expect(markup).toContain("2位");
-    expect(markup).toContain("1,000P");
-    expect(markup).toContain("2,000P");
+    expect(markup).toContain("1,000円");
+    expect(markup).toContain("2,000円");
     expect(markup).not.toContain("ゲーム結果");
     expect(markup).not.toContain("1BB =");
   });
@@ -693,7 +693,7 @@ describe("game participant route", () => {
     );
 
     expect(markup).toContain("ゲーム結果");
-    expect(markup).toContain("1BB = 10P");
+    expect(markup).toContain("1BB = 10円");
     expect(markup).toContain('class="settlement-plan-grid"');
   });
 

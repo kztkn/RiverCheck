@@ -68,9 +68,9 @@ describe("FinalResults settlement visibility", () => {
     expect(markup).toContain("-50BB");
     expect(markup).toContain("-150BB");
     expect(markup).toContain("1BB = 200チップ");
-    expect(markup).not.toContain("1,500P");
-    expect(markup).not.toContain("2,500P");
-    expect(markup).not.toContain("4,000P");
+    expect(markup).not.toContain("1,500円");
+    expect(markup).not.toContain("2,500円");
+    expect(markup).not.toContain("4,000円");
     expect(markup).not.toContain("トータル");
     expect(markup).not.toContain("負担合計");
     expect(markup).not.toContain("訂正履歴");
@@ -94,9 +94,9 @@ describe("FinalResults settlement visibility", () => {
       }),
     );
 
-    expect(markup).toContain("1,500P");
-    expect(markup).toContain("2,500P");
-    expect(markup).toContain("4,000P");
+    expect(markup).toContain("1,500円");
+    expect(markup).toContain("2,500円");
+    expect(markup).toContain("4,000円");
     expect(markup).toContain("負担合計");
     expect(markup).toContain('class="result-ranking"');
   });
@@ -123,10 +123,10 @@ describe("FinalResults settlement visibility", () => {
       }),
     );
 
-    expect(markup).toContain("ゲーム結果 1BB = 5P");
-    expect(markup).toContain("0P");
-    expect(markup).toContain("-4,000P");
-    expect(markup).toContain("ゲーム +1,500P / 負担 -1,500P");
+    expect(markup).toContain("ゲーム結果 1BB = 5円");
+    expect(markup).toContain("0円");
+    expect(markup).toContain("-4,000円");
+    expect(markup).toContain("ゲーム +1,500円 / 負担 -1,500円");
     expect(markup).toContain("負担合計");
     expect(markup).not.toContain(">トータル<");
   });

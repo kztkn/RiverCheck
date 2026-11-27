@@ -677,7 +677,7 @@ export function GameSettingsFields({
               type="number"
               value={venueCost}
             />
-            <p className="field-hint">負担額は100P単位でまとめます。</p>
+            <p className="field-hint">負担額は100円単位でまとめます。</p>
 
             <section className="cost-preview" aria-live="polite">
               <div className="cost-preview-heading">
@@ -859,7 +859,7 @@ export function GameSettingsFields({
                           type="text"
                           value={share}
                         />
-                        <span>P</span>
+                        <span>円</span>
                       </span>
                     ) : (
                       <button
@@ -898,11 +898,11 @@ export function GameSettingsFields({
               <div className="preview-totals">
                 <span>
                   負担総額{" "}
-                  <strong>{formatOptionalPoints(analysis.settlementTotal)}</strong>
+                  <strong>{formatOptionalYen(analysis.settlementTotal)}</strong>
                 </span>
                 <span>
                   配分合計{" "}
-                  <strong>{formatOptionalPoints(analysis.allocatedTotal)}</strong>
+                  <strong>{formatOptionalYen(analysis.allocatedTotal)}</strong>
                 </span>
               </div>
               <p
@@ -923,7 +923,7 @@ export function GameSettingsFields({
           <summary>
             <span>
               <strong>ゲーム結果を反映</strong>
-              {bbRate !== "0" ? <small>1BB = {bbRate}P</small> : null}
+              {bbRate !== "0" ? <small>1BB = {bbRate}円</small> : null}
             </span>
           </summary>
           <div className="game-settlement-option-body">
@@ -938,12 +938,12 @@ export function GameSettingsFields({
                     onClick={() => setBbRate(String(rate))}
                     type="button"
                   >
-                    {rate}P
+                    {rate}円
                   </button>
                 ))}
               </div>
               <p>
-                設定するとBBの増減をP換算し、全員分が合計0Pになるよう100P単位で調整します。
+                設定するとBBの増減を円換算し、全員分が合計0円になるよう100円単位で調整します。
               </p>
               {gameSettlementPreview ? (
                 <section className="game-settlement-preview">
@@ -960,12 +960,12 @@ export function GameSettingsFields({
                             </span>
                             <span>
                               <b>
-                                {formatSignedPoints(balance)}
+                                {formatSignedYen(balance)}
                               </b>
                               <small>
                                 ゲーム{" "}
-                                {formatSignedPoints(result.gameSettlementAmount)} /
-                                負担 -{result.costShare.toLocaleString("ja-JP")}P
+                                {formatSignedYen(result.gameSettlementAmount)} /
+                                負担 -{result.costShare.toLocaleString("ja-JP")}円
                               </small>
                             </span>
                           </p>
@@ -1072,8 +1072,8 @@ function parsePreviewInteger(value: string): number {
   return parsed;
 }
 
-function formatSignedPoints(value: number): string {
-  return `${value > 0 ? "+" : ""}${value.toLocaleString("ja-JP")}P`;
+function formatSignedYen(value: number): string {
+  return `${value > 0 ? "+" : ""}${value.toLocaleString("ja-JP")}円`;
 }
 
 function parseParticipantCount(value: string): number {
@@ -1172,7 +1172,7 @@ function analyzeSettlement(
   const unroundedIndex = parsedShares.findIndex((share) => share % 100 !== 0);
   if (unroundedIndex >= 0) {
     return invalidAnalysis(
-      `${unroundedIndex + 1}位の負担額を100P単位にしてください。`,
+      `${unroundedIndex + 1}位の負担額を100円単位にしてください。`,
       settlementTotal,
       allocatedTotal,
       unroundedIndex,
@@ -1192,14 +1192,14 @@ function analyzeSettlement(
   const difference = settlementTotal - allocatedTotal;
   if (difference > 0) {
     return invalidAnalysis(
-      `あと${formatNumber(difference)}P割り振ってください。`,
+      `あと${formatNumber(difference)}円割り振ってください。`,
       settlementTotal,
       allocatedTotal,
     );
   }
   if (difference < 0) {
     return invalidAnalysis(
-      `${formatNumber(Math.abs(difference))}P多いです。`,
+      `${formatNumber(Math.abs(difference))}円多いです。`,
       settlementTotal,
       allocatedTotal,
     );
@@ -1208,7 +1208,7 @@ function analyzeSettlement(
     allocatedTotal,
     invalidRankIndex: null,
     isValid: true,
-    message: `${formatPoints(settlementTotal)} ✓ 配分が一致しています。`,
+    message: `${formatYen(settlementTotal)} ✓ 配分が一致しています。`,
     settlementTotal,
   };
 }
@@ -1228,12 +1228,12 @@ function invalidAnalysis(
   };
 }
 
-function formatPoints(value: number): string {
-  return `${formatNumber(value)}P`;
+function formatYen(value: number): string {
+  return `${formatNumber(value)}円`;
 }
 
-function formatOptionalPoints(value: number | null): string {
-  return value === null ? "—" : formatPoints(value);
+function formatOptionalYen(value: number | null): string {
+  return value === null ? "—" : formatYen(value);
 }
 
 function formatVenueCostSummary(value: string): string {
@@ -1246,7 +1246,7 @@ function formatVenueCostSummary(value: string): string {
 
 function formatShareValue(value: string): string {
   try {
-    return formatPoints(parsePreviewInteger(value));
+    return formatYen(parsePreviewInteger(value));
   } catch {
     return "未入力";
   }

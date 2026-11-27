@@ -36,7 +36,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 const defaultCostShares = calculateCostShares({
-  venueCost: 11_330,
+  venueCost: 12_000,
   participantCount: 8,
   firstPlaceCost: 0,
   secondPlaceCost: 500,
@@ -50,7 +50,7 @@ const defaults = {
   bigBlindChips: "200",
   bigBlindAnteChips: "200",
   chipDistribution: "",
-  venueCost: "11330",
+  venueCost: "12000",
   firstPlaceCost: "0",
   secondPlaceCost: "500",
   thirdPlaceCost: "1000",

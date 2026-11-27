@@ -387,7 +387,7 @@ export function validateGameSettingsForm(
     errors,
   );
   if (bbRate !== null && !isSupportedBbRate(bbRate)) {
-    errors.bbRate = "BBレートは0P、5P、10P、20Pから選んでください。";
+    errors.bbRate = "BBレートは0円、5円、10円、20円から選んでください。";
   }
   if (
     previewParticipantCount !== null &&
@@ -719,7 +719,7 @@ function getCostSharePlanError(
     (share) => share % COST_ROUNDING_UNIT !== 0,
   );
   if (unroundedIndex >= 0) {
-    return `${unroundedIndex + 1}位の負担額を100P単位で入力してください。`;
+    return `${unroundedIndex + 1}位の負担額を100円単位で入力してください。`;
   }
   const reversedIndex = shares.findIndex(
     (share, index) => index > 0 && share < shares[index - 1]!,
@@ -738,10 +738,10 @@ function getCostSharePlanError(
   }
   const difference = settlementTotal - allocatedTotal;
   if (difference > 0) {
-    return `配分合計が負担総額より${difference.toLocaleString("ja-JP")}P不足しています。`;
+    return `配分合計が負担総額より${difference.toLocaleString("ja-JP")}円不足しています。`;
   }
   if (difference < 0) {
-    return `配分合計が負担総額より${Math.abs(difference).toLocaleString("ja-JP")}P多いです。`;
+    return `配分合計が負担総額より${Math.abs(difference).toLocaleString("ja-JP")}円多いです。`;
   }
   try {
     validateCostSharePlan({ venueCost, participantCount, shares });

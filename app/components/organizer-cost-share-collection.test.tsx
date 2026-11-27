@@ -77,8 +77,8 @@ describe("OrganizerCostShareCollection", () => {
     );
 
     expect(markup).toContain("受け渡し状況");
-    expect(markup).toContain("受取 1,000P");
-    expect(markup).toContain("支払 4,000P");
+    expect(markup).toContain("受取 1,000円");
+    expect(markup).toContain("支払 4,000円");
     expect(markup).toContain("送金待ち");
     expect(markup).toContain("入金待ち");
     expect(markup).toContain("対象外");

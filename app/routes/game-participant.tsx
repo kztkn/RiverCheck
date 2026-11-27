@@ -1773,7 +1773,7 @@ export function SettlementPlanSheet({
                 {bbRate > 0 ? (
                   <span className="is-wide">
                     <small>ゲーム結果</small>
-                    <strong>1BB = {bbRate.toLocaleString("ja-JP")}P</strong>
+                    <strong>1BB = {bbRate.toLocaleString("ja-JP")}円</strong>
                   </span>
                 ) : null}
               </div>
@@ -1784,7 +1784,7 @@ export function SettlementPlanSheet({
                 {costShares.map((share, index) => (
                   <span key={index}>
                     <small>{index + 1}位</small>
-                    <strong>{share.toLocaleString("ja-JP")}P</strong>
+                    <strong>{share.toLocaleString("ja-JP")}円</strong>
                   </span>
                 ))}
               </div>

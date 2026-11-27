@@ -219,12 +219,12 @@ describe("GameSettingsFields local rules", () => {
     expect(markup).toContain("<strong>ゲーム結果を反映</strong>");
     expect(markup).not.toContain("なし（会費のみ）");
     expect(markup).toContain('aria-label="BBレート"');
-    expect(markup).toContain(">0P</button>");
-    expect(markup).not.toContain("1BB = 0P");
+    expect(markup).toContain(">0円</button>");
+    expect(markup).not.toContain("1BB = 0円");
     expect(markup).toMatch(/<details class="game-settlement-option"><summary/u);
   });
 
-  it("BBレート有効時は現在値と100P単位調整を表示する", () => {
+  it("BBレート有効時は現在値と100円単位調整を表示する", () => {
     const markup = renderToStaticMarkup(
       createElement(GameSettingsFields, {
         errors: {},
@@ -232,8 +232,8 @@ describe("GameSettingsFields local rules", () => {
       }),
     );
 
-    expect(markup).toContain("1BB = 5P");
-    expect(markup).toContain("100P単位で調整します");
+    expect(markup).toContain("1BB = 5円");
+    expect(markup).toContain("100円単位で調整します");
     expect(markup).toContain('aria-pressed="true"');
     expect(markup).toMatch(/<details[^>]*\sopen(?:=|\s|>)/u);
   });
@@ -282,9 +282,9 @@ describe("GameSettingsFields local rules", () => {
     );
 
     expect(markup).toContain("最終結果プレビュー");
-    expect(markup).toContain("ゲーム +500P / 負担 -1,000P");
-    expect(markup).toContain("-500P");
-    expect(markup).toContain("-2,500P");
+    expect(markup).toContain("ゲーム +500円 / 負担 -1,000円");
+    expect(markup).toContain("-500円");
+    expect(markup).toContain("-2,500円");
   });
 
   it("OFF設定も閉じた状態の要約へ反映する", () => {

@@ -155,8 +155,8 @@ export function OrganizerCostShareCollection({
                   <strong>{receipt.displayName}</strong>
                   <small>
                     {gameSettlementEnabled
-                      ? `${balance > 0 ? "受取" : "支払"} ${Math.abs(balance).toLocaleString("ja-JP")}P`
-                      : `${receipt.costShare.toLocaleString("ja-JP")}P`}
+                      ? `${balance > 0 ? "受取" : "支払"} ${Math.abs(balance).toLocaleString("ja-JP")}円`
+                      : `${receipt.costShare.toLocaleString("ja-JP")}円`}
                   </small>
                 </span>
                 {balance === 0 ? (

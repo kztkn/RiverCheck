@@ -34,8 +34,8 @@ export async function updateGameCostShareReceipt(
           ok: false,
           error:
             (settlement.gameSettlementAmount ?? 0) === 0
-              ? "0Pの参加者は対象外です。"
-              : "0Pの参加者は対象外です。",
+              ? "0円の参加者は対象外です。"
+              : "0円の参加者は対象外です。",
         };
       }
 
